@@ -56,7 +56,7 @@ export const useEmailVerification = () => {
                     verificationType = 'REGISTRATION';
             }
 
-            console.log('🔄 useEmailVerification: Enviando código con datos:', { email, rut, firstName, lastName });
+            console.log('useEmailVerification: Enviando código con datos:', { email, rut, firstName, lastName });
 
             // Enviar código usando el API real - EL BACKEND VALIDARÁ EMAIL Y RUT
             const response = await emailVerificationService.sendVerificationCode({
@@ -67,7 +67,7 @@ export const useEmailVerification = () => {
                 lastName: lastName
             });
 
-            console.log('✅ useEmailVerification: Respuesta recibida:', response);
+            console.log('useEmailVerification: Respuesta recibida:', response);
 
             // Si la respuesta indica fallo, lanzar error
             if (!response.success) {
@@ -87,7 +87,7 @@ export const useEmailVerification = () => {
 
             return response;
         } catch (error: any) {
-            console.error('❌ useEmailVerification: Error capturado:', error);
+            console.error('useEmailVerification: Error capturado:', error);
             const errorMessage = error.message || 'Error al enviar código de verificación';
             console.log('🔴 useEmailVerification: Estableciendo verificationError:', errorMessage);
 

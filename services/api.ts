@@ -55,8 +55,8 @@ api.interceptors.request.use(
         const url = config.url || '';
         const isPublic = isPublicRoute(url);
 
-        console.log(`📤 api.ts - Runtime baseURL: ${runtimeBaseURL}`);
-        console.log(`🔍 API Request: ${url} - Is Public: ${isPublic}`);
+        console.log(`api.ts - Runtime baseURL: ${runtimeBaseURL}`);
+        console.log(`API Request: ${url} - Is Public: ${isPublic}`);
 
         // Solo agregar token de autenticación si NO es una ruta pública
         if (!isPublic) {
@@ -70,12 +70,12 @@ api.interceptors.request.use(
 
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
-                console.log(`🔑 Added auth token for private route`);
+                console.log(`Added auth token for private route`);
             } else {
                 console.log(`❓ No token found for private route`);
             }
         } else {
-            console.log(`🌐 Public route - no auth required`);
+            console.log(` Public route - no auth required`);
         }
 
         // Add CSRF token for POST, PUT, DELETE, PATCH requests
@@ -93,8 +93,8 @@ api.interceptors.request.use(
                 config.headers['X-CSRF-Token'] = csrfHeaders['X-CSRF-Token'];
                 // console.log(`🛡️ Added CSRF token to ${method} request`);
             } catch (error) {
-                console.error('❌ Failed to get CSRF token:', error);
-                console.error('❌ Error details:', error);
+                console.error('Failed to get CSRF token:', error);
+                console.error('Error details:', error);
                 // Continue without CSRF token - backend will reject the request
             }
         } else {
@@ -113,7 +113,7 @@ api.interceptors.response.use(
     (response) => {
         // DEFENSIVE: Validate response exists before returning
         if (!response) {
-            console.error('❌ api.ts interceptor: response is undefined');
+            console.error('api.ts interceptor: response is undefined');
             return Promise.reject(new Error('No se recibió respuesta del servidor'));
         }
         return response;
@@ -131,7 +131,7 @@ api.interceptors.response.use(
             
             // Si es 401, limpiar la sesión correspondiente y redirigir
             if (error.response.status === 401) {
-                console.warn('🔐 JWT token expired or invalid - cleaning session');
+                console.warn('JWT token expired or invalid - cleaning session');
 
                 // Limpiar token de usuario regular
                 localStorage.removeItem('auth_token');
@@ -151,7 +151,7 @@ api.interceptors.response.use(
                                      requestUrl.includes('/api/auth/register');
 
                 if (!isLoginPage && !isPublicRoute) {
-                    console.warn('🔄 Redirecting to login due to expired token');
+                    console.warn('Redirecting to login due to expired token');
                     // Usar setTimeout para evitar problemas con el contexto de React
                     setTimeout(() => {
                         if (currentPath.includes('/admin') || currentPath.includes('/profesor')) {

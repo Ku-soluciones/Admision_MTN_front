@@ -81,7 +81,7 @@ docker exec -i mtn-mysql mysql -uroot -padmin123 mtn_admisiones < sample_data.sq
 
 ---
 
-## 🔐 Usuarios y Accesos
+## Usuarios y Accesos
 
 ### Usuario Administrador Principal
 ```
@@ -102,7 +102,7 @@ eduardo.hernandez@mtn.cl - Matemática (7°B-2°M)
 
 ---
 
-## 📊 Estructura de Datos
+## Estructura de Datos
 
 ### Tablas Principales
 
@@ -128,7 +128,7 @@ eduardo.hernandez@mtn.cl - Matemática (7°B-2°M)
 
 ---
 
-## 🔍 Consultas Útiles
+## Consultas Útiles
 
 ### Verificar Instalación
 ```sql
@@ -282,7 +282,7 @@ Para problemas con la base de datos:
 
 ---
 
-## 🎯 Próximos Pasos
+## Próximos Pasos
 
 Una vez instalada la base de datos:
 

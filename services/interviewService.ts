@@ -209,11 +209,11 @@ class InterviewService {
     };
     
     console.log('🚀 Creando entrevista con estado:', requestWithStatus.status);
-    console.log('📤 Request completo enviado al backend:', JSON.stringify(requestWithStatus, null, 2));
+    console.log('Request completo enviado al backend:', JSON.stringify(requestWithStatus, null, 2));
     
     const response = await api.post<InterviewResponse>(this.baseUrl, requestWithStatus);
     
-    console.log('📥 Response recibido del backend:', JSON.stringify(response.data, null, 2));
+    console.log('Response recibido del backend:', JSON.stringify(response.data, null, 2));
     return this.mapInterviewResponse(response.data);
   }
 
@@ -230,16 +230,16 @@ class InterviewService {
     search?: string
   ): Promise<{ interviews: Interview[]; totalElements: number; totalPages: number }> {
     try {
-      console.log('🔄 Obtaining interviews from backend...');
+      console.log('Obtaining interviews from backend...');
 
       // Use correct API instance instead of hardcoded URL
       const response = await api.get<any>(this.baseUrl);
 
-      console.log('📋 Backend response:', response.data);
+      console.log('Backend response:', response.data);
 
       // Backend returns: { success: true, data: [...], count: number }
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        console.log('✅ Found interviews from backend:', response.data.data.length);
+        console.log('Found interviews from backend:', response.data.data.length);
 
         // Apply search filter if provided
         let interviews = response.data.data;
@@ -276,7 +276,7 @@ class InterviewService {
         const paginatedInterviews = interviews.slice(startIndex, endIndex);
 
         const mappedInterviews = paginatedInterviews.map((item: any) => this.mapBackendResponse(item));
-        console.log('📋 Mapped interviews for frontend:', mappedInterviews);
+        console.log('Mapped interviews for frontend:', mappedInterviews);
 
         return {
           interviews: mappedInterviews,
@@ -285,7 +285,7 @@ class InterviewService {
         };
       }
 
-      console.log('⚠️ No valid response from backend, returning empty data');
+      console.log('No valid response from backend, returning empty data');
       return {
         interviews: [],
         totalElements: 0,
@@ -293,7 +293,7 @@ class InterviewService {
       };
 
     } catch (error) {
-      console.error('❌ Error fetching interviews:', error);
+      console.error('Error fetching interviews:', error);
       return {
         interviews: [],
         totalElements: 0,
@@ -310,7 +310,7 @@ class InterviewService {
     sortDir: 'asc' | 'desc' = 'desc'
   ): Promise<{ interviews: Interview[]; totalElements: number; totalPages: number }> {
     try {
-      console.log('🔄 Getting interviews with filters:', filters);
+      console.log('Getting interviews with filters:', filters);
 
       // Get all interviews first
       const response = await api.get<any>(this.baseUrl);
@@ -381,7 +381,7 @@ class InterviewService {
       };
 
     } catch (error) {
-      console.error('❌ Error fetching interviews with filters:', error);
+      console.error('Error fetching interviews with filters:', error);
       return {
         interviews: [],
         totalElements: 0,
@@ -396,7 +396,7 @@ class InterviewService {
   }
 
   async deleteInterview(id: number): Promise<void> {
-    // ⚠️ Use clean axios instance WITHOUT interceptors
+    // Use clean axios instance WITHOUT interceptors
     // Backend DELETE endpoint does NOT require CSRF validation
     const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
 
@@ -408,7 +408,7 @@ class InterviewService {
       }
     });
 
-    console.log(`✅ [deleteInterview] Interview ${id} deleted successfully (no CSRF token sent)`);
+    console.log(`[deleteInterview] Interview ${id} deleted successfully (no CSRF token sent)`);
   }
 
   // Operaciones de estado
@@ -435,7 +435,7 @@ class InterviewService {
 
     // Backend devuelve { success: true, data: { message, interview } }
     if (response.data && response.data.success && response.data.data && response.data.data.interview) {
-      console.log('✅ Entrevista cancelada exitosamente');
+      console.log('Entrevista cancelada exitosamente');
       return this.mapBackendResponse(response.data.data.interview);
     }
 
@@ -444,12 +444,12 @@ class InterviewService {
       return this.mapBackendResponse(response.data.interview);
     }
 
-    console.warn('⚠️ Estructura de respuesta inesperada al cancelar entrevista');
+    console.warn('Estructura de respuesta inesperada al cancelar entrevista');
     return this.mapBackendResponse(response.data);
   }
 
   async rescheduleInterview(id: number, newDate: string, newTime: string, reason: string): Promise<Interview> {
-    console.log(`🔄 Reagendando entrevista ${id} a ${newDate} ${newTime} con razón: ${reason}`);
+    console.log(`Reagendando entrevista ${id} a ${newDate} ${newTime} con razón: ${reason}`);
     const response = await api.patch<any>(`${this.baseUrl}/${id}/reschedule`, {
       newDate,
       newTime,
@@ -458,7 +458,7 @@ class InterviewService {
 
     // Backend devuelve { success: true, data: { message, interview } }
     if (response.data && response.data.success && response.data.data && response.data.data.interview) {
-      console.log('✅ Entrevista reagendada exitosamente');
+      console.log('Entrevista reagendada exitosamente');
       return this.mapBackendResponse(response.data.data.interview);
     }
 
@@ -467,7 +467,7 @@ class InterviewService {
       return this.mapBackendResponse(response.data.interview);
     }
 
-    console.warn('⚠️ Estructura de respuesta inesperada al reagendar entrevista');
+    console.warn('Estructura de respuesta inesperada al reagendar entrevista');
     return this.mapBackendResponse(response.data);
   }
 
@@ -499,9 +499,9 @@ class InterviewService {
 
   async getInterviewsByInterviewer(interviewerId: number): Promise<Interview[]> {
     try {
-      // 🔄 Add cache-busting headers and timestamp to force fresh data
+      // Add cache-busting headers and timestamp to force fresh data
       const timestamp = Date.now();
-      console.log(`🔄 [getInterviewsByInterviewer] Fetching with timestamp: ${timestamp} for interviewer ${interviewerId}`);
+      console.log(`[getInterviewsByInterviewer] Fetching with timestamp: ${timestamp} for interviewer ${interviewerId}`);
 
       const response = await api.get<InterviewResponse[]>(
         `${this.baseUrl}/interviewer/${interviewerId}?_t=${timestamp}`,
@@ -516,17 +516,17 @@ class InterviewService {
 
       // Verificar si la respuesta es del placeholder (microservicio no implementado)
       if (response.data && typeof response.data === 'object' && 'error' in response.data) {
-        console.log('⚠️ Interviews by interviewer service no implementado, devolviendo array vacío');
+        console.log('Interviews by interviewer service no implementado, devolviendo array vacío');
         return [];
       }
 
       // Verificar si es un array válido
       if (Array.isArray(response.data)) {
-        console.log(`✅ [getInterviewsByInterviewer] Received ${response.data.length} interviews for interviewer ${interviewerId}`);
+        console.log(`[getInterviewsByInterviewer] Received ${response.data.length} interviews for interviewer ${interviewerId}`);
         return response.data.map(item => this.mapInterviewResponse(item));
       }
 
-      console.log('⚠️ Estructura de respuesta inesperada para interviews by interviewer');
+      console.log('Estructura de respuesta inesperada para interviews by interviewer');
       return [];
     } catch (error) {
       console.error('Error fetching interviews by interviewer:', error);
@@ -536,25 +536,25 @@ class InterviewService {
 
   async getInterviewsByApplication(applicationId: number): Promise<{ interviews: Interview[] }> {
     try {
-      console.log('🔄 Getting interviews for application:', applicationId);
+      console.log('Getting interviews for application:', applicationId);
 
       // Use path parameter (backend expects /api/interviews/application/:applicationId)
       const response = await api.get<any>(`${this.baseUrl}/application/${applicationId}`);
 
-      console.log(`📋 Direct response for application ${applicationId}:`, response.data);
+      console.log(`Direct response for application ${applicationId}:`, response.data);
 
       // CASE 1: Backend returns wrapped format { success: true, data: [...] }
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        console.log(`✅ Found ${response.data.data.length} interviews for application ${applicationId} (wrapped format)`);
+        console.log(`Found ${response.data.data.length} interviews for application ${applicationId} (wrapped format)`);
 
         const mappedInterviews = response.data.data.map((item: any) => {
-          console.log(`🔄 Mapping interview ${item.id}:`, item);
+          console.log(`Mapping interview ${item.id}:`, item);
           const mapped = this.mapBackendResponse(item);
-          console.log(`✅ Mapped interview:`, mapped);
+          console.log(`Mapped interview:`, mapped);
           return mapped;
         });
 
-        console.log(`📋 Final mapped interviews for application ${applicationId}:`, mappedInterviews);
+        console.log(`Final mapped interviews for application ${applicationId}:`, mappedInterviews);
 
         return {
           interviews: mappedInterviews
@@ -563,27 +563,27 @@ class InterviewService {
 
       // CASE 2: Backend returns direct array [{...}, {...}]
       if (Array.isArray(response.data)) {
-        console.log(`✅ Found ${response.data.length} interviews for application ${applicationId} (direct array)`);
+        console.log(`Found ${response.data.length} interviews for application ${applicationId} (direct array)`);
 
         const mappedInterviews = response.data.map((item: any) => {
-          console.log(`🔄 Mapping interview ${item.id}:`, item);
+          console.log(`Mapping interview ${item.id}:`, item);
           const mapped = this.mapBackendResponse(item);
-          console.log(`✅ Mapped interview:`, mapped);
+          console.log(`Mapped interview:`, mapped);
           return mapped;
         });
 
-        console.log(`📋 Final mapped interviews for application ${applicationId}:`, mappedInterviews);
+        console.log(`Final mapped interviews for application ${applicationId}:`, mappedInterviews);
 
         return {
           interviews: mappedInterviews
         };
       }
 
-      console.log('⚠️ No valid response from backend for getInterviewsByApplication');
+      console.log('No valid response from backend for getInterviewsByApplication');
       return { interviews: [] };
 
     } catch (error) {
-      console.error('❌ Error fetching interviews by application:', error);
+      console.error('Error fetching interviews by application:', error);
       return { interviews: [] };
     }
   }
@@ -737,7 +737,7 @@ class InterviewService {
     const interviews = response.data?.data || response.data || [];
 
     if (!Array.isArray(interviews)) {
-      console.error('❌ Calendar response is not an array:', response.data);
+      console.error('Calendar response is not an array:', response.data);
       return [];
     }
 
@@ -790,19 +790,19 @@ class InterviewService {
     duration: number = 60
   ): Promise<string[]> {
     try {
-      console.log(`🔍 [getAvailableTimeSlots] INICIO - Parámetros recibidos:`, { interviewerId, date, duration });
+      console.log(`[getAvailableTimeSlots] INICIO - Parámetros recibidos:`, { interviewerId, date, duration });
 
-      // ✅ Validar formato de fecha antes de enviar al backend
+      // Validar formato de fecha antes de enviar al backend
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
-        console.error(`❌ getAvailableTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
+        console.error(`getAvailableTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
         return this.getDefaultTimeSlots();
       }
 
       // Verificar que el año sea razonable
       const year = parseInt(date.split('-')[0]);
       if (year < 2020 || year > 2100) {
-        console.error(`❌ getAvailableTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
+        console.error(`getAvailableTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
         return this.getDefaultTimeSlots();
       }
 
@@ -819,34 +819,34 @@ class InterviewService {
 
       const response = await api.get<any>(`${this.baseUrl}/available-slots?${params}`);
 
-      console.log('🔍 Respuesta completa de available-slots:', response);
-      console.log('🔍 Data de respuesta:', response.data);
-      console.log('🔍 Tipo de data:', typeof response.data, Array.isArray(response.data));
+      console.log('Respuesta completa de available-slots:', response);
+      console.log('Data de respuesta:', response.data);
+      console.log('Tipo de data:', typeof response.data, Array.isArray(response.data));
 
       // Verificar si la respuesta es del placeholder (microservicio no implementado)
       if (response.data && typeof response.data === 'object' && 'error' in response.data) {
-        console.log('⚠️ Available slots service no implementado, usando horarios por defecto');
+        console.log('Available slots service no implementado, usando horarios por defecto');
         return this.getDefaultTimeSlots();
       }
 
       // CASO 1: Backend devuelve estructura { success: true, data: { availableSlots: [...] } }
       if (response.data && response.data.success && response.data.data && response.data.data.availableSlots) {
         const slots = response.data.data.availableSlots;
-        console.log('🔍 Slots extraídos de response.data.data.availableSlots:', slots);
+        console.log('Slots extraídos de response.data.data.availableSlots:', slots);
 
         // Si los slots son objetos con estructura { time, display } o { time, available, duration }
         if (Array.isArray(slots) && slots.length > 0 && typeof slots[0] === 'object' && 'time' in slots[0]) {
-          console.log('✅ Procesando slots con formato completo del backend');
-          console.log(`📊 [getAvailableTimeSlots] Total de slots recibidos: ${slots.length}`);
+          console.log('Procesando slots con formato completo del backend');
+          console.log(`[getAvailableTimeSlots] Total de slots recibidos: ${slots.length}`);
           // El backend ya filtra los slots disponibles, solo necesitamos extraer el campo display
           const availableSlots = slots.map(slot => slot.display || slot.time);
-          console.log(`✅ [getAvailableTimeSlots] Slots disponibles extraídos (${availableSlots.length}):`, availableSlots);
+          console.log(`[getAvailableTimeSlots] Slots disponibles extraídos (${availableSlots.length}):`, availableSlots);
           return availableSlots;
         }
 
         // Si los slots ya son strings
         if (Array.isArray(slots) && (slots.length === 0 || typeof slots[0] === 'string')) {
-          console.log(`✅ [getAvailableTimeSlots] Devolviendo slots del backend (strings, ${slots.length}):`, slots);
+          console.log(`[getAvailableTimeSlots] Devolviendo slots del backend (strings, ${slots.length}):`, slots);
           return slots;
         }
       }
@@ -855,14 +855,14 @@ class InterviewService {
       if (Array.isArray(response.data)) {
         // Si es un array de strings (formato esperado)
         if (response.data.length === 0 || typeof response.data[0] === 'string') {
-          console.log('✅ Devolviendo slots del backend (strings directo):', response.data);
+          console.log('Devolviendo slots del backend (strings directo):', response.data);
           return response.data;
         }
 
         // Si es un array con objetos que contienen message/slots (formato backend sin horarios)
         if (response.data.length > 0 && response.data[0] && typeof response.data[0] === 'object' && 'slots' in response.data[0]) {
           const slotsData = response.data[0].slots;
-          console.log('✅ Extrayendo slots de respuesta estructurada:', slotsData);
+          console.log('Extrayendo slots de respuesta estructurada:', slotsData);
           if (Array.isArray(slotsData)) {
             return slotsData;
           }
@@ -870,16 +870,16 @@ class InterviewService {
 
         // Si es un array de objetos slot directos (formato backend con horarios)
         if (response.data.length > 0 && response.data[0] && typeof response.data[0] === 'object' && 'time' in response.data[0]) {
-          console.log('✅ Procesando slots con formato completo del backend (array directo)');
+          console.log('Procesando slots con formato completo del backend (array directo)');
           // El backend ya filtra los disponibles, solo extraemos display o time
           const availableSlots = response.data.map(slot => slot.display || slot.time);
-          console.log('✅ Slots disponibles extraídos:', availableSlots);
+          console.log('Slots disponibles extraídos:', availableSlots);
           return availableSlots;
         }
       }
 
-      console.log('⚠️ Estructura de respuesta inesperada para available slots, usando horarios por defecto');
-      console.log('⚠️ Data recibida:', response.data);
+      console.log('Estructura de respuesta inesperada para available slots, usando horarios por defecto');
+      console.log('Data recibida:', response.data);
       return this.getDefaultTimeSlots();
     } catch (error) {
       console.error('Error fetching available slots:', error);
@@ -906,7 +906,7 @@ class InterviewService {
       
       // Verificar si la respuesta es del placeholder (microservicio no implementado)
       if (response.data && typeof response.data === 'object' && 'error' in response.data) {
-        console.log('⚠️ Interviewer availability service no implementado, devolviendo datos vacíos');
+        console.log('Interviewer availability service no implementado, devolviendo datos vacíos');
         return [];
       }
       
@@ -915,7 +915,7 @@ class InterviewService {
         return response.data;
       }
       
-      console.log('⚠️ Estructura de respuesta inesperada para interviewer availability');
+      console.log('Estructura de respuesta inesperada para interviewer availability');
       return [];
     } catch (error) {
       console.error('Error fetching interviewer availability:', error);
@@ -973,19 +973,19 @@ class InterviewService {
     duration: number = 60
   ): Promise<string[]> {
     try {
-      console.log(`🔍 Obteniendo horarios comunes para entrevistadores ${interviewer1Id} y ${interviewer2Id} el ${date}`);
+      console.log(`Obteniendo horarios comunes para entrevistadores ${interviewer1Id} y ${interviewer2Id} el ${date}`);
 
-      // ✅ Validar formato de fecha antes de procesar
+      // Validar formato de fecha antes de procesar
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
-        console.error(`❌ getCommonTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
+        console.error(`getCommonTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
         return this.getDefaultTimeSlots();
       }
 
       // Verificar que el año sea razonable
       const year = parseInt(date.split('-')[0]);
       if (year < 2020 || year > 2100) {
-        console.error(`❌ getCommonTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
+        console.error(`getCommonTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
         return this.getDefaultTimeSlots();
       }
 
@@ -995,13 +995,13 @@ class InterviewService {
         this.getAvailableTimeSlots(interviewer2Id, date, duration)
       ]);
 
-      console.log(`📋 Horarios entrevistador 1:`, slots1);
-      console.log(`📋 Horarios entrevistador 2:`, slots2);
+      console.log(`Horarios entrevistador 1:`, slots1);
+      console.log(`Horarios entrevistador 2:`, slots2);
 
       // Encontrar la intersección (horarios comunes)
       const commonSlots = slots1.filter(slot => slots2.includes(slot));
 
-      console.log(`✅ Horarios comunes encontrados:`, commonSlots);
+      console.log(`Horarios comunes encontrados:`, commonSlots);
 
       return commonSlots;
     } catch (error) {
@@ -1026,10 +1026,10 @@ class InterviewService {
     try {
       console.log(`📧 Enviando resumen de entrevistas para aplicación ${applicationId}`);
       const response = await api.post(`/api/interviews/application/${applicationId}/send-summary`);
-      console.log('✅ Resumen de entrevistas enviado:', response.data);
+      console.log('Resumen de entrevistas enviado:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Error enviando resumen de entrevistas:', error);
+      console.error('Error enviando resumen de entrevistas:', error);
 
       // Extraer mensaje de error del backend
       const errorMessage = error.response?.data?.error || 'Error al enviar resumen de entrevistas';

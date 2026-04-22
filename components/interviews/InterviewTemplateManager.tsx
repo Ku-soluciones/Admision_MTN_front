@@ -235,11 +235,11 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center space-x-3">
               <span>⏱️ {template.recommendedDuration}min</span>
-              <span>📍 {INTERVIEW_MODE_LABELS[template.recommendedMode]}</span>
+              <span>{INTERVIEW_MODE_LABELS[template.recommendedMode]}</span>
             </div>
             {stats && (
               <span className="text-blue-600">
-                📊 {stats.timesUsed} usos
+                {stats.timesUsed} usos
               </span>
             )}
           </div>
@@ -309,7 +309,7 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
               {template.category}
             </span>
             <Badge variant="neutral">⏱️ {template.recommendedDuration} min</Badge>
-            <Badge variant="neutral">📍 {INTERVIEW_MODE_LABELS[template.recommendedMode]}</Badge>
+            <Badge variant="neutral">{INTERVIEW_MODE_LABELS[template.recommendedMode]}</Badge>
             {template.isDefault && <Badge variant="success">Por defecto</Badge>}
           </div>
         </div>
@@ -344,7 +344,7 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
 
         {/* Documentos requeridos */}
         <div>
-          <h3 className="font-medium text-gray-900 mb-2">📋 Documentos Requeridos</h3>
+          <h3 className="font-medium text-gray-900 mb-2">Documentos Requeridos</h3>
           <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
             {template.requiredDocuments.map((doc, index) => (
               <li key={index}>{doc}</li>
@@ -354,7 +354,7 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
 
         {/* Notas de preparación */}
         <div>
-          <h3 className="font-medium text-gray-900 mb-2">🎯 Preparación</h3>
+          <h3 className="font-medium text-gray-900 mb-2">Preparación</h3>
           <div className="bg-blue-50 p-3 rounded-lg">
             <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
               {template.preparationNotes}
@@ -421,7 +421,7 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
 
                 {question.positiveIndicators && question.positiveIndicators.length > 0 && (
                   <div className="mt-2">
-                    <div className="text-xs font-medium text-green-700 mb-1">✅ Indicadores positivos:</div>
+                    <div className="text-xs font-medium text-green-700 mb-1">Indicadores positivos:</div>
                     <ul className="list-disc list-inside text-xs text-green-600">
                       {question.positiveIndicators.map((indicator, idx) => (
                         <li key={idx}>{indicator}</li>
@@ -447,7 +447,7 @@ const InterviewTemplateManager: React.FC<InterviewTemplateManagerProps> = ({
 
         {/* Acciones de seguimiento */}
         <div>
-          <h3 className="font-medium text-gray-900 mb-2">🔄 Acciones de Seguimiento</h3>
+          <h3 className="font-medium text-gray-900 mb-2">Acciones de Seguimiento</h3>
           <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
             {template.followUpActions.map((action, index) => (
               <li key={index}>{action}</li>

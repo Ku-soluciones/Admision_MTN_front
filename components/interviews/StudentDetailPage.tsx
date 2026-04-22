@@ -63,9 +63,9 @@ interface StudentDetail {
 const REQUIRED_INTERVIEW_TYPES = [
   {
     type: 'FAMILY',
-    title: '👨‍👩‍👧‍👦 Entrevista Familiar',
+    title: 'Entrevista Familiar',
     description: 'Entrevista con los padres y familia del estudiante (requiere 2 entrevistadores)',
-    icon: '👨‍👩‍👧‍👦',
+    icon: '‍‍👧‍👦',
     required: true,
     order: 1
   },
@@ -114,7 +114,7 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
   isLoading = false
 }) => {
   // Debug: log interviews and type
-  console.log(`🎯 InterviewCard for type ${interviewType.type}:`, {
+  console.log(`InterviewCard for type ${interviewType.type}:`, {
     totalInterviews: interviews.length,
     interviews: interviews.map(i => ({ id: i.id, type: i.type, status: i.status }))
   });
@@ -126,7 +126,7 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
     interview.status !== 'NO_SHOW'
   );
 
-  console.log(`🎯 Found existing interview for ${interviewType.type}:`, existingInterview ? {
+  console.log(`Found existing interview for ${interviewType.type}:`, existingInterview ? {
     id: existingInterview.id,
     status: existingInterview.status,
     interviewerName: existingInterview.interviewerName,
@@ -218,14 +218,14 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
           {existingInterview && (
             <div className="space-y-1 mb-3">
               <p className="text-xs text-gray-500">
-                📅 {(() => {
+                {(() => {
                   const [year, month, day] = existingInterview.scheduledDate.split('-');
                   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                   return date.toLocaleDateString('es-CL');
                 })()}
               </p>
               <p className="text-xs text-gray-500">
-                🕐 {existingInterview.scheduledTime}
+                 {existingInterview.scheduledTime}
               </p>
               <p className="text-xs text-gray-500">
                 👤 {existingInterview.interviewerName}
@@ -299,7 +299,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
       }
       setError(null);
 
-      console.log('📋 Loading student detail for application:', applicationId);
+      console.log('Loading student detail for application:', applicationId);
 
       // Cargar información del estudiante y sus entrevistas en paralelo
       const [applications, interviewsResponse] = await Promise.all([
@@ -313,16 +313,16 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
         return;
       }
 
-      console.log('📋 Found application:', application);
-      console.log('📋 RAW interviews response:', interviewsResponse);
-      console.log('📋 Found interviews array:', interviewsResponse.interviews);
-      console.log('📋 Interviews count:', interviewsResponse.interviews?.length || 0);
+      console.log('Found application:', application);
+      console.log('RAW interviews response:', interviewsResponse);
+      console.log('Found interviews array:', interviewsResponse.interviews);
+      console.log('Interviews count:', interviewsResponse.interviews?.length || 0);
 
       const interviews = interviewsResponse.interviews || [];
 
       // Debug cada entrevista
       interviews.forEach(interview => {
-        console.log(`🔍 Interview ${interview.id}:`, {
+        console.log(`Interview ${interview.id}:`, {
           id: interview.id,
           type: interview.type,
           status: interview.status,
@@ -364,7 +364,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
         }
       });
 
-      console.log('📋 Student detail loaded successfully with progress:', {
+      console.log('Student detail loaded successfully with progress:', {
         completed: completedCount,
         scheduled: scheduledCount,
         missing: missingCount,
@@ -440,13 +440,13 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
 
       await interviewService.deleteInterview(interviewId);
 
-      console.log(`✅ Entrevista ${interviewId} eliminada correctamente`);
+      console.log(`Entrevista ${interviewId} eliminada correctamente`);
 
       // Recargar los detalles del estudiante para actualizar la lista
       await loadStudentDetail(true);
 
     } catch (error: any) {
-      console.error('❌ Error eliminando entrevista:', error);
+      console.error('Error eliminando entrevista:', error);
       alert('Error al eliminar la entrevista. Por favor intente nuevamente.');
     } finally {
       setDeletingInterviewId(null);

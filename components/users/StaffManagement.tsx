@@ -220,7 +220,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
     
     switch (action) {
       case 'delete':
-        message = `⚠️ ¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al usuario ${user.fullName}?\n\nEsta acción:\n• Eliminará completamente la cuenta del usuario\n• El usuario no podrá acceder al sistema\n• NO se puede deshacer esta acción\n• Se perderán todos los datos asociados\n\n⚠️ IMPORTANTE: Si este usuario tiene evaluaciones asociadas, no se podrá eliminar y deberás desactivarlo en su lugar.`;
+        message = `¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al usuario ${user.fullName}?\n\nEsta acción:\n• Eliminará completamente la cuenta del usuario\n• El usuario no podrá acceder al sistema\n• NO se puede deshacer esta acción\n• Se perderán todos los datos asociados\n\nIMPORTANTE: Si este usuario tiene evaluaciones asociadas, no se podrá eliminar y deberás desactivarlo en su lugar.`;
         break;
       case 'toggle':
         message = user.active 

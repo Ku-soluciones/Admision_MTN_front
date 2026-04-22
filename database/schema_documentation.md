@@ -1,7 +1,7 @@
 # Documentación del Schema de Base de Datos
 ## Sistema de Admisión - Colegio Monte Tabor y Nazaret
 
-### 📋 Tabla de Contenidos
+### Tabla de Contenidos
 1. [Resumen General](#resumen-general)
 2. [Estructura de Tablas](#estructura-de-tablas)
 3. [Relaciones](#relaciones)
@@ -26,7 +26,7 @@ El schema está diseñado para manejar un sistema completo de admisión escolar 
 
 ## Estructura de Tablas
 
-### 🔐 **1. Usuarios y Autenticación**
+### **1. Usuarios y Autenticación**
 
 #### `professors`
 Tabla principal de profesores con autenticación y permisos.
@@ -56,7 +56,7 @@ Niveles educativos del colegio.
 #### `professor_subjects` & `professor_grade_assignments`
 Tablas de relación para asignar materias y niveles a profesores.
 
-### 👨‍👩‍👧‍👦 **2. Postulantes y Familias**
+### **2. Postulantes y Familias**
 
 #### `families`
 Información de las familias postulantes.
@@ -91,7 +91,7 @@ Documentos requeridos para cada postulación.
 - file_path (VARCHAR(500)): Ruta del archivo subido
 ```
 
-### 📝 **3. Exámenes y Evaluaciones**
+### **3. Exámenes y Evaluaciones**
 
 #### `exam_schedules`
 Horarios disponibles para rendir exámenes.
@@ -127,7 +127,7 @@ Evaluaciones detalladas realizadas por profesores.
 - **`evaluation_improvement_areas`**: Elementos específicos a mejorar
 - **`evaluation_area_scores`**: Puntajes por área específica
 
-### 📚 **4. Contenido Educativo**
+### **4. Contenido Educativo**
 
 #### `study_materials`
 Materiales de estudio por materia y nivel.

@@ -65,9 +65,9 @@ Monte Tabor y Nazaret`,
 Nos complace informarle que hemos programado la entrevista para {{nombre_estudiante}}.
 
 Detalles de la entrevista:
-📅 Fecha: {{fecha_entrevista}}
-🕐 Hora: {{hora_entrevista}}
-📍 Lugar: {{lugar_entrevista}}
+Fecha: {{fecha_entrevista}}
+ Hora: {{hora_entrevista}}
+Lugar: {{lugar_entrevista}}
 👤 Entrevistador/a: {{nombre_entrevistador}}
 
 Por favor confirme su asistencia respondiendo a este correo.

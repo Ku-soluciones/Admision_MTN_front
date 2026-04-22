@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     applicationId: response.applicationId // Include applicationId from backend
                 };
                 
-                // ✅ Si es admin, también configurar información de profesor para compatibilidad
+                // Si es admin, también configurar información de profesor para compatibilidad
                 if (userData.role === 'ADMIN') {
                     localStorage.setItem('currentProfessor', JSON.stringify({
                         id: response.id || 26,
@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         authService.logout();
-        // ✅ También limpiar datos de profesor/admin/apoderado
+        // También limpiar datos de profesor/admin/apoderado
         localStorage.removeItem('currentProfessor');
         localStorage.removeItem('professor_token');
         localStorage.removeItem('professor_user');

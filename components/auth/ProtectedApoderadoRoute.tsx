@@ -12,16 +12,16 @@ const ProtectedApoderadoRoute: React.FC<ProtectedApoderadoRouteProps> = ({ child
     console.log('🛡️ ProtectedApoderadoRoute: Check access -', { isAuthenticated, user: user ? { role: user.role, email: user.email } : null });
 
     if (!isAuthenticated || !user) {
-        console.log('❌ ProtectedApoderadoRoute: Not authenticated, redirecting to login');
+        console.log('ProtectedApoderadoRoute: Not authenticated, redirecting to login');
         return <Navigate to="/apoderado/login" replace />;
     }
 
     if (user.role !== 'APODERADO') {
-        console.log('❌ ProtectedApoderadoRoute: Wrong role', user.role, '!== APODERADO, redirecting');
+        console.log('ProtectedApoderadoRoute: Wrong role', user.role, '!== APODERADO, redirecting');
         return <Navigate to="/apoderado/login" replace />;
     }
 
-    console.log('✅ ProtectedApoderadoRoute: Access granted');
+    console.log('ProtectedApoderadoRoute: Access granted');
     return <>{children}</>;
 };
 

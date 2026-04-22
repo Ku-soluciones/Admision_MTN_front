@@ -41,16 +41,16 @@ const ApoderadoLogin: React.FC = () => {
         try {
             // Simulando autenticación
             if (email && password) {
-                console.log('🔐 ApoderadoLogin: Attempting login with:', { email, password: password.length + ' chars' });
+                console.log('ApoderadoLogin: Attempting login with:', { email, password: password.length + ' chars' });
                 await login(email, password, 'apoderado');
-                console.log('✅ ApoderadoLogin: Login successful, navigating to:', redirectTo);
+                console.log('ApoderadoLogin: Login successful, navigating to:', redirectTo);
                 navigate(redirectTo);
             } else {
-                console.warn('⚠️ ApoderadoLogin: Missing email or password');
+                console.warn('ApoderadoLogin: Missing email or password');
                 setError('Por favor complete todos los campos');
             }
         } catch (err) {
-            console.error('❌ ApoderadoLogin: Login failed:', err);
+            console.error('ApoderadoLogin: Login failed:', err);
             setError('Credenciales inválidas. Verifique su email y contraseña.');
         } finally {
             setIsLoading(false);

@@ -70,7 +70,7 @@ interface Postulante {
 
 // Tipos de entrevistas requeridas
 const REQUIRED_INTERVIEW_TYPES = [
-  { type: 'FAMILY', title: 'Familiar', icon: '👨‍👩‍👧‍👦', required: true },
+  { type: 'FAMILY', title: 'Familiar', icon: '‍‍👧‍👦', required: true },
   { type: 'CYCLE_DIRECTOR', title: 'Director de Ciclo', icon: '👔', required: true }
 ];
 
@@ -119,7 +119,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
         if (postulante && isOpen) {
-            console.log('📊 StudentDetailModal - postulante recibido:', postulante);
+            console.log('StudentDetailModal - postulante recibido:', postulante);
             loadFullApplication();
             loadInterviews();
             loadEvaluations();
@@ -131,11 +131,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         setLoading(true);
         try {
-            console.log('🔍 Cargando aplicación completa para postulante ID:', postulante.id);
+            console.log('Cargando aplicación completa para postulante ID:', postulante.id);
             const app = await applicationService.getApplicationById(postulante.id);
-            console.log('✅ Aplicación cargada:', app);
-            console.log('📄 Documentos recibidos:', app?.documents);
-            console.log('📊 Cantidad de documentos:', app?.documents?.length);
+            console.log('Aplicación cargada:', app);
+            console.log('Documentos recibidos:', app?.documents);
+            console.log('Cantidad de documentos:', app?.documents?.length);
             setFullApplication(app);
 
             // Initialize document approval status from database
@@ -150,11 +150,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     }
                     // PENDING documents are not set (undefined) so checkbox is unchecked
                 });
-                console.log('📋 Estado de aprobación inicializado:', approvalStatus);
+                console.log('Estado de aprobación inicializado:', approvalStatus);
                 setDocumentApprovalStatus(approvalStatus);
             }
         } catch (error) {
-            console.error('❌ Error loading full application:', error);
+            console.error('Error loading full application:', error);
             addNotification({
                 type: 'warning',
                 title: 'Información limitada',
@@ -359,17 +359,17 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         console.log('🔘 toggleDocumentApproval called with docIndex:', docIndex);
 
         if (!fullApplication?.documents) {
-            console.log('❌ No documents in fullApplication');
+            console.log('No documents in fullApplication');
             return;
         }
 
         const document = fullApplication.documents[docIndex];
         if (!document) {
-            console.log('❌ No document at index', docIndex);
+            console.log('No document at index', docIndex);
             return;
         }
 
-        console.log('📄 Document:', document);
+        console.log('Document:', document);
 
         // LOCK: Prevent toggling if document is already approved in database (permanent lock)
         if (document.approval_status === 'APPROVED') {
@@ -384,7 +384,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         // Get current approval status
         const currentStatus = documentApprovalStatus[docIndex];
-        console.log('📊 Current status at index', docIndex, ':', currentStatus);
+        console.log('Current status at index', docIndex, ':', currentStatus);
 
         // Determine new status:
         // undefined/null -> true (APPROVED)
@@ -407,12 +407,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             [docIndex]: newLocalStatus
         }));
 
-        console.log(`📝 Documento ${document.id} marcado localmente como:`,
+        console.log(`Documento ${document.id} marcado localmente como:`,
             newLocalStatus === true ? 'APPROVED' : newLocalStatus === false ? 'REJECTED' : 'PENDING');
     };
 
     const handleViewDocument = (doc: any) => {
-        console.log('👁️ Abriendo visor para documento:', doc);
+        console.log('Abriendo visor para documento:', doc);
         setViewingDocument(doc);
         setShowDocumentViewer(true);
     };
@@ -488,7 +488,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         // CRÍTICO: Refrescar datos de la aplicación desde el backend ANTES de calcular
         // Esto previene race conditions cuando múltiples administradores trabajan simultáneamente
-        console.log('🔄 Refrescando datos de la aplicación desde el backend...');
+        console.log('Refrescando datos de la aplicación desde el backend...');
         await loadFullApplication();
 
         if (!fullApplication || !fullApplication.documents) {
@@ -523,14 +523,14 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             return documentApprovalStatus[index] === true || doc.approvalStatus === 'APPROVED';
         });
 
-        console.log('🔍 DEBUG - documentApprovalStatus:', documentApprovalStatus);
-        console.log('🔍 DEBUG - approvedDocsNow (new):', approvedDocsNow.length, approvedDocsNow);
-        console.log('🔍 DEBUG - rejectedDocsNow (new/changed):', rejectedDocsNow.length, rejectedDocsNow);
-        console.log('🔍 DEBUG - allApprovedDocs (total):', allApprovedDocs.length);
+        console.log('DEBUG - documentApprovalStatus:', documentApprovalStatus);
+        console.log('DEBUG - approvedDocsNow (new):', approvedDocsNow.length, approvedDocsNow);
+        console.log('DEBUG - rejectedDocsNow (new/changed):', rejectedDocsNow.length, rejectedDocsNow);
+        console.log('DEBUG - allApprovedDocs (total):', allApprovedDocs.length);
 
         // Validar que haya ALGO que notificar
         if (approvedDocsNow.length === 0 && rejectedDocsNow.length === 0) {
-            console.log('❌ BLOCKED: No new documents reviewed in current session');
+            console.log('BLOCKED: No new documents reviewed in current session');
             addNotification({
                 type: 'warning',
                 title: 'Sin cambios',
@@ -553,7 +553,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             });
 
             // STEP 1: Save all document approval statuses to database FIRST
-            console.log('💾 Guardando estados de aprobación en la base de datos...');
+            console.log('Guardando estados de aprobación en la base de datos...');
             const savePromises = fullApplication.documents.map(async (doc, index) => {
                 const isApproved = documentApprovalStatus[index] === true;
                 const isRejected = documentApprovalStatus[index] === false;
@@ -571,7 +571,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             });
 
             await Promise.all(savePromises);
-            console.log('✅ Todos los estados de aprobación guardados en la base de datos');
+            console.log('Todos los estados de aprobación guardados en la base de datos');
 
             // STEP 2: Now send the email notification
             // IMPORTANTE: Solo enviar al backend los documentos REVISADOS en esta sesión
@@ -589,12 +589,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
             if (response.success) {
                 // STEP 3: Mark that notification was sent in database
-                console.log('📝 Marking document notification as sent in database...');
+                console.log('Marking document notification as sent in database...');
                 try {
                     const markResponse = await applicationService.markDocumentNotificationSent(postulante.id);
-                    console.log('✅ Document notification marked:', markResponse);
+                    console.log('Document notification marked:', markResponse);
                 } catch (markError: any) {
-                    console.error('⚠️ Error marking notification (non-critical):', markError);
+                    console.error('Error marking notification (non-critical):', markError);
                     // Don't block the user flow if this fails
                 }
 
@@ -619,7 +619,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 // STEP 4: Refresh application data to show updated approval status with locked state
                 await loadFullApplication();
             } else {
-                console.error('❌ Error en respuesta del servicio:', response);
+                console.error('Error en respuesta del servicio:', response);
                 addNotification({
                     type: 'error',
                     title: 'Error al enviar notificación',
@@ -627,8 +627,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 });
             }
         } catch (error: any) {
-            console.error('❌ Error enviando notificación de documentos:', error);
-            console.error('❌ Error details:', {
+            console.error('Error enviando notificación de documentos:', error);
+            console.error('Error details:', {
                 message: error.message,
                 response: error.response?.data,
                 status: error.response?.status
@@ -762,15 +762,15 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const renderInfoTab = () => {
-        console.log('📝 renderInfoTab called');
-        console.log('📊 fullApplication:', fullApplication);
-        console.log('📊 postulante:', postulante);
+        console.log('renderInfoTab called');
+        console.log('fullApplication:', fullApplication);
+        console.log('postulante:', postulante);
 
         // Use fullApplication data when available, fallback to postulante
         const studentData = fullApplication?.student || {};
-        console.log('🔍 studentData:', studentData);
-        console.log('🔍 birthDate from studentData:', studentData.birthDate);
-        console.log('🔍 birthDate from postulante:', postulante.fechaNacimiento);
+        console.log('studentData:', studentData);
+        console.log('birthDate from studentData:', studentData.birthDate);
+        console.log('birthDate from postulante:', postulante.fechaNacimiento);
 
         const birthDate = studentData.birthDate || postulante.fechaNacimiento;
         const email = studentData.email || postulante.email;
@@ -778,7 +778,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const currentSchool = studentData.currentSchool || postulante.colegioActual;
         const submissionDate = fullApplication?.submissionDate || postulante.fechaPostulacion;
 
-        console.log('✅ Final values:');
+        console.log('Final values:');
         console.log('  birthDate:', birthDate);
         console.log('  email:', email);
         console.log('  address:', address);
@@ -1176,7 +1176,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const totalInterviewsAssigned = completedInterviews + scheduledInterviews + missingInterviews;
         if (totalInterviewsAssigned !== requiredTypes.length) {
             console.warn(
-                `⚠️ Interview counter mismatch detected!`,
+                `Interview counter mismatch detected!`,
                 `\n  Required types: ${requiredTypes.length}`,
                 `\n  Completed: ${completedInterviews}`,
                 `\n  Scheduled: ${scheduledInterviews}`,
@@ -1264,8 +1264,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                                 {interview && (
                                     <div className="space-y-1 text-xs text-gray-600">
-                                        <p>📅 {new Date(interview.scheduledDate).toLocaleDateString('es-CL')}</p>
-                                        <p>🕐 {interview.scheduledTime}</p>
+                                        <p>{new Date(interview.scheduledDate).toLocaleDateString('es-CL')}</p>
+                                        <p> {interview.scheduledTime}</p>
                                         <p>👤 {interview.interviewerName}</p>
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
                                             <p className="text-green-600 font-medium">⭐ {interview.score}/10</p>
@@ -1320,8 +1320,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         </Badge>
                                     </div>
                                     <div className="mt-2 text-sm text-gray-600">
-                                        📅 {new Date(interview.scheduledDate).toLocaleDateString('es-CL')}
-                                        🕐 {interview.scheduledTime}
+                                        {new Date(interview.scheduledDate).toLocaleDateString('es-CL')}
+                                         {interview.scheduledTime}
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
                                             <span className="ml-2 text-green-600 font-medium">⭐ {interview.score}/10</span>
                                         )}
@@ -1359,11 +1359,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const renderDocumentosTab = () => {
-        console.log('📋 renderDocumentosTab - fullApplication:', fullApplication);
-        console.log('📋 renderDocumentosTab - fullApplication?.documents:', fullApplication?.documents);
+        console.log('renderDocumentosTab - fullApplication:', fullApplication);
+        console.log('renderDocumentosTab - fullApplication?.documents:', fullApplication?.documents);
 
         const hasDocuments = fullApplication?.documents && fullApplication.documents.length > 0;
-        console.log('📋 hasDocuments:', hasDocuments);
+        console.log('hasDocuments:', hasDocuments);
 
         // Filter documents based on active sub-tab
         const filteredDocuments = hasDocuments
@@ -1372,8 +1372,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               )
             : [];
 
-        console.log('📋 filteredDocuments:', filteredDocuments);
-        console.log('📋 documentSubTab:', documentSubTab);
+        console.log('filteredDocuments:', filteredDocuments);
+        console.log('documentSubTab:', documentSubTab);
 
         const approvedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index]).length : 0;
         const rejectedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index] === false).length : 0;
@@ -1382,14 +1382,14 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const academicDocsCount = hasDocuments ? fullApplication.documents.filter(isAcademicDocument).length : 0;
         const otherDocsCount = hasDocuments ? fullApplication.documents.filter(isOtherDocument).length : 0;
 
-        console.log('📋 academicDocsCount:', academicDocsCount, 'otherDocsCount:', otherDocsCount);
+        console.log('academicDocsCount:', academicDocsCount, 'otherDocsCount:', otherDocsCount);
 
         // VALIDATION: Verify sum of categories matches total
         const totalDocuments = fullApplication?.documents?.length || 0;
         const sumCategories = academicDocsCount + otherDocsCount;
         if (sumCategories !== totalDocuments) {
             console.warn(
-                `⚠️ Document counter mismatch detected!`,
+                `Document counter mismatch detected!`,
                 `\n  Total documents: ${totalDocuments}`,
                 `\n  Academic: ${academicDocsCount}`,
                 `\n  Other: ${otherDocsCount}`,
@@ -1613,7 +1613,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         <FiCheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                                         <div className="flex-1">
                                             <p className="font-medium text-green-900 mb-1">
-                                                ✅ Notificación ya enviada
+                                                Notificación ya enviada
                                             </p>
                                             <p className="text-sm text-green-700">
                                                 Última notificación enviada el{' '}
@@ -1750,7 +1750,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const icons: Record<string, string> = {
             'MATHEMATICS_EXAM': '🔢',
             'LANGUAGE_EXAM': '📖',
-            'ENGLISH_EXAM': '🌐'
+            'ENGLISH_EXAM': ''
         };
         return icons[type] || '📋';
     };
@@ -1758,7 +1758,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const REQUIRED_EVALUATION_TYPES = [
         { type: 'MATHEMATICS_EXAM', title: 'Examen de Matemática', icon: '🔢', required: true },
         { type: 'LANGUAGE_EXAM', title: 'Examen de Lenguaje', icon: '📖', required: true },
-        { type: 'ENGLISH_EXAM', title: 'Examen de Inglés', icon: '🌐', required: true }
+        { type: 'ENGLISH_EXAM', title: 'Examen de Inglés', icon: '', required: true }
     ];
 
     const renderEvaluationsTab = () => {
@@ -2050,7 +2050,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     title="Detalles de la Evaluación"
                     size="lg"
                 >
-                    {console.log('📊 Selected Evaluation:', selectedEvaluation)}
+                    {console.log('Selected Evaluation:', selectedEvaluation)}
                     <div className="space-y-6">
                         {/* Header */}
                         <div className="bg-blue-50 p-4 rounded-lg">
@@ -2062,7 +2062,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             <div className="flex items-center gap-4 mt-2 text-sm text-blue-700">
                                 <span className="font-medium">Evaluador: {selectedEvaluation.evaluator?.firstName} {selectedEvaluation.evaluator?.lastName}</span>
                                 {selectedEvaluation.completionDate && (
-                                    <span>📅 {new Date(selectedEvaluation.completionDate).toLocaleDateString('es-CL', { dateStyle: 'long' })}</span>
+                                    <span>{new Date(selectedEvaluation.completionDate).toLocaleDateString('es-CL', { dateStyle: 'long' })}</span>
                                 )}
                             </div>
                         </div>

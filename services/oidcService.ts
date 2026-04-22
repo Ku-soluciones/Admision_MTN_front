@@ -333,7 +333,7 @@ class OidcService {
   }
 
   private handleSilentRenewError(error: Error): void {
-    console.error('❌ Error en renovación silenciosa:', error);
+    console.error('Error en renovación silenciosa:', error);
     this.notifyAuthStateChange();
   }
 

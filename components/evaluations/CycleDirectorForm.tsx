@@ -71,7 +71,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
       {/* Header */}
       <Card className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
         <h3 className="text-lg font-bold text-azul-monte-tabor mb-2">
-          {isInterviewType ? '👥 Entrevista Director/a de Ciclo' : '📊 Informe Director de Ciclo'}
+          {isInterviewType ? 'Entrevista Director/a de Ciclo' : 'Informe Director de Ciclo'}
         </h3>
         {evaluation.application && evaluation.application.student && (
           <div className="text-sm text-gris-piedra">
@@ -85,7 +85,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
       {/* Errors */}
       {errors.length > 0 && (
         <Card className="p-4 bg-red-50 border-red-200">
-          <h4 className="font-semibold text-red-800 mb-2">⚠️ Campos requeridos:</h4>
+          <h4 className="font-semibold text-red-800 mb-2">Campos requeridos:</h4>
           <ul className="text-sm text-red-700 space-y-1">
             {errors.map((error, index) => (
               <li key={index}>• {error}</li>
@@ -96,7 +96,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
       {/* Guidelines */}
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h4 className="font-semibold text-blue-800 mb-2">📋 Guía para la Evaluación Directorial</h4>
+        <h4 className="font-semibold text-blue-800 mb-2">Guía para la Evaluación Directorial</h4>
         <div className="text-sm text-blue-700 space-y-1">
           {isInterviewType ? (
             <>
@@ -121,7 +121,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
       {/* Observaciones Generales */}
       <Card className="p-6">
         <h4 className="font-semibold text-azul-monte-tabor mb-4">
-          {isInterviewType ? '🗣️ Observaciones de la Entrevista' : '📝 Observaciones Generales'}
+          {isInterviewType ? '🗣️ Observaciones de la Entrevista' : 'Observaciones Generales'}
         </h4>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -148,12 +148,12 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
       {/* Evaluaciones Específicas */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">🎯 Evaluación Específica del Director</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Evaluación Específica del Director</h4>
         
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📚 Preparación Académica y Readiness *
+              Preparación Académica y Readiness *
             </label>
             <textarea
               value={formData.academicReadiness || ''}
@@ -208,7 +208,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ✅ Fortalezas Principales del Estudiante *
+              Fortalezas Principales del Estudiante *
             </label>
             <textarea
               value={formData.strengths || ''}
@@ -221,7 +221,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🎯 Áreas de Desarrollo y Acompañamiento *
+              Áreas de Desarrollo y Acompañamiento *
             </label>
             <textarea
               value={formData.areasForImprovement || ''}
@@ -234,7 +234,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📋 Recomendaciones Institucionales *
+              Recomendaciones Institucionales *
             </label>
             <textarea
               value={formData.recommendations || ''}
@@ -252,7 +252,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
       {/* Recomendación Final */}
       <Card className="p-6 border-2 border-purple-200">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">🎯 Decisión Directorial</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Decisión Directorial</h4>
         
         <div className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-lg">
@@ -268,7 +268,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
                   onChange={() => setFormData(prev => ({ ...prev, finalRecommendation: true }))}
                   className="mr-2"
                 />
-                <span className="text-green-700 font-medium">✅ SÍ - Recomiendo la admisión</span>
+                <span className="text-green-700 font-medium">SÍ - Recomiendo la admisión</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -278,7 +278,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
                   onChange={() => setFormData(prev => ({ ...prev, finalRecommendation: false }))}
                   className="mr-2"
                 />
-                <span className="text-red-700 font-medium">❌ NO - No recomiendo la admisión</span>
+                <span className="text-red-700 font-medium">NO - No recomiendo la admisión</span>
               </label>
             </div>
           </div>
@@ -290,8 +290,8 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
                 size="sm"
               >
                 {formData.finalRecommendation 
-                  ? '✅ Recomendación Positiva' 
-                  : '❌ Recomendación Negativa'
+                  ? 'Recomendación Positiva' 
+                  : 'Recomendación Negativa'
                 }
               </Badge>
               <p className={`text-xs mt-2 ${formData.finalRecommendation ? 'text-green-700' : 'text-red-700'}`}>
@@ -307,7 +307,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
 
       {/* Criterios de Evaluación */}
       <Card className="p-6 bg-gray-50">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">📊 Criterios de Evaluación Directorial</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Criterios de Evaluación Directorial</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
           <div>
@@ -360,7 +360,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          💾 Guardar Borrador
+          Guardar Borrador
         </Button>
         <Button
           variant="primary"
@@ -368,7 +368,7 @@ const CycleDirectorForm: React.FC<CycleDirectorFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          {isSubmitting ? 'Procesando...' : '✅ Completar Evaluación'}
+          {isSubmitting ? 'Procesando...' : 'Completar Evaluación'}
         </Button>
       </div>
     </div>

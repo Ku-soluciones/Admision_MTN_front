@@ -84,7 +84,7 @@ const EvaluatorScheduleDisplay: React.FC<EvaluatorScheduleDisplayProps> = ({
 
       // Si no hay disponibilidad (servicio no implementado), generar horarios por defecto
       if (availability.length === 0) {
-        console.log('🔧 Generando horarios por defecto para evaluador', evaluatorId);
+        console.log('Generando horarios por defecto para evaluador', evaluatorId);
         availability = weekDates.map(date => ({
           date,
           availableSlots: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
@@ -96,7 +96,7 @@ const EvaluatorScheduleDisplay: React.FC<EvaluatorScheduleDisplayProps> = ({
       try {
         interviews = await interviewService.getInterviewsByInterviewer(evaluatorId);
       } catch (error) {
-        console.log('⚠️ No se pudieron obtener entrevistas del evaluador, usando array vacío');
+        console.log('No se pudieron obtener entrevistas del evaluador, usando array vacío');
         interviews = [];
       }
       
@@ -315,7 +315,7 @@ const EvaluatorScheduleDisplay: React.FC<EvaluatorScheduleDisplayProps> = ({
                       </div>
                     ) : slot.isAvailable ? (
                       <div className="text-center">
-                        ✅
+                        
                       </div>
                     ) : (
                       <div className="text-center">

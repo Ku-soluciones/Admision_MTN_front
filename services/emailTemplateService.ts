@@ -125,7 +125,7 @@ export class EmailTemplateService {
       
       // Si el backend no está disponible, simular creación local
       if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
-        console.log('📝 Backend no disponible, simulando creación de template...');
+        console.log('Backend no disponible, simulando creación de template...');
         const newTemplate: EmailTemplate = {
           id: Date.now(),
           ...templateData,

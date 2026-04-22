@@ -60,7 +60,7 @@ export function getApiBaseUrl(): string {
     console.log('[API Config] Is Vercel?', isVercel, '(checking for "vercel.app" in', hostnameStr, ')');
 
     if (isVercel) {
-      console.log('[API Config] ✅ Vercel deployment detected → Railway backend');
+      console.log('[API Config] Vercel deployment detected → Railway backend');
       console.log('[API Config] Returning:', RAILWAY_URL);
       return RAILWAY_URL;
     }
@@ -72,7 +72,7 @@ export function getApiBaseUrl(): string {
     }
 
     // Default to localhost for development
-    console.log('[API Config] ⚠️  No match found, defaulting to localhost');
+    console.log('[API Config]  No match found, defaulting to localhost');
     console.log('[API Config] Hostname was:', hostnameStr);
     return 'http://localhost:8080';
   } catch (error) {

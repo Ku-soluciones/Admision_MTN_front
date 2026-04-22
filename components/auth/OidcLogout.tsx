@@ -60,11 +60,11 @@ export const OidcLogout: React.FC<OidcLogoutProps> = ({
       
       await logout();
       
-      console.log('✅ Sesión cerrada exitosamente');
+      console.log('Sesión cerrada exitosamente');
       onLogoutSuccess?.();
       
     } catch (error) {
-      console.error('❌ Error cerrando sesión:', error);
+      console.error('Error cerrando sesión:', error);
       
       const errorMessage = error instanceof Error 
         ? error.message 

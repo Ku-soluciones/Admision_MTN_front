@@ -109,7 +109,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
       {/* Header */}
       <Card className="p-4 bg-blue-50 border-blue-200">
         <h3 className="text-lg font-bold text-azul-monte-tabor mb-2">
-          📚 {EVALUATION_TYPE_LABELS[evaluation.evaluationType]}
+          {EVALUATION_TYPE_LABELS[evaluation.evaluationType]}
         </h3>
         {evaluation.application && evaluation.application.student && (
           <div className="text-sm text-gris-piedra">
@@ -123,7 +123,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
       {/* Errors */}
       {errors.length > 0 && (
         <Card className="p-4 bg-red-50 border-red-200">
-          <h4 className="font-semibold text-red-800 mb-2">⚠️ Errores de validación:</h4>
+          <h4 className="font-semibold text-red-800 mb-2">Errores de validación:</h4>
           <ul className="text-sm text-red-700 space-y-1">
             {errors.map((error, index) => (
               <li key={index}>• {error}</li>
@@ -134,7 +134,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
 
       {/* Score and Grade Section */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">🎯 Calificación y Puntaje</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Calificación y Puntaje</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -193,7 +193,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
 
       {/* Detailed Evaluation */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">📝 Evaluación Detallada</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Evaluación Detallada</h4>
         
         <div className="space-y-6">
           <div>
@@ -214,7 +214,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ✅ Fortalezas Identificadas *
+              Fortalezas Identificadas *
             </label>
             <textarea
               value={formData.strengths || ''}
@@ -230,7 +230,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🎯 Áreas de Mejora *
+              Áreas de Mejora *
             </label>
             <textarea
               value={formData.areasForImprovement || ''}
@@ -265,7 +265,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
       {/* Subject-Specific Criteria */}
       <Card className="p-6">
         <h4 className="font-semibold text-azul-monte-tabor mb-4">
-          🔍 Criterios Específicos - {EVALUATION_TYPE_LABELS[evaluation.evaluationType]}
+          Criterios Específicos - {EVALUATION_TYPE_LABELS[evaluation.evaluationType]}
         </h4>
         
         {evaluation.evaluationType === EvaluationType.LANGUAGE_EXAM && (
@@ -340,7 +340,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          💾 Guardar Borrador
+          Guardar Borrador
         </Button>
         <Button
           variant="primary"
@@ -348,7 +348,7 @@ const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          {isSubmitting ? 'Procesando...' : '✅ Completar Evaluación'}
+          {isSubmitting ? 'Procesando...' : 'Completar Evaluación'}
         </Button>
       </div>
     </div>

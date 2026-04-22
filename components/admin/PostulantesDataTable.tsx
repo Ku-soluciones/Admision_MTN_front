@@ -123,7 +123,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                     <div className="flex flex-col gap-1">
                         {record.esHijoFuncionario && (
                             <Badge variant="blue" size="xs">
-                                👨‍💼 Funcionario
+                                Funcionario
                             </Badge>
                         )}
                         {record.esHijoExalumno && (
@@ -476,11 +476,11 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
     const loadPostulantes = async (page = 1, size = 5) => {
         setLoading(true);
         try {
-            console.log('📊 Admin: Cargando postulantes desde backend...');
+            console.log('Admin: Cargando postulantes desde backend...');
             
             // Obtener applications reales del backend
             const backendApplications = await applicationService.getAllApplications();
-            console.log('📊 Applications obtenidas del backend:', backendApplications.length);
+            console.log('Applications obtenidas del backend:', backendApplications.length);
             
             // Transformar a formato Postulante
             const transformedPostulantes = backendApplications.map(transformApplicationToPostulante);
@@ -497,10 +497,10 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                 total: transformedPostulantes.length
             });
             
-            console.log('✅ Postulantes cargados y transformados exitosamente');
+            console.log('Postulantes cargados y transformados exitosamente');
             
         } catch (error: any) {
-            console.error('❌ Error cargando postulantes:', error);
+            console.error('Error cargando postulantes:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',
@@ -525,10 +525,10 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
 
     // Abrir modal de detalles del postulante
     const handleViewPostulanteDetail = (postulante: Postulante) => {
-        console.log('🔍 PostulantesDataTable - handleViewPostulanteDetail called with:', postulante);
+        console.log('PostulantesDataTable - handleViewPostulanteDetail called with:', postulante);
         setSelectedPostulante(postulante);
         setIsDetailModalOpen(true);
-        console.log('📖 PostulantesDataTable - Modal state set to open');
+        console.log('PostulantesDataTable - Modal state set to open');
         // Llamar al callback original si existe
         onViewPostulante?.(postulante);
     };

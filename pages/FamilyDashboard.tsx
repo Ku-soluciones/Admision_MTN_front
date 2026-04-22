@@ -515,7 +515,7 @@ const FamilyDashboard: React.FC = () => {
                 {/* Datos del Estudiante */}
                 <div>
                   <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 border-b border-gray-200 pb-2">
-                    📚 Información del Estudiante
+                    Información del Estudiante
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -541,7 +541,7 @@ const FamilyDashboard: React.FC = () => {
                 {/* Datos del Padre */}
                 <div>
                   <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 border-b border-gray-200 pb-2">
-                    👨‍💼 Información del Padre
+                    Información del Padre
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -560,7 +560,7 @@ const FamilyDashboard: React.FC = () => {
                 {/* Datos de la Madre */}
                 <div>
                   <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 border-b border-gray-200 pb-2">
-                    👩‍💼 Información de la Madre
+                    Información de la Madre
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -579,7 +579,7 @@ const FamilyDashboard: React.FC = () => {
                 {/* Datos del Sostenedor */}
                 <div>
                   <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 border-b border-gray-200 pb-2">
-                    💰 Sostenedor Económico
+                    Sostenedor Económico
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -597,7 +597,7 @@ const FamilyDashboard: React.FC = () => {
                 {/* Datos del Apoderado */}
                 <div>
                   <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 border-b border-gray-200 pb-2">
-                    👥 Apoderado Académico
+                    Apoderado Académico
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>

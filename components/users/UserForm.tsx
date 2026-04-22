@@ -210,7 +210,7 @@ const UserForm: React.FC<UserFormProps> = ({
   
   console.log(`👤 UserForm - Usuario: ${formData.firstName} ${formData.lastName}`);
   console.log(`🏷️ UserForm - Role: ${formData.role}`);
-  console.log(`📅 UserForm - canInterview: ${canInterview}`);
+  console.log(`UserForm - canInterview: ${canInterview}`);
   console.log(`🆔 UserForm - userForSchedule.id: ${user?.id || 0}`);
   
   // Para el InterviewerScheduleManager necesitamos un objeto User

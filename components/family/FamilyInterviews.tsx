@@ -42,11 +42,11 @@ const FamilyInterviews: React.FC<FamilyInterviewsProps> = ({ className = '' }) =
   }, [user]);
 
   const loadFamilyInterviews = async () => {
-    console.log('🔍 FamilyInterviews - User:', user);
-    console.log('🔍 FamilyInterviews - applicationId:', user?.applicationId);
+    console.log('FamilyInterviews - User:', user);
+    console.log('FamilyInterviews - applicationId:', user?.applicationId);
 
     if (!user?.applicationId) {
-      console.warn('⚠️ No applicationId found in user context');
+      console.warn('No applicationId found in user context');
       setIsLoading(false);
       return;
     }
@@ -54,17 +54,17 @@ const FamilyInterviews: React.FC<FamilyInterviewsProps> = ({ className = '' }) =
     try {
       setIsLoading(true);
       setError(null);
-      console.log(`📋 Cargando entrevistas para applicationId: ${user.applicationId}`);
+      console.log(`Cargando entrevistas para applicationId: ${user.applicationId}`);
       // Obtener entrevistas por aplicación de la familia
       const response = await interviewService.getInterviewsByApplication(user.applicationId);
-      console.log(`✅ Response completo:`, response);
+      console.log(`Response completo:`, response);
 
       // Extract interviews array from response object
       const familyInterviews = response.interviews || [];
-      console.log(`✅ Entrevistas cargadas (${familyInterviews.length}):`, familyInterviews);
+      console.log(`Entrevistas cargadas (${familyInterviews.length}):`, familyInterviews);
       setInterviews(familyInterviews);
     } catch (error) {
-      console.error('❌ Error cargando entrevistas familiares:', error);
+      console.error('Error cargando entrevistas familiares:', error);
       setError('Error al cargar las entrevistas');
     } finally {
       setIsLoading(false);

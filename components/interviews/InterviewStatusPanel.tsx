@@ -40,8 +40,8 @@ interface InterviewStatusPanelProps {
 }
 
 const INTERVIEW_TYPE_LABELS = {
-  'FAMILY': '👨‍👩‍👧‍👦 Entrevista Familiar',
-  'ACADEMIC': '📚 Evaluación Académica', 
+  'FAMILY': 'Entrevista Familiar',
+  'ACADEMIC': 'Evaluación Académica', 
   'PSYCHOLOGICAL': '🧠 Evaluación Psicológica',
   'CYCLE_DIRECTOR': '👔 Director de Ciclo'
 };
@@ -167,7 +167,7 @@ const InterviewStatusPanel: React.FC<InterviewStatusPanelProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            📋 Estado de Entrevistas Requeridas
+            Estado de Entrevistas Requeridas
           </h3>
           <p className="text-sm text-gray-600">
             Visualización completa del proceso de entrevistas por aplicación
@@ -288,7 +288,7 @@ const InterviewStatusPanel: React.FC<InterviewStatusPanelProps> = ({
                               </div>
                             ) : (
                               <p className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                                ⚠️ Entrevista pendiente de programación
+                                Entrevista pendiente de programación
                               </p>
                             )}
                           </div>

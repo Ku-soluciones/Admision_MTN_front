@@ -143,7 +143,7 @@ const InterviewOverview: React.FC<InterviewOverviewProps> = ({
 
   const getInterviewTypeIcon = (type: InterviewType) => {
     switch (type) {
-      case InterviewType.FAMILY: return '👨‍👩‍👧‍👦';
+      case InterviewType.FAMILY: return '‍‍👧‍👦';
       case InterviewType.INDIVIDUAL: return '👤';
       case InterviewType.PSYCHOLOGICAL: return '🧠';
       default: return '📋';

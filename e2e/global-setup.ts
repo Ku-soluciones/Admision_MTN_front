@@ -7,7 +7,7 @@ import path from 'path';
  */
 
 async function globalSetup(config: FullConfig) {
-  console.log('🔧 Starting global setup for E2E tests...');
+  console.log('Starting global setup for E2E tests...');
   
   const baseURL = config.projects[0]?.use?.baseURL || 'http://localhost:5173';
   const backendURL = process.env.BACKEND_URL || 'http://localhost:8080';
@@ -18,17 +18,17 @@ async function globalSetup(config: FullConfig) {
   
   try {
     // Wait for backend to be ready
-    console.log('⏳ Waiting for backend to be ready...');
+    console.log('Waiting for backend to be ready...');
     await waitForService(backendURL, 60000);
-    console.log('✅ Backend is ready');
+    console.log('Backend is ready');
     
     // Wait for frontend to be ready
-    console.log('⏳ Waiting for frontend to be ready...');
+    console.log('Waiting for frontend to be ready...');
     await waitForService(baseURL, 60000);
-    console.log('✅ Frontend is ready');
+    console.log('Frontend is ready');
     
     // Authenticate admin user and save state
-    console.log('🔐 Setting up admin authentication...');
+    console.log('Setting up admin authentication...');
     await page.goto(`${baseURL}/admin/login`);
     
     await page.fill('[data-testid="email-input"]', 'admin@mtn.cl');
@@ -37,7 +37,7 @@ async function globalSetup(config: FullConfig) {
     
     // Wait for successful login
     await page.waitForURL(/.*admin/, { timeout: 10000 });
-    console.log('✅ Admin authentication successful');
+    console.log('Admin authentication successful');
     
     // Save authenticated state
     await page.context().storageState({ 
@@ -45,18 +45,18 @@ async function globalSetup(config: FullConfig) {
     });
     
     // Setup test data if needed
-    console.log('📊 Setting up test data...');
+    console.log('Setting up test data...');
     await setupTestData(page, backendURL);
-    console.log('✅ Test data setup complete');
+    console.log('Test data setup complete');
     
   } catch (error) {
-    console.error('❌ Global setup failed:', error);
+    console.error('Global setup failed:', error);
     throw error;
   } finally {
     await browser.close();
   }
   
-  console.log('🎉 Global setup completed successfully!');
+  console.log('Global setup completed successfully!');
 }
 
 /**
@@ -89,14 +89,14 @@ async function setupTestData(page: any, backendURL: string): Promise<void> {
   try {
     const response = await page.request.get(`${backendURL}/api/test/ping`);
     if (response.ok()) {
-      console.log('📋 Test endpoint is accessible');
+      console.log('Test endpoint is accessible');
     }
     
     // Additional test data setup can go here
     // For example: create test applications, users, etc.
     
   } catch (error) {
-    console.warn('⚠️ Could not setup additional test data:', error);
+    console.warn('Could not setup additional test data:', error);
   }
 }
 

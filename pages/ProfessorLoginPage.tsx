@@ -47,7 +47,7 @@ const ProfessorLoginPage: React.FC = () => {
         setIsLoggingIn(true);
 
         try {
-            console.log('🔐 Iniciando login para profesor:', data.email);
+            console.log('Iniciando login para profesor:', data.email);
             
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({
@@ -59,9 +59,9 @@ const ProfessorLoginPage: React.FC = () => {
                 // Verificar que el rol sea de profesor
                 if (response.role && professorAuthService.isProfessorRole(response.role)) {
                     
-                    // ✅ Si es admin, registrar en AuthContext principal
+                    // Si es admin, registrar en AuthContext principal
                     if (response.role === 'ADMIN') {
-                        console.log('🔑 Usuario admin detectado, registrando en AuthContext principal...');
+                        console.log('Usuario admin detectado, registrando en AuthContext principal...');
                         await loginWithAuth(data.email, data.password, 'ADMIN');
                     }
                     
@@ -83,14 +83,14 @@ const ProfessorLoginPage: React.FC = () => {
                         message: `Hola ${response.firstName} ${response.lastName}`
                     });
 
-                    console.log('✅ Login exitoso, redirigiendo al dashboard...');
+                    console.log('Login exitoso, redirigiendo al dashboard...');
                     
-                    // ✅ Redirigir según el rol del usuario
+                    // Redirigir según el rol del usuario
                     if (response.role === 'ADMIN') {
-                        console.log('🔑 Usuario admin detectado, redirigiendo al panel de administración...');
+                        console.log('Usuario admin detectado, redirigiendo al panel de administración...');
                         navigate('/admin');
                     } else {
-                        console.log('👨‍🏫 Usuario profesor detectado, redirigiendo al dashboard de profesor...');
+                        console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
                         navigate('/profesor');
                     }
                     
@@ -109,7 +109,7 @@ const ProfessorLoginPage: React.FC = () => {
                 });
             }
         } catch (error: any) {
-            console.error('❌ Error en login:', error);
+            console.error('Error en login:', error);
             addNotification({
                 type: 'error',
                 title: 'Error del sistema',

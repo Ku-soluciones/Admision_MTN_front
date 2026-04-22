@@ -100,9 +100,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      console.log(`🔍 [WeeklyCalendar] Cargando horarios para userId: ${userId}, año: 2025`);
+      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: 2025`);
       const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
-      console.log(`📊 [WeeklyCalendar] Horarios recibidos del backend:`, schedules);
+      console.log(`[WeeklyCalendar] Horarios recibidos del backend:`, schedules);
       console.log(`📈 [WeeklyCalendar] Total de horarios: ${schedules.length}`);
 
       // Inicializar calendario vacío
@@ -111,7 +111,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       // Marcar horarios existentes
       let markedCount = 0;
       schedules.forEach((schedule: InterviewerSchedule) => {
-        console.log(`🔄 [WeeklyCalendar] Procesando schedule:`, {
+        console.log(`[WeeklyCalendar] Procesando schedule:`, {
           id: schedule.id,
           dayOfWeek: schedule.dayOfWeek,
           startTime: schedule.startTime,
@@ -122,7 +122,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         // Validar que el día existe en nuestro calendario (solo Lunes-Viernes)
         const validDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
         if (!schedule.dayOfWeek || !validDays.includes(schedule.dayOfWeek)) {
-          console.log(`⚠️ [WeeklyCalendar] Día no soportado o inválido: ${schedule.dayOfWeek} (solo Lun-Vie)`);
+          console.log(`[WeeklyCalendar] Día no soportado o inválido: ${schedule.dayOfWeek} (solo Lun-Vie)`);
           return; // Skip este horario
         }
 
@@ -144,20 +144,20 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                   scheduleId: schedule.id
                 };
                 markedCount++;
-                console.log(`✅ [WeeklyCalendar] Marcado slot ${schedule.dayOfWeek} ${slot} con schedule ID ${schedule.id}`);
+                console.log(`[WeeklyCalendar] Marcado slot ${schedule.dayOfWeek} ${slot} con schedule ID ${schedule.id}`);
               }
             }
           });
         } else {
-          console.log(`⚠️ [WeeklyCalendar] Schedule omitido - dayOfWeek: ${schedule.dayOfWeek}, tipo: ${schedule.scheduleType}`);
+          console.log(`[WeeklyCalendar] Schedule omitido - dayOfWeek: ${schedule.dayOfWeek}, tipo: ${schedule.scheduleType}`);
         }
       });
 
       console.log(`✨ [WeeklyCalendar] Total de slots marcados: ${markedCount}`);
       setSchedule(newSchedule);
     } catch (error) {
-      console.error('❌ [WeeklyCalendar] Error loading schedules:', error);
-      console.error('❌ [WeeklyCalendar] Error details:', error);
+      console.error('[WeeklyCalendar] Error loading schedules:', error);
+      console.error('[WeeklyCalendar] Error details:', error);
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
       // DEFENSIVE CHECK: Verify slot exists before trying to access it
       if (!currentSlot) {
-        console.error(`❌ Slot ${timeSlot} no existe para ${day}`);
+        console.error(`Slot ${timeSlot} no existe para ${day}`);
         return prev; // Return previous state unchanged
       }
 
@@ -219,11 +219,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     try {
       setSaving(true);
 
-      console.log('💾 Iniciando guardado incremental de horarios...');
+      console.log('Iniciando guardado incremental de horarios...');
 
       // 1. Cargar horarios actuales de la BD
       const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
-      console.log(`📊 Horarios existentes en BD: ${existingSchedules.length}`);
+      console.log(`Horarios existentes en BD: ${existingSchedules.length}`);
 
       // 2. Construir conjunto de slots seleccionados en pantalla
       // IMPORTANTE: Incluir tanto los nuevos (isSelected) como los existentes (hasSchedule)
@@ -237,7 +237,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           }
         });
       }
-      console.log(`✅ Slots activos en pantalla (nuevos + existentes): ${selectedSlots.size}`);
+      console.log(`Slots activos en pantalla (nuevos + existentes): ${selectedSlots.size}`);
 
       // 3. Construir mapa de slots existentes en BD
       const existingSlotsMap = new Map<string, number>(); // key: "MONDAY-09:00", value: scheduleId
@@ -255,7 +255,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           });
         }
       });
-      console.log(`📋 Slots existentes mapeados: ${existingSlotsMap.size}`);
+      console.log(`Slots existentes mapeados: ${existingSlotsMap.size}`);
 
       // 4. Calcular diferencias
       const slotsToDelete = new Set<number>(); // scheduleIds a eliminar
@@ -276,7 +276,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         }
       });
 
-      console.log(`❌ Horarios a eliminar: ${slotsToDelete.size}`);
+      console.log(`Horarios a eliminar: ${slotsToDelete.size}`);
       console.log(`➕ Horarios a crear: ${slotsToCreate.length}`);
 
       // 5. Ejecutar solo los cambios necesarios
@@ -325,7 +325,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         }
       }
 
-      console.log('✅ Guardado incremental completado');
+      console.log('Guardado incremental completado');
 
       // 6. Recargar horarios
       await loadSchedules();
@@ -336,7 +336,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       }
 
     } catch (error) {
-      console.error('❌ Error saving schedules:', error);
+      console.error('Error saving schedules:', error);
       alert('Error al guardar los horarios. Por favor, inténtalo nuevamente.');
     } finally {
       setSaving(false);
@@ -368,7 +368,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            📅 Horarios Disponibles para Entrevistas
+            Horarios Disponibles para Entrevistas
           </h3>
           <p className="text-sm text-gray-600 mt-1">
             Haz click en las casillas para marcar tus horarios disponibles (8:00 AM - 4:30 PM, intervalos de 30 min)
@@ -389,7 +389,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
               opacity: saving ? 0.6 : 1
             }}
           >
-            {saving ? '💾 Guardando Horarios...' : '💾 Guardar Horarios'}
+            {saving ? 'Guardando Horarios...' : 'Guardar Horarios'}
           </Button>
         )}
       </div>
@@ -452,7 +452,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                                 : 'Click para agregar'
                           }
                         >
-                          {hasSchedule ? '✅' : isSelected ? '🕐' : ''}
+                          {hasSchedule ? '' : isSelected ? '' : ''}
                         </button>
                       </td>
                     );
@@ -480,11 +480,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
             justifyContent: 'center',
             color: 'white',
             fontSize: '12px'
-          }}>🕐</div>
+          }}></div>
           <span>Seleccionado (sin guardar)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center text-white text-xs">✅</div>
+          <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center text-white text-xs"></div>
           <span>Horario guardado (click para eliminar)</span>
         </div>
       </div>
@@ -492,7 +492,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       {hasChanges && (
         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
-            ⚠️ Tienes cambios sin guardar. Haz click en "Guardar Cambios" para aplicarlos.
+            Tienes cambios sin guardar. Haz click en "Guardar Cambios" para aplicarlos.
           </p>
         </div>
       )}

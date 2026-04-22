@@ -726,15 +726,15 @@ const EnhancedApplicationsDataTable: React.FC<EnhancedApplicationsDataTableProps
     const loadApplications = async (page = 1, size = 5, preserveFilters = false) => {
         setLoading(true);
         try {
-            console.log('📊 EnhancedApplications: Cargando postulaciones...');
+            console.log('EnhancedApplications: Cargando postulaciones...');
             
             // Usar directamente el endpoint público que sabemos que funciona
             const response = await api.get('/api/applications/public/all');
             const backendApplications = response.data || [];
-            console.log('📊 Applications del backend:', backendApplications.length);
+            console.log('Applications del backend:', backendApplications.length);
             
             if (backendApplications.length === 0) {
-                console.warn('⚠️ No se encontraron applications en el backend');
+                console.warn('No se encontraron applications en el backend');
                 setApplications([]);
                 setPagination({ current: 1, pageSize: size, total: 0 });
                 return;
@@ -745,7 +745,7 @@ const EnhancedApplicationsDataTable: React.FC<EnhancedApplicationsDataTableProps
                 try {
                     return transformApplicationToEnhanced(app);
                 } catch (transformError) {
-                    console.error(`❌ Error transformando application ${index}:`, transformError);
+                    console.error(`Error transformando application ${index}:`, transformError);
                     // Retornar objeto básico en caso de error
                     return {
                         id: app.id || index,
@@ -792,7 +792,7 @@ const EnhancedApplicationsDataTable: React.FC<EnhancedApplicationsDataTableProps
                 }
             });
             
-            console.log('✅ Applications transformadas:', enhancedApplications.length);
+            console.log('Applications transformadas:', enhancedApplications.length);
             
             // Set all applications (filtering will be handled separately)
             setApplications(enhancedApplications);
@@ -806,10 +806,10 @@ const EnhancedApplicationsDataTable: React.FC<EnhancedApplicationsDataTableProps
                 total: currentData.length
             }));
             
-            console.log('✅ EnhancedApplications cargadas exitosamente');
+            console.log('EnhancedApplications cargadas exitosamente');
             
         } catch (error: any) {
-            console.error('❌ Error cargando postulaciones avanzadas:', error);
+            console.error('Error cargando postulaciones avanzadas:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',

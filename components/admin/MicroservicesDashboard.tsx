@@ -25,7 +25,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Cargando dashboard de microservicios...');
+      console.log('Cargando dashboard de microservicios...');
 
       // Obtener estado de servicios
       const dashboard = await microservicesService.getServicesDashboard();
@@ -37,9 +37,9 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       const info = await microservicesService.getServicesInfo();
       setServicesInfo(info);
 
-      console.log('✅ Dashboard cargado correctamente');
+      console.log('Dashboard cargado correctamente');
     } catch (err: any) {
-      console.error('❌ Error cargando dashboard:', err);
+      console.error('Error cargando dashboard:', err);
       setError(err.message || 'Error cargando dashboard de microservicios');
     } finally {
       setLoading(false);
@@ -65,9 +65,9 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       const serviceStats = await microservicesService.getMicroserviceStats();
       setStats(serviceStats);
 
-      console.log('✅ Prueba de microservicio completada');
+      console.log('Prueba de microservicio completada');
     } catch (err: any) {
-      console.error('❌ Error probando microservicio:', err);
+      console.error('Error probando microservicio:', err);
       setError(err.message || 'Error probando microservicio');
     }
   };
@@ -113,7 +113,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
             onClick={loadDashboard}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            🔄 Actualizar
+            Actualizar
           </button>
           <button
             onClick={testMicroservice}
@@ -127,7 +127,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       {/* Error */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-700">❌ {error}</p>
+          <p className="text-red-700">{error}</p>
         </div>
       )}
 
@@ -197,7 +197,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       {/* Test Results */}
       {testConnection && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <h3 className="text-lg font-semibold text-green-800 mb-2">✅ Prueba de Conexión Exitosa</h3>
+          <h3 className="text-lg font-semibold text-green-800 mb-2">Prueba de Conexión Exitosa</h3>
           <div className="text-sm text-green-700">
             <p><strong>Estado:</strong> {testConnection.status}</p>
             <p><strong>Mensaje:</strong> {testConnection.message}</p>
@@ -210,7 +210,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       {/* Microservice Users */}
       {microserviceUsers.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">👥 Usuarios del Microservicio</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Usuarios del Microservicio</h3>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="grid md:grid-cols-3 gap-3">
               {microserviceUsers.map((user, index) => (
@@ -228,7 +228,7 @@ const MicroservicesDashboard: React.FC<MicroservicesDashboardProps> = ({ classNa
       {/* Statistics */}
       {stats && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Estadísticas del Microservicio</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Estadísticas del Microservicio</h3>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="text-center">
