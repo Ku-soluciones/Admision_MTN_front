@@ -21,6 +21,7 @@
     "axios-retry": "^4.5.0",
     "date-fns": "^4.1.0",
     "express": "^4.18.2",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.540.0",
     "oidc-client-ts": "^3.3.0",
     "react": "^19.1.0",

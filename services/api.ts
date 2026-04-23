@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { csrfService } from './csrfService';
 import { getApiBaseUrl } from '../config/api.config';
+import { auth } from '../src/lib/firebase';
 
 // Configuración base de axios - Using nginx gateway for microservices
 // NO baseURL here - will be set in request interceptor for runtime detection
@@ -58,24 +59,21 @@ api.interceptors.request.use(
         console.log(`📤 api.ts - Runtime baseURL: ${runtimeBaseURL}`);
         console.log(`🔍 API Request: ${url} - Is Public: ${isPublic}`);
 
-        // Solo agregar token de autenticación si NO es una ruta pública
+        // Add auth token if not a public route
         if (!isPublic) {
-            // Intentar obtener token de usuario regular
-            let token = localStorage.getItem('auth_token');
-
-            // Si no hay token de usuario regular, intentar con token de profesor
-            if (!token) {
-                token = localStorage.getItem('professor_token');
-            }
-
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-                console.log(`🔑 Added auth token for private route`);
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                try {
+                    const idToken = await currentUser.getIdToken();
+                    config.headers.Authorization = `Bearer ${idToken}`;
+                } catch {
+                    const token = localStorage.getItem('auth_token');
+                    if (token) config.headers.Authorization = `Bearer ${token}`;
+                }
             } else {
-                console.log(`❓ No token found for private route`);
+                const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
+                if (token) config.headers.Authorization = `Bearer ${token}`;
             }
-        } else {
-            console.log(`🌐 Public route - no auth required`);
         }
 
         // Add CSRF token for POST, PUT, DELETE, PATCH requests

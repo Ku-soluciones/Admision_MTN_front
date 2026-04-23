@@ -427,7 +427,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             }
 
             // Otherwise, construct gateway URL to fetch from backend
-            const gatewayUrl = import.meta.env.VITE_API_URL || 'https://gateway-service-production-a753.up.railway.app';
+            const gatewayUrl = import.meta.env.VITE_API_URL || 'https://admitia-bff-staging.up.railway.app';
             return `${gatewayUrl}/api/documents/view/${doc.id}`;
         }
 
@@ -1554,7 +1554,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                                                     document.body.removeChild(link);
                                                                 } else {
                                                                     // Fallback: use gateway endpoint
-                                                                    const gatewayUrl = import.meta.env.VITE_API_URL || 'https://gateway-service-production-a753.up.railway.app';
+                                                                    const gatewayUrl = import.meta.env.VITE_API_URL || 'https://admitia-bff-staging.up.railway.app';
                                                                     const downloadUrl = `${gatewayUrl}/api/documents/${doc.id}/download`;
                                                                     window.open(downloadUrl, '_blank');
                                                                 }

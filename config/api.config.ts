@@ -33,7 +33,7 @@ export function getApiBaseUrl(): string {
     // DEFENSIVE: Check if we're in a browser environment
     if (typeof window === 'undefined') {
       console.warn('[API Config] Not in browser environment, using localhost');
-      return 'http://localhost:8080';
+      return 'https://admitia-bff-staging.up.railway.app';
     }
 
     // DEFENSIVE: Access window.location directly to force runtime evaluation
@@ -52,7 +52,7 @@ export function getApiBaseUrl(): string {
     console.log('[API Config] ========================================');
 
     // Railway backend URL (production) - Gateway Service
-    const RAILWAY_URL = 'https://gateway-service-production-a753.up.railway.app';
+    const RAILWAY_URL = 'https://admitia-bff-staging.up.railway.app';
 
     // DEFENSIVE: Use indexOf instead of includes for compatibility
     // Vercel deployment detection
@@ -74,11 +74,11 @@ export function getApiBaseUrl(): string {
     // Default to localhost for development
     console.log('[API Config] ⚠️  No match found, defaulting to localhost');
     console.log('[API Config] Hostname was:', hostnameStr);
-    return 'http://localhost:8080';
+    return 'https://admitia-bff-staging.up.railway.app';
   } catch (error) {
     // Fallback for any unexpected errors
     console.error('[API Config] Error detecting environment:', error);
-    return 'http://localhost:8080';
+    return 'https://admitia-bff-staging.up.railway.app';
   }
 }
 

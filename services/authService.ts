@@ -1,6 +1,10 @@
 import api from './api';
-import { clearPublicKeyCache, encryptCredentials, getPublicKey, isEncryptionSupported } from '../utils/crypto';
-import { getApiBaseUrl } from '../config/api.config';
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+} from 'firebase/auth';
+import { auth } from '../src/lib/firebase';
 
 export interface LoginRequest {
     email: string;
@@ -35,14 +39,9 @@ export interface AuthUser {
 export interface AuthResponse {
     success: boolean;
     message?: string;
-    token?: string;
-    refreshToken?: string;
-    expiresAt?: string;
-    refreshExpiresAt?: string;
-    sessionId?: string;
-    permissions?: string[];
     user?: AuthUser;
-    // Campos aplanados legacy (por compatibilidad con respuestas antiguas)
+    // Legacy fields kept for backward compatibility
+    token?: string;
     email?: string;
     firstName?: string;
     lastName?: string;
@@ -53,127 +52,95 @@ export interface AuthResponse {
 }
 
 class AuthService {
-    private isDecryptError(error: any): boolean {
-        const message = error?.response?.data?.error?.message || error?.response?.data?.message;
-        return typeof message === 'string' && (
-            message.includes('No se pudo descifrar el payload de autenticación') ||
-            message.includes('Payload de autenticación inválido')
-        );
-    }
-
-    private async loginEncrypted(request: LoginRequest, retryWithFreshKey = true): Promise<AuthResponse> {
-        const API_GATEWAY_URL = getApiBaseUrl();
-        console.log('[Auth] Using API Gateway URL:', API_GATEWAY_URL);
-        const publicKeyInfo = await getPublicKey(API_GATEWAY_URL);
-
-        console.log('[Auth] Encrypting credentials with RSA + AES...');
-        const encryptedPayload = await encryptCredentials(request, publicKeyInfo);
-        console.log('[Auth] Sending encrypted credentials to backend');
-
-        try {
-            const response = await api.post('/api/auth/login', encryptedPayload);
-            return response.data;
-        } catch (error: any) {
-            if (retryWithFreshKey && this.isDecryptError(error)) {
-                console.warn('[Auth] Public key rejected by backend, refreshing and retrying once');
-                clearPublicKeyCache();
-                return this.loginEncrypted(request, false);
-            }
-            throw error;
-        }
-    }
 
     async login(request: LoginRequest): Promise<AuthResponse> {
         try {
-            // Check if browser supports encryption
-            if (!isEncryptionSupported()) {
-                console.warn('[Auth] Web Crypto API not supported, falling back to HTTPS only');
-                const response = await api.post('/api/auth/login', request);
-                return response.data;
-            }
+            // 1. Authenticate with Firebase
+            const credential = await signInWithEmailAndPassword(auth, request.email, request.password);
+            const idToken = await credential.user.getIdToken();
 
-            try {
-                return await this.loginEncrypted(request);
+            // 2. Send idToken to BFF to get user data (roles, profile, etc.)
+            const response = await api.post('/api/auth/firebase-login', { idToken });
+            const data = response.data;
 
-            } catch (encryptError) {
-                // If encryption fails, fall back to HTTPS only
-                console.warn('[Auth] Encryption failed, falling back to HTTPS only:', encryptError);
-                const response = await api.post('/api/auth/login', request);
-                return response.data;
-            }
+            // 3. Store the Firebase idToken for immediate use until interceptor takes over
+            localStorage.setItem('auth_token', idToken);
 
+            return {
+                success: true,
+                token: idToken,
+                user: data.user,
+            };
         } catch (error: any) {
-            if (error.response?.status === 401) {
+            // Firebase error codes
+            const code = error?.code;
+            if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
                 throw new Error('Credenciales inválidas');
-            } else if (error.response?.status === 400) {
-                throw new Error('Datos de login inválidos');
-            } else if (error.response?.status === 500) {
-                throw new Error('Error del servidor');
             }
-
-            throw new Error('Error al iniciar sesión');
+            if (code === 'auth/too-many-requests') {
+                throw new Error('Demasiados intentos. Intenta más tarde.');
+            }
+            // BFF error
+            if (error.response?.status === 400) {
+                throw new Error(error.response?.data?.error?.message || 'Datos de login inválidos');
+            }
+            throw new Error(error.message || 'Error al iniciar sesión');
         }
     }
-    
+
     async register(request: RegisterRequest): Promise<AuthResponse> {
         try {
-            // Check if browser supports encryption
-            if (!isEncryptionSupported()) {
-                console.warn('[Auth] Web Crypto API not supported, falling back to HTTPS only');
-                const response = await api.post('/api/auth/register', request);
-                return response.data;
-            }
+            // 1. Create user in Firebase
+            const credential = await createUserWithEmailAndPassword(auth, request.email, request.password);
+            const idToken = await credential.user.getIdToken();
 
-            try {
-                // Fetch public key via API Gateway (not directly from user service)
-                const API_GATEWAY_URL = getApiBaseUrl();
-                console.log('[Auth] Using API Gateway URL:', API_GATEWAY_URL);
-                const publicKeyInfo = await getPublicKey(API_GATEWAY_URL);
+            // 2. Register in BFF with additional profile data
+            const response = await api.post('/api/auth/firebase-register', {
+                idToken,
+                firstName: request.firstName,
+                lastName: request.lastName,
+                rut: request.rut,
+                phone: request.phone,
+            });
+            const data = response.data;
 
-                console.log('[Auth] Encrypting registration data with RSA + AES...');
+            localStorage.setItem('auth_token', idToken);
 
-                // Encrypt registration data
-                const encryptedPayload = await encryptCredentials(request, publicKeyInfo);
-
-                console.log('[Auth] Sending encrypted registration data to backend');
-
-                // Send encrypted payload
-                const response = await api.post('/api/auth/register', encryptedPayload);
-                return response.data;
-
-            } catch (encryptError) {
-                // If encryption fails, fall back to HTTPS only
-                console.warn('[Auth] Encryption failed, falling back to HTTPS only:', encryptError);
-                const response = await api.post('/api/auth/register', request);
-                return response.data;
-            }
-
+            return {
+                success: true,
+                token: idToken,
+                user: data.user,
+            };
         } catch (error: any) {
-            if (error.response?.status === 400) {
-                const message = error.response?.data?.message || 'Datos de registro inválidos';
-                throw new Error(message);
-            } else if (error.response?.status === 409) {
-                throw new Error('Ya existe un usuario con este email o RUT');
-            } else if (error.response?.status === 500) {
-                throw new Error('Error del servidor al crear la cuenta');
+            const code = error?.code;
+            if (code === 'auth/email-already-in-use') {
+                throw new Error('Ya existe un usuario con este email');
             }
-
-            throw new Error('Error al crear la cuenta');
+            if (code === 'auth/weak-password') {
+                throw new Error('La contraseña debe tener al menos 6 caracteres');
+            }
+            if (error.response?.status === 400) {
+                throw new Error(error.response?.data?.error?.message || 'Datos de registro inválidos');
+            }
+            throw new Error(error.message || 'Error al crear la cuenta');
         }
     }
-    
+
     async checkEmailExists(email: string): Promise<boolean> {
         try {
             const response = await api.get(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
             return response.data;
-            
         } catch (error: any) {
             return false;
         }
     }
-    
-    logout() {
-        // Limpiar token del localStorage
+
+    async logout() {
+        try {
+            await signOut(auth);
+        } catch (e) {
+            // Ignore Firebase signOut errors
+        }
         localStorage.removeItem('auth_token');
         localStorage.removeItem('authenticated_user');
     }

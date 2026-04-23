@@ -13,6 +13,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import { getApiBaseUrl } from '../../config/api.config';
+import { auth } from '../lib/firebase';
 
 class HttpClient {
   private axiosInstance: AxiosInstance;
@@ -84,36 +85,44 @@ class HttpClient {
   private setupInterceptors() {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
-      (config) => {
-        // CRITICAL: Set baseURL at runtime on EVERY request
-        // This ensures the URL is evaluated in the browser, not at build time
+      async (config) => {
         const runtimeBaseURL = getApiBaseUrl();
 
-        // Only log once to avoid spam
         if (this.metrics.requestCount === 0) {
           console.log('📤 http.ts - Runtime baseURL:', runtimeBaseURL);
         }
 
         config.baseURL = runtimeBaseURL;
 
-        // Add JWT token from localStorage if available
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+        // Get fresh Firebase idToken (auto-refreshed by Firebase SDK)
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            const idToken = await currentUser.getIdToken();
+            config.headers.Authorization = `Bearer ${idToken}`;
+          } catch {
+            // Fallback to localStorage if getIdToken fails
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+            }
+          }
+        } else {
+          // Fallback to localStorage (legacy JWT or initial load)
+          const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
         }
 
         this.metrics.requestCount++;
         this.metrics.lastRequestTime = new Date();
-
-        // Add timestamp for response time calculation
         (config as any).startTime = Date.now();
 
-        // Request logging removed for security
         return config;
       },
       (error) => {
         this.metrics.errorCount++;
-        // Error details removed for security
         return Promise.reject(error);
       }
     );
