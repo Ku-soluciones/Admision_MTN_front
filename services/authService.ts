@@ -60,7 +60,7 @@ class AuthService {
             const idToken = await credential.user.getIdToken();
 
             // 2. Send idToken to BFF to get user data (roles, profile, etc.)
-            const response = await api.post('/api/auth/firebase-login', { idToken });
+            const response = await api.post('/v1/auth/firebase-login', { idToken });
             const data = response.data;
 
             // 3. Store the Firebase idToken for immediate use until interceptor takes over
@@ -95,7 +95,7 @@ class AuthService {
             const idToken = await credential.user.getIdToken();
 
             // 2. Register in BFF with additional profile data
-            const response = await api.post('/api/auth/firebase-register', {
+            const response = await api.post('/v1/auth/firebase-register', {
                 idToken,
                 firstName: request.firstName,
                 lastName: request.lastName,
@@ -128,7 +128,7 @@ class AuthService {
 
     async checkEmailExists(email: string): Promise<boolean> {
         try {
-            const response = await api.get(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+            const response = await api.get(`/v1/auth/check-email?email=${encodeURIComponent(email)}`);
             return response.data;
         } catch (error: any) {
             return false;

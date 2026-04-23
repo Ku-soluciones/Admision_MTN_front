@@ -87,7 +87,7 @@ async function waitForService(url: string, timeout: number = 30000): Promise<voi
 async function setupTestData(page: any, backendURL: string): Promise<void> {
   // Create test users if they don't exist
   try {
-    const response = await page.request.get(`${backendURL}/api/test/ping`);
+    const response = await page.request.get(`${backendURL}/v1/test/ping`);
     if (response.ok()) {
       console.log('📋 Test endpoint is accessible');
     }

@@ -42,7 +42,7 @@ export interface SingleNotificationConfigResponse {
 }
 
 export class NotificationConfigService {
-  private baseUrl = '/api/notifications/config';
+  private baseUrl = '/v1/notifications/config';
 
   /**
    * Get all notification configurations

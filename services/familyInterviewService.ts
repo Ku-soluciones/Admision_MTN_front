@@ -9,7 +9,7 @@ class FamilyInterviewService {
 
     /**
      * Get interview template for specific grade
-     * GET /api/evaluations/family-interview-template/:grade
+     * GET /v1/evaluations/family-interview-template/:grade
      * @param grade - Student's applied grade (e.g., "PRE_KINDER", "5_BASICO", "IV_MEDIO")
      * @returns Filtered template with only applicable questions for that grade
      */
@@ -17,7 +17,7 @@ class FamilyInterviewService {
         try {
             console.log(`📋 Getting family interview template for grade: ${grade}`);
 
-            const response = await api.get(`/api/evaluations/family-interview-template/${grade}`);
+            const response = await api.get(`/v1/evaluations/family-interview-template/${grade}`);
 
             if (response.data.success) {
                 console.log('✅ Template loaded successfully');
@@ -38,7 +38,7 @@ class FamilyInterviewService {
 
     /**
      * Get saved interview data for an evaluation
-     * GET /api/evaluations/:evaluationId/family-interview-data
+     * GET /v1/evaluations/:evaluationId/family-interview-data
      * @param evaluationId - Evaluation ID
      * @returns Saved interview responses and score
      */
@@ -49,7 +49,7 @@ class FamilyInterviewService {
         try {
             console.log(`📥 Loading interview data for evaluation: ${evaluationId}`);
 
-            const response = await api.get(`/api/evaluations/${evaluationId}/family-interview-data`);
+            const response = await api.get(`/v1/evaluations/${evaluationId}/family-interview-data`);
 
             if (response.data.success) {
                 console.log('✅ Interview data loaded successfully');
@@ -73,7 +73,7 @@ class FamilyInterviewService {
 
     /**
      * Save interview responses
-     * PUT /api/evaluations/:evaluationId/family-interview-data
+     * PUT /v1/evaluations/:evaluationId/family-interview-data
      * @param evaluationId - Evaluation ID
      * @param interviewData - Complete interview responses
      * @returns Saved data with calculated score
@@ -90,7 +90,7 @@ class FamilyInterviewService {
             console.log(`💾 Saving interview data for evaluation: ${evaluationId}`);
 
             const response = await api.put(
-                `/api/evaluations/${evaluationId}/family-interview-data`,
+                `/v1/evaluations/${evaluationId}/family-interview-data`,
                 { interviewData }
             );
 

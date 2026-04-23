@@ -100,8 +100,8 @@ const FamilyDashboard: React.FC = () => {
     }
 
     // Use environment variable for API URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-    const downloadUrl = `${baseUrl}/api/documents/${documentId}/download?token=${encodeURIComponent(token)}`;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const downloadUrl = `${baseUrl}/v1/documents/${documentId}/download?token=${encodeURIComponent(token)}`;
 
     // Open in new tab for viewing (browser will handle display based on content type)
     window.open(downloadUrl, '_blank');

@@ -77,7 +77,7 @@ const EvaluationForm: React.FC = () => {
     if (!evaluationId) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/evaluations/${evaluationId}/interview`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/interview`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -215,7 +215,7 @@ const EvaluationForm: React.FC = () => {
 
     try {
       setLoadingAttachments(true);
-      const response = await fetch(`http://localhost:8080/api/evaluations/${evaluationId}/attachments`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/attachments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -243,7 +243,7 @@ const EvaluationForm: React.FC = () => {
 
     try {
       setUploadingFile(true);
-      const response = await fetch(`http://localhost:8080/api/evaluations/${evaluationId}/attachments`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/attachments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
@@ -273,7 +273,7 @@ const EvaluationForm: React.FC = () => {
     if (!confirm('¿Está seguro de eliminar este archivo?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/evaluations/attachments/${attachmentId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/attachments/${attachmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
@@ -299,7 +299,7 @@ const EvaluationForm: React.FC = () => {
       setLoadingHistory(true);
 
       // First get the student_id from the application
-      const appResponse = await fetch(`http://localhost:8080/api/applications/${evaluation.application_id}`, {
+      const appResponse = await fetch(`${getApiBaseUrl()}/v1/applications/${evaluation.application_id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -310,7 +310,7 @@ const EvaluationForm: React.FC = () => {
         const studentId = appData.student_id;
 
         // Now get the history
-        const historyResponse = await fetch(`http://localhost:8080/api/evaluations/student/${studentId}/history`, {
+        const historyResponse = await fetch(`${getApiBaseUrl()}/v1/evaluations/student/${studentId}/history`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
           }
@@ -803,7 +803,7 @@ const EvaluationForm: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                       <a
-                        href={`http://localhost:8080/api/evaluations/attachments/${attachment.id}/download`}
+                        href={`/v1/evaluations/attachments/${attachment.id}/download`}
                         download
                         target="_blank"
                         rel="noopener noreferrer"

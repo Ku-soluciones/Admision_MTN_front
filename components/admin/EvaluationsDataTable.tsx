@@ -1,4 +1,5 @@
 import React from 'react';
+import { getApiBaseUrl } from '../../config/api.config';
 import DataTable, { TableColumn } from '../ui/DataTable';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -44,7 +45,7 @@ const EvaluationsDataTable: React.FC<EvaluationsDataTableProps> = ({
     React.useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/evaluations/stats', {
+                const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/stats`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
                     }

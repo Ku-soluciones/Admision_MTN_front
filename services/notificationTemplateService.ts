@@ -101,8 +101,8 @@ export interface NotificationCampaign {
 }
 
 class NotificationTemplateService {
-  private readonly basePath = '/api/notifications/admin/templates';
-  private readonly campaignPath = '/api/notifications/admin/campaigns';
+  private readonly basePath = '/v1/notifications/admin/templates';
+  private readonly campaignPath = '/v1/notifications/admin/campaigns';
 
   /**
    * Get all notification templates

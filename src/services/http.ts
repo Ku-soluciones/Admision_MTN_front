@@ -12,7 +12,7 @@
 
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
-import { getApiBaseUrl } from '../../config/api.config';
+import { getApiBaseUrl, apiPath } from '../../config/api.config';
 import { auth } from '../lib/firebase';
 
 class HttpClient {
@@ -93,6 +93,11 @@ class HttpClient {
         }
 
         config.baseURL = runtimeBaseURL;
+
+        // Rewrite /v1/ → /api/ when connecting directly to BFF (local dev)
+        if (config.url) {
+          config.url = apiPath(config.url);
+        }
 
         // Get fresh Firebase idToken (auto-refreshed by Firebase SDK)
         const currentUser = auth.currentUser;

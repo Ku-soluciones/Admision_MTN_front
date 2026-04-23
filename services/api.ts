@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { csrfService } from './csrfService';
-import { getApiBaseUrl } from '../config/api.config';
+import { getApiBaseUrl, apiPath } from '../config/api.config';
 import { auth } from '../src/lib/firebase';
 
 // Configuración base de axios - Using nginx gateway for microservices
@@ -16,23 +16,24 @@ const api = axios.create({
 
 // Función para verificar si es una ruta pública que no requiere autenticación
 const isPublicRoute = (url: string): boolean => {
-    const publicPaths = [
-        '/api/auth/login',
-        '/api/auth/register',
-        '/api/auth/refresh',
-        '/api/auth/public-key',
-        '/api/auth/csrf-token',  // CSRF token endpoint must be public
-        '/api/email/',
-        '/api/usuario-auth/',
-        '/api/public/',
-        '/api/applications/public/',
-        '/api/documents/public/',
-        '/api/schedules/public/',
-        '/api/evaluations/public/',
-        '/api/rut/'
+    // Match against path segments (works with both /v1/ and /api/ prefixes)
+    const publicSegments = [
+        '/auth/login',
+        '/auth/register',
+        '/auth/refresh',
+        '/auth/public-key',
+        '/auth/csrf-token',
+        '/email/',
+        '/usuario-auth/',
+        '/public/',
+        '/applications/public/',
+        '/documents/public/',
+        '/schedules/public/',
+        '/evaluations/public/',
+        '/rut/'
     ];
 
-    return publicPaths.some(path => url.includes(path));
+    return publicSegments.some(segment => url.includes(segment));
 };
 
 // Interceptor para agregar el token de autenticación y CSRF token
@@ -43,9 +44,14 @@ api.interceptors.request.use(
 
         // TEMPORARY: Use notification-service directly for email endpoints
         // This bypasses the gateway which is having redirect issues
-        if (config.url && config.url.includes('/api/email/')) {
+        if (config.url && config.url.includes('/v1/email/')) {
             runtimeBaseURL = 'https://notification-service-production-3411.up.railway.app';
             console.log('📧 Using direct notification-service URL for email endpoint');
+        }
+
+        // Rewrite /v1/ → /api/ when connecting directly to BFF (local dev)
+        if (config.url) {
+            config.url = apiPath(config.url);
         }
 
         // Build full URL if config.url is relative
@@ -145,8 +151,8 @@ api.interceptors.response.use(
                 const isLoginPage = currentPath.includes('/login') || currentPath === '/';
                 const requestUrl = error.config?.url || '';
                 const isPublicRoute = requestUrl.includes('/public/') ||
-                                     requestUrl.includes('/api/auth/login') ||
-                                     requestUrl.includes('/api/auth/register');
+                                     requestUrl.includes('/v1/auth/login') ||
+                                     requestUrl.includes('/v1/auth/register');
 
                 if (!isLoginPage && !isPublicRoute) {
                     console.warn('🔄 Redirecting to login due to expired token');

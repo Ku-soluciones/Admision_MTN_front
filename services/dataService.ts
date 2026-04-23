@@ -106,7 +106,7 @@ class DataService {
             console.log('📊 DataService: Cargando evaluaciones...');
             
             // Intentar cargar desde endpoint específico
-            const response = await api.get(`/api/evaluations`, {
+            const response = await api.get(`/v1/evaluations`, {
                 params: { page, size }
             });
             
@@ -193,7 +193,7 @@ class DataService {
         try {
             console.log('📧 DataService: Cargando notificaciones email...');
             
-            const response = await api.get(`/api/email-notifications`, {
+            const response = await api.get(`/v1/email-notifications`, {
                 params: { page, size }
             });
             

@@ -79,7 +79,7 @@ export const evaluatorService = {
   // Obtener evaluadores por rol
   async getEvaluatorsByRole(role: string): Promise<Evaluator[]> {
     try {
-      const response = await api.get(`/api/evaluations/evaluators/${role}`);
+      const response = await api.get(`/v1/evaluations/evaluators/${role}`);
       return response.data;
     } catch (error) {
       console.error('Error getting evaluators by role:', error);
@@ -90,7 +90,7 @@ export const evaluatorService = {
   // Obtener evaluadores por rol (endpoint público para desarrollo)
   async getEvaluatorsByRolePublic(role: string): Promise<Evaluator[]> {
     try {
-      const response = await api.get(`/api/evaluations/public/evaluators/${role}`);
+      const response = await api.get(`/v1/evaluations/public/evaluators/${role}`);
       return response.data;
     } catch (error) {
       console.error('Error getting evaluators by role (public):', error);
@@ -100,10 +100,10 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Crear y asignar evaluación en dos pasos
-   * Paso 1: Crear evaluación con POST /api/evaluations
-   * Paso 2: Asignar evaluación con POST /api/evaluations/:id/assign
+   * Paso 1: Crear evaluación con POST /v1/evaluations
+   * Paso 2: Asignar evaluación con POST /v1/evaluations/:id/assign
    *
-   * NOTA: El endpoint anterior /api/evaluations/assign/:applicationId/:evaluationType/:evaluatorId
+   * NOTA: El endpoint anterior /v1/evaluations/assign/:applicationId/:evaluationType/:evaluatorId
    * NO EXISTE en el backend. Este método implementa el flujo correcto.
    */
   async assignSpecificEvaluation(
@@ -115,7 +115,7 @@ export const evaluatorService = {
       console.log(`🔧 Creating evaluation for application ${applicationId}, type ${evaluationType}`);
 
       // Paso 1: Crear la evaluación
-      const createResponse = await api.post('/api/evaluations', {
+      const createResponse = await api.post('/v1/evaluations', {
         applicationId: Number(applicationId), // Asegurar que sea número
         evaluationType,
         score: 0, // Score inicial (requerido por el backend)
@@ -134,7 +134,7 @@ export const evaluatorService = {
       console.log(`👨‍🏫 Assigning to evaluator ${evaluatorId}...`);
 
       // Paso 2: Asignar al evaluador
-      const assignResponse = await api.post(`/api/evaluations/${evaluationId}/assign`, {
+      const assignResponse = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
         evaluatorId,
         evaluationDate: new Date().toISOString().split('T')[0],
       });
@@ -155,7 +155,7 @@ export const evaluatorService = {
   // Obtener evaluaciones de una aplicación
   async getEvaluationsByApplication(applicationId: number): Promise<Evaluation[]> {
     try {
-      const response = await api.get(`/api/evaluations/application/${applicationId}`);
+      const response = await api.get(`/v1/evaluations/application/${applicationId}`);
       return response.data;
     } catch (error) {
       console.error('Error getting evaluations by application:', error);
@@ -165,11 +165,11 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Obtener evaluaciones por evaluador
-   * Endpoint: GET /api/evaluations/evaluator/:evaluatorId
+   * Endpoint: GET /v1/evaluations/evaluator/:evaluatorId
    */
   async getEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
     try {
-      const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}`);
+      const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}`);
       return response.data.data;
     } catch (error) {
       console.error('Error getting evaluations by evaluator:', error);
@@ -179,11 +179,11 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Obtener evaluaciones pendientes por evaluador
-   * Endpoint: GET /api/evaluations/evaluator/:id/pending
+   * Endpoint: GET /v1/evaluations/evaluator/:id/pending
    */
   async getPendingEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
     try {
-      const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}/pending`);
+      const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/pending`);
       return response.data.data;
     } catch (error) {
       console.error('Error getting pending evaluations by evaluator:', error);
@@ -193,11 +193,11 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Actualizar evaluación
-   * Endpoint: PUT /api/evaluations/:id
+   * Endpoint: PUT /v1/evaluations/:id
    */
   async updateEvaluation(evaluationId: number, evaluationData: Partial<Evaluation>): Promise<Evaluation> {
     try {
-      const response = await api.put(`/api/evaluations/${evaluationId}`, evaluationData);
+      const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
       return response.data.data;
     } catch (error) {
       console.error('Error updating evaluation:', error);
@@ -208,7 +208,7 @@ export const evaluatorService = {
   // Actualizar evaluación con nuevos tipos
   async updateEvaluationWithTypes(evaluationId: number, evaluationData: any): Promise<any> {
     try {
-      const response = await api.put(`/api/evaluations/${evaluationId}`, evaluationData);
+      const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
       return response.data;
     } catch (error) {
       console.error('Error updating evaluation with types:', error);
@@ -219,7 +219,7 @@ export const evaluatorService = {
   // Obtener evaluación por ID
   async getEvaluationById(evaluationId: number): Promise<Evaluation> {
     try {
-      const response = await api.get(`/api/evaluations/${evaluationId}`);
+      const response = await api.get(`/v1/evaluations/${evaluationId}`);
       return response.data.data;
     } catch (error) {
       console.error('Error getting evaluation by ID:', error);
@@ -229,7 +229,7 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Asignar evaluación existente a evaluador
-   * Endpoint: POST /api/evaluations/:id/assign
+   * Endpoint: POST /v1/evaluations/:id/assign
    * NOTA: Este reemplaza el antiguo reassignEvaluation
    */
   async assignEvaluation(
@@ -238,7 +238,7 @@ export const evaluatorService = {
     evaluationDate?: string
   ): Promise<Evaluation> {
     try {
-      const response = await api.post(`/api/evaluations/${evaluationId}/assign`, {
+      const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
         evaluatorId,
         evaluationDate: evaluationDate || new Date().toISOString().split('T')[0],
       });
@@ -251,11 +251,11 @@ export const evaluatorService = {
 
   /**
    * ✅ CORREGIDO: Obtener estadísticas
-   * Endpoint: GET /api/evaluations/statistics
+   * Endpoint: GET /v1/evaluations/statistics
    */
   async getEvaluationStatistics(): Promise<EvaluationStatistics> {
     try {
-      const response = await api.get('/api/evaluations/statistics');
+      const response = await api.get('/v1/evaluations/statistics');
       return response.data.data;
     } catch (error) {
       console.error('Error getting evaluation statistics:', error);
@@ -265,11 +265,11 @@ export const evaluatorService = {
 
   /**
    * ✅ NUEVO: Obtener todas las evaluaciones
-   * Endpoint: GET /api/evaluations
+   * Endpoint: GET /v1/evaluations
    */
   async getAllEvaluations(): Promise<Evaluation[]> {
     try {
-      const response = await api.get('/api/evaluations');
+      const response = await api.get('/v1/evaluations');
       return response.data.data;
     } catch (error) {
       console.error('Error getting all evaluations:', error);
@@ -279,7 +279,7 @@ export const evaluatorService = {
 
   /**
    * ✅ NUEVO: Completar evaluación
-   * Endpoint: POST /api/evaluations/:id/complete
+   * Endpoint: POST /v1/evaluations/:id/complete
    */
   async completeEvaluation(
     evaluationId: number,
@@ -290,7 +290,7 @@ export const evaluatorService = {
     }
   ): Promise<Evaluation> {
     try {
-      const response = await api.post(`/api/evaluations/${evaluationId}/complete`, data);
+      const response = await api.post(`/v1/evaluations/${evaluationId}/complete`, data);
       return response.data.data;
     } catch (error) {
       console.error('Error completing evaluation:', error);
@@ -300,11 +300,11 @@ export const evaluatorService = {
 
   /**
    * ✅ NUEVO: Cancelar evaluación
-   * Endpoint: POST /api/evaluations/:id/cancel
+   * Endpoint: POST /v1/evaluations/:id/cancel
    */
   async cancelEvaluation(evaluationId: number, reason?: string): Promise<Evaluation> {
     try {
-      const response = await api.post(`/api/evaluations/${evaluationId}/cancel`, {
+      const response = await api.post(`/v1/evaluations/${evaluationId}/cancel`, {
         reason
       });
       return response.data.data;
@@ -316,11 +316,11 @@ export const evaluatorService = {
 
   /**
    * ✅ NUEVO: Reprogramar evaluación
-   * Endpoint: POST /api/evaluations/:id/reschedule
+   * Endpoint: POST /v1/evaluations/:id/reschedule
    */
   async rescheduleEvaluation(evaluationId: number, evaluationDate: string): Promise<Evaluation> {
     try {
-      const response = await api.post(`/api/evaluations/${evaluationId}/reschedule`, {
+      const response = await api.post(`/v1/evaluations/${evaluationId}/reschedule`, {
         evaluationDate
       });
       return response.data.data;

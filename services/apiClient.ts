@@ -47,7 +47,7 @@ class ApiClient {
    */
   async checkAuth(): Promise<boolean> {
     try {
-      await httpClient.get('/api/auth/check');
+      await httpClient.get('/v1/auth/check');
       return true;
     } catch (error) {
       return false;
@@ -58,7 +58,7 @@ class ApiClient {
    * Obtener perfil del usuario actual
    */
   async getCurrentUser(): Promise<any> {
-    return httpClient.get('/api/auth/me');
+    return httpClient.get('/v1/auth/me');
   }
 
   // ============= USERS =============
@@ -74,7 +74,7 @@ class ApiClient {
     if (params?.sort) queryParams.set('sort', params.sort);
     if (params?.direction) queryParams.set('direction', params.direction);
     
-    const url = `/api/users${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/v1/users${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return httpClient.get(url);
   }
 
@@ -82,28 +82,28 @@ class ApiClient {
    * Obtener usuario por ID
    */
   async getUserById(id: number): Promise<any> {
-    return httpClient.get(`/api/users/${id}`);
+    return httpClient.get(`/v1/users/${id}`);
   }
 
   /**
    * Crear nuevo usuario
    */
   async createUser(userData: any): Promise<any> {
-    return httpClient.post('/api/users', userData);
+    return httpClient.post('/v1/users', userData);
   }
 
   /**
    * Actualizar usuario existente
    */
   async updateUser(id: number, userData: any): Promise<any> {
-    return httpClient.put(`/api/users/${id}`, userData);
+    return httpClient.put(`/v1/users/${id}`, userData);
   }
 
   /**
    * Eliminar usuario
    */
   async deleteUser(id: number): Promise<void> {
-    return httpClient.delete(`/api/users/${id}`);
+    return httpClient.delete(`/v1/users/${id}`);
   }
 
   // ============= APPLICATIONS =============
@@ -120,7 +120,7 @@ class ApiClient {
     if (params?.direction) queryParams.set('direction', params.direction);
     if (params?.status) queryParams.set('status', params.status);
     
-    const url = `/api/applications${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/v1/applications${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return httpClient.get(url);
   }
 
@@ -128,35 +128,35 @@ class ApiClient {
    * Obtener aplicación por ID
    */
   async getApplicationById(id: number): Promise<any> {
-    return httpClient.get(`/api/applications/${id}`);
+    return httpClient.get(`/v1/applications/${id}`);
   }
 
   /**
    * Crear nueva aplicación
    */
   async createApplication(applicationData: any): Promise<any> {
-    return httpClient.post('/api/applications', applicationData);
+    return httpClient.post('/v1/applications', applicationData);
   }
 
   /**
    * Actualizar aplicación
    */
   async updateApplication(id: number, applicationData: any): Promise<any> {
-    return httpClient.put(`/api/applications/${id}`, applicationData);
+    return httpClient.put(`/v1/applications/${id}`, applicationData);
   }
 
   /**
    * Cambiar estado de aplicación
    */
   async changeApplicationStatus(id: number, status: string, reason?: string): Promise<any> {
-    return httpClient.patch(`/api/applications/${id}/status`, { status, reason });
+    return httpClient.patch(`/v1/applications/${id}/status`, { status, reason });
   }
 
   /**
    * Archivar aplicación
    */
   async archiveApplication(id: number): Promise<void> {
-    return httpClient.put(`/api/applications/${id}/archive`);
+    return httpClient.put(`/v1/applications/${id}/archive`);
   }
 
   // ============= EVALUATIONS =============
@@ -172,7 +172,7 @@ class ApiClient {
     if (params?.sort) queryParams.set('sort', params.sort);
     if (params?.direction) queryParams.set('direction', params.direction);
     
-    const url = `/api/evaluations${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/v1/evaluations${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return httpClient.get(url);
   }
 
@@ -180,14 +180,14 @@ class ApiClient {
    * Crear evaluación
    */
   async createEvaluation(evaluationData: any): Promise<any> {
-    return httpClient.post('/api/evaluations', evaluationData);
+    return httpClient.post('/v1/evaluations', evaluationData);
   }
 
   /**
    * Actualizar evaluación
    */
   async updateEvaluation(id: number, evaluationData: any): Promise<any> {
-    return httpClient.put(`/api/evaluations/${id}`, evaluationData);
+    return httpClient.put(`/v1/evaluations/${id}`, evaluationData);
   }
 
   // ============= INTERVIEWS =============
@@ -203,7 +203,7 @@ class ApiClient {
     if (params?.sort) queryParams.set('sort', params.sort);
     if (params?.direction) queryParams.set('direction', params.direction);
     
-    const url = `/api/interviews${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/v1/interviews${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return httpClient.get(url);
   }
 
@@ -211,14 +211,14 @@ class ApiClient {
    * Programar entrevista
    */
   async scheduleInterview(interviewData: any): Promise<any> {
-    return httpClient.post('/api/interviews', interviewData);
+    return httpClient.post('/v1/interviews', interviewData);
   }
 
   /**
    * Actualizar entrevista
    */
   async updateInterview(id: number, interviewData: any): Promise<any> {
-    return httpClient.put(`/api/interviews/${id}`, interviewData);
+    return httpClient.put(`/v1/interviews/${id}`, interviewData);
   }
 
   // ============= FILE UPLOADS =============
@@ -232,7 +232,7 @@ class ApiClient {
     formData.append('type', type);
     if (applicationId) formData.append('applicationId', applicationId.toString());
     
-    return httpClient.post('/api/files/upload', formData, {
+    return httpClient.post('/v1/files/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -243,7 +243,7 @@ class ApiClient {
    * Descargar archivo
    */
   async downloadFile(fileId: number): Promise<Blob> {
-    return httpClient.get(`/api/files/${fileId}/download`, {
+    return httpClient.get(`/v1/files/${fileId}/download`, {
       responseType: 'blob',
     });
   }
@@ -254,21 +254,21 @@ class ApiClient {
    * Obtener estadísticas del dashboard
    */
   async getDashboardStats(): Promise<any> {
-    return httpClient.get('/api/dashboard/stats');
+    return httpClient.get('/v1/dashboard/stats');
   }
 
   /**
    * Obtener estadísticas de usuarios
    */
   async getUserStats(): Promise<any> {
-    return httpClient.get('/api/dashboard/users/stats');
+    return httpClient.get('/v1/dashboard/users/stats');
   }
 
   /**
    * Obtener estadísticas de aplicaciones
    */
   async getApplicationStats(): Promise<any> {
-    return httpClient.get('/api/dashboard/applications/stats');
+    return httpClient.get('/v1/dashboard/applications/stats');
   }
 
   // ============= UTILITIES =============
@@ -277,7 +277,7 @@ class ApiClient {
    * Validar RUT chileno
    */
   async validateRut(rut: string): Promise<{ valid: boolean; formatted?: string }> {
-    return httpClient.post('/api/utils/validate-rut', { rut });
+    return httpClient.post('/v1/utils/validate-rut', { rut });
   }
 
   /**

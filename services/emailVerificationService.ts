@@ -21,7 +21,7 @@ class EmailVerificationService {
     try {
       console.log('📧 Enviando código de verificación:', request);
 
-      const response = await api.post('/api/email/send-verification', request);
+      const response = await api.post('/v1/email/send-verification', request);
       
       console.log('✅ Código enviado exitosamente');
       console.log('📦 Response structure:', response.data);
@@ -69,7 +69,7 @@ class EmailVerificationService {
     try {
       console.log('🔍 Verificando código:', { email: request.email, code: '***' });
 
-      const response = await api.post('/api/email/verify-code', request);
+      const response = await api.post('/v1/email/verify-code', request);
       
       console.log('✅ Código verificado exitosamente');
       console.log('📦 Response structure:', response.data);
@@ -108,7 +108,7 @@ class EmailVerificationService {
     try {
       console.log('🔎 Verificando si email existe:', email);
 
-      const response = await api.get('/api/email/check-exists', {
+      const response = await api.get('/v1/email/check-exists', {
         params: { email }
       });
 
@@ -128,7 +128,7 @@ class EmailVerificationService {
     try {
       console.log('🔎 Verificando si RUT existe:', rut);
 
-      const response = await api.get('/api/users/check-rut', {
+      const response = await api.get('/v1/users/check-rut', {
         params: { rut }
       });
 
@@ -148,7 +148,7 @@ class EmailVerificationService {
     try {
       console.warn('🚧 Obteniendo código para desarrollo:', email);
 
-      const response = await api.get('/api/email/get-last-code', {
+      const response = await api.get('/v1/email/get-last-code', {
         params: { email }
       });
       

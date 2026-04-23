@@ -401,7 +401,7 @@ class ScheduleService {
    */
   async getInterviewerAvailabilitySchedules(interviewerId: number): Promise<any[]> {
     try {
-      const response = await api.get(`/api/interviewer-schedules/interviewer/${interviewerId}`);
+      const response = await api.get(`/v1/interviewer-schedules/interviewer/${interviewerId}`);
       console.log(`✅ Horarios de disponibilidad obtenidos para entrevistador ${interviewerId}:`, response.data);
       return response.data;
     } catch (error) {
@@ -415,7 +415,7 @@ class ScheduleService {
    */
   async getInterviewerAvailabilityByYear(interviewerId: number, year: number): Promise<any[]> {
     try {
-      const response = await api.get(`/api/interviewer-schedules/interviewer/${interviewerId}/year/${year}`);
+      const response = await api.get(`/v1/interviewer-schedules/interviewer/${interviewerId}/year/${year}`);
       return response.data;
     } catch (error) {
       console.error('Error obteniendo horarios por año:', error);
@@ -437,7 +437,7 @@ class ScheduleService {
     notes?: string;
   }): Promise<any> {
     try {
-      const response = await api.post('/api/interviewer-schedules', schedule);
+      const response = await api.post('/v1/interviewer-schedules', schedule);
       console.log('✅ Horario de disponibilidad creado:', response.data);
       return response.data;
     } catch (error) {
@@ -458,7 +458,7 @@ class ScheduleService {
     notes?: string;
   }): Promise<any> {
     try {
-      const response = await api.put(`/api/interviewer-schedules/${scheduleId}`, updates);
+      const response = await api.put(`/v1/interviewer-schedules/${scheduleId}`, updates);
       console.log(`✅ Horario ${scheduleId} actualizado:`, response.data);
       return response.data;
     } catch (error) {
@@ -472,7 +472,7 @@ class ScheduleService {
    */
   async deleteAvailabilitySchedule(scheduleId: number): Promise<void> {
     try {
-      await api.delete(`/api/interviewer-schedules/${scheduleId}`);
+      await api.delete(`/v1/interviewer-schedules/${scheduleId}`);
       console.log(`✅ Horario ${scheduleId} eliminado`);
     } catch (error) {
       console.error('Error eliminando horario:', error);

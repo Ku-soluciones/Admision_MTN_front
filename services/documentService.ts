@@ -80,7 +80,7 @@ class DocumentService {
             formData.append('applicationId', String(applicationId));
             formData.append('documentType', request.documentType);
 
-            const response = await api.post(`/api/documents`, formData, {
+            const response = await api.post(`/v1/documents`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -129,7 +129,7 @@ class DocumentService {
             const formData = new FormData();
             formData.append('file', newFile);
 
-            const response = await api.put(`/api/documents/${documentId}`, formData, {
+            const response = await api.put(`/v1/documents/${documentId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -160,7 +160,7 @@ class DocumentService {
         try {
             console.log('📋 Obteniendo documentos para aplicación:', applicationId);
             
-            const response = await api.get(`/api/documents/application/${applicationId}`);
+            const response = await api.get(`/v1/documents/application/${applicationId}`);
             return response.data;
             
         } catch (error: any) {
@@ -173,7 +173,7 @@ class DocumentService {
         try {
             console.log('📋 Obteniendo mis documentos');
             
-            const response = await api.get('/api/documents/my-documents');
+            const response = await api.get('/v1/documents/my-documents');
             return response.data;
             
         } catch (error: any) {
@@ -186,7 +186,7 @@ class DocumentService {
         try {
             console.log('👁️ Visualizando documento:', documentId);
             
-            const response = await api.get(`/api/documents/view/${documentId}`, {
+            const response = await api.get(`/v1/documents/view/${documentId}`, {
                 responseType: 'blob'
             });
             
@@ -202,7 +202,7 @@ class DocumentService {
         try {
             console.log('💾 Descargando documento:', documentId);
             
-            const response = await api.get(`/api/documents/download/${documentId}`, {
+            const response = await api.get(`/v1/documents/download/${documentId}`, {
                 responseType: 'blob'
             });
             
@@ -226,7 +226,7 @@ class DocumentService {
         try {
             console.log('🗑️ Eliminando documento:', documentId);
 
-            await api.delete(`/api/documents/${documentId}`);
+            await api.delete(`/v1/documents/${documentId}`);
 
             console.log('✅ Documento eliminado exitosamente');
 
@@ -248,7 +248,7 @@ class DocumentService {
                 rejectionReason
             });
 
-            const response = await api.put(`/api/documents/${documentId}/approval`, {
+            const response = await api.put(`/v1/documents/${documentId}/approval`, {
                 approvalStatus,
                 rejectionReason
             });
@@ -317,7 +317,7 @@ class DocumentService {
 
     // Ver documento público (para desarrollo)
     getDocumentViewUrlPublic(documentId: number): string {
-        return `${api.defaults.baseURL}/api/documents/public/view/${documentId}`;
+        return `${api.defaults.baseURL}/v1/documents/public/view/${documentId}`;
     }
 
     // Obtener tipos de documentos disponibles

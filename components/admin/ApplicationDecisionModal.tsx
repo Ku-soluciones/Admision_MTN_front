@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../ui/Modal';
 import axios from 'axios';
+import { getApiBaseUrl } from '../../config/api.config';
 
 interface ApplicationDecisionModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
     try {
       const token = localStorage.getItem('auth_token');
       await axios.post(
-        `http://localhost:8080/api/applications/${application.id}/final-decision`,
+        `/v1/applications/${application.id}/final-decision`,
         {
           decision,
           note

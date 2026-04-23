@@ -46,7 +46,7 @@ export interface CreateTemplateRequest {
 }
 
 export class EmailTemplateService {
-  private baseUrl = '/api/email-templates';
+  private baseUrl = '/v1/email-templates';
 
   async getAllTemplates(): Promise<EmailTemplateResponse> {
     try {

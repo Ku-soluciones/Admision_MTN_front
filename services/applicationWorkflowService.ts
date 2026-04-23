@@ -88,7 +88,7 @@ export interface ApplicationDocumentMetadata {
 }
 
 class ApplicationWorkflowService {
-  private readonly basePath = '/api/applications';
+  private readonly basePath = '/v1/applications';
 
   /**
    * Create application draft
@@ -313,7 +313,7 @@ class ApplicationWorkflowService {
           description: string;
         }>;
       }
-    }>(`/api/users/${userId}/dashboard`);
+    }>(`/v1/users/${userId}/dashboard`);
     return response.data;
   }
 

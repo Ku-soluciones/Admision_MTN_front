@@ -38,7 +38,7 @@ class ProfessorAuthService {
 
             // Send credentials directly over HTTPS (no RSA encryption)
             console.log('[Professor Auth] Sending credentials over HTTPS');
-            const response = await api.post('/api/auth/login', request);
+            const response = await api.post('/v1/auth/login', request);
             const data = response.data;
 
             console.log('✅ Login exitoso para profesor:', data);
@@ -85,7 +85,7 @@ class ProfessorAuthService {
                 headers: { Authorization: `Bearer ${token}` }
             };
 
-            const response = await api.get('/api/users/me', config);
+            const response = await api.get('/v1/users/me', config);
             // El backend retorna { success: true, user: {...} }
             return response.data.user || response.data;
 

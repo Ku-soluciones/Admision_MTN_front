@@ -63,7 +63,7 @@ class ProfessorEvaluationService {
     async getMyEvaluations(): Promise<ProfessorEvaluation[]> {
         try {
 
-            const response = await api.get('/api/evaluations/my-evaluations');
+            const response = await api.get('/v1/evaluations/my-evaluations');
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -92,7 +92,7 @@ class ProfessorEvaluationService {
     async getMyPendingEvaluations(): Promise<ProfessorEvaluation[]> {
         try {
 
-            const response = await api.get('/api/evaluations/my-pending');
+            const response = await api.get('/v1/evaluations/my-pending');
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -151,7 +151,7 @@ class ProfessorEvaluationService {
     async updateEvaluation(evaluationId: number, evaluationData: Partial<ProfessorEvaluation>): Promise<ProfessorEvaluation> {
         try {
 
-            const response = await api.put(`/api/evaluations/${evaluationId}`, evaluationData);
+            const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
             // Handle response wrapper: {success, data}
             const updatedEvaluation = response.data?.data || response.data;
 
@@ -177,7 +177,7 @@ class ProfessorEvaluationService {
     async getEvaluationById(evaluationId: number): Promise<ProfessorEvaluation> {
         try {
 
-            const response = await api.get(`/api/evaluations/${evaluationId}`);
+            const response = await api.get(`/v1/evaluations/${evaluationId}`);
             // Handle response wrapper: {success, data}
             const evaluation = response.data?.data || response.data;
 

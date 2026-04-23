@@ -19,12 +19,12 @@ import type {
 } from './dashboard.types';
 
 class DashboardClient {
-  private readonly basePath = '/api/dashboard';
-  private readonly analyticsPath = '/api/analytics';
+  private readonly basePath = '/v1/dashboard';
+  private readonly analyticsPath = '/v1/analytics';
 
   /**
    * Get general dashboard statistics
-   * Endpoint: GET /api/dashboard/stats
+   * Endpoint: GET /v1/dashboard/stats
    * Cache: 5 minutes TTL
    */
   async getGeneralStats(): Promise<DashboardStats> {
@@ -34,7 +34,7 @@ class DashboardClient {
 
   /**
    * Get admin-specific dashboard statistics
-   * Endpoint: GET /api/dashboard/admin/stats
+   * Endpoint: GET /v1/dashboard/admin/stats
    * Cache: 3 minutes TTL
    */
   async getAdminStats(): Promise<AdminStats> {
@@ -44,7 +44,7 @@ class DashboardClient {
 
   /**
    * Get detailed admin statistics with filters
-   * Endpoint: GET /api/dashboard/admin/detailed-stats
+   * Endpoint: GET /v1/dashboard/admin/detailed-stats
    * Supports: academicYear filter
    */
   async getDetailedAdminStats(filters?: DashboardFilters): Promise<DetailedAdminStats> {
@@ -106,7 +106,7 @@ class DashboardClient {
 
   /**
    * Get consolidated analytics metrics
-   * Endpoint: GET /api/analytics/dashboard-metrics
+   * Endpoint: GET /v1/analytics/dashboard-metrics
    * Cache: 5 minutes TTL
    */
   async getDashboardMetrics(): Promise<AnalyticsMetrics> {
@@ -133,7 +133,7 @@ class DashboardClient {
 
   /**
    * Get status distribution
-   * Endpoint: GET /api/analytics/status-distribution
+   * Endpoint: GET /v1/analytics/status-distribution
    * Cache: 10 minutes TTL
    */
   async getStatusDistribution(): Promise<StatusDistribution[]> {
@@ -155,7 +155,7 @@ class DashboardClient {
 
   /**
    * Get temporal trends (last 12 months)
-   * Endpoint: GET /api/analytics/temporal-trends
+   * Endpoint: GET /v1/analytics/temporal-trends
    * Cache: 15 minutes TTL
    */
   async getTemporalTrends(): Promise<TemporalTrend[]> {
@@ -190,7 +190,7 @@ class DashboardClient {
 
   /**
    * Get grade distribution
-   * Endpoint: GET /api/analytics/grade-distribution
+   * Endpoint: GET /v1/analytics/grade-distribution
    */
   async getGradeDistribution(): Promise<GradeDistribution[]> {
     const response = await httpClient.get<{ success: boolean; data: GradeDistribution[] }>(
@@ -201,7 +201,7 @@ class DashboardClient {
 
   /**
    * Get system insights and alerts
-   * Endpoint: GET /api/analytics/insights
+   * Endpoint: GET /v1/analytics/insights
    */
   async getInsights(): Promise<Alert[]> {
     const response = await httpClient.get<{
@@ -237,7 +237,7 @@ class DashboardClient {
 
   /**
    * Get applicant metrics (detailed metrics for all applicants)
-   * Endpoint: GET /api/dashboard/applicant-metrics
+   * Endpoint: GET /v1/dashboard/applicant-metrics
    * Cache: 5 minutes TTL
    */
   async getApplicantMetrics(filters?: ApplicantMetricsFilters): Promise<ApplicantMetricsResponse> {
@@ -278,7 +278,7 @@ class DashboardClient {
 
   /**
    * Clear dashboard cache
-   * Endpoint: POST /api/dashboard/cache/clear
+   * Endpoint: POST /v1/dashboard/cache/clear
    */
   async clearCache(pattern?: string): Promise<{ message: string }> {
     const body = pattern ? { pattern } : {};
@@ -291,7 +291,7 @@ class DashboardClient {
 
   /**
    * Get cache statistics
-   * Endpoint: GET /api/dashboard/cache/stats
+   * Endpoint: GET /v1/dashboard/cache/stats
    */
   async getCacheStats(): Promise<{
     hits: number;
@@ -305,7 +305,7 @@ class DashboardClient {
 
   /**
    * Get evaluator analysis (for Analytics section)
-   * Endpoint: GET /api/analytics/evaluator-analysis
+   * Endpoint: GET /v1/analytics/evaluator-analysis
    */
   async getEvaluatorAnalysis(): Promise<Array<{
     name: string;
@@ -337,7 +337,7 @@ class DashboardClient {
 
   /**
    * Get performance metrics (for Analytics section)
-   * Endpoint: GET /api/analytics/performance-metrics
+   * Endpoint: GET /v1/analytics/performance-metrics
    */
   async getPerformanceMetrics(): Promise<{
     avgProcessingTime: string;

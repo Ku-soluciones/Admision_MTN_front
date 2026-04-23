@@ -71,7 +71,7 @@ class DashboardService {
     try {
       const params = academicYear ? { academicYear } : {};
       const response = await api.get<DetailedDashboardStats>(
-        '/api/dashboard/admin/detailed-stats',
+        '/v1/dashboard/admin/detailed-stats',
         { params }
       );
       return response.data;
@@ -106,7 +106,7 @@ class DashboardService {
   async getApplicantSummary(applicantId: number): Promise<ApplicantSummary> {
     try {
       const response = await api.get<{ success: boolean; data: ApplicantSummary }>(
-        `/api/dashboard/applicants/${applicantId}/summary`
+        `/v1/dashboard/applicants/${applicantId}/summary`
       );
       return response.data.data;
     } catch (error: any) {

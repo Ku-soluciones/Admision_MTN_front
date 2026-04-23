@@ -18,7 +18,7 @@ export const SECURITY_CONFIG = {
 
 // OIDC Configuration for Keycloak integration
 export const OIDC_CONFIG = {
-  ISSUER: getEnvVar('VITE_OIDC_ISSUER', 'http://localhost:8080/auth/realms/mtn-admision'),
+  ISSUER: getEnvVar('VITE_OIDC_ISSUER', '/auth/realms/mtn-admision'),
   CLIENT_ID: getEnvVar('VITE_OIDC_CLIENT_ID', 'web-guardianes'),
   CLIENT_SECRET: getEnvVar('VITE_OIDC_CLIENT_SECRET', ''),
   REDIRECT_URI: getEnvVar('VITE_OIDC_REDIRECT_URI', 'http://localhost:5173/callback'),

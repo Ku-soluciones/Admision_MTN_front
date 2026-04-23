@@ -13,12 +13,12 @@ import type {
 } from './search.types';
 
 class SearchClient {
-  private readonly basePath = '/api/applications';
+  private readonly basePath = '/v1/applications';
   private readonly storageKey = 'mtn_saved_searches';
 
   /**
    * Advanced search with all filters
-   * Endpoint: GET /api/applications/search
+   * Endpoint: GET /v1/applications/search
    * Supports 20+ filters, pagination, and sorting
    */
   async advancedSearch(params: AdvancedSearchParams): Promise<SearchResponse> {

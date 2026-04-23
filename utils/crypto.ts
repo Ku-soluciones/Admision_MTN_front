@@ -201,7 +201,7 @@ export function isEncryptionSupported(): boolean {
  */
 export async function getPublicKey(baseURL: string): Promise<PublicKeyInfo> {
   try {
-    const response = await fetch(`${baseURL}/api/auth/public-key`);
+    const response = await fetch(`${baseURL}/v1/auth/public-key`);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);

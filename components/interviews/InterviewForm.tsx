@@ -119,7 +119,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         const currentYear = new Date().getFullYear();
         console.log(`🔍 Cargando entrevistadores con horarios configurados para ${currentYear}...`);
 
-        const data = await httpClient.get(`/api/interviewer-schedules/interviewers-with-schedules/${currentYear}`);
+        const data = await httpClient.get(`/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`);
         console.log('✅ Datos recibidos del servidor:', data);
 
         // httpClient.get ya retorna response.data directamente
@@ -446,7 +446,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     try {
       setConflictWarning(null);
 
-      const data = await httpClient.get(`/api/interviewer-schedules/available?date=${date}&time=${time}`);
+      const data = await httpClient.get(`/v1/interviewer-schedules/available?date=${date}&time=${time}`);
 
       // httpClient.get ya retorna response.data directamente
       const { count, interviewers } = data;
@@ -599,7 +599,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       });
 
       const data = await httpClient.get(
-        `/api/interviewer-schedules/available?date=${formData.scheduledDate}&time=${formData.scheduledTime}`
+        `/v1/interviewer-schedules/available?date=${formData.scheduledDate}&time=${formData.scheduledTime}`
       );
 
       // httpClient.get ya retorna response.data directamente

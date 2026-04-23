@@ -106,7 +106,7 @@ export interface EvaluationTemplate {
 }
 
 class EvaluationWorkflowService {
-  private readonly basePath = '/api/evaluations';
+  private readonly basePath = '/v1/evaluations';
 
   /**
    * Get evaluations assigned to current evaluator
@@ -240,7 +240,7 @@ class EvaluationWorkflowService {
    */
   async getEvaluatorWorkload(evaluatorId?: number): Promise<EvaluatorWorkload> {
     const response = await httpClient.get<{ data: EvaluatorWorkload }>(
-      `/api/users/${evaluatorId || 'me'}/workload`
+      `/v1/users/${evaluatorId || 'me'}/workload`
     );
     return response.data;
   }
@@ -323,7 +323,7 @@ class EvaluationWorkflowService {
         keyFindings: string[];
       }>
     }>(
-      `/api/students/rut/${studentRut}/evaluation-history`,
+      `/v1/students/rut/${studentRut}/evaluation-history`,
       { params: options }
     );
     return response.data;

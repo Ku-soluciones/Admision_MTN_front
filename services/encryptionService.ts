@@ -48,7 +48,7 @@ class EncryptionService {
         }
 
         try {
-            const response = await api.get<any>('/api/auth/public-key');
+            const response = await api.get<any>('/v1/auth/public-key');
 
             // Check if encryption is available
             if (!response.data || response.data.encryptionAvailable === false) {

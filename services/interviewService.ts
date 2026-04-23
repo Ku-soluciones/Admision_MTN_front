@@ -66,7 +66,7 @@ export interface PaginatedInterviewResponse {
 }
 
 class InterviewService {
-  private baseUrl = '/api/interviews';
+  private baseUrl = '/v1/interviews';
 
   // Convertir response del backend a formato frontend
   private mapInterviewResponse(response: InterviewResponse): Interview {
@@ -400,7 +400,7 @@ class InterviewService {
     // Backend DELETE endpoint does NOT require CSRF validation
     const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
 
-    console.log(`🗑️ [deleteInterview] Using clean axios instance (no CSRF) for DELETE /api/interviews/${id}`);
+    console.log(`🗑️ [deleteInterview] Using clean axios instance (no CSRF) for DELETE /v1/interviews/${id}`);
 
     await cleanAxios.delete(`${this.baseUrl}/${id}`, {
       headers: {
@@ -538,7 +538,7 @@ class InterviewService {
     try {
       console.log('🔄 Getting interviews for application:', applicationId);
 
-      // Use path parameter (backend expects /api/interviews/application/:applicationId)
+      // Use path parameter (backend expects /v1/interviews/application/:applicationId)
       const response = await api.get<any>(`${this.baseUrl}/application/${applicationId}`);
 
       console.log(`📋 Direct response for application ${applicationId}:`, response.data);
@@ -1025,7 +1025,7 @@ class InterviewService {
   }> {
     try {
       console.log(`📧 Enviando resumen de entrevistas para aplicación ${applicationId}`);
-      const response = await api.post(`/api/interviews/application/${applicationId}/send-summary`);
+      const response = await api.post(`/v1/interviews/application/${applicationId}/send-summary`);
       console.log('✅ Resumen de entrevistas enviado:', response.data);
       return response.data;
     } catch (error: any) {

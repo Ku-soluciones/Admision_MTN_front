@@ -31,7 +31,7 @@ class UserService {
       if (filters.size !== undefined) params.append('size', filters.size.toString());
       if (filters.sort) params.append('sort', filters.sort);
 
-      const response = await api.get(`/api/users?${params.toString()}`);
+      const response = await api.get(`/v1/users?${params.toString()}`);
       
       console.log('✅ Respuesta cruda del microservicio:', response.data);
       
@@ -54,7 +54,7 @@ class UserService {
     try {
       console.log('👤 Obteniendo usuario por ID:', id);
 
-      const response = await api.get(`/api/users/${id}`);
+      const response = await api.get(`/v1/users/${id}`);
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -78,7 +78,7 @@ class UserService {
     try {
       console.log('➕ Creando usuario:', request.email);
 
-      const response = await api.post('/api/users', request);
+      const response = await api.post('/v1/users', request);
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -102,7 +102,7 @@ class UserService {
     try {
       console.log('✏️ Actualizando usuario:', id);
 
-      const response = await api.put(`/api/users/${id}`, request);
+      const response = await api.put(`/v1/users/${id}`, request);
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -126,7 +126,7 @@ class UserService {
     try {
       console.log('🔒 Desactivando usuario:', id);
 
-      await api.put(`/api/users/${id}/deactivate`);
+      await api.put(`/v1/users/${id}/deactivate`);
       
       console.log('✅ Usuario desactivado exitosamente');
 
@@ -143,7 +143,7 @@ class UserService {
     try {
       console.log('🗑️ Eliminando usuario permanentemente:', id);
 
-      await api.delete(`/api/users/${id}`);
+      await api.delete(`/v1/users/${id}`);
       
       console.log('✅ Usuario eliminado permanentemente');
 
@@ -160,7 +160,7 @@ class UserService {
     try {
       console.log('🔓 Activando usuario:', id);
 
-      const response = await api.put(`/api/users/${id}/activate`);
+      const response = await api.put(`/v1/users/${id}/activate`);
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -184,7 +184,7 @@ class UserService {
     try {
       console.log('🔑 Restableciendo contraseña:', id);
 
-      await api.put(`/api/users/${id}/reset-password`);
+      await api.put(`/v1/users/${id}/reset-password`);
       
       console.log('✅ Contraseña restablecida exitosamente');
 
@@ -201,7 +201,7 @@ class UserService {
     try {
       console.log('📋 Obteniendo roles disponibles');
 
-      const response = await api.get('/api/users/roles');
+      const response = await api.get('/v1/users/roles');
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -227,7 +227,7 @@ class UserService {
     try {
       console.log('📊 Obteniendo estadísticas de usuarios');
 
-      const response = await api.get('/api/users/stats');
+      const response = await api.get('/v1/users/stats');
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
@@ -281,7 +281,7 @@ class UserService {
    */
   async getSchoolStaffUsers(filters: UserFilters = {}): Promise<PagedResponse<User>> {
     try {
-      console.log('👨‍🏫 Obteniendo usuarios del colegio desde microservicio (usando /api/users/staff)');
+      console.log('👨‍🏫 Obteniendo usuarios del colegio desde microservicio (usando /v1/users/staff)');
 
       const params = new URLSearchParams();
 
@@ -292,12 +292,12 @@ class UserService {
       if (filters.size !== undefined) params.append('size', filters.size.toString());
       if (filters.sort) params.append('sort', filters.sort);
 
-      // FIXED: Use /api/users/staff endpoint which correctly excludes APODERADOS and supports pagination
-      const response = await api.get(`/api/users/staff?${params.toString()}`);
+      // FIXED: Use /v1/users/staff endpoint which correctly excludes APODERADOS and supports pagination
+      const response = await api.get(`/v1/users/staff?${params.toString()}`);
 
-      console.log('✅ Respuesta del endpoint /api/users/staff:', response.data);
+      console.log('✅ Respuesta del endpoint /v1/users/staff:', response.data);
 
-      // Backend /api/users/staff already returns paginated format, no adapter needed
+      // Backend /v1/users/staff already returns paginated format, no adapter needed
       return response.data;
 
     } catch (error: any) {
@@ -412,7 +412,7 @@ class UserService {
     try {
       console.log('👨‍🏫 Obteniendo usuarios del colegio desde endpoint público');
 
-      const response = await api.get('/api/users/public/school-staff');
+      const response = await api.get('/v1/users/public/school-staff');
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {

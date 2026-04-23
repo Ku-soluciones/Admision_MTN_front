@@ -729,7 +729,7 @@ const EnhancedApplicationsDataTable: React.FC<EnhancedApplicationsDataTableProps
             console.log('📊 EnhancedApplications: Cargando postulaciones...');
             
             // Usar directamente el endpoint público que sabemos que funciona
-            const response = await api.get('/api/applications/public/all');
+            const response = await api.get('/v1/applications/public/all');
             const backendApplications = response.data || [];
             console.log('📊 Applications del backend:', backendApplications.length);
             

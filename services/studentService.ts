@@ -3,16 +3,16 @@
  * Servicio para gestionar estudiantes en el sistema de admisión
  *
  * Endpoints del backend (application-service):
- * - GET /api/students - Listar todos los estudiantes
- * - GET /api/students/:id - Obtener estudiante por ID
- * - GET /api/students/rut/:rut - Obtener estudiante por RUT
- * - GET /api/students/grade/:grade - Obtener estudiantes por grado
- * - GET /api/students/search/:term - Buscar estudiantes
- * - GET /api/students/statistics/by-grade - Obtener estadísticas por grado
- * - POST /api/students - Crear nuevo estudiante (requiere CSRF)
- * - POST /api/students/validate-rut - Validar formato de RUT (público)
- * - PUT /api/students/:id - Actualizar estudiante (requiere CSRF)
- * - DELETE /api/students/:id - Eliminar estudiante (requiere CSRF)
+ * - GET /v1/students - Listar todos los estudiantes
+ * - GET /v1/students/:id - Obtener estudiante por ID
+ * - GET /v1/students/rut/:rut - Obtener estudiante por RUT
+ * - GET /v1/students/grade/:grade - Obtener estudiantes por grado
+ * - GET /v1/students/search/:term - Buscar estudiantes
+ * - GET /v1/students/statistics/by-grade - Obtener estadísticas por grado
+ * - POST /v1/students - Crear nuevo estudiante (requiere CSRF)
+ * - POST /v1/students/validate-rut - Validar formato de RUT (público)
+ * - PUT /v1/students/:id - Actualizar estudiante (requiere CSRF)
+ * - DELETE /v1/students/:id - Eliminar estudiante (requiere CSRF)
  */
 
 import api from './api';
@@ -28,7 +28,7 @@ import {
 } from '../types/student';
 
 class StudentService {
-  private baseUrl = '/api/students';
+  private baseUrl = '/v1/students';
 
   /**
    * Obtener todos los estudiantes con filtros opcionales

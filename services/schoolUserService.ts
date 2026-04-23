@@ -2,7 +2,7 @@ import { CreateUserRequest, User, UserRole } from '../types/user';
 import { Professor, KinderTeacher, Psychologist, SupportStaff } from '../types';
 import api from './api';
 
-const SCHOOL_USERS_ENDPOINT = '/api/school-users';
+const SCHOOL_USERS_ENDPOINT = '/v1/school-users';
 
 export interface SchoolUserStats {
   totalUsers: number;
@@ -217,7 +217,7 @@ class SchoolUserService {
 
   async updateSubjectsMapping(): Promise<void> {
     try {
-      await api.post('/api/school-users/update-subjects-mapping');
+      await api.post('/v1/school-users/update-subjects-mapping');
     } catch (error) {
       throw error;
     }

@@ -14,7 +14,7 @@ import type {
 } from './applications.types';
 
 export class ApplicationsClient {
-  private readonly basePath = '/api/applications';
+  private readonly basePath = '/v1/applications';
 
   /**
    * Get all applications with optional filtering and pagination

@@ -31,7 +31,7 @@ export interface PasswordResponse {
  */
 export const changePassword = async (data: ChangePasswordRequest): Promise<PasswordResponse> => {
   try {
-    const response = await apiClient.put<PasswordResponse>('/api/auth/change-password', data);
+    const response = await apiClient.put<PasswordResponse>('/v1/auth/change-password', data);
     return response.data;
   } catch (error: any) {
     if (error.response?.data) {
@@ -55,7 +55,7 @@ export const resetUserPassword = async (
 ): Promise<PasswordResponse> => {
   try {
     const response = await apiClient.put<PasswordResponse>(
-      `/api/users/${userId}/reset-password`,
+      `/v1/users/${userId}/reset-password`,
       data
     );
     return response.data;

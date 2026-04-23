@@ -5,7 +5,7 @@ import { User, CreateUserRequest, UpdateUserRequest, UserFilters, PagedResponse,
  * Service for managing guardians (only APODERADO role)
  */
 class GuardianService {
-  private readonly BASE_URL = '/api/users/guardians';
+  private readonly BASE_URL = '/v1/users/guardians';
 
   /**
    * Get paginated list of guardians
@@ -26,7 +26,7 @@ class GuardianService {
    * Get guardian user by ID
    */
   async getGuardianUserById(id: number): Promise<User> {
-    const response = await api.get<{ success: boolean; data: User }>(`/api/users/${id}`);
+    const response = await api.get<{ success: boolean; data: User }>(`/v1/users/${id}`);
     return response.data.data;
   }
 
@@ -39,7 +39,7 @@ class GuardianService {
       throw new Error('Use staffService to create staff members');
     }
 
-    const response = await api.post<{ success: boolean; data: User }>('/api/users', userData);
+    const response = await api.post<{ success: boolean; data: User }>('/v1/users', userData);
     return response.data.data;
   }
 
@@ -47,7 +47,7 @@ class GuardianService {
    * Update guardian
    */
   async updateGuardianUser(id: number, userData: UpdateUserRequest): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}`, userData);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}`, userData);
     return response.data.data;
   }
 
@@ -55,14 +55,14 @@ class GuardianService {
    * Delete guardian
    */
   async deleteGuardianUser(id: number): Promise<void> {
-    await api.delete(`/api/users/${id}`);
+    await api.delete(`/v1/users/${id}`);
   }
 
   /**
    * Activate guardian
    */
   async activateGuardianUser(id: number): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}/activate`);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}/activate`);
     return response.data.data;
   }
 
@@ -70,7 +70,7 @@ class GuardianService {
    * Deactivate guardian
    */
   async deactivateGuardianUser(id: number): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}/deactivate`);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}/deactivate`);
     return response.data.data;
   }
 
@@ -78,14 +78,14 @@ class GuardianService {
    * Reset guardian password
    */
   async resetGuardianPassword(id: number): Promise<void> {
-    await api.put(`/api/users/${id}/reset-password`);
+    await api.put(`/v1/users/${id}/reset-password`);
   }
 
   /**
    * Get guardian statistics
    */
   async getGuardianStats(): Promise<UserStats> {
-    const response = await api.get<{ success: boolean; data: UserStats }>('/api/users/stats');
+    const response = await api.get<{ success: boolean; data: UserStats }>('/v1/users/stats');
     return response.data.data;
   }
 }

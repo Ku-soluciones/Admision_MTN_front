@@ -282,7 +282,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
 
         // Obtener detalles de los datos asociados
         try {
-          const response = await fetch(`http://localhost:8080/api/users/${user.id}/associated-data`, {
+          const response = await fetch(`${getApiBaseUrl()}/v1/users/${user.id}/associated-data`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
             }

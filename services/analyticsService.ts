@@ -80,7 +80,7 @@ class AnalyticsService {
   async getDashboardMetrics(): Promise<DashboardMetrics> {
     try {
       console.log('📊 Obteniendo métricas del dashboard...');
-      const response = await api.get('/api/analytics/dashboard-metrics');
+      const response = await api.get('/v1/analytics/dashboard-metrics');
       console.log('✅ Métricas del dashboard obtenidas:', response.data);
       return response.data;
     } catch (error: any) {
@@ -95,7 +95,7 @@ class AnalyticsService {
   async getStatusDistribution(): Promise<StatusDistribution> {
     try {
       console.log('📈 Obteniendo distribución por estado...');
-      const response = await api.get('/api/analytics/status-distribution');
+      const response = await api.get('/v1/analytics/status-distribution');
       console.log('✅ Distribución por estado obtenida:', response.data);
       return response.data;
     } catch (error: any) {
@@ -110,7 +110,7 @@ class AnalyticsService {
   async getGradeDistribution(): Promise<GradeDistribution> {
     try {
       console.log('📚 Obteniendo distribución por grado...');
-      const response = await api.get('/api/analytics/grade-distribution');
+      const response = await api.get('/v1/analytics/grade-distribution');
       console.log('✅ Distribución por grado obtenida:', response.data);
       return response.data;
     } catch (error: any) {
@@ -125,7 +125,7 @@ class AnalyticsService {
   async getEvaluatorAnalysis(): Promise<EvaluatorAnalysis> {
     try {
       console.log('👥 Obteniendo análisis de evaluadores...');
-      const response = await api.get('/api/analytics/evaluator-analysis');
+      const response = await api.get('/v1/analytics/evaluator-analysis');
       console.log('✅ Análisis de evaluadores obtenido:', response.data);
       return response.data;
     } catch (error: any) {
@@ -140,7 +140,7 @@ class AnalyticsService {
   async getTemporalTrends(): Promise<TemporalTrends> {
     try {
       console.log('📅 Obteniendo tendencias temporales...');
-      const response = await api.get('/api/analytics/temporal-trends');
+      const response = await api.get('/v1/analytics/temporal-trends');
       console.log('✅ Tendencias temporales obtenidas:', response.data);
       return response.data;
     } catch (error: any) {
@@ -155,7 +155,7 @@ class AnalyticsService {
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     try {
       console.log('⚡ Obteniendo métricas de rendimiento...');
-      const response = await api.get('/api/analytics/performance-metrics');
+      const response = await api.get('/v1/analytics/performance-metrics');
       console.log('✅ Métricas de rendimiento obtenidas:', response.data);
       return response.data;
     } catch (error: any) {
@@ -170,7 +170,7 @@ class AnalyticsService {
   async getInsights(): Promise<Insights> {
     try {
       console.log('💡 Obteniendo insights y recomendaciones...');
-      const response = await api.get('/api/analytics/insights');
+      const response = await api.get('/v1/analytics/insights');
       console.log('✅ Insights obtenidos:', response.data);
       return response.data;
     } catch (error: any) {
@@ -185,7 +185,7 @@ class AnalyticsService {
   async getCompleteAnalytics(): Promise<CompleteAnalytics> {
     try {
       console.log('🎯 Obteniendo análisis completo...');
-      const response = await api.get('/api/analytics/complete-analytics');
+      const response = await api.get('/v1/analytics/complete-analytics');
       console.log('✅ Análisis completo obtenido:', response.data);
       return response.data;
     } catch (error: any) {
@@ -245,7 +245,7 @@ class AnalyticsService {
   async testConnection(): Promise<boolean> {
     try {
       console.log('🔍 Verificando conectividad con analytics API...');
-      const response = await api.get('/api/analytics/dashboard-metrics');
+      const response = await api.get('/v1/analytics/dashboard-metrics');
       console.log('✅ Conectividad verificada');
       return true;
     } catch (error: any) {

@@ -152,7 +152,7 @@ describe('Interview API Integration Tests', () => {
 
   /*
   it('should fetch interviews from backend with correct structure', async () => {
-    const response = await fetch('http://localhost:8080/api/interviews?applicationId=1');
+    const response = await fetch('http://localhost:8080/v1/interviews?applicationId=1');
     const data = await response.json();
 
     expect(data.success).toBe(true);

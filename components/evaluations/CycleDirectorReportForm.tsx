@@ -184,7 +184,7 @@ const CycleDirectorReportForm: React.FC = () => {
             console.log('🔄 Cargando información completa del estudiante para application:', applicationId);
 
             // Obtener la aplicación completa que incluye todos los datos del estudiante
-            const response = await api.get(`/api/applications/${applicationId}`);
+            const response = await api.get(`/v1/applications/${applicationId}`);
             const data = response.data;
             const application = data.data || data;
 
@@ -245,7 +245,7 @@ const CycleDirectorReportForm: React.FC = () => {
             console.log('🔄 Cargando evaluaciones académicas para application:', applicationId);
 
             // Obtener todas las evaluaciones de esta aplicación desde el backend
-            const response = await api.get(`/api/evaluations?applicationId=${applicationId}`);
+            const response = await api.get(`/v1/evaluations?applicationId=${applicationId}`);
             const data = response.data;
             const allEvaluations = data.data || data;
 

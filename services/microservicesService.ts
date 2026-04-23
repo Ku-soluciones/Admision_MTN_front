@@ -10,9 +10,9 @@ import { getApiBaseUrl } from '../config/api.config';
 const MICROSERVICES_GATEWAY_URL = getApiBaseUrl(); // Runtime detection: Vercel → Railway, local → localhost:8080
 const GATEWAY_HEALTH_URL = `${MICROSERVICES_GATEWAY_URL}/health`;
 const GATEWAY_STATUS_URL = `${MICROSERVICES_GATEWAY_URL}/gateway/status`;
-const USER_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/api/users`; // A través del API Gateway
-const APPLICATION_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/api/applications`;
-const AUTH_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/api/auth`;
+const USER_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/users`; // A través del API Gateway
+const APPLICATION_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/applications`;
+const AUTH_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/auth`;
 
 export interface MicroserviceStatus {
   service: string;
@@ -158,7 +158,7 @@ export class MicroservicesService {
       version: '1.0.0',
       architecture: 'microservices',
       description: 'User Management Microservice (Node.js)',
-      endpoints: ['/api/users', '/api/auth', '/api/users/health']
+      endpoints: ['/v1/users', '/v1/auth', '/v1/users/health']
     });
 
     services.push({
@@ -166,7 +166,7 @@ export class MicroservicesService {
       version: '1.0.0',
       architecture: 'microservices',
       description: 'Application Management Microservice (Node.js)',
-      endpoints: ['/api/applications', '/api/applications/health']
+      endpoints: ['/v1/applications', '/v1/applications/health']
     });
 
     return services;

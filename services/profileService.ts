@@ -48,7 +48,7 @@ export interface ChangePasswordRequest {
 }
 
 class ProfileService {
-  private readonly basePath = '/api/users';
+  private readonly basePath = '/v1/users';
 
   /**
    * Get current user profile with roles from token

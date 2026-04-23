@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     }
 
                     // Fetch user profile from BFF
-                    const response = await api.get('/api/auth/check');
+                    const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
                         localStorage.setItem('authenticated_user', JSON.stringify(userData));

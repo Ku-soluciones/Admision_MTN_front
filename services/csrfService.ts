@@ -27,7 +27,7 @@ class CsrfService {
 
             // Use axios directly to avoid interceptor loop
             const baseUrl = getApiBaseUrl();
-            const response = await axios.get(`${baseUrl}/api/auth/csrf-token`, {
+            const response = await axios.get(`${baseUrl}/v1/auth/csrf-token`, {
                 withCredentials: true,
                 headers: {
                     'Content-Type': 'application/json'

@@ -95,7 +95,7 @@ const FamilyInterviewPage: React.FC = () => {
 
       console.log('💾 Saving family interview data:', data);
 
-      // Use the correct endpoint: PUT /api/evaluations/:id/family-interview-data
+      // Use the correct endpoint: PUT /v1/evaluations/:id/family-interview-data
       // This endpoint expects { interviewData: {...} } and has INTERVIEWER role permission
       const result = await familyInterviewService.saveInterviewData(
         parseInt(evaluationId),

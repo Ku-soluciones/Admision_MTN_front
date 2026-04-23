@@ -23,8 +23,8 @@ export interface StatisticsResponse {
 }
 
 class InstitutionalEmailService {
-  private baseUrl = '/api/institutional-emails';
-  private adminBaseUrl = '/api/admin/email-management';
+  private baseUrl = '/v1/institutional-emails';
+  private adminBaseUrl = '/v1/admin/email-management';
 
   /**
    * Enviar email de aplicación recibida

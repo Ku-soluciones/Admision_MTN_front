@@ -6,7 +6,7 @@ import { User, CreateUserRequest, UpdateUserRequest, UserFilters, PagedResponse,
  * Handles ADMIN, TEACHER, COORDINATOR, PSYCHOLOGIST, CYCLE_DIRECTOR roles
  */
 class StaffService {
-  private readonly BASE_URL = '/api/users/staff';
+  private readonly BASE_URL = '/v1/users/staff';
 
   /**
    * Get paginated list of staff members
@@ -28,7 +28,7 @@ class StaffService {
    * Get staff user by ID
    */
   async getStaffUserById(id: number): Promise<User> {
-    const response = await api.get<{ success: boolean; data: User }>(`/api/users/${id}`);
+    const response = await api.get<{ success: boolean; data: User }>(`/v1/users/${id}`);
     return response.data.data;
   }
 
@@ -41,7 +41,7 @@ class StaffService {
       throw new Error('Use guardianService to create guardians');
     }
 
-    const response = await api.post<{ success: boolean; data: User }>('/api/users', userData);
+    const response = await api.post<{ success: boolean; data: User }>('/v1/users', userData);
     return response.data.data;
   }
 
@@ -49,7 +49,7 @@ class StaffService {
    * Update staff member
    */
   async updateStaffUser(id: number, userData: UpdateUserRequest): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}`, userData);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}`, userData);
     return response.data.data;
   }
 
@@ -58,7 +58,7 @@ class StaffService {
    */
   async deleteStaffUser(id: number): Promise<void> {
     try {
-      await api.delete(`/api/users/${id}`);
+      await api.delete(`/v1/users/${id}`);
     } catch (error: any) {
       // Preservar el código de estado del error para que el componente pueda detectar 409
       // El httpClient lanza HttpError con la propiedad 'status'
@@ -70,7 +70,7 @@ class StaffService {
    * Activate staff member
    */
   async activateStaffUser(id: number): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}/activate`);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}/activate`);
     return response.data.data;
   }
 
@@ -78,7 +78,7 @@ class StaffService {
    * Deactivate staff member
    */
   async deactivateStaffUser(id: number): Promise<User> {
-    const response = await api.put<{ success: boolean; data: User }>(`/api/users/${id}/deactivate`);
+    const response = await api.put<{ success: boolean; data: User }>(`/v1/users/${id}/deactivate`);
     return response.data.data;
   }
 
@@ -86,14 +86,14 @@ class StaffService {
    * Reset staff member password
    */
   async resetStaffPassword(id: number): Promise<void> {
-    await api.put(`/api/users/${id}/reset-password`);
+    await api.put(`/v1/users/${id}/reset-password`);
   }
 
   /**
    * Get staff statistics
    */
   async getStaffStats(): Promise<UserStats> {
-    const response = await api.get<{ success: boolean; data: UserStats }>('/api/users/stats');
+    const response = await api.get<{ success: boolean; data: UserStats }>('/v1/users/stats');
     return response.data.data;
   }
 
@@ -101,7 +101,7 @@ class StaffService {
    * Get available roles for staff
    */
   async getStaffRoles(): Promise<string[]> {
-    const response = await api.get<{ success: boolean; data: string[] }>('/api/users/roles');
+    const response = await api.get<{ success: boolean; data: string[] }>('/v1/users/roles');
     // Filter out APODERADO role
     return response.data.data.filter(role => role !== 'APODERADO');
   }

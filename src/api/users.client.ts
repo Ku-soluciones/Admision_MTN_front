@@ -14,7 +14,7 @@ import type {
 } from './users.types';
 
 export class UsersClient {
-  private readonly basePath = '/api/users';
+  private readonly basePath = '/v1/users';
 
   /**
    * Get all users with optional filtering and pagination

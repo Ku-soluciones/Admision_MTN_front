@@ -46,7 +46,7 @@ class EvaluationService {
       try {
         console.log('📅 Creando programación genérica:', request);
 
-        const response = await api.post('/api/schedules/generic', request);
+        const response = await api.post('/v1/schedules/generic', request);
         return response.data;
       } catch (error: any) {
         console.error('❌ Error creando programación genérica:', error);
@@ -65,7 +65,7 @@ class EvaluationService {
       try {
         console.log('📅 Creando programación individual:', request);
 
-        const response = await api.post('/api/schedules/individual', request);
+        const response = await api.post('/v1/schedules/individual', request);
         return response.data;
       } catch (error: any) {
         console.error('❌ Error creando programación individual:', error);
@@ -84,7 +84,7 @@ class EvaluationService {
       try {
         console.log('📋 Obteniendo citas para aplicación:', applicationId);
 
-        const response = await api.get(`/api/schedules/family/${applicationId}`);
+        const response = await api.get(`/v1/schedules/family/${applicationId}`);
         return response.data;
       } catch (error: any) {
         console.error('❌ Error obteniendo citas familiares:', error);
@@ -103,7 +103,7 @@ class EvaluationService {
       try {
         console.log('👨‍🏫 Obteniendo calendario del evaluador:', evaluatorId);
 
-        const response = await api.get(`/api/schedules/evaluator/${evaluatorId}`, {
+        const response = await api.get(`/v1/schedules/evaluator/${evaluatorId}`, {
           params: { startDate, endDate }
         });
         return response.data;
@@ -120,7 +120,7 @@ class EvaluationService {
       try {
         console.log('✅ Confirmando cita:', scheduleId);
 
-        const response = await api.put(`/api/schedules/${scheduleId}/confirm`, null, {
+        const response = await api.put(`/v1/schedules/${scheduleId}/confirm`, null, {
           params: { userId }
         });
         return response.data;
@@ -140,7 +140,7 @@ class EvaluationService {
       try {
         console.log('🔄 Reprogramando cita:', scheduleId, request);
 
-        const response = await api.put(`/api/schedules/${scheduleId}/reschedule`, request);
+        const response = await api.put(`/v1/schedules/${scheduleId}/reschedule`, request);
         return response.data;
       } catch (error: any) {
         console.error('❌ Error reprogramando cita:', error);
@@ -158,7 +158,7 @@ class EvaluationService {
       try {
         console.log('⏰ Obteniendo citas pendientes de confirmación');
 
-        const response = await api.get('/api/schedules/pending-confirmations');
+        const response = await api.get('/v1/schedules/pending-confirmations');
         return response.data;
       } catch (error: any) {
         console.error('❌ Error obteniendo citas pendientes:', error);
@@ -173,7 +173,7 @@ class EvaluationService {
       try {
         console.log('✅ Marcando cita como completada:', scheduleId);
 
-        const response = await api.put(`/api/schedules/${scheduleId}/complete`);
+        const response = await api.put(`/v1/schedules/${scheduleId}/complete`);
         return response.data;
       } catch (error: any) {
         console.error('❌ Error marcando cita como completada:', error);
@@ -188,7 +188,7 @@ class EvaluationService {
       try {
         console.log('🎭 Obteniendo citas mock para aplicación:', applicationId);
 
-        const response = await api.get(`/api/schedules/public/mock-schedules/${applicationId}`);
+        const response = await api.get(`/v1/schedules/public/mock-schedules/${applicationId}`);
 
         // Convertir datos mock a formato TypeScript
         return response.data.map((mockSchedule: any) => this.convertMockToSchedule(mockSchedule));
@@ -337,13 +337,13 @@ class EvaluationService {
 
     /**
      * Obtener todas las evaluaciones (para administradores)
-     * GET /api/evaluations
+     * GET /v1/evaluations
      */
     async getAllEvaluations(): Promise<Evaluation[]> {
         try {
             console.log('📊 Obteniendo todas las evaluaciones...');
 
-            const response = await api.get('/api/evaluations');
+            const response = await api.get('/v1/evaluations');
 
             if (response.data.success) {
                 // console.log(`✅ ${response.data.count} evaluaciones obtenidas`);
@@ -363,13 +363,13 @@ class EvaluationService {
 
     /**
      * Obtener una evaluación por ID con detalles completos
-     * GET /api/evaluations/:evaluationId
+     * GET /v1/evaluations/:evaluationId
      */
     async getEvaluationById(evaluationId: number): Promise<Evaluation> {
         try {
             console.log(`📋 Obteniendo evaluación ${evaluationId}...`);
 
-            const response = await api.get(`/api/evaluations/${evaluationId}`);
+            const response = await api.get(`/v1/evaluations/${evaluationId}`);
 
             if (response.data.success) {
                 console.log('✅ Evaluación obtenida');
@@ -389,13 +389,13 @@ class EvaluationService {
 
     /**
      * Obtener evaluaciones por application_id
-     * GET /api/evaluations/application/:applicationId
+     * GET /v1/evaluations/application/:applicationId
      */
     async getEvaluationsByApplicationId(applicationId: number): Promise<Evaluation[]> {
         try {
             console.log(`📋 Obteniendo evaluaciones para application ${applicationId}...`);
 
-            const response = await api.get(`/api/evaluations/application/${applicationId}`);
+            const response = await api.get(`/v1/evaluations/application/${applicationId}`);
 
             // Backend returns { success: true, data: [...] }
             const evaluations = response.data.data || response.data;
@@ -414,7 +414,7 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Obtener estadísticas de evaluaciones
-     * GET /api/evaluations/statistics
+     * GET /v1/evaluations/statistics
      */
     async getEvaluationStatistics(): Promise<{
         total: number;
@@ -425,7 +425,7 @@ class EvaluationService {
         try {
             console.log('📊 Obteniendo estadísticas de evaluaciones...');
 
-            const response = await api.get('/api/evaluations/statistics');
+            const response = await api.get('/v1/evaluations/statistics');
 
             if (response.data.success) {
                 console.log('✅ Estadísticas obtenidas');
@@ -445,13 +445,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Obtener asignaciones activas (PENDING, IN_PROGRESS)
-     * GET /api/evaluations/assignments
+     * GET /v1/evaluations/assignments
      */
     async getActiveAssignments(): Promise<Evaluation[]> {
         try {
             console.log('📋 Obteniendo asignaciones activas...');
 
-            const response = await api.get('/api/evaluations/assignments');
+            const response = await api.get('/v1/evaluations/assignments');
 
             if (response.data.success) {
                 console.log(`✅ ${response.data.count} asignaciones activas`);
@@ -471,7 +471,7 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Exportar evaluaciones a JSON o CSV
-     * GET /api/evaluations/export?status=X&type=Y&format=csv
+     * GET /v1/evaluations/export?status=X&type=Y&format=csv
      */
     async exportEvaluations(filters?: {
         status?: string;
@@ -486,7 +486,7 @@ class EvaluationService {
             if (filters?.type) params.append('type', filters.type);
             if (filters?.format) params.append('format', filters.format);
 
-            const response = await api.get(`/api/evaluations/export?${params.toString()}`, {
+            const response = await api.get(`/v1/evaluations/export?${params.toString()}`, {
                 responseType: filters?.format === 'csv' ? 'blob' : 'json'
             });
 
@@ -504,14 +504,14 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Obtener evaluaciones por evaluador
-     * GET /api/evaluations/evaluator/:evaluatorId
+     * GET /v1/evaluations/evaluator/:evaluatorId
      * (antes: getMyEvaluations - endpoint incorrecto)
      */
     async getEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
             console.log(`👨‍🏫 Obteniendo evaluaciones del evaluador ${evaluatorId}...`);
 
-            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}`);
+            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}`);
 
             if (response.data.success) {
                 // console.log(`✅ ${response.data.count} evaluaciones obtenidas`);
@@ -531,14 +531,14 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Obtener evaluaciones pendientes de un evaluador
-     * GET /api/evaluations/evaluator/:id/pending
+     * GET /v1/evaluations/evaluator/:id/pending
      * (antes: getMyPendingEvaluations - endpoint incorrecto)
      */
     async getPendingEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
             console.log(`⏳ Obteniendo evaluaciones pendientes del evaluador ${evaluatorId}...`);
 
-            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}/pending`);
+            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/pending`);
 
             if (response.data.success) {
                 console.log(`✅ ${response.data.count} evaluaciones pendientes`);
@@ -558,13 +558,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Obtener evaluaciones completadas de un evaluador
-     * GET /api/evaluations/evaluator/:id/completed
+     * GET /v1/evaluations/evaluator/:id/completed
      */
     async getCompletedEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
             console.log(`✅ Obteniendo evaluaciones completadas del evaluador ${evaluatorId}...`);
 
-            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}/completed`);
+            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/completed`);
 
             if (response.data.success) {
                 console.log(`✅ ${response.data.count} evaluaciones completadas`);
@@ -584,13 +584,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Filtrar evaluaciones por tipo
-     * GET /api/evaluations/type/:type
+     * GET /v1/evaluations/type/:type
      */
     async getEvaluationsByType(type: EvaluationType): Promise<Evaluation[]> {
         try {
             console.log(`🔍 Filtrando evaluaciones por tipo: ${type}...`);
 
-            const response = await api.get(`/api/evaluations/type/${type}`);
+            const response = await api.get(`/v1/evaluations/type/${type}`);
 
             if (response.data.success) {
                 console.log(`✅ ${response.data.count} evaluaciones encontradas`);
@@ -610,13 +610,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Filtrar evaluaciones por materia
-     * GET /api/evaluations/subject/:subject
+     * GET /v1/evaluations/subject/:subject
      */
     async getEvaluationsBySubject(subject: 'LANGUAGE' | 'MATHEMATICS' | 'ENGLISH'): Promise<Evaluation[]> {
         try {
             console.log(`🔍 Filtrando evaluaciones por materia: ${subject}...`);
 
-            const response = await api.get(`/api/evaluations/subject/${subject}`);
+            const response = await api.get(`/v1/evaluations/subject/${subject}`);
 
             if (response.data.success) {
                 console.log(`✅ ${response.data.count} evaluaciones encontradas`);
@@ -636,13 +636,13 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Actualizar una evaluación
-     * PUT /api/evaluations/:id
+     * PUT /v1/evaluations/:id
      */
     async updateEvaluation(evaluationId: number, evaluationData: Partial<Evaluation>): Promise<Evaluation> {
         try {
             console.log(`✏️ Actualizando evaluación ${evaluationId}...`);
 
-            const response = await api.put(`/api/evaluations/${evaluationId}`, evaluationData);
+            const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
 
             if (response.data.success) {
                 console.log('✅ Evaluación actualizada');
@@ -662,7 +662,7 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Marcar evaluación como completada
-     * POST /api/evaluations/:id/complete
+     * POST /v1/evaluations/:id/complete
      */
     async completeEvaluation(
         evaluationId: number,
@@ -675,7 +675,7 @@ class EvaluationService {
         try {
             console.log(`✅ Completando evaluación ${evaluationId}...`);
 
-            const response = await api.post(`/api/evaluations/${evaluationId}/complete`, data);
+            const response = await api.post(`/v1/evaluations/${evaluationId}/complete`, data);
 
             if (response.data.success) {
                 console.log('✅ Evaluación completada exitosamente');
@@ -695,7 +695,7 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Asignar evaluación a evaluador
-     * POST /api/evaluations/:id/assign
+     * POST /v1/evaluations/:id/assign
      * (antes: reassignEvaluation con PUT - endpoint incorrecto)
      */
     async assignEvaluation(
@@ -706,7 +706,7 @@ class EvaluationService {
         try {
             console.log(`👨‍🏫 Asignando evaluación ${evaluationId} al evaluador ${evaluatorId}...`);
 
-            const response = await api.post(`/api/evaluations/${evaluationId}/assign`, {
+            const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
                 evaluationDate
             });
@@ -729,13 +729,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Reprogramar evaluación
-     * POST /api/evaluations/:id/reschedule
+     * POST /v1/evaluations/:id/reschedule
      */
     async rescheduleEvaluation(evaluationId: number, evaluationDate: string): Promise<Evaluation> {
         try {
             console.log(`🔄 Reprogramando evaluación ${evaluationId}...`);
 
-            const response = await api.post(`/api/evaluations/${evaluationId}/reschedule`, {
+            const response = await api.post(`/v1/evaluations/${evaluationId}/reschedule`, {
                 evaluationDate
             });
 
@@ -757,13 +757,13 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Cancelar evaluación
-     * POST /api/evaluations/:id/cancel
+     * POST /v1/evaluations/:id/cancel
      */
     async cancelEvaluation(evaluationId: number, reason?: string): Promise<Evaluation> {
         try {
             console.log(`❌ Cancelando evaluación ${evaluationId}...`);
 
-            const response = await api.post(`/api/evaluations/${evaluationId}/cancel`, {
+            const response = await api.post(`/v1/evaluations/${evaluationId}/cancel`, {
                 reason
             });
 
@@ -785,7 +785,7 @@ class EvaluationService {
 
     /**
      * ✅ CORREGIDO: Asignar evaluaciones en lote
-     * POST /api/evaluations/bulk/assign
+     * POST /v1/evaluations/bulk/assign
      * PARÁMETROS CORREGIDOS: evaluationIds (no applicationIds), evaluatorId, evaluationDate
      */
     async assignBulkEvaluations(
@@ -800,7 +800,7 @@ class EvaluationService {
         try {
             console.log(`📦 Asignando ${evaluationIds.length} evaluaciones en lote...`);
 
-            const response = await api.post('/api/evaluations/bulk/assign', {
+            const response = await api.post('/v1/evaluations/bulk/assign', {
                 evaluationIds,
                 evaluatorId,
                 evaluationDate
@@ -824,8 +824,8 @@ class EvaluationService {
 
     /**
      * ✅ NUEVO: Crear y asignar evaluación específica (flujo de 2 pasos)
-     * Paso 1: Crear evaluación con POST /api/evaluations
-     * Paso 2: Asignar evaluación con POST /api/evaluations/:id/assign
+     * Paso 1: Crear evaluación con POST /v1/evaluations
+     * Paso 2: Asignar evaluación con POST /v1/evaluations/:id/assign
      *
      * Este método es útil para el dashboard de admin cuando se asignan evaluadores a estudiantes.
      */
@@ -838,7 +838,7 @@ class EvaluationService {
             console.log(`🔧 Creating evaluation for application ${applicationId}, type ${evaluationType}`);
 
             // Paso 1: Crear la evaluación con el evaluatorId
-            const createResponse = await api.post('/api/evaluations', {
+            const createResponse = await api.post('/v1/evaluations', {
                 applicationId: Number(applicationId), // Asegurar que sea número
                 evaluatorId: Number(evaluatorId), // ID del evaluador asignado
                 evaluationType,
@@ -858,7 +858,7 @@ class EvaluationService {
             console.log(`👨‍🏫 Assigning to evaluator ${evaluatorId}...`);
 
             // Paso 2: Asignar al evaluador
-            const assignResponse = await api.post(`/api/evaluations/${evaluationId}/assign`, {
+            const assignResponse = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
                 evaluationDate: new Date().toISOString().split('T')[0],
             });

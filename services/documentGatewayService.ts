@@ -60,8 +60,8 @@ export interface DocumentMetadata {
 }
 
 class DocumentGatewayService {
-  private readonly monolithBasePath = '/api/documents'; // Direct to monolith
-  private readonly gatewayBasePath = '/api/applications'; // Through gateway
+  private readonly monolithBasePath = '/v1/documents'; // Direct to monolith
+  private readonly gatewayBasePath = '/v1/applications'; // Through gateway
 
   /**
    * Complete document upload workflow:
@@ -319,7 +319,7 @@ class DocumentGatewayService {
     // This would typically extract from JWT token or session
     // For now, we'll make a call to get current user
     try {
-      const profile = await httpClient.get<{ data: { id: number } }>('/api/users/me');
+      const profile = await httpClient.get<{ data: { id: number } }>('/v1/users/me');
       return profile.data.id;
     } catch {
       // Fallback - this should not happen in production

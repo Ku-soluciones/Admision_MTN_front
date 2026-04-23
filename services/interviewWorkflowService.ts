@@ -142,7 +142,7 @@ export interface InterviewCompletion {
 }
 
 class InterviewWorkflowService {
-  private readonly basePath = '/api/interviews';
+  private readonly basePath = '/v1/interviews';
 
   /**
    * Schedule new interview
@@ -186,7 +186,7 @@ class InterviewWorkflowService {
     }
   ): Promise<InterviewAvailability> {
     const response = await httpClient.get<{ data: InterviewAvailability }>(
-      `/api/users/${interviewerId}/availability`,
+      `/v1/users/${interviewerId}/availability`,
       {
         params: {
           from: dateRange.from,
@@ -403,7 +403,7 @@ class InterviewWorkflowService {
         }>;
       }
     }>(
-      `/api/users/${interviewerId || 'me'}/interview-dashboard`,
+      `/v1/users/${interviewerId || 'me'}/interview-dashboard`,
       { params: dateRange }
     );
     return response.data;
@@ -600,7 +600,7 @@ class InterviewWorkflowService {
    */
   private async getCurrentUserId(): Promise<number> {
     try {
-      const profile = await httpClient.get<{ data: { id: number } }>('/api/users/me');
+      const profile = await httpClient.get<{ data: { id: number } }>('/v1/users/me');
       return profile.data.id;
     } catch {
       throw new Error('Unable to identify current user for interview operations');

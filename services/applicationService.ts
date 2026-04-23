@@ -156,16 +156,16 @@ class ApplicationService {
 
             // Primero intentar el endpoint principal que devuelve la estructura completa
             try {
-                console.log('🔄 Probando endpoint principal: /api/applications');
+                console.log('🔄 Probando endpoint principal: /v1/applications');
                 // BFF espera parámetro 'size' (no 'limit') para el tamaño de página
-                const response = await api.get('/api/applications?size=1000');
+                const response = await api.get('/v1/applications?size=1000');
                 console.log('✅ Respuesta del endpoint principal:', response.data);
 
                 // El backend devuelve {success: true, data: [...]}
                 const applications = response.data?.data || response.data || [];
                 console.log('✅ Aplicaciones recibidas:', applications.length);
 
-                // El endpoint /api/applications ya devuelve la estructura correcta
+                // El endpoint /v1/applications ya devuelve la estructura correcta
                 // No necesitamos adaptador, solo filtrar las aplicaciones válidas
                 const validApplications = applications.filter((app: any) =>
                     app &&
@@ -192,7 +192,7 @@ class ApplicationService {
                 console.log('❌ Falló endpoint principal, intentando público...');
 
                 // Como fallback, usar el endpoint público con adaptador si es necesario
-                const response = await api.get('/api/applications/public/all');
+                const response = await api.get('/v1/applications/public/all');
                 console.log('✅ Éxito con endpoint público:', response.data);
 
                 // Este endpoint devuelve formato diferente, usar adaptador
@@ -263,7 +263,7 @@ class ApplicationService {
         try {
             console.log('📝 Enviando postulación:', request);
             
-            const response = await api.post('/api/applications', request);
+            const response = await api.post('/v1/applications', request);
             
             console.log('✅ Postulación enviada exitosamente');
             return response.data;
@@ -288,7 +288,7 @@ class ApplicationService {
         try {
             console.log('📋 Obteniendo mis postulaciones');
 
-            const response = await api.get('/api/applications/my-applications');
+            const response = await api.get('/v1/applications/my-applications');
             console.log('📋 Respuesta del servidor:', response);
             console.log('📋 response.data:', response.data);
 
@@ -314,7 +314,7 @@ class ApplicationService {
         try {
             console.log('📄 Obteniendo postulación:', id);
 
-            const response = await api.get(`/api/applications/${id}`);
+            const response = await api.get(`/v1/applications/${id}`);
             console.log('📄 Respuesta completa del backend:', response.data);
 
             // Desempaquetar el wrapper {success, data, timestamp} si existe
@@ -345,7 +345,7 @@ class ApplicationService {
                 
                 // Si falla la autenticación, intentar obtener datos públicos (solo para desarrollo)
                 try {
-                    const publicResponse = await api.get('/api/applications/public/all');
+                    const publicResponse = await api.get('/v1/applications/public/all');
                     // Backend devuelve {success: true, data: [...], pagination: {...}}
                     applications = publicResponse.data.data || publicResponse.data || [];
                     console.log('📋 Datos públicos obtenidos:', applications);
@@ -354,7 +354,7 @@ class ApplicationService {
                     
                     // Si falla, intentar obtener datos mock
                     try {
-                        const mockResponse = await api.get('/api/applications/public/mock-applications');
+                        const mockResponse = await api.get('/v1/applications/public/mock-applications');
                         applications = mockResponse.data || [];
                         console.log('📋 Datos mock obtenidos:', applications);
                     } catch (mockError) {
@@ -394,7 +394,7 @@ class ApplicationService {
         try {
             console.log('📂 Admin: Archivando postulación:', id);
 
-            await api.put(`/api/applications/${id}/archive`);
+            await api.put(`/v1/applications/${id}/archive`);
 
             console.log('✅ Admin: Postulación archivada exitosamente');
 
@@ -420,7 +420,7 @@ class ApplicationService {
         try {
             console.log('🔄 Admin: Cambiando estado de postulación:', { id, newStatus, changeNote });
 
-            const response = await api.patch(`/api/applications/${id}/status`, {
+            const response = await api.patch(`/v1/applications/${id}/status`, {
                 status: newStatus,  // Backend expects 'status', not 'newStatus'
                 notes: changeNote   // Backend expects 'notes', not 'changeNote'
             });
@@ -449,7 +449,7 @@ class ApplicationService {
         try {
             console.log('📜 Admin: Obteniendo historial de estados:', id);
 
-            const response = await api.get(`/api/applications/${id}/status-history`);
+            const response = await api.get(`/v1/applications/${id}/status-history`);
 
             console.log('✅ Admin: Historial obtenido:', response.data);
 
@@ -536,7 +536,7 @@ class ApplicationService {
             console.log('🔄 Datos transformados para el backend:', transformedData);
 
             // Enviar al backend
-            const response = await api.post('/api/applications', transformedData);
+            const response = await api.post('/v1/applications', transformedData);
 
             console.log('✅ Postulación enviada exitosamente:', response.data);
 
@@ -597,7 +597,7 @@ class ApplicationService {
                 applicationData.student.gradeApplied = this.transformGradeToBackend(applicationData.student.gradeApplied);
             }
 
-            const response = await api.put(`/api/applications/${applicationId}`, applicationData);
+            const response = await api.put(`/v1/applications/${applicationId}`, applicationData);
 
             console.log('✅ Postulación actualizada exitosamente:', response.data);
             return response.data;
@@ -637,7 +637,7 @@ class ApplicationService {
             formData.append('documentType', documentType);
             formData.append('applicationId', applicationId.toString());
 
-            const response = await api.post('/api/applications/documents', formData, {
+            const response = await api.post('/v1/applications/documents', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -675,7 +675,7 @@ class ApplicationService {
 
     async getApplicationDocuments(applicationId: number): Promise<any> {
         try {
-            const response = await api.get(`/api/applications/${applicationId}/documents`);
+            const response = await api.get(`/v1/applications/${applicationId}/documents`);
             return response.data;
         } catch (error: any) {
             if (error.response?.data) {
@@ -695,7 +695,7 @@ class ApplicationService {
             console.log(`📋 Actualizando estado de aprobación del documento ${documentId} a ${approvalStatus}`);
 
             const response = await api.put(
-                `/api/applications/documents/${documentId}/approval`,
+                `/v1/applications/documents/${documentId}/approval`,
                 { approvalStatus }
             );
 
@@ -728,7 +728,7 @@ class ApplicationService {
         try {
             console.log(`📋 Obteniendo formulario complementario para aplicación ${applicationId}`);
 
-            const response = await api.get(`/api/applications/${applicationId}/complementary-form`);
+            const response = await api.get(`/v1/applications/${applicationId}/complementary-form`);
 
             console.log('✅ Formulario complementario obtenido:', response.data);
             const backendData = response.data.data || response.data;
@@ -775,7 +775,7 @@ class ApplicationService {
         try {
             console.log(`📝 Guardando formulario complementario para aplicación ${applicationId}`);
 
-            const response = await api.post(`/api/applications/${applicationId}/complementary-form`, formData);
+            const response = await api.post(`/v1/applications/${applicationId}/complementary-form`, formData);
 
             console.log('✅ Formulario complementario guardado:', response.data);
             return response.data;
@@ -810,7 +810,7 @@ class ApplicationService {
             console.log(`📝 Marking document notification as sent for application ${applicationId}`);
 
             const response = await api.patch(
-                `/api/applications/${applicationId}/document-notification-sent`
+                `/v1/applications/${applicationId}/document-notification-sent`
             );
 
             console.log('✅ Document notification marked successfully:', response.data);
