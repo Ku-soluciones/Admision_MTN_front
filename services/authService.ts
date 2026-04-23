@@ -1,5 +1,5 @@
 import api from './api';
-import { encryptCredentials, getCachedPublicKey, isEncryptionSupported } from '../utils/crypto';
+import { clearPublicKeyCache, encryptCredentials, getPublicKey, isEncryptionSupported } from '../utils/crypto';
 import { getApiBaseUrl } from '../config/api.config';
 
 export interface LoginRequest {
@@ -16,17 +16,72 @@ export interface RegisterRequest {
     phone?: string;
 }
 
+export interface AuthUser {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    rut: string | null;
+    phone: string | null;
+    role: string;
+    subject?: string;
+    educationalLevel?: string | null;
+    active: boolean;
+    emailVerified: boolean;
+    lastLoginAt?: string;
+    preferences?: Record<string, any>;
+}
+
 export interface AuthResponse {
     success: boolean;
-    message: string;
+    message?: string;
     token?: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    refreshExpiresAt?: string;
+    sessionId?: string;
+    permissions?: string[];
+    user?: AuthUser;
+    // Campos aplanados legacy (por compatibilidad con respuestas antiguas)
     email?: string;
     firstName?: string;
     lastName?: string;
     role?: string;
+    id?: number;
+    subject?: string;
+    applicationId?: number;
 }
 
 class AuthService {
+    private isDecryptError(error: any): boolean {
+        const message = error?.response?.data?.error?.message || error?.response?.data?.message;
+        return typeof message === 'string' && (
+            message.includes('No se pudo descifrar el payload de autenticación') ||
+            message.includes('Payload de autenticación inválido')
+        );
+    }
+
+    private async loginEncrypted(request: LoginRequest, retryWithFreshKey = true): Promise<AuthResponse> {
+        const API_GATEWAY_URL = getApiBaseUrl();
+        console.log('[Auth] Using API Gateway URL:', API_GATEWAY_URL);
+        const publicKeyInfo = await getPublicKey(API_GATEWAY_URL);
+
+        console.log('[Auth] Encrypting credentials with RSA + AES...');
+        const encryptedPayload = await encryptCredentials(request, publicKeyInfo);
+        console.log('[Auth] Sending encrypted credentials to backend');
+
+        try {
+            const response = await api.post('/api/auth/login', encryptedPayload);
+            return response.data;
+        } catch (error: any) {
+            if (retryWithFreshKey && this.isDecryptError(error)) {
+                console.warn('[Auth] Public key rejected by backend, refreshing and retrying once');
+                clearPublicKeyCache();
+                return this.loginEncrypted(request, false);
+            }
+            throw error;
+        }
+    }
 
     async login(request: LoginRequest): Promise<AuthResponse> {
         try {
@@ -38,21 +93,7 @@ class AuthService {
             }
 
             try {
-                // Fetch public key via API Gateway (not directly from user service)
-                const API_GATEWAY_URL = getApiBaseUrl();
-                console.log('[Auth] Using API Gateway URL:', API_GATEWAY_URL);
-                const publicKeyInfo = await getCachedPublicKey(API_GATEWAY_URL);
-
-                console.log('[Auth] Encrypting credentials with RSA + AES...');
-
-                // Encrypt credentials
-                const encryptedPayload = await encryptCredentials(request, publicKeyInfo);
-
-                console.log('[Auth] Sending encrypted credentials to backend');
-
-                // Send encrypted payload
-                const response = await api.post('/api/auth/login', encryptedPayload);
-                return response.data;
+                return await this.loginEncrypted(request);
 
             } catch (encryptError) {
                 // If encryption fails, fall back to HTTPS only
@@ -87,7 +128,7 @@ class AuthService {
                 // Fetch public key via API Gateway (not directly from user service)
                 const API_GATEWAY_URL = getApiBaseUrl();
                 console.log('[Auth] Using API Gateway URL:', API_GATEWAY_URL);
-                const publicKeyInfo = await getCachedPublicKey(API_GATEWAY_URL);
+                const publicKeyInfo = await getPublicKey(API_GATEWAY_URL);
 
                 console.log('[Auth] Encrypting registration data with RSA + AES...');
 

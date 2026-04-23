@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [loginError, setLoginError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { login, user, isAuthenticated } = useAuth();
     const { addNotification } = useNotifications();
@@ -61,10 +62,33 @@ const LoginPage: React.FC = () => {
                     <form className="space-y-6" onSubmit={async (e) => {
                         e.preventDefault();
                         setIsLoading(true);
+                        setLoginError(null);
                         
                         try {
                             await login(email, password, userType);
-                            
+
+                            // Verificar que el rol coincida con el tipo de portal seleccionado
+                            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
+                            const role = storedUser?.role || '';
+
+                            if (userType === 'admin' && role === 'APODERADO') {
+                                const msg = 'Esta cuenta no tiene acceso al panel administrativo.';
+                                setLoginError(msg);
+                                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
+                                localStorage.removeItem('auth_token');
+                                localStorage.removeItem('authenticated_user');
+                                return;
+                            }
+
+                            if (userType === 'familia' && role !== 'APODERADO') {
+                                const msg = 'Esta cuenta es de personal del colegio. Use el portal de profesores.';
+                                setLoginError(msg);
+                                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
+                                localStorage.removeItem('auth_token');
+                                localStorage.removeItem('authenticated_user');
+                                return;
+                            }
+
                             // Redirigir según el tipo de usuario
                             if (userType === 'familia') {
                                 navigate('/familia');
@@ -72,10 +96,12 @@ const LoginPage: React.FC = () => {
                                 navigate('/admin');
                             }
                         } catch (error: any) {
+                            const msg = error.message || 'Credenciales inválidas. Verifique su email y contraseña.';
+                            setLoginError(msg);
                             addNotification({
                                 type: 'error',
                                 title: 'Error de autenticación',
-                                message: error.message || 'Credenciales inválidas'
+                                message: msg
                             });
                         } finally {
                             setIsLoading(false);
@@ -103,6 +129,12 @@ const LoginPage: React.FC = () => {
                         <div className="text-right">
                             <a href="#" className="text-sm text-azul-monte-tabor hover:underline">¿Olvidó su contraseña?</a>
                         </div>
+                        {loginError && (
+                            <div className="flex items-start gap-2 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">
+                                <span className="mt-0.5 shrink-0">⚠️</span>
+                                <span>{loginError}</span>
+                            </div>
+                        )}
                         <Button 
                             type="submit" 
                             size="lg" 

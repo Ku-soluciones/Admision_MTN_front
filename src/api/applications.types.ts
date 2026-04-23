@@ -55,8 +55,7 @@ export interface Student {
 
 export interface Parent {
   id: number;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   rut: string;
   email: string;
   phone: string;
@@ -67,8 +66,7 @@ export interface Parent {
 
 export interface Guardian {
   id: number;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   rut: string;
   email: string;
   phone: string;
@@ -78,8 +76,7 @@ export interface Guardian {
 
 export interface Supporter {
   id: number;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   rut: string;
   email: string;
   phone: string;
@@ -133,4 +130,6 @@ export interface PaginatedResponse<T> {
   number: number;
   first: boolean;
   last: boolean;
+  numberOfElements?: number;
+  empty?: boolean;
 }

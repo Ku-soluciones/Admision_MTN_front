@@ -46,12 +46,13 @@ class ProfessorAuthService {
             // Guardar token en localStorage
             if (data.token) {
                 localStorage.setItem('professor_token', data.token);
+                const u = data.user;
                 localStorage.setItem('professor_user', JSON.stringify({
-                    email: data.email,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    role: data.role,
-                    subject: data.subject
+                    email: u?.email || data.email,
+                    firstName: u?.firstName || data.firstName,
+                    lastName: u?.lastName || data.lastName,
+                    role: u?.role || data.role,
+                    subject: u?.subject || data.subject
                 }));
             }
 

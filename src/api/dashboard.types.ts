@@ -60,21 +60,14 @@ export interface EvaluationProgress {
 
 export interface AnalyticsMetrics {
   totalApplications: number;
-  approvedApplications: number;
-  rejectedApplications: number;
-  pendingApplications: number;
   acceptanceRate: number;
-  averageProcessingTime: number;
-  interviewsScheduled: number;
   interviewsCompleted: number;
-  evaluationsCompleted: number;
-  documentCompletionRate: number;
-  timestamp: string;
+  evaluationsPending: number;
 }
 
 export interface StatusDistribution {
-  status: string;
-  count: number;
+  name: string;
+  value: number;
   percentage: number;
   color?: string;
 }

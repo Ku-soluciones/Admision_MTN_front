@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import { LogoIcon } from '../components/icons/Icons';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/AppContext';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ const ApoderadoLogin: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { login, register } = useAuth();
+    const { addNotification } = useNotifications();
     
     const redirectTo = searchParams.get('redirect') || '/dashboard-apoderado';
 
@@ -38,20 +40,34 @@ const ApoderadoLogin: React.FC = () => {
         setIsLoading(true);
         setError('');
 
+        if (!email || !password) {
+            const msg = 'Por favor complete todos los campos';
+            setError(msg);
+            addNotification({ type: 'error', title: 'Campos requeridos', message: msg });
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            // Simulando autenticación
-            if (email && password) {
-                console.log('🔐 ApoderadoLogin: Attempting login with:', { email, password: password.length + ' chars' });
-                await login(email, password, 'apoderado');
-                console.log('✅ ApoderadoLogin: Login successful, navigating to:', redirectTo);
-                navigate(redirectTo);
-            } else {
-                console.warn('⚠️ ApoderadoLogin: Missing email or password');
-                setError('Por favor complete todos los campos');
+            await login(email, password, 'apoderado');
+
+            // Verificar que el rol sea APODERADO
+            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
+            if (storedUser && storedUser.role !== 'APODERADO') {
+                const msg = 'Esta cuenta no corresponde a un apoderado. Use el portal de profesores.';
+                setError(msg);
+                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('authenticated_user');
+                setIsLoading(false);
+                return;
             }
-        } catch (err) {
-            console.error('❌ ApoderadoLogin: Login failed:', err);
-            setError('Credenciales inválidas. Verifique su email y contraseña.');
+
+            navigate(redirectTo);
+        } catch (err: any) {
+            const msg = err.message || 'Credenciales inválidas. Verifique su email y contraseña.';
+            setError(msg);
+            addNotification({ type: 'error', title: 'Error al iniciar sesión', message: msg });
         } finally {
             setIsLoading(false);
         }
@@ -87,8 +103,10 @@ const ApoderadoLogin: React.FC = () => {
             // Para usuarios nuevos registrados, redirigir al formulario de postulación
             // no al dashboard directamente
             navigate('/postulacion');
-        } catch (err) {
-            setError('Error al crear la cuenta. Intente nuevamente.');
+        } catch (err: any) {
+            const msg = err.message || 'Error al crear la cuenta. Intente nuevamente.';
+            setError(msg);
+            addNotification({ type: 'error', title: 'Error al registrarse', message: msg });
         } finally {
             setIsLoading(false);
         }

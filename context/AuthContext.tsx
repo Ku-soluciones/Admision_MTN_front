@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '../services/authService';
-import profileService, { type UserProfile } from '../services/profileService';
 
 interface User {
     id: string;
@@ -74,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(false);
     }, []);
 
-    const login = async (email: string, password: string, role: string) => {
+    const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);
         
         try {
@@ -82,25 +81,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const response = await authService.login({ email, password });
             // Backend response logging removed for security
             
-            if (response.success && response.token && response.email) {
-                // Login success logging removed for security
+            // Normalizar: el BFF devuelve datos en response.user, con fallback a campos planos legacy
+            const u = response.user;
+            const userEmail    = u?.email      || response.email      || '';
+            const userFirstName = u?.firstName || response.firstName  || '';
+            const userLastName  = u?.lastName  || response.lastName   || '';
+            const userRole      = u?.role      || response.role       || 'TEACHER';
+            const userId        = u?.id        || response.id         || Date.now();
+            const userSubject   = u?.subject   || response.subject    || 'ALL_SUBJECTS';
+
+            if (response.success && response.token && userEmail) {
                 const userData: User = {
-                    id: response.id || Date.now().toString(),
-                    email: response.email,
-                    firstName: response.firstName,
-                    lastName: response.lastName,
-                    role: mapBackendRole(response.role || 'TEACHER'),
-                    applicationId: response.applicationId // Include applicationId from backend
+                    id: String(userId),
+                    email: userEmail,
+                    firstName: userFirstName,
+                    lastName: userLastName,
+                    role: mapBackendRole(userRole),
+                    applicationId: response.applicationId
                 };
                 
                 // ✅ Si es admin, también configurar información de profesor para compatibilidad
                 if (userData.role === 'ADMIN') {
                     localStorage.setItem('currentProfessor', JSON.stringify({
-                        id: response.id || 26,
-                        firstName: response.firstName || '',
-                        lastName: response.lastName || '',
-                        email: response.email || '',
-                        subject: response.subject || 'ALL_SUBJECTS', // Campo subject del backend
+                        id: userId,
+                        firstName: userFirstName,
+                        lastName: userLastName,
+                        email: userEmail,
+                        subject: userSubject,
                         subjects: ['MATH', 'SPANISH', 'ENGLISH', 'PSYCHOLOGY'],
                         assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
                         isAdmin: true
@@ -109,21 +116,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     // También guardar el token de profesor para el sistema de evaluaciones
                     localStorage.setItem('professor_token', response.token);
                     localStorage.setItem('professor_user', JSON.stringify({
-                        email: response.email,
-                        firstName: response.firstName,
-                        lastName: response.lastName,
-                        role: response.role
+                        email: userEmail,
+                        firstName: userFirstName,
+                        lastName: userLastName,
+                        role: userRole
                     }));
                 }
                 
                 // Guardar token y usuario
                 localStorage.setItem('auth_token', response.token);
                 localStorage.setItem('authenticated_user', JSON.stringify(userData));
-                // Token save logging removed for security
                 setUser(userData);
-                // Login completion logging removed for security
             } else {
-                // Login error logging removed for security
                 throw new Error(response.message || 'Error en la autenticación');
             }
         } catch (error: any) {
@@ -134,7 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
     };
 
-    const register = async (userData: any, role: string) => {
+    const register = async (userData: any, _role: string) => {
         setIsLoading(true);
         
         try {
@@ -147,13 +151,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 phone: userData.phone
             });
             
-            if (response.success && response.token && response.email) {
+            const ru = response.user;
+            const regEmail     = ru?.email     || response.email     || '';
+            const regFirstName = ru?.firstName || response.firstName || '';
+            const regLastName  = ru?.lastName  || response.lastName  || '';
+            const regRole      = ru?.role      || response.role      || 'APODERADO';
+
+            if (response.success && response.token && regEmail) {
                 const newUser: User = {
-                    id: Date.now().toString(), // Temporal, el backend debería devolver el ID
-                    email: response.email,
-                    firstName: response.firstName,
-                    lastName: response.lastName,
-                    role: mapBackendRole(response.role || 'APODERADO'),
+                    id: String(ru?.id || response.id || Date.now()),
+                    email: regEmail,
+                    firstName: regFirstName,
+                    lastName: regLastName,
+                    role: mapBackendRole(regRole),
                     phone: userData.phone,
                     rut: userData.rut
                 };

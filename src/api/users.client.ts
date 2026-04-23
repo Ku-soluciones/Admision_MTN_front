@@ -10,7 +10,6 @@ import type {
   UpdateUserRequest,
   UserSearchParams,
   UserStatistics,
-  UsersResponse,
   PaginatedResponse
 } from './users.types';
 
@@ -21,92 +20,92 @@ export class UsersClient {
    * Get all users with optional filtering and pagination
    */
   async getUsers(params?: UserSearchParams): Promise<PaginatedResponse<User>> {
-    const response = await httpClient.get<UsersResponse<PaginatedResponse<User>>>(
+    const response = await httpClient.get(
       this.basePath,
       { params }
     );
-    return response.data;
+    return response.data as PaginatedResponse<User>;
   }
 
   /**
    * Get user by ID
    */
   async getUserById(id: number): Promise<User> {
-    const response = await httpClient.get<UsersResponse<User>>(
+    const response = await httpClient.get(
       `${this.basePath}/${id}`
     );
-    return response.data;
+    return response.data as User;
   }
 
   /**
    * Create new user (admin only)
    */
   async createUser(userData: CreateUserRequest): Promise<User> {
-    const response = await httpClient.post<UsersResponse<User>>(
+    const response = await httpClient.post<{ success: boolean; data: User }>(
       this.basePath,
       userData
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Update existing user
    */
   async updateUser(id: number, userData: UpdateUserRequest): Promise<User> {
-    const response = await httpClient.put<UsersResponse<User>>(
+    const response = await httpClient.put<{ success: boolean; data: User }>(
       `${this.basePath}/${id}`,
       userData
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Delete user (soft delete)
    */
   async deleteUser(id: number): Promise<void> {
-    await httpClient.delete<UsersResponse<void>>(`${this.basePath}/${id}`);
+    await httpClient.delete<{ success: boolean }>(`${this.basePath}/${id}`);
   }
 
   /**
    * Activate/deactivate user
    */
   async toggleUserStatus(id: number, active: boolean): Promise<User> {
-    const response = await httpClient.patch<UsersResponse<User>>(
+    const response = await httpClient.patch<{ success: boolean; data: User }>(
       `${this.basePath}/${id}/status`,
       { active }
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Reset user password (admin only)
    */
   async resetUserPassword(id: number): Promise<{ temporaryPassword: string }> {
-    const response = await httpClient.post<UsersResponse<{ temporaryPassword: string }>>(
+    const response = await httpClient.post<{ success: boolean; data: { temporaryPassword: string } }>(
       `${this.basePath}/${id}/reset-password`
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Get user statistics (admin only)
    */
   async getUserStatistics(): Promise<UserStatistics> {
-    const response = await httpClient.get<UsersResponse<UserStatistics>>(
+    const response = await httpClient.get<{ success: boolean; data: UserStatistics }>(
       `${this.basePath}/statistics`
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Get users by role
    */
   async getUsersByRole(role: User['role'], params?: Omit<UserSearchParams, 'role'>): Promise<User[]> {
-    const response = await httpClient.get<UsersResponse<User[]>>(
+    const response = await httpClient.get<{ success: boolean; data: User[] }>(
       `${this.basePath}/by-role/${role}`,
       { params }
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
@@ -117,29 +116,29 @@ export class UsersClient {
     educationalLevel?: User['educationalLevel'];
     activeOnly?: boolean;
   }): Promise<User[]> {
-    const response = await httpClient.get<UsersResponse<User[]>>(
+    const response = await httpClient.get<{ success: boolean; data: User[] }>(
       `${this.basePath}/evaluators`,
       { params }
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Search users by query
    */
   async searchUsers(query: string, params?: Omit<UserSearchParams, 'query'>): Promise<User[]> {
-    const response = await httpClient.get<UsersResponse<User[]>>(
+    const response = await httpClient.get<{ success: boolean; data: User[] }>(
       `${this.basePath}/search`,
       { params: { query, ...params } }
     );
-    return response.data;
+    return (response.data as any).data;
   }
 
   /**
    * Verify user email
    */
   async verifyUserEmail(id: number): Promise<void> {
-    await httpClient.post<UsersResponse<void>>(
+    await httpClient.post<{ success: boolean }>(
       `${this.basePath}/${id}/verify-email`
     );
   }
@@ -148,11 +147,11 @@ export class UsersClient {
    * Update user preferences
    */
   async updateUserPreferences(id: number, preferences: any): Promise<User> {
-    const response = await httpClient.patch<UsersResponse<User>>(
+    const response = await httpClient.patch<{ success: boolean; data: User }>(
       `${this.basePath}/${id}/preferences`,
       preferences
     );
-    return response.data;
+    return (response.data as any).data;
   }
 }
 

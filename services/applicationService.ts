@@ -157,9 +157,8 @@ class ApplicationService {
             // Primero intentar el endpoint principal que devuelve la estructura completa
             try {
                 console.log('🔄 Probando endpoint principal: /api/applications');
-                // CRITICAL FIX: Backend has default limit=10, we need to request all records
-                // Using limit=1000 to get all applications (way more than expected in production)
-                const response = await api.get('/api/applications?limit=1000');
+                // BFF espera parámetro 'size' (no 'limit') para el tamaño de página
+                const response = await api.get('/api/applications?size=1000');
                 console.log('✅ Respuesta del endpoint principal:', response.data);
 
                 // El backend devuelve {success: true, data: [...]}

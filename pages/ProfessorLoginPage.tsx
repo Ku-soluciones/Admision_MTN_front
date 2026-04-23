@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { LogoIcon, UserIcon } from '../components/icons/Icons';
+import { LogoIcon } from '../components/icons/Icons';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
@@ -14,6 +14,7 @@ const ProfessorLoginPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { login: loginWithAuth } = useAuth();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [loginError, setLoginError] = useState<string | null>(null);
 
     const validationConfig = {
         email: { 
@@ -35,12 +36,12 @@ const ProfessorLoginPage: React.FC = () => {
     );
 
     const handleLogin = async () => {
+        setLoginError(null);
+
         if (!validateForm()) {
-            addNotification({
-                type: 'error',
-                title: 'Error de validación',
-                message: 'Por favor completa todos los campos correctamente'
-            });
+            const msg = 'Por favor completa todos los campos correctamente';
+            setLoginError(msg);
+            addNotification({ type: 'error', title: 'Error de validación', message: msg });
             return;
         }
 
@@ -55,38 +56,47 @@ const ProfessorLoginPage: React.FC = () => {
                 password: data.password
             });
 
+            // Normalizar: BFF retorna datos en response.user, fallback a campos planos legacy
+            const u = (response as any).user;
+            const respRole      = u?.role      || (response as any).role      || '';
+            const respFirstName = u?.firstName || (response as any).firstName || '';
+            const respLastName  = u?.lastName  || (response as any).lastName  || '';
+            const respEmail     = u?.email     || (response as any).email     || '';
+            const respId        = u?.id        || (response as any).id        || 0;
+            const respSubject   = u?.subject   || (response as any).subject   || null;
+
             if (response.success && response.token) {
                 // Verificar que el rol sea de profesor
-                if (response.role && professorAuthService.isProfessorRole(response.role)) {
+                if (respRole && professorAuthService.isProfessorRole(respRole)) {
                     
                     // ✅ Si es admin, registrar en AuthContext principal
-                    if (response.role === 'ADMIN') {
+                    if (respRole === 'ADMIN') {
                         console.log('🔑 Usuario admin detectado, registrando en AuthContext principal...');
                         await loginWithAuth(data.email, data.password, 'ADMIN');
                     }
                     
                     // Guardar información del profesor en localStorage para compatibilidad
                     localStorage.setItem('currentProfessor', JSON.stringify({
-                        id: response.id || 26, // Usar ID real del backend o fallback
-                        firstName: response.firstName || '',
-                        lastName: response.lastName || '',
-                        email: response.email || '',
-                        subject: response.subject || null, // Campo subject del backend
-                        subjects: getSubjectsByRole(response.role),
+                        id: respId,
+                        firstName: respFirstName,
+                        lastName: respLastName,
+                        email: respEmail,
+                        subject: respSubject,
+                        subjects: getSubjectsByRole(respRole),
                         assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
-                        isAdmin: response.role === 'ADMIN'
+                        isAdmin: respRole === 'ADMIN'
                     }));
 
                     addNotification({
                         type: 'success',
                         title: 'Bienvenido/a',
-                        message: `Hola ${response.firstName} ${response.lastName}`
+                        message: `Hola ${respFirstName} ${respLastName}`
                     });
 
                     console.log('✅ Login exitoso, redirigiendo al dashboard...');
                     
                     // ✅ Redirigir según el rol del usuario
-                    if (response.role === 'ADMIN') {
+                    if (respRole === 'ADMIN') {
                         console.log('🔑 Usuario admin detectado, redirigiendo al panel de administración...');
                         navigate('/admin');
                     } else {
@@ -95,26 +105,20 @@ const ProfessorLoginPage: React.FC = () => {
                     }
                     
                 } else {
-                    addNotification({
-                        type: 'error',
-                        title: 'Acceso denegado',
-                        message: 'Este portal es solo para profesores y personal del colegio'
-                    });
+                    const msg = 'Su cuenta no tiene acceso a este portal. Contacte al administrador.';
+                    setLoginError(msg);
+                    addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
                 }
             } else {
-                addNotification({
-                    type: 'error',
-                    title: 'Error de autenticación',
-                    message: response.message || 'Error al iniciar sesión'
-                });
+                const msg = response.message || 'Credenciales inválidas. Verifique su email y contraseña.';
+                setLoginError(msg);
+                addNotification({ type: 'error', title: 'Error de autenticación', message: msg });
             }
         } catch (error: any) {
             console.error('❌ Error en login:', error);
-            addNotification({
-                type: 'error',
-                title: 'Error del sistema',
-                message: error.message || 'No se pudo procesar el login. Intenta nuevamente.'
-            });
+            const msg = error.message || 'No se pudo iniciar sesión. Intente nuevamente.';
+            setLoginError(msg);
+            addNotification({ type: 'error', title: 'Error al iniciar sesión', message: msg });
         } finally {
             setIsLoggingIn(false);
         }
@@ -194,74 +198,6 @@ const ProfessorLoginPage: React.FC = () => {
         }
     };
 
-    // Función para obtener el departamento según el rol
-    const getDepartmentByRole = (role: string): string => {
-        switch (role) {
-            // Administración
-            case 'ADMIN':
-                return 'Administración';
-            
-            // Profesores ciclo inicial
-            case 'TEACHER_EARLY_CYCLE':
-                return 'Educación Inicial (K-2°)';
-            
-            // Profesores básica
-            case 'TEACHER_LANGUAGE_BASIC':
-                return 'Lenguaje y Comunicación (3°-7°)';
-            case 'TEACHER_MATHEMATICS_BASIC':
-                return 'Matemática (3°-7°)';
-            case 'TEACHER_ENGLISH_BASIC':
-                return 'Inglés (3°-7°)';
-            case 'TEACHER_SCIENCE_BASIC':
-                return 'Ciencias Naturales (3°-7°)';
-            case 'TEACHER_HISTORY_BASIC':
-                return 'Historia y Geografía (3°-7°)';
-            
-            // Profesores media
-            case 'TEACHER_LANGUAGE_HIGH':
-                return 'Lenguaje y Comunicación (8°-IV)';
-            case 'TEACHER_MATHEMATICS_HIGH':
-                return 'Matemática (8°-IV)';
-            case 'TEACHER_ENGLISH_HIGH':
-                return 'Inglés (8°-IV)';
-            case 'TEACHER_SCIENCE_HIGH':
-                return 'Ciencias Naturales (8°-IV)';
-            case 'TEACHER_HISTORY_HIGH':
-                return 'Historia y Geografía (8°-IV)';
-            
-            // Coordinadores
-            case 'COORDINATOR_LANGUAGE':
-                return 'Coordinación de Lenguaje';
-            case 'COORDINATOR_MATHEMATICS':
-                return 'Coordinación de Matemática';
-            case 'COORDINATOR_ENGLISH':
-                return 'Coordinación de Inglés';
-            case 'COORDINATOR_SCIENCE':
-                return 'Coordinación de Ciencias';
-            case 'COORDINATOR_HISTORY':
-                return 'Coordinación de Historia';
-            
-            // Especialistas
-            case 'CYCLE_DIRECTOR':
-                return 'Dirección de Ciclo';
-            case 'PSYCHOLOGIST':
-                return 'Psicología';
-            case 'INTERVIEWER':
-                return 'Entrevistas y Admisión';
-
-            // Legacy roles
-            case 'TEACHER_MATHEMATICS':
-                return 'Matemática (Sistema Anterior)';
-            case 'TEACHER_LANGUAGE':
-                return 'Lenguaje y Comunicación (Sistema Anterior)';
-            case 'TEACHER_ENGLISH':
-                return 'Inglés (Sistema Anterior)';
-            
-            default:
-                return 'General';
-        }
-    };
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-azul-monte-tabor via-blue-700 to-blue-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
@@ -316,6 +252,13 @@ const ProfessorLoginPage: React.FC = () => {
                             />
                         </div>
 
+                        {loginError && (
+                            <div className="flex items-start gap-2 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">
+                                <span className="mt-0.5 shrink-0">⚠️</span>
+                                <span>{loginError}</span>
+                            </div>
+                        )}
+
                         <Button
                             variant="primary"
                             onClick={handleLogin}
@@ -325,8 +268,6 @@ const ProfessorLoginPage: React.FC = () => {
                         >
                             Iniciar Sesión
                         </Button>
-
-
 
                         <div className="text-center pt-4 border-t border-gray-200">
                             <button

@@ -22,18 +22,37 @@ class SearchClient {
    * Supports 20+ filters, pagination, and sorting
    */
   async advancedSearch(params: AdvancedSearchParams): Promise<SearchResponse> {
-    // Convert array status to comma-separated string
     const searchParams = { ...params };
     if (Array.isArray(searchParams.status)) {
       searchParams.status = searchParams.status.join(',');
     }
 
-    const response = await httpClient.get<SearchResponse>(
+    const response = await httpClient.get<any>(
       `${this.basePath}/search`,
       { params: searchParams }
     );
 
-    return response.data;
+    const raw = response.data;
+
+    // BFF returns { success, data: Application[], count } — map to SearchResponse
+    if (raw?.data !== undefined && !raw?.results) {
+      const data: any[] = raw.data || [];
+      const page = params.page ?? 0;
+      const limit = params.limit ?? data.length;
+      const total = raw.count ?? data.length;
+      const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
+      return {
+        results: data as SearchResult[],
+        totalCount: total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page + 1 < totalPages,
+        hasPreviousPage: page > 0
+      };
+    }
+
+    return raw as SearchResponse;
   }
 
   /**

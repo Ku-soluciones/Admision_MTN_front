@@ -61,17 +61,8 @@ export interface UserStatistics {
   totalUsers: number;
   activeUsers: number;
   inactiveUsers: number;
-  verifiedUsers: number;
-  unverifiedUsers: number;
   usersByRole: Record<string, number>;
-  usersBySubject: Record<string, number>;
-  usersByEducationalLevel: Record<string, number>;
-  newUsersThisMonth: number;
-  recentActivity: {
-    logins: number;
-    registrations: number;
-    verifications: number;
-  };
+  activationRate: number;
 }
 
 export interface PaginatedResponse<T> {

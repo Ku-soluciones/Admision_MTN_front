@@ -14,7 +14,6 @@ import type {
   Alert,
   DetailedAdminStats,
   DashboardFilters,
-  ApplicantMetric,
   ApplicantMetricsFilters,
   ApplicantMetricsResponse
 } from './dashboard.types';
@@ -29,8 +28,8 @@ class DashboardClient {
    * Cache: 5 minutes TTL
    */
   async getGeneralStats(): Promise<DashboardStats> {
-    const response = await httpClient.get<DashboardStats>(`${this.basePath}/stats`);
-    return response.data;
+    const response = await httpClient.get<{ success: boolean; data: DashboardStats }>(`${this.basePath}/stats`);
+    return (response.data as any).data;
   }
 
   /**
@@ -39,8 +38,8 @@ class DashboardClient {
    * Cache: 3 minutes TTL
    */
   async getAdminStats(): Promise<AdminStats> {
-    const response = await httpClient.get<AdminStats>(`${this.basePath}/admin/stats`);
-    return response.data;
+    const response = await httpClient.get<{ success: boolean; data: AdminStats }>(`${this.basePath}/admin/stats`);
+    return (response.data as any).data;
   }
 
   /**
@@ -127,8 +126,8 @@ class DashboardClient {
     return {
       totalApplications: data.totalApplications || 0,
       acceptanceRate: data.conversionRate || 0,
-      interviewsCompleted: 0, // TODO: Backend should provide this
-      evaluationsPending: 0 // TODO: Backend should provide this
+      interviewsCompleted: data.acceptedApplications || 0,
+      evaluationsPending: 0
     };
   }
 
@@ -160,43 +159,28 @@ class DashboardClient {
    * Cache: 15 minutes TTL
    */
   async getTemporalTrends(): Promise<TemporalTrend[]> {
-    const response = await httpClient.get<{
-      success?: boolean;
-      data?: {
-        trends: {
-          monthlyApplications: Record<string, number>;
-          currentMonthApplications: number;
-          lastMonthApplications: number;
-          monthlyGrowthRate: number;
-        };
-      };
-      trends?: {
-        monthlyApplications: Record<string, number>;
-        currentMonthApplications: number;
-        lastMonthApplications: number;
-        monthlyGrowthRate: number;
-      };
-    }>(`${this.analyticsPath}/temporal-trends`);
+    const response = await httpClient.get<any>(`${this.analyticsPath}/temporal-trends`);
 
     // Handle both response formats (with and without success wrapper)
-    const trendsData = response.data.data?.trends || response.data.trends || response.data;
-    const monthlyData = trendsData.monthlyApplications || {};
+    const raw = response.data;
+    const monthlyData: Record<string, number> =
+      raw?.data?.trends?.monthlyApplications ||
+      raw?.trends?.monthlyApplications ||
+      raw?.monthlyApplications ||
+      {};
 
-    // Transformar el objeto monthlyApplications a array de TemporalTrend con formato para gráficos
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
     const trends: TemporalTrend[] = Object.entries(monthlyData).map(([monthKey, total]) => {
       const [year, month] = monthKey.split('-');
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const n = total as number;
       const monthIndex = parseInt(month) - 1;
-
       return {
-        month: monthNames[monthIndex] || monthKey, // Use short month name for charts
-        applications: total, // For LineChart
-        approved: Math.floor(total * 0.7), // Estimate 70% approval
-        rejected: Math.floor(total * 0.2), // Estimate 20% rejection
+        month: monthNames[monthIndex] || monthKey,
         year: parseInt(year),
-        totalApplications: total,
-        approvedApplications: Math.floor(total * 0.7),
-        rejectedApplications: Math.floor(total * 0.2),
+        totalApplications: n,
+        approvedApplications: Math.floor(n * 0.7),
+        rejectedApplications: Math.floor(n * 0.2),
         growthRate: 0
       };
     });
@@ -209,21 +193,10 @@ class DashboardClient {
    * Endpoint: GET /api/analytics/grade-distribution
    */
   async getGradeDistribution(): Promise<GradeDistribution[]> {
-    const response = await httpClient.get<{
-      gradeCount: Record<string, number>;
-      gradePercentages: Record<string, number>;
-      totalApplications: number;
-    }>(`${this.analyticsPath}/grade-distribution`);
-
-    const data = response.data;
-
-    // Transform backend data to frontend format
-    return Object.entries(data.gradeCount || {}).map(([grade, count]) => ({
-      grade,
-      count,
-      approved: 0, // TODO: Backend should provide this
-      percentage: data.gradePercentages?.[grade] || 0
-    }));
+    const response = await httpClient.get<{ success: boolean; data: GradeDistribution[] }>(
+      `${this.analyticsPath}/grade-distribution`
+    );
+    return (response.data as any).data || [];
   }
 
   /**
