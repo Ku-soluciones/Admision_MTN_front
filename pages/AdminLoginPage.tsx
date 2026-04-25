@@ -84,11 +84,13 @@ const AdminLoginPage: React.FC = () => {
 
     return (
         <div
-            className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative"
+            className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative animate-bg-shift"
             style={{
-                backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.85) 0%, rgba(15, 32, 87, 0.85) 100%), url('/images/entrada-colegio.jpg')`,
+                backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(15, 32, 87, 0.8) 100%), url('/images/colegio.png')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
+                backgroundAttachment: 'fixed',
+                animation: 'subtle-zoom 20s ease-in-out infinite alternate',
             }}
         >
             {/* Decoración de esquinas */}
@@ -304,12 +306,25 @@ const AdminLoginPage: React.FC = () => {
                     }
                 }
 
+                @keyframes subtle-zoom {
+                    0% {
+                        transform: scale(1);
+                    }
+                    100% {
+                        transform: scale(1.05);
+                    }
+                }
+
                 .animate-fade-in {
                     animation: fade-in 0.5s ease-out;
                 }
 
                 .animate-slide-in {
                     animation: slide-in 0.3s ease-out;
+                }
+
+                .animate-bg-shift {
+                    animation: subtle-zoom 20s ease-in-out infinite alternate;
                 }
             `}</style>
         </div>
