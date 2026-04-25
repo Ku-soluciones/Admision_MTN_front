@@ -1,17 +1,16 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
+import { EyeIcon, EyeOffIcon } from '../components/icons/Icons';
 
-const LoginPage: React.FC = () => {
-    const [userType, setUserType] = useState<'familia' | 'admin'>('familia');
+const AdminLoginPage: React.FC = () => {
+    const [userType, setUserType] = useState<'familia' | 'admin'>('admin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [step, setStep] = useState(1); // 1: Email, 2: Password
     const navigate = useNavigate();
     const { login, user, isAuthenticated } = useAuth();
     const { addNotification } = useNotifications();
@@ -29,122 +28,291 @@ const LoginPage: React.FC = () => {
         }
     }, [isAuthenticated, user, navigate]);
 
+    const handleNextStep = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (step === 1) {
+            if (email) {
+                setStep(2);
+            } else {
+                addNotification({
+                    type: 'error',
+                    title: 'Campo requerido',
+                    message: 'Por favor ingrese un correo electrónico'
+                });
+            }
+        } else {
+            handleLogin();
+        }
+    };
+
+    const handleBack = () => {
+        setStep(1);
+        setPassword('');
+    };
+
+    const handleLogin = async () => {
+        setIsLoading(true);
+        try {
+            await login(email, password, userType);
+
+            if (userType === 'familia') {
+                navigate('/familia');
+            } else {
+                navigate('/admin');
+            }
+        } catch (error: any) {
+            addNotification({
+                type: 'error',
+                title: 'Error de autenticación',
+                message: error.message || 'Credenciales inválidas'
+            });
+            setStep(1);
+            setPassword('');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSwitchRole = () => {
+        setEmail('');
+        setPassword('');
+        setStep(1);
+        setUserType(userType === 'admin' ? 'familia' : 'admin');
+    };
+
+    const isAdmin = userType === 'admin';
+
     return (
-        <div className="min-h-[calc(100vh-250px)] flex items-center justify-center bg-gray-50 p-4">
-            <div className="max-w-md w-full">
-                <div className="flex justify-center mb-6">
-                     <Link to="/" className="flex items-center gap-3">
-                        <img src="/images/logoMTN.png" alt="Logo Colegio Monte Tabor y Nazaret" className="h-14" />
-                    </Link>
-                </div>
-                <Card className="p-5 sm:p-8 shadow-2xl">
-                    <div className="flex justify-center mb-6 gap-4">
-                        <button
-                            className={`px-4 py-2 rounded-lg font-bold border transition-colors duration-200 ${userType === 'familia' ? 'bg-dorado-nazaret text-azul-monte-tabor border-dorado-nazaret' : 'bg-white text-gris-piedra border-gray-300'}`}
-                            onClick={() => setUserType('familia')}
-                        >
-                            Familia
-                        </button>
-                        <button
-                            className={`px-4 py-2 rounded-lg font-bold border transition-colors duration-200 ${userType === 'admin' ? 'bg-azul-monte-tabor text-blanco-pureza border-azul-monte-tabor' : 'bg-white text-gris-piedra border-gray-300'}`}
-                            onClick={() => setUserType('admin')}
-                        >
-                            Administrador
-                        </button>
+        <div
+            className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative"
+            style={{
+                backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.85) 0%, rgba(15, 32, 87, 0.85) 100%), url('/images/entrada-colegio.jpg')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+            }}
+        >
+            {/* Decoración de esquinas */}
+            <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-dorado-nazaret/10 to-transparent rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-azul-monte-tabor/10 to-transparent rounded-full blur-3xl"></div>
+
+            {/* Contenedor principal */}
+            <div className="w-full max-w-md z-10 px-4">
+                {/* Tarjeta de login */}
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in border border-white/20">
+
+                    {/* Encabezado con gradiente */}
+                    <div className="bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 px-8 py-8">
+                        <div className="flex justify-center mb-4">
+                            <img
+                                src="/images/logoMTN.png"
+                                alt="Logo Colegio"
+                                className="h-12 object-contain brightness-0 invert"
+                            />
+                        </div>
+                        <h1 className="text-2xl font-bold text-white text-center mb-2">
+                            {step === 1 ? 'Iniciar Sesión' : 'Verificar Identidad'}
+                        </h1>
+                        <p className="text-white/90 text-sm text-center">
+                            {isAdmin
+                                ? 'Portal Administrativo del Colegio'
+                                : 'Portal de Familias'}
+                        </p>
                     </div>
-                    <h1 className="text-2xl font-bold text-azul-monte-tabor text-center mb-1">
-                        {userType === 'familia' ? 'Portal de Familias' : 'Acceso Administrativo'}
-                    </h1>
-                    <p className="text-center text-gris-piedra mb-6">
-                        {userType === 'familia' ? 'Bienvenido/a. Ingrese para ver el estado de su postulación.' : 'Ingrese sus credenciales para continuar.'}
-                    </p>
-                    <form className="space-y-6" onSubmit={async (e) => {
-                        e.preventDefault();
-                        setIsLoading(true);
-                        
-                        try {
-                            await login(email, password, userType);
-                            
-                            // Redirigir según el tipo de usuario
-                            if (userType === 'familia') {
-                                navigate('/familia');
-                            } else {
-                                navigate('/admin');
-                            }
-                        } catch (error: any) {
-                            addNotification({
-                                type: 'error',
-                                title: 'Error de autenticación',
-                                message: error.message || 'Credenciales inválidas'
-                            });
-                        } finally {
-                            setIsLoading(false);
-                        }
-                    }}>
-                        <Input
-                            id="email"
-                            label="Correo Electrónico"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder={userType === 'familia' ? 'familia@ejemplo.com' : 'admin@mtn.cl'}
-                            isRequired
-                        />
-                        <Input
-                            id="password"
-                            label="Contraseña"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            isRequired
-                            showPasswordToggle
-                        />
-                        <div className="text-right">
-                            <a href="#" className="text-sm text-azul-monte-tabor hover:underline">¿Olvidó su contraseña?</a>
+
+                    {/* Contenido */}
+                    <div className="px-8 py-8 space-y-6">
+                        {/* Selector de rol */}
+                        <div className="flex gap-3 p-1 bg-gray-100 rounded-lg">
+                            <button
+                                type="button"
+                                onClick={handleSwitchRole}
+                                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
+                                    !isAdmin
+                                        ? 'bg-white text-azul-monte-tabor shadow-md'
+                                        : 'text-gray-600 hover:text-gray-800'
+                                }`}
+                            >
+                                Familia
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSwitchRole}
+                                className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
+                                    isAdmin
+                                        ? 'bg-azul-monte-tabor text-white shadow-md'
+                                        : 'text-gray-600 hover:text-gray-800'
+                                }`}
+                            >
+                                Administrador
+                            </button>
                         </div>
-                        <Button 
-                            type="submit" 
-                            size="lg" 
-                            variant={userType === 'familia' ? 'primary' : 'secondary'} 
-                            className="w-full"
-                            isLoading={isLoading}
-                            loadingText="Ingresando..."
-                        >
-                            Ingresar
-                        </Button>
-                    </form>
-                    {userType === 'familia' && (
-                        <div className="mt-6 text-center text-sm text-gris-piedra">
-                            <p>
-                                ¿Primera vez aquí?{' '}
+
+                        <form onSubmit={handleNextStep} className="space-y-6">
+                            {step === 1 ? (
+                                <div className="space-y-4 animate-slide-in">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                                            Correo Electrónico
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            placeholder={isAdmin ? 'admin@mtn.cl' : 'familia@ejemplo.com'}
+                                            className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium"
+                                            required
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                        >
+                                            Siguiente
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 animate-slide-in">
+                                    {/* Botón atrás y email */}
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                                        <button
+                                            type="button"
+                                            onClick={handleBack}
+                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                            title="Volver"
+                                        >
+                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                        <div>
+                                            <p className="text-xs text-gray-600">Continuando como:</p>
+                                            <p className="text-sm font-semibold text-gray-800">{email}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Campo de contraseña */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                                            Contraseña
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                placeholder="Ingrese su contraseña"
+                                                className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium pr-12"
+                                                required
+                                                autoFocus
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-gray-600 hover:text-azul-monte-tabor transition-colors"
+                                            >
+                                                {showPassword ? (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Recordar y recuperar contraseña */}
+                                    <div className="flex justify-between items-center text-sm">
+                                        <label className="flex items-center gap-2 text-gray-700">
+                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300" />
+                                            <span>Mantener sesión abierta</span>
+                                        </label>
+                                        <a href="#" className="text-azul-monte-tabor hover:underline font-medium">
+                                            ¿Olvidó contraseña?
+                                        </a>
+                                    </div>
+
+                                    {/* Botón de login */}
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                    >
+                                        {isLoading ? 'Ingresando...' : 'Iniciar Sesión'}
+                                    </button>
+                                </div>
+                            )}
+                        </form>
+
+                        {/* Mensaje de nueva cuenta para familia */}
+                        {step === 1 && !isAdmin && (
+                            <div className="text-center text-sm text-gray-700">
+                                ¿Primera vez?{' '}
                                 <Link to="/postulacion" className="font-semibold text-azul-monte-tabor hover:underline">
-                                    Inicie su postulación para crear una cuenta.
+                                    Inicie su postulación
                                 </Link>
-                            </p>
-                        </div>
-                    )}
-                </Card>
-                <p className="text-center mt-6 text-sm text-gris-piedra">
-                    {userType === 'familia' ? (
-                        <>
-                            ¿Es administrador?{' '}
-                            <button className="font-semibold text-azul-monte-tabor hover:underline" onClick={() => setUserType('admin')}>
-                                Ingrese aquí
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                    ¿Es usted una familia?{' '}
-                            <button className="font-semibold text-azul-monte-tabor hover:underline" onClick={() => setUserType('familia')}>
-                        Acceda al portal familiar
-                            </button>
-                        </>
-                    )}
-                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-6 text-center text-white/80 text-sm">
+                    <p>
+                        {isAdmin
+                            ? '¿Es familia? '
+                            : '¿Es administrador? '}
+                        <button
+                            onClick={handleSwitchRole}
+                            className="text-white font-semibold hover:text-dorado-nazaret transition-colors"
+                        >
+                            {isAdmin ? 'Acceda al portal familiar' : 'Ingrese aquí'}
+                        </button>
+                    </p>
+                </div>
             </div>
+
+            {/* Estilos de animación */}
+            <style>{`
+                @keyframes fade-in {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                @keyframes slide-in {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .animate-fade-in {
+                    animation: fade-in 0.5s ease-out;
+                }
+
+                .animate-slide-in {
+                    animation: slide-in 0.3s ease-out;
+                }
+            `}</style>
         </div>
     );
 };
 
-export default LoginPage;
+export default AdminLoginPage;

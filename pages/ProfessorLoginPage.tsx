@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { LogoIcon, UserIcon } from '../components/icons/Icons';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
@@ -14,10 +10,12 @@ const ProfessorLoginPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { login: loginWithAuth } = useAuth();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [step, setStep] = useState(1); // 1: Email, 2: Password
 
     const validationConfig = {
-        email: { 
-            required: true, 
+        email: {
+            required: true,
             email: true,
             custom: (value: string) => {
                 if (!value.includes('@mtn.cl')) {
@@ -34,6 +32,28 @@ const ProfessorLoginPage: React.FC = () => {
         { email: '', password: '' }
     );
 
+    const handleNextStep = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (step === 1) {
+            if (data.email && !errors.email) {
+                setStep(2);
+            } else {
+                touchField('email');
+                addNotification({
+                    type: 'error',
+                    title: 'Email inválido',
+                    message: errors.email || 'Por favor ingrese un email institucional válido (@mtn.cl)'
+                });
+            }
+        } else {
+            handleLogin();
+        }
+    };
+
+    const handleBack = () => {
+        setStep(1);
+    };
+
     const handleLogin = async () => {
         if (!validateForm()) {
             addNotification({
@@ -48,30 +68,26 @@ const ProfessorLoginPage: React.FC = () => {
 
         try {
             console.log('🔐 Iniciando login para profesor:', data.email);
-            
-            // Usar el servicio de autenticación real
+
             const response = await professorAuthService.login({
                 email: data.email,
                 password: data.password
             });
 
             if (response.success && response.token) {
-                // Verificar que el rol sea de profesor
                 if (response.role && professorAuthService.isProfessorRole(response.role)) {
-                    
-                    // ✅ Si es admin, registrar en AuthContext principal
+
                     if (response.role === 'ADMIN') {
                         console.log('🔑 Usuario admin detectado, registrando en AuthContext principal...');
                         await loginWithAuth(data.email, data.password, 'ADMIN');
                     }
-                    
-                    // Guardar información del profesor en localStorage para compatibilidad
+
                     localStorage.setItem('currentProfessor', JSON.stringify({
-                        id: response.id || 26, // Usar ID real del backend o fallback
+                        id: response.id || 26,
                         firstName: response.firstName || '',
                         lastName: response.lastName || '',
                         email: response.email || '',
-                        subject: response.subject || null, // Campo subject del backend
+                        subject: response.subject || null,
                         subjects: getSubjectsByRole(response.role),
                         assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
                         isAdmin: response.role === 'ADMIN'
@@ -84,8 +100,7 @@ const ProfessorLoginPage: React.FC = () => {
                     });
 
                     console.log('✅ Login exitoso, redirigiendo al dashboard...');
-                    
-                    // ✅ Redirigir según el rol del usuario
+
                     if (response.role === 'ADMIN') {
                         console.log('🔑 Usuario admin detectado, redirigiendo al panel de administración...');
                         navigate('/admin');
@@ -93,7 +108,7 @@ const ProfessorLoginPage: React.FC = () => {
                         console.log('👨‍🏫 Usuario profesor detectado, redirigiendo al dashboard de profesor...');
                         navigate('/profesor');
                     }
-                    
+
                 } else {
                     addNotification({
                         type: 'error',
@@ -120,24 +135,12 @@ const ProfessorLoginPage: React.FC = () => {
         }
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleLogin();
-        }
-    };
-
-    // Función para obtener las asignaturas según el rol
     const getSubjectsByRole = (role: string): string[] => {
         switch (role) {
-            // Administración
             case 'ADMIN':
                 return ['MATH', 'SPANISH', 'ENGLISH', 'SCIENCE', 'HISTORY', 'PSYCHOLOGY'];
-            
-            // Profesores ciclo inicial (pueden evaluar todo en su ciclo)
             case 'TEACHER_EARLY_CYCLE':
                 return ['MATH', 'SPANISH'];
-            
-            // Profesores básica por asignatura
             case 'TEACHER_LANGUAGE_BASIC':
                 return ['SPANISH'];
             case 'TEACHER_MATHEMATICS_BASIC':
@@ -148,8 +151,6 @@ const ProfessorLoginPage: React.FC = () => {
                 return ['SCIENCE'];
             case 'TEACHER_HISTORY_BASIC':
                 return ['HISTORY'];
-            
-            // Profesores media por asignatura
             case 'TEACHER_LANGUAGE_HIGH':
                 return ['SPANISH'];
             case 'TEACHER_MATHEMATICS_HIGH':
@@ -160,8 +161,6 @@ const ProfessorLoginPage: React.FC = () => {
                 return ['SCIENCE'];
             case 'TEACHER_HISTORY_HIGH':
                 return ['HISTORY'];
-            
-            // Coordinadores (acceso a su área en todos los niveles)
             case 'COORDINATOR_LANGUAGE':
                 return ['SPANISH'];
             case 'COORDINATOR_MATHEMATICS':
@@ -172,175 +171,206 @@ const ProfessorLoginPage: React.FC = () => {
                 return ['SCIENCE'];
             case 'COORDINATOR_HISTORY':
                 return ['HISTORY'];
-            
-            // Especialistas
             case 'CYCLE_DIRECTOR':
                 return ['MATH', 'SPANISH', 'ENGLISH', 'SCIENCE', 'HISTORY'];
             case 'PSYCHOLOGIST':
                 return ['PSYCHOLOGY'];
             case 'INTERVIEWER':
-                return ['PSYCHOLOGY']; // Los entrevistadores trabajan principalmente con evaluaciones psicológicas y entrevistas familiares
-
-            // Legacy roles
+                return ['PSYCHOLOGY'];
             case 'TEACHER_MATHEMATICS':
                 return ['MATH'];
             case 'TEACHER_LANGUAGE':
                 return ['SPANISH'];
             case 'TEACHER_ENGLISH':
                 return ['ENGLISH'];
-            
             default:
                 return [];
         }
     };
 
-    // Función para obtener el departamento según el rol
-    const getDepartmentByRole = (role: string): string => {
-        switch (role) {
-            // Administración
-            case 'ADMIN':
-                return 'Administración';
-            
-            // Profesores ciclo inicial
-            case 'TEACHER_EARLY_CYCLE':
-                return 'Educación Inicial (K-2°)';
-            
-            // Profesores básica
-            case 'TEACHER_LANGUAGE_BASIC':
-                return 'Lenguaje y Comunicación (3°-7°)';
-            case 'TEACHER_MATHEMATICS_BASIC':
-                return 'Matemática (3°-7°)';
-            case 'TEACHER_ENGLISH_BASIC':
-                return 'Inglés (3°-7°)';
-            case 'TEACHER_SCIENCE_BASIC':
-                return 'Ciencias Naturales (3°-7°)';
-            case 'TEACHER_HISTORY_BASIC':
-                return 'Historia y Geografía (3°-7°)';
-            
-            // Profesores media
-            case 'TEACHER_LANGUAGE_HIGH':
-                return 'Lenguaje y Comunicación (8°-IV)';
-            case 'TEACHER_MATHEMATICS_HIGH':
-                return 'Matemática (8°-IV)';
-            case 'TEACHER_ENGLISH_HIGH':
-                return 'Inglés (8°-IV)';
-            case 'TEACHER_SCIENCE_HIGH':
-                return 'Ciencias Naturales (8°-IV)';
-            case 'TEACHER_HISTORY_HIGH':
-                return 'Historia y Geografía (8°-IV)';
-            
-            // Coordinadores
-            case 'COORDINATOR_LANGUAGE':
-                return 'Coordinación de Lenguaje';
-            case 'COORDINATOR_MATHEMATICS':
-                return 'Coordinación de Matemática';
-            case 'COORDINATOR_ENGLISH':
-                return 'Coordinación de Inglés';
-            case 'COORDINATOR_SCIENCE':
-                return 'Coordinación de Ciencias';
-            case 'COORDINATOR_HISTORY':
-                return 'Coordinación de Historia';
-            
-            // Especialistas
-            case 'CYCLE_DIRECTOR':
-                return 'Dirección de Ciclo';
-            case 'PSYCHOLOGIST':
-                return 'Psicología';
-            case 'INTERVIEWER':
-                return 'Entrevistas y Admisión';
-
-            // Legacy roles
-            case 'TEACHER_MATHEMATICS':
-                return 'Matemática (Sistema Anterior)';
-            case 'TEACHER_LANGUAGE':
-                return 'Lenguaje y Comunicación (Sistema Anterior)';
-            case 'TEACHER_ENGLISH':
-                return 'Inglés (Sistema Anterior)';
-            
-            default:
-                return 'General';
-        }
-    };
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-azul-monte-tabor via-blue-700 to-blue-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                {/* Logo y Header */}
-                <div className="text-center">
-                    <div className="mx-auto flex justify-center">
-                        <LogoIcon className="w-32 h-32" />
+        <div
+            className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative"
+            style={{
+                backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.85) 0%, rgba(15, 32, 87, 0.85) 100%), url('/images/entrada-colegio.jpg')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+            }}
+        >
+            {/* Decoración de esquinas */}
+            <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-blue-400/10 to-transparent rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-azul-monte-tabor/10 to-transparent rounded-full blur-3xl"></div>
+
+            {/* Contenedor principal */}
+            <div className="w-full max-w-md z-10 px-4">
+                {/* Tarjeta de login */}
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in border border-white/20">
+
+                    {/* Encabezado con gradiente */}
+                    <div className="bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 px-8 py-8">
+                        <div className="flex justify-center mb-4">
+                            <img
+                                src="/images/logoMTN.png"
+                                alt="Logo Colegio"
+                                className="h-12 object-contain brightness-0 invert"
+                            />
+                        </div>
+                        <h1 className="text-2xl font-bold text-white text-center mb-2">
+                            {step === 1 ? 'Portal de Profesores' : 'Verificar Identidad'}
+                        </h1>
+                        <p className="text-white/90 text-sm text-center">
+                            Sistema de Evaluación de Admisión
+                        </p>
                     </div>
-                    <h2 className="mt-6 text-3xl font-bold text-blanco-pureza">
-                        Portal de Profesores
-                    </h2>
-                    <p className="mt-2 text-sm text-blue-200">
-                        Sistema de Evaluación de Exámenes de Admisión
-                    </p>
+
+                    {/* Contenido */}
+                    <div className="px-8 py-8 space-y-6">
+                        <form onSubmit={handleNextStep} className="space-y-6">
+                            {step === 1 ? (
+                                <div className="space-y-4 animate-slide-in">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                                            Email Institucional
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => updateField('email', e.target.value)}
+                                            onBlur={() => touchField('email')}
+                                            placeholder="nombre@mtn.cl"
+                                            className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium"
+                                            required
+                                            autoFocus
+                                        />
+                                        {errors.email && (
+                                            <p className="text-red-500 text-xs mt-2">{errors.email}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                        >
+                                            Siguiente
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 animate-slide-in">
+                                    {/* Botón atrás y email */}
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                                        <button
+                                            type="button"
+                                            onClick={handleBack}
+                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                            title="Volver"
+                                        >
+                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                        <div>
+                                            <p className="text-xs text-gray-600">Continuando como:</p>
+                                            <p className="text-sm font-semibold text-gray-800">{data.email}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Campo de contraseña */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                                            Contraseña
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={data.password}
+                                                onChange={(e) => updateField('password', e.target.value)}
+                                                onBlur={() => touchField('password')}
+                                                placeholder="Ingrese su contraseña"
+                                                className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium pr-12"
+                                                required
+                                                autoFocus
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-gray-600 hover:text-azul-monte-tabor transition-colors"
+                                            >
+                                                {showPassword ? (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                        {errors.password && (
+                                            <p className="text-red-500 text-xs mt-2">{errors.password}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Botón de login */}
+                                    <button
+                                        type="submit"
+                                        disabled={isLoggingIn}
+                                        className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                    >
+                                        {isLoggingIn ? 'Verificando...' : 'Iniciar Sesión'}
+                                    </button>
+                                </div>
+                            )}
+                        </form>
+                    </div>
                 </div>
 
-                {/* Formulario de Login */}
-                <Card className="p-8 bg-blanco-pureza">
-                    <div className="space-y-6">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-azul-monte-tabor">
-                                Iniciar Sesión
-                            </h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Input
-                                id="email"
-                                label="Email Institucional"
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => updateField('email', e.target.value)}
-                                onBlur={() => touchField('email')}
-                                onKeyPress={handleKeyPress}
-                                error={errors.email}
-                                placeholder="nombre@mtn.cl"
-                                isRequired
-                            />
-
-                            <Input
-                                id="password"
-                                label="Contraseña"
-                                type="password"
-                                value={data.password}
-                                onChange={(e) => updateField('password', e.target.value)}
-                                onBlur={() => touchField('password')}
-                                onKeyPress={handleKeyPress}
-                                error={errors.password}
-                                placeholder="Ingresa tu contraseña"
-                                isRequired
-                                showPasswordToggle
-                            />
-                        </div>
-
-                        <Button
-                            variant="primary"
-                            onClick={handleLogin}
-                            isLoading={isLoggingIn}
-                            loadingText="Verificando..."
-                            className="w-full"
-                        >
-                            Iniciar Sesión
-                        </Button>
-
-
-
-                        <div className="text-center pt-4 border-t border-gray-200">
-                            <button
-                                onClick={() => navigate('/')}
-                                className="text-sm text-azul-monte-tabor hover:text-blue-800 transition-colors"
-                            >
-                                ← Volver al Portal Principal
-                            </button>
-                        </div>
-                    </div>
-                </Card>
-
-
+                {/* Footer */}
+                <div className="mt-6 text-center text-white/80 text-sm">
+                    <button
+                        onClick={() => navigate('/')}
+                        className="text-white font-semibold hover:text-blue-200 transition-colors"
+                    >
+                        ← Volver al Portal Principal
+                    </button>
+                </div>
             </div>
+
+            {/* Estilos de animación */}
+            <style>{`
+                @keyframes fade-in {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                @keyframes slide-in {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .animate-fade-in {
+                    animation: fade-in 0.5s ease-out;
+                }
+
+                .animate-slide-in {
+                    animation: slide-in 0.3s ease-out;
+                }
+            `}</style>
         </div>
     );
 };
