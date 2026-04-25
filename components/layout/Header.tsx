@@ -1,10 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import Button from '../ui/Button';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Hide header on login pages
+    const loginRoutes = ['/login', '/profesor/login', '/apoderado/login', '/familia/login'];
+    const isLoginPage = loginRoutes.includes(location.pathname);
     const navLinkClasses = "text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200";
     const activeLinkClasses = "text-azul-monte-tabor";
     const [isAdmin, setIsAdmin] = useState(false);
@@ -87,6 +92,11 @@ const Header: React.FC = () => {
         }
         // Si no hay usuario autenticado, dejar que el link funcione normalmente
     };
+
+    // Don't render header on login pages
+    if (isLoginPage) {
+        return null;
+    }
 
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
