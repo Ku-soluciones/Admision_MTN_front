@@ -212,7 +212,8 @@ const ProfessorLoginPage: React.FC = () => {
                             <img
                                 src="/images/logoMTN.png"
                                 alt="Logo Colegio"
-                                className="h-12 object-contain brightness-0 invert"
+                                className="h-14 object-contain drop-shadow-lg"
+                                style={{ filter: 'drop-shadow(0 2px 8px rgba(255,255,255,0.4))' }}
                             />
                         </div>
                         <h1 className="text-2xl font-bold text-white text-center mb-2">
