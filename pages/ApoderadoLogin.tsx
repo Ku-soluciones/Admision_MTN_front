@@ -1,68 +1,39 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import EmailVerification from '../components/ui/EmailVerification';
 import { useNotifications } from '../context/AppContext';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [step, setStep] = useState(1); // 1: Email, 2: Password
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
     const { addNotification } = useNotifications();
     const [searchParams] = useSearchParams();
-    const redirectTo = searchParams.get('redirect') || '/familia';
+    const redirectTo = searchParams.get('redirect') || '/postulacion';
 
-    const handleNextStep = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (step === 1) {
-            if (email && email.includes('@')) {
-                setStep(2);
-            } else {
-                addNotification({
-                    type: 'error',
-                    title: 'Email inválido',
-                    message: 'Por favor ingrese un email válido'
-                });
-            }
-        } else {
-            handleLogin();
-        }
+    const handleEmailChange = (newEmail: string) => {
+        setEmail(newEmail);
+        setIsEmailVerified(false);
     };
 
-    const handleBack = () => {
-        setStep(1);
-        setPassword('');
-    };
+    const handleVerificationComplete = (isVerified: boolean) => {
+        setIsEmailVerified(isVerified);
 
-    const handleLogin = async () => {
-        setIsLoading(true);
-        try {
-            console.log('🔐 Iniciando login para apoderado:', email);
-
-            await login(email, password, 'apoderado');
-
+        if (isVerified) {
             addNotification({
                 type: 'success',
-                title: 'Bienvenido/a',
-                message: 'Sesión iniciada correctamente'
+                title: 'Email Verificado',
+                message: 'Tu email ha sido verificado correctamente. Accediendo al formulario...'
             });
 
-            console.log('✅ Login exitoso, redirigiendo a:', redirectTo);
-            navigate(redirectTo);
-        } catch (error: any) {
-            console.error('❌ Error en login:', error);
-            addNotification({
-                type: 'error',
-                title: 'Error de autenticación',
-                message: error.message || 'Credenciales inválidas'
-            });
-            setStep(1);
-            setPassword('');
-        } finally {
-            setIsLoading(false);
+            // Guardar email en localStorage para referencia
+            localStorage.setItem('apoderado_email', email);
+
+            // Redirigir después de 2 segundos
+            setTimeout(() => {
+                console.log('✅ Email verificado, redirigiendo a:', redirectTo);
+                navigate(redirectTo);
+            }, 2000);
         }
     };
 
@@ -97,115 +68,42 @@ const ApoderadoLogin: React.FC = () => {
                             />
                         </div>
                         <h1 className="text-2xl font-bold text-white text-center mb-2">
-                            {step === 1 ? 'Portal de Familias' : 'Verificar Identidad'}
+                            Portal de Familias
                         </h1>
                         <p className="text-white/90 text-sm text-center">
-                            Acceso para Apoderados
+                            Verifica tu email para continuar con la postulación
                         </p>
                     </div>
 
                     {/* Contenido */}
                     <div className="px-8 py-8 space-y-6">
-                        <form onSubmit={handleNextStep} className="space-y-6">
-                            {step === 1 ? (
-                                <div className="space-y-4 animate-slide-in">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
-                                            Correo Electrónico
-                                        </label>
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            placeholder="apoderado@ejemplo.com"
-                                            className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium"
-                                            required
-                                            autoFocus
-                                        />
-                                    </div>
-
-                                    <div className="pt-4">
-                                        <button
-                                            type="submit"
-                                            className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
-                                        >
-                                            Siguiente
-                                        </button>
-                                    </div>
+                        {!isEmailVerified ? (
+                            <div className="space-y-6 animate-slide-in">
+                                <div className="text-center text-sm text-gray-700">
+                                    <p className="mb-4">Ingresa tu correo electrónico para verificarlo</p>
                                 </div>
-                            ) : (
-                                <div className="space-y-4 animate-slide-in">
-                                    {/* Botón atrás y email */}
-                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-                                        <button
-                                            type="button"
-                                            onClick={handleBack}
-                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                                            title="Volver"
-                                        >
-                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                            </svg>
-                                        </button>
-                                        <div>
-                                            <p className="text-xs text-gray-600">Continuando como:</p>
-                                            <p className="text-sm font-semibold text-gray-800">{email}</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Campo de contraseña */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-800 mb-2">
-                                            Contraseña
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type={showPassword ? 'text' : 'password'}
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder="Ingrese su contraseña"
-                                                className="w-full px-4 py-3 border-b-2 border-gray-300 focus:outline-none focus:border-azul-monte-tabor bg-transparent transition-colors text-base font-medium pr-12"
-                                                required
-                                                autoFocus
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-gray-600 hover:text-azul-monte-tabor transition-colors"
-                                            >
-                                                {showPassword ? (
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Botón de login */}
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
-                                    >
-                                        {isLoading ? 'Ingresando...' : 'Iniciar Sesión'}
-                                    </button>
+                                <EmailVerification
+                                    email={email}
+                                    onEmailChange={handleEmailChange}
+                                    onVerificationComplete={handleVerificationComplete}
+                                    placeholder="tu.correo@ejemplo.com"
+                                    isRequired={true}
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-slide-in text-center">
+                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                    <p className="text-green-700 font-semibold">
+                                        ✅ Email Verificado
+                                    </p>
+                                    <p className="text-green-600 text-sm mt-2">
+                                        Redirigiendo al formulario de postulación...
+                                    </p>
                                 </div>
-                            )}
-                        </form>
-
-                        {/* Mensaje para nueva cuenta */}
-                        {step === 1 && (
-                            <div className="text-center text-sm text-gray-700">
-                                ¿Primera vez?{' '}
-                                <Link to="/postulacion" className="font-semibold text-azul-monte-tabor hover:underline">
-                                    Inicie su postulación
-                                </Link>
+                                <div className="flex justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor"></div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -213,12 +111,12 @@ const ApoderadoLogin: React.FC = () => {
 
                 {/* Footer */}
                 <div className="mt-6 text-center text-white/80 text-sm">
-                    <Link
-                        to="/"
+                    <button
+                        onClick={() => navigate('/')}
                         className="text-white font-semibold hover:text-blue-200 transition-colors"
                     >
                         ← Volver al Portal Principal
-                    </Link>
+                    </button>
                 </div>
             </div>
 
