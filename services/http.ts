@@ -5,7 +5,7 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { oidcService } from './oidcService';
-import { getApiBaseUrl, apiPath } from '../config/api.config';
+import { getApiBaseUrl } from '../config/api.config';
 import { csrfService } from './csrfService';
 
 // Tipos
@@ -71,11 +71,6 @@ class HttpClient {
         // CRITICAL: Set baseURL at REQUEST TIME to ensure runtime evaluation
         // This runs in the browser, so getApiBaseUrl() will detect the correct hostname
         const runtimeBaseURL = getApiBaseUrl();
-
-        // Rewrite /v1/ → /api/ when connecting directly to BFF (local dev)
-        if (config.url) {
-          config.url = apiPath(config.url);
-        }
 
         // Build full URL if config.url is relative
         if (config.url && !config.url.startsWith('http')) {

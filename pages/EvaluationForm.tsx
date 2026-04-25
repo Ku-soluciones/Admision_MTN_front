@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getApiBaseUrl } from '../config/api.config';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -803,7 +804,7 @@ const EvaluationForm: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                       <a
-                        href={`/v1/evaluations/attachments/${attachment.id}/download`}
+                        href={`${getApiBaseUrl()}/v1/evaluations/attachments/${attachment.id}/download`}
                         download
                         target="_blank"
                         rel="noopener noreferrer"

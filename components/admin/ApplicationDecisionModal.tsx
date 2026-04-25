@@ -33,7 +33,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
     try {
       const token = localStorage.getItem('auth_token');
       await axios.post(
-        `/v1/applications/${application.id}/final-decision`,
+        `${getApiBaseUrl()}/v1/applications/${application.id}/final-decision`,
         {
           decision,
           note

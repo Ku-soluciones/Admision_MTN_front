@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { csrfService } from './csrfService';
-import { getApiBaseUrl, apiPath } from '../config/api.config';
+import { getApiBaseUrl } from '../config/api.config';
 import { auth } from '../src/lib/firebase';
 
 // Configuración base de axios - Using nginx gateway for microservices
@@ -41,18 +41,6 @@ api.interceptors.request.use(
     async (config) => {
         // CRITICAL: Set baseURL at runtime for each request
         let runtimeBaseURL = getApiBaseUrl();
-
-        // TEMPORARY: Use notification-service directly for email endpoints
-        // This bypasses the gateway which is having redirect issues
-        if (config.url && config.url.includes('/v1/email/')) {
-            runtimeBaseURL = 'https://notification-service-production-3411.up.railway.app';
-            console.log('📧 Using direct notification-service URL for email endpoint');
-        }
-
-        // Rewrite /v1/ → /api/ when connecting directly to BFF (local dev)
-        if (config.url) {
-            config.url = apiPath(config.url);
-        }
 
         // Build full URL if config.url is relative
         if (config.url && !config.url.startsWith('http')) {
