@@ -137,7 +137,7 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
-                        <Link to="/postulacion" className="hidden sm:block">
+                        <Link to="/apoderado/login?redirect=/postulacion" className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Iniciar Postulación
                             </Button>
@@ -208,7 +208,7 @@ const Header: React.FC = () => {
                         )}
                         {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1">
-                                <Link to="/postulacion" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Link to="/apoderado/login?redirect=/postulacion" onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full">
                                         Iniciar Postulación
                                     </Button>
