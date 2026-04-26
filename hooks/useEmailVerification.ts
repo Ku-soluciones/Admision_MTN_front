@@ -58,16 +58,14 @@ export const useEmailVerification = () => {
 
             console.log('🔄 useEmailVerification: Enviando código con datos:', { email, rut, firstName, lastName });
 
-            // MODO DEV: Auto-verificar emails de prueba sin contactar backend
+            // MODO DEV: Auto-verificar cualquier email sin contactar backend
             const isDevMode = import.meta.env.DEV;
-            const testEmails = ['juan.garcia@ejemplo.com', 'test@ejemplo.com', 'demo@ejemplo.com'];
-            const isTestEmail = testEmails.includes(email.toLowerCase());
 
             let response;
 
-            if (isDevMode && isTestEmail) {
-                console.log('🧪 MODO DEV: Auto-verificando email de prueba:', email);
-                // Mock response para desarrollo
+            if (isDevMode) {
+                console.log('🧪 MODO DEV: Auto-verificando email sin contactar backend:', email);
+                // Mock response para desarrollo - no requiere backend
                 response = {
                     success: true,
                     message: 'Código enviado (MODO DEV)',
@@ -124,14 +122,12 @@ export const useEmailVerification = () => {
         setState(prev => ({ ...prev, isLoading: true, verificationError: null }));
 
         try {
-            // MODO DEV: Auto-verificar si es email de prueba o código "000000"
+            // MODO DEV: Auto-verificar cualquier código sin contactar backend
             const isDevMode = import.meta.env.DEV;
-            const testEmails = ['juan.garcia@ejemplo.com', 'test@ejemplo.com', 'demo@ejemplo.com'];
-            const isTestEmail = testEmails.includes(email.toLowerCase());
 
             let response;
 
-            if (isDevMode && (isTestEmail || code === '000000')) {
+            if (isDevMode) {
                 console.log('🧪 MODO DEV: Auto-verificando código para:', email);
                 response = { isValid: true, message: 'Verificado en MODO DEV' };
             } else {
