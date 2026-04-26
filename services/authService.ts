@@ -76,6 +76,23 @@ class AuthService {
     
     async register(request: RegisterRequest): Promise<AuthResponse> {
         try {
+            // MODO DEV: Mock registration without contacting backend
+            const isDevMode = import.meta.env.DEV;
+            if (isDevMode) {
+                console.log('🧪 MODO DEV: Creando cuenta sin contactar backend:', request.email);
+                // Mock successful registration
+                const mockResponse: AuthResponse = {
+                    success: true,
+                    message: 'Cuenta creada exitosamente (MODO DEV)',
+                    token: 'dev-token-' + Date.now(),
+                    email: request.email,
+                    firstName: request.firstName,
+                    lastName: request.lastName,
+                    role: 'APODERADO'
+                };
+                return mockResponse;
+            }
+
             // Check if browser supports encryption
             if (!isEncryptionSupported()) {
                 console.warn('[Auth] Web Crypto API not supported, falling back to HTTPS only');
