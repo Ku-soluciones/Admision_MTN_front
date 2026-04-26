@@ -48,8 +48,6 @@ const validationConfig = {
     rut: { required: true, minLength: 9 },
     birthDate: { required: true },
     grade: { required: true },
-    schoolApplied: { required: true },
-    admissionPreference: { required: true },
     studentEmail: { email: true },
     studentAddress: { required: true, minLength: 5 },
     currentSchool: { minLength: 2 }, // Será requerido condicionalmente
@@ -126,8 +124,7 @@ const ApplicationForm: React.FC = () => {
         nationality: 'CHILENA', // 'CHILENA' o 'EXTRANJERA'
         confirmPassword: '',
         address: '',
-        profession: '',
-        guardianType: '' // ex-alumno, funcionario, nuevo
+        profession: ''
     });
     
     // Estado para verificación de email
@@ -221,12 +218,6 @@ const ApplicationForm: React.FC = () => {
         }
 
         // Validaciones
-        if (!authData.guardianType) {
-            setAuthError('Debe seleccionar el tipo de apoderado');
-            setAuthLoading(false);
-            return;
-        }
-
         if (authData.password !== authData.confirmPassword) {
             setAuthError('Las contraseñas no coinciden');
             setAuthLoading(false);
@@ -1105,8 +1096,6 @@ const ApplicationForm: React.FC = () => {
                 if (!data.rut?.trim()) missing.push('RUT');
                 if (!data.birthDate) missing.push('Fecha de Nacimiento');
                 if (!data.grade) missing.push('Nivel al que postula');
-                if (!data.schoolApplied) missing.push('Colegio');
-                if (!data.admissionPreference) missing.push('Preferencia de Admisión');
                 if (!data.studentAddress?.trim()) missing.push('Dirección');
 
                 // Validate location fields
