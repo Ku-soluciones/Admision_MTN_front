@@ -26,15 +26,15 @@ const Button: React.FC<ButtonProps> = ({
     ariaLabel,
     ...props
 }) => {
-    const baseClasses = 'inline-flex items-center justify-center font-bold rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const baseClasses = 'inline-flex items-center justify-center font-bold rounded-lg shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:-translate-y-0.5 active:translate-y-0';
 
     const variantClasses = {
-        primary: 'bg-dorado-nazaret text-azul-monte-tabor hover:bg-amber-500 focus:ring-dorado-nazaret disabled:bg-gray-300 disabled:text-gray-500',
-        secondary: 'bg-azul-monte-tabor text-blanco-pureza hover:bg-blue-800 focus:ring-azul-monte-tabor disabled:bg-gray-300 disabled:text-gray-500',
-        outline: 'bg-transparent border-2 border-azul-monte-tabor text-azul-monte-tabor hover:bg-azul-monte-tabor hover:text-blanco-pureza focus:ring-azul-monte-tabor disabled:border-gray-300 disabled:text-gray-500',
-        danger: 'bg-rojo-sagrado text-blanco-pureza hover:bg-red-700 focus:ring-rojo-sagrado disabled:bg-gray-300 disabled:text-gray-500',
-        success: 'bg-verde-esperanza text-blanco-pureza hover:bg-green-700 focus:ring-verde-esperanza disabled:bg-gray-300 disabled:text-gray-500',
-        ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300 disabled:text-gray-400 shadow-none',
+        primary: 'bg-azul-monte-tabor text-white hover:bg-blue-900 hover:shadow-lg focus:ring-azul-monte-tabor disabled:bg-gray-300 disabled:text-gray-500 disabled:hover:translate-y-0',
+        secondary: 'bg-dorado-nazaret text-azul-monte-tabor hover:bg-amber-600 hover:shadow-lg focus:ring-dorado-nazaret disabled:bg-gray-300 disabled:text-gray-500 disabled:hover:translate-y-0',
+        outline: 'bg-transparent border-2 border-azul-monte-tabor text-azul-monte-tabor hover:bg-azul-monte-tabor/5 focus:ring-azul-monte-tabor disabled:border-gray-300 disabled:text-gray-500 disabled:hover:translate-y-0',
+        danger: 'bg-rojo-sagrado text-blanco-pureza hover:bg-red-700 hover:shadow-lg focus:ring-rojo-sagrado disabled:bg-gray-300 disabled:text-gray-500 disabled:hover:translate-y-0',
+        success: 'bg-verde-esperanza text-blanco-pureza hover:bg-green-700 hover:shadow-lg focus:ring-verde-esperanza disabled:bg-gray-300 disabled:text-gray-500 disabled:hover:translate-y-0',
+        ghost: 'bg-transparent text-azul-monte-tabor hover:bg-gray-100 focus:ring-gray-300 disabled:text-gray-400 shadow-none disabled:hover:translate-y-0',
     };
 
     const sizeClasses = {

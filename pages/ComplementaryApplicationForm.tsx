@@ -19,6 +19,7 @@ interface ComplementaryFormData {
   email: string;
   studentLastNames: string;
   studentFirstNames: string;
+
   studentRut: string;
   currentSchool: string;
   gradeApplied: string;

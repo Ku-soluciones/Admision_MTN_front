@@ -17,8 +17,11 @@ import { documentService, DOCUMENT_TYPES } from '../services/documentService';
 import profileService from '../services/profileService';
 
 const steps = [
-  "Datos del Postulante",
-  "Datos de los Padres",
+  "Información del Postulante",
+  "Dirección del Postulante",
+  "Información del Colegio",
+  "Datos del Padre",
+  "Datos de la Madre",
   "Sostenedor",
   "Apoderado",
   "Documentación",
@@ -1158,28 +1161,51 @@ const ApplicationForm: React.FC = () => {
     // Función para renderizar el formulario de autenticación
     const renderAuthForm = () => {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full space-y-8">
-                    {/* Header */}
-                    <div className="text-center">
-                        <div className="flex justify-center mb-6">
-                            <LogoIcon />
-                        </div>
-                        <h2 className="text-3xl font-bold text-azul-monte-tabor">
-                            {showRegister ? 'Crear Cuenta de Apoderado' : 'Iniciar Postulación'}
-                        </h2>
-                        <p className="mt-2 text-gris-piedra">
-                            {showRegister 
-                                ? 'Complete sus datos para crear una cuenta y comenzar su postulación'
-                                : 'Debe crear una cuenta o iniciar sesión para postular'
-                            }
-                        </p>
-                    </div>
+            <div
+                className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative animate-bg-shift"
+                style={{
+                    backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(15, 32, 87, 0.8) 100%), url('/images/colegio.png')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed',
+                    animation: 'subtle-zoom 20s ease-in-out infinite alternate',
+                }}
+            >
+                {/* Decoración de esquinas */}
+                <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-azul-monte-tabor/10 to-transparent rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-azul-monte-tabor/10 to-transparent rounded-full blur-3xl"></div>
 
-                    <Card className="p-8">
+                {/* Contenedor principal */}
+                <div className="w-full max-w-md z-10 px-4">
+                    {/* Tarjeta */}
+                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in border border-white/20">
+
+                        {/* Encabezado con gradiente */}
+                        <div className="bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 px-8 py-8">
+                            <div className="flex justify-center mb-4">
+                                <img
+                                    src="/images/logoMTN.png"
+                                    alt="Logo Colegio"
+                                    className="h-14 object-contain drop-shadow-lg"
+                                    style={{ filter: 'drop-shadow(0 2px 8px rgba(255,255,255,0.4))' }}
+                                />
+                            </div>
+                            <h1 className="text-2xl font-bold text-white text-center mb-2">
+                                {showRegister ? 'Crear Cuenta' : 'Portal de Postulación'}
+                            </h1>
+                            <p className="text-white/90 text-sm text-center">
+                                {showRegister
+                                    ? 'Complete sus datos para comenzar su postulación'
+                                    : 'Inicie sesión o cree una cuenta para postular'
+                                }
+                            </p>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="px-8 py-8 space-y-6">
                         {!showRegister ? (
                             // Formulario de Login
-                            <form onSubmit={handleLogin} className="space-y-6">
+                            <form onSubmit={handleLogin} className="space-y-6 animate-slide-in">
                                 {authError && (
                                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                         {authError}
@@ -1248,14 +1274,15 @@ const ApplicationForm: React.FC = () => {
                                 </div>
                             </form>
                         ) : (
-                            // Formulario de Registro
-                            <form onSubmit={handleRegister} className="space-y-4">
+                            // Formulario de Registro - SOLO datos mínimos para crear cuenta
+                            <form onSubmit={handleRegister} className="space-y-4 animate-slide-in">
                                 {authError && (
                                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                         {authError}
                                     </div>
                                 )}
 
+                                {/* Nombre y Apellido */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         id="firstName"
@@ -1275,61 +1302,17 @@ const ApplicationForm: React.FC = () => {
                                     />
                                 </div>
 
-                                <Select
-                                    id="nationality"
-                                    label="Nacionalidad del Estudiante"
-                                    options={[
-                                        { value: 'CHILENA', label: 'Chilena' },
-                                        { value: 'EXTRANJERA', label: 'Extranjera' }
-                                    ]}
-                                    isRequired
-                                    value={authData.nationality}
-                                    onChange={(e) => {
-                                        updateAuthField('nationality', e.target.value);
-                                        // Limpiar RUT o passport al cambiar nacionalidad
-                                        if (e.target.value === 'CHILENA') {
-                                            updateAuthField('passport', '');
-                                        } else {
-                                            updateAuthField('rut', '');
-                                        }
-                                    }}
+                                {/* RUT del Apoderado */}
+                                <RutInput
+                                    name="rut"
+                                    label="RUT del Apoderado"
+                                    placeholder="12.345.678-9"
+                                    value={authData.rut}
+                                    onChange={(value) => updateAuthField('rut', value)}
+                                    required
                                 />
 
-                                {authData.nationality === 'CHILENA' ? (
-                                    <RutInput
-                                        name="rut"
-                                        label="RUT del Estudiante"
-                                        placeholder="12.345.678-9"
-                                        value={authData.rut}
-                                        onChange={(value) => updateAuthField('rut', value)}
-                                        required
-                                    />
-                                ) : (
-                                    <Input
-                                        id="passport"
-                                        label="Número de Pasaporte del Estudiante"
-                                        type="text"
-                                        placeholder="Ej: P123456789"
-                                        value={authData.passport}
-                                        onChange={(e) => updateAuthField('passport', e.target.value.toUpperCase())}
-                                        isRequired
-                                    />
-                                )}
-
-                                <Select
-                                    id="guardianType"
-                                    label="Tipo de Apoderado"
-                                    options={[
-                                        { value: '', label: 'Seleccione...' },
-                                        { value: 'nuevo', label: 'Nuevo (sin vínculo previo con el colegio)' },
-                                        { value: 'ex-alumno', label: 'Ex-Alumno del colegio' },
-                                        { value: 'funcionario', label: 'Funcionario del colegio' }
-                                    ]}
-                                    isRequired
-                                    value={authData.guardianType}
-                                    onChange={(e) => updateAuthField('guardianType', e.target.value)}
-                                />
-
+                                {/* Email Verification */}
                                 <EmailVerification
                                     email={authData.email}
                                     rut={authData.rut}
@@ -1339,44 +1322,16 @@ const ApplicationForm: React.FC = () => {
                                     isRequired
                                 />
 
-                                <Input
-                                    id="phone"
-                                    label="Teléfono"
-                                    type="tel"
-                                    placeholder="+569 1234 5678"
-                                    value={authData.phone}
-                                    onChange={(e) => updateAuthField('phone', e.target.value)}
-                                    isRequired
-                                />
-
-                                <Input
-                                    id="address"
-                                    label="Dirección"
-                                    placeholder="Av. Providencia 1234, Providencia, Santiago"
-                                    value={authData.address}
-                                    onChange={(e) => updateAuthField('address', e.target.value)}
-                                    isRequired
-                                />
-
-                                <Input
-                                    id="profession"
-                                    label="Profesión"
-                                    placeholder="Ingeniero Comercial"
-                                    value={authData.profession}
-                                    onChange={(e) => updateAuthField('profession', e.target.value)}
-                                    isRequired
-                                />
-
+                                {/* Contraseñas */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         id="password-register"
-                                        label="Contraseña (8-10 caracteres)"
+                                        label="Contraseña"
                                         type="password"
                                         placeholder="••••••••"
                                         value={authData.password}
                                         onChange={(e) => updateAuthField('password', e.target.value)}
                                         isRequired
-                                        helpText="Debe contener entre 8 y 10 caracteres"
                                     />
                                     <Input
                                         id="confirmPassword"
@@ -1412,24 +1367,62 @@ const ApplicationForm: React.FC = () => {
                             </form>
                         )}
 
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                            <div className="text-center">
-                                <Link 
-                                    to="/" 
-                                    className="text-azul-monte-tabor hover:underline"
-                                >
-                                    ← Volver al inicio
-                                </Link>
-                            </div>
                         </div>
-                    </Card>
+                    </div>
 
-                    {/* Información adicional */}
-                    <div className="text-center text-sm text-gris-piedra">
-                        <p>¿Problemas para acceder?</p>
-                        <p>Contacte a admisiones: <a href="mailto:admisiones@mtn.cl" className="text-azul-monte-tabor hover:underline">admisiones@mtn.cl</a></p>
+                    {/* Footer */}
+                    <div className="mt-6 text-center text-white/80 text-sm">
+                        <Link to="/" className="text-white font-semibold hover:text-dorado-nazaret transition-colors">
+                            ← Volver al Portal Principal
+                        </Link>
                     </div>
                 </div>
+
+                {/* Estilos de animación */}
+                <style>{`
+                    @keyframes fade-in {
+                        from {
+                            opacity: 0;
+                            transform: scale(0.95);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: scale(1);
+                        }
+                    }
+
+                    @keyframes slide-in {
+                        from {
+                            opacity: 0;
+                            transform: translateY(10px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+
+                    @keyframes subtle-zoom {
+                        0% {
+                            transform: scale(1);
+                        }
+                        100% {
+                            transform: scale(1.05);
+                        }
+                    }
+
+                    .animate-fade-in {
+                        animation: fade-in 0.5s ease-out;
+                    }
+
+                    .animate-slide-in {
+                        animation: slide-in 0.3s ease-out;
+                    }
+
+                    .animate-bg-shift {
+                        animation: subtle-zoom 20s ease-in-out infinite alternate;
+                    }
+                `}</style>
             </div>
         );
     };
@@ -1438,8 +1431,13 @@ const ApplicationForm: React.FC = () => {
         switch (currentStep) {
             case 0:
                 return (
-                    <div className="space-y-4">
-                        <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Postulante</h3>
+                    <div className="space-y-6">
+                        <div className="mb-6">
+                            <h2 className="text-2xl md:text-3xl font-bold text-azul-monte-tabor mb-2" style={{ fontFamily: 'Geist, system-ui, sans-serif' }}>
+                                Información del Postulante
+                            </h2>
+                            <p className="text-sm text-gris-piedra">Completa los datos personales del estudiante que va a postular</p>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Input 
                                 id="firstName" 
@@ -1691,17 +1689,6 @@ const ApplicationForm: React.FC = () => {
                             </div>
                         )}
 
-                        <Select
-                            id="schoolApplied"
-                            label="Colegio al que postula"
-                            options={schoolOptions}
-                            isRequired
-                            value={data.schoolApplied || ''}
-                            onChange={(e) => updateField('schoolApplied', e.target.value)}
-                            onBlur={() => touchField('schoolApplied')}
-                            error={errors.schoolApplied}
-                        />
-                        
                         <Input
                             id="applicationYear"
                             label="Año al que postula"
@@ -1722,97 +1709,6 @@ const ApplicationForm: React.FC = () => {
                             readOnly
                             helpText={`Las postulaciones son siempre para el año ${new Date().getFullYear() + 1}`}
                         />
-
-                        {/* Tipo de Relación Familiar / Preferencia de Admisión */}
-                        <div className="space-y-3">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Tipo de Relación Familiar <span className="text-red-500">*</span>
-                            </label>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Indique si el estudiante tiene algún tipo de relación familiar con la institución
-                            </p>
-                            <div className="space-y-2">
-                                <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="admissionPreference"
-                                        value="NINGUNA"
-                                        checked={data.admissionPreference === 'NINGUNA'}
-                                        onChange={(e) => updateField('admissionPreference', e.target.value)}
-                                        className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
-                                    />
-                                    <span className="ml-3 text-sm text-gray-900">
-                                        <strong>Ninguna</strong> - Postulación regular sin relación familiar previa
-                                    </span>
-                                </label>
-
-                                <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="admissionPreference"
-                                        value="HIJO_FUNCIONARIO"
-                                        checked={data.admissionPreference === 'HIJO_FUNCIONARIO'}
-                                        onChange={(e) => updateField('admissionPreference', e.target.value)}
-                                        className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
-                                    />
-                                    <span className="ml-3 text-sm text-gray-900">
-                                        <strong>Hijo de Funcionario</strong> - Uno de los padres trabaja actualmente en el colegio
-                                    </span>
-                                </label>
-
-                                <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="admissionPreference"
-                                        value="HIJO_EX_ALUMNO"
-                                        checked={data.admissionPreference === 'HIJO_EX_ALUMNO'}
-                                        onChange={(e) => updateField('admissionPreference', e.target.value)}
-                                        className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
-                                    />
-                                    <span className="ml-3 text-sm text-gray-900">
-                                        <strong>Hijo de Ex-Alumno</strong> - Uno de los padres es ex-alumno del colegio
-                                    </span>
-                                </label>
-                            </div>
-                            {errors.admissionPreference && (
-                                <p className="text-sm text-red-600 mt-1">{errors.admissionPreference}</p>
-                            )}
-                        </div>
-
-                        {/* Información adicional según preferencia seleccionada */}
-                        {data.admissionPreference === 'HIJO_EX_ALUMNO' && (
-                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p className="text-sm text-blue-800">
-                                    <strong>ℹ️ Hijo/a de Ex-Alumno:</strong> Deberá adjuntar documentación que acredite que uno de los padres es ex-alumno del colegio (ej: certificado de alumno regular, concentración de notas, etc.).
-                                </p>
-                            </div>
-                        )}
-
-                        {data.admissionPreference === 'HIJO_FUNCIONARIO' && (
-                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-sm text-green-800">
-                                    <strong>ℹ️ Hijo/a de Funcionario:</strong> Deberá adjuntar documentación que acredite que uno de los padres trabaja actualmente en el colegio (ej: certificado de antigüedad, contrato, liquidación de sueldo).
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Campo de observaciones adicionales */}
-                        <div className="mt-4">
-                            <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-2">
-                                Observaciones Adicionales (Opcional)
-                            </label>
-                            <textarea
-                                id="additionalNotes"
-                                rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-azul-monte-tabor focus:border-azul-monte-tabor"
-                                placeholder="Ej: Viene del Jardín Infantil Los Angelitos, tiene experiencia en actividades extracurriculares, etc."
-                                value={data.additionalNotes || ''}
-                                onChange={(e) => updateField('additionalNotes', e.target.value)}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                Puede mencionar jardín infantil de procedencia, actividades previas, o cualquier información relevante.
-                            </p>
-                        </div>
                     </div>
                 );
             case 1:
@@ -2352,26 +2248,58 @@ const ApplicationForm: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar - Diseño Mejorado */}
                 <div className="mb-8 sm:mb-10">
-                    <div className="hidden sm:flex justify-between mb-2">
+                    {/* Mobile: Simple step counter */}
+                    <div className="sm:hidden mb-4">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-xs font-semibold text-gris-piedra">PASO {currentStep + 1}/{steps.length}</span>
+                            <span className="text-sm font-semibold text-azul-monte-tabor">{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+                        </div>
+                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-2">{steps[currentStep]}</h2>
+                    </div>
+
+                    {/* Desktop: Full step indicator */}
+                    <div className="hidden sm:flex justify-between mb-4 gap-2">
                         {steps.map((step, index) => (
-                             <div key={index} className={`text-center w-1/4 text-sm ${index <= currentStep ? 'text-azul-monte-tabor font-bold' : 'text-gris-piedra'}`}>
-                                {step}
+                            <div key={index} className="flex-1 text-center">
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-full mx-auto mb-2 text-sm font-bold transition-all duration-200 ${
+                                    index < currentStep
+                                        ? 'bg-green-100 text-green-700 ring-2 ring-green-300'
+                                        : index === currentStep
+                                        ? 'bg-azul-monte-tabor text-white ring-2 ring-azul-monte-tabor ring-offset-2'
+                                        : 'bg-gray-200 text-gray-500'
+                                }`}>
+                                    {index < currentStep ? '✓' : index + 1}
+                                </div>
+                                <p className={`text-xs font-semibold transition-colors duration-200 ${
+                                    index <= currentStep ? 'text-azul-monte-tabor' : 'text-gris-piedra'
+                                }`}>
+                                    Paso {index + 1}
+                                </p>
                             </div>
                         ))}
                     </div>
-                    <div className="sm:hidden flex justify-between mb-2 text-xs">
-                        <span className={currentStep > 0 ? 'text-azul-monte-tabor font-bold' : 'text-gris-piedra'}>Paso {currentStep + 1}/{steps.length}</span>
-                        <span className="font-semibold text-azul-monte-tabor">{steps[currentStep]}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-dorado-nazaret h-2.5 rounded-full" style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}></div>
+
+                    {/* Progress bar with animation */}
+                    <div className="mb-3">
+                        <div className="flex justify-between mb-2">
+                            <span className="text-xs font-semibold text-gris-piedra">PROGRESO</span>
+                            <span className="text-xs font-semibold text-azul-monte-tabor">{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div
+                                className="bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 h-2 rounded-full transition-all duration-800 ease-out"
+                                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+                            ></div>
+                        </div>
                     </div>
                 </div>
 
-                <Card className="p-4 sm:p-8 md:p-12">
-                    {renderStepContent()}
+                <Card className="p-4 sm:p-8 md:p-12 animate-fade-in">
+                    <div className="animate-slide-in">
+                        {renderStepContent()}
+                    </div>
                 </Card>
 
                 {/* Missing Fields Warning */}
@@ -2404,11 +2332,16 @@ const ApplicationForm: React.FC = () => {
                     </div>
                 )}
 
-                {/* Navigation Buttons */}
+                {/* Navigation Buttons - Diseño Mejorado */}
                 {currentStep < steps.length - 1 && (
-                    <div className="mt-8 flex justify-between">
-                        <Button variant="outline" onClick={prevStep} disabled={currentStep === 0}>
-                            Anterior
+                    <div className="mt-8 flex justify-between gap-4">
+                        <Button
+                            variant="ghost"
+                            onClick={prevStep}
+                            disabled={currentStep === 0}
+                            className="flex-1 transition-all duration-200"
+                        >
+                            ← Anterior
                         </Button>
                         <Button
                             variant="primary"
@@ -2416,10 +2349,11 @@ const ApplicationForm: React.FC = () => {
                             isLoading={isSubmitting}
                             loadingText={location.state?.editMode ? "Guardando..." : "Enviando..."}
                             disabled={!canProceedToNextStep && !isSubmitting}
+                            className="flex-1 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
                         >
                             {currentStep === 4
-                                ? (location.state?.editMode ? 'Guardar Cambios' : 'Enviar Postulación')
-                                : 'Siguiente'
+                                ? (location.state?.editMode ? '✓ Guardar Cambios' : '✓ Enviar Postulación')
+                                : 'Siguiente →'
                             }
                         </Button>
                     </div>

@@ -20,7 +20,6 @@ const ApplicationForm = lazy(() => import('./pages/ApplicationForm'));
 const FamilyDashboard = lazy(() => import('./pages/FamilyDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const LoginPage = lazy(() => import('./pages/AdminLoginPage'));
-const ApoderadoLogin = lazy(() => import('./pages/ApoderadoLogin'));
 const ExamPortal = lazy(() => import('./pages/ExamPortal'));
 const ExamSubjectDetail = lazy(() => import('./pages/ExamSubjectDetail'));
 const ProfessorDashboard = lazy(() => import('./pages/ProfessorDashboard'));
@@ -62,7 +61,6 @@ function App() {
                             <Route path="/" element={<HomePage />} />
                             <Route path="/login" element={<LoginPage />} />
                             <Route path="/postulacion" element={<ApplicationForm />} />
-                            <Route path="/apoderado/login" element={<ApoderadoLogin />} />
                             <Route path="/dashboard-apoderado" element={
                                 <ProtectedApoderadoRoute>
                                     <FamilyDashboard />

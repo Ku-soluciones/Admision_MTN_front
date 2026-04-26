@@ -58,14 +58,33 @@ export const useEmailVerification = () => {
 
             console.log('🔄 useEmailVerification: Enviando código con datos:', { email, rut, firstName, lastName });
 
-            // Enviar código usando el API real - EL BACKEND VALIDARÁ EMAIL Y RUT
-            const response = await emailVerificationService.sendVerificationCode({
-                email,
-                type: verificationType as any,
-                rut: rut,
-                firstName: firstName,
-                lastName: lastName
-            });
+            // MODO DEV: Auto-verificar emails de prueba sin contactar backend
+            const isDevMode = import.meta.env.DEV;
+            const testEmails = ['juan.garcia@ejemplo.com', 'test@ejemplo.com', 'demo@ejemplo.com'];
+            const isTestEmail = testEmails.includes(email.toLowerCase());
+
+            let response;
+
+            if (isDevMode && isTestEmail) {
+                console.log('🧪 MODO DEV: Auto-verificando email de prueba:', email);
+                // Mock response para desarrollo
+                response = {
+                    success: true,
+                    message: 'Código enviado (MODO DEV)',
+                    verificationToken: 'dev-token-' + Date.now(),
+                    expiresIn: 15,
+                    devCode: '000000' // Código auto-verificado
+                };
+            } else {
+                // Enviar código usando el API real - EL BACKEND VALIDARÁ EMAIL Y RUT
+                response = await emailVerificationService.sendVerificationCode({
+                    email,
+                    type: verificationType as any,
+                    rut: rut,
+                    firstName: firstName,
+                    lastName: lastName
+                });
+            }
 
             console.log('✅ useEmailVerification: Respuesta recibida:', response);
 
@@ -103,13 +122,25 @@ export const useEmailVerification = () => {
     // Verificar código
     const verifyCode = useCallback(async (email: string, code: string) => {
         setState(prev => ({ ...prev, isLoading: true, verificationError: null }));
-        
+
         try {
-            // Verificar código usando el API real
-            const response = await emailVerificationService.verifyCode({
-                email,
-                code: code
-            });
+            // MODO DEV: Auto-verificar si es email de prueba o código "000000"
+            const isDevMode = import.meta.env.DEV;
+            const testEmails = ['juan.garcia@ejemplo.com', 'test@ejemplo.com', 'demo@ejemplo.com'];
+            const isTestEmail = testEmails.includes(email.toLowerCase());
+
+            let response;
+
+            if (isDevMode && (isTestEmail || code === '000000')) {
+                console.log('🧪 MODO DEV: Auto-verificando código para:', email);
+                response = { isValid: true, message: 'Verificado en MODO DEV' };
+            } else {
+                // Verificar código usando el API real
+                response = await emailVerificationService.verifyCode({
+                    email,
+                    code: code
+                });
+            }
 
             setState(prev => ({
                 ...prev,
