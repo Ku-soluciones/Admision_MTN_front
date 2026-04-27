@@ -77,41 +77,46 @@ const RutInput: React.FC<RutInputProps> = ({
   const hasError = Boolean(displayError);
 
   return (
-    <div className={`relative ${className}`}>
-      <Input
-        type="text"
-        value={value}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-        error={displayError}
-        label={label}
-        id={name}
-        name={name}
-        maxLength={12} // 11.111.111-1 = 12 caracteres
-        className={`
-          ${hasError ? 'border-red-500 focus:border-red-500' : ''}
-          ${isValid && !hasError ? 'border-green-500 focus:border-green-500' : ''}
-        `}
-      />
-      
-      {/* Indicador visual de validación */}
-      {showValidation && value.trim() && touched && (
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-3">
-          {isValid && !hasError ? (
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : hasError ? (
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : null}
-        </div>
-      )}
-      
+    <div className={`w-full ${className}`}>
+      <label htmlFor={name} className="block text-sm font-medium text-gris-piedra mb-1">
+        {label} {required && <span className="text-rojo-sagrado">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          id={name}
+          type="text"
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          maxLength={12}
+          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 ${
+            hasError
+              ? 'border-red-500 focus:ring-red-500 focus:ring-opacity-50'
+              : isValid && !hasError
+              ? 'border-green-500 focus:ring-green-500 focus:ring-opacity-50'
+              : 'border-gray-300 focus:border-azul-monte-tabor focus:ring-azul-monte-tabor focus:ring-opacity-20'
+          }`}
+        />
+
+        {/* Indicador visual de validación */}
+        {showValidation && value.trim() && touched && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-3">
+            {isValid && !hasError ? (
+              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : hasError ? (
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : null}
+          </div>
+        )}
+      </div>
+
       {/* Ayuda adicional */}
       {!hasError && !value.trim() && (
         <p className="mt-1 text-sm text-gray-500">

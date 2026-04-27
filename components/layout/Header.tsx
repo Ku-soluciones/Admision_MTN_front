@@ -8,7 +8,7 @@ const Header: React.FC = () => {
     const location = useLocation();
 
     // Hide header on login pages
-    const loginRoutes = ['/login', '/profesor/login', '/familia/login', '/postulacion'];
+    const loginRoutes = ['/login', '/profesor/login', '/familia/login', '/apoderado/login', '/postulacion'];
     const isLoginPage = loginRoutes.includes(location.pathname);
     const navLinkClasses = "text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200";
     const activeLinkClasses = "text-azul-monte-tabor";
@@ -118,7 +118,7 @@ const Header: React.FC = () => {
                         Inicio
                     </NavLink>
                     <NavLink to="/examenes" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Exámenes</NavLink>
-                    <NavLink to="/postulacion" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Portal Familia</NavLink>
+                    <NavLink to="/apoderado/login" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Portal Familia</NavLink>
                     {!isProfessorLoggedIn && (
                         <NavLink to="/profesor/login" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Profesores</NavLink>
                     )}
@@ -137,7 +137,7 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
-                        <Link to="/postulacion" className="hidden sm:block">
+                        <Link to="/apoderado/login" className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Iniciar Postulación
                             </Button>
@@ -182,7 +182,7 @@ const Header: React.FC = () => {
                             Exámenes
                         </NavLink>
                         <NavLink
-                            to="/postulacion"
+                            to="/apoderado/login"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
                         >
@@ -208,7 +208,7 @@ const Header: React.FC = () => {
                         )}
                         {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1">
-                                <Link to="/postulacion" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Link to="/apoderado/login" onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full">
                                         Iniciar Postulación
                                     </Button>

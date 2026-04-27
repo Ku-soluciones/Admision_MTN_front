@@ -25,6 +25,9 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
     const [verificationCode, setVerificationCode] = useState('');
     const [emailTouched, setEmailTouched] = useState(false);
     const [lastNotifiedStatus, setLastNotifiedStatus] = useState<boolean | null>(null);
+    const [failedAttempts, setFailedAttempts] = useState(0);
+    const [maxAttemptsReached, setMaxAttemptsReached] = useState(false);
+    const MAX_ATTEMPTS = 3;
     
     const {
         isLoading,
@@ -90,11 +93,17 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         if (!verificationCode || verificationCode.length !== 6) {
             return;
         }
-        
+
         try {
             await verifyCode(email, verificationCode);
         } catch (error) {
-            // El error ya se maneja en el hook
+            // Incrementar contador de intentos fallidos
+            const newAttempts = failedAttempts + 1;
+            setFailedAttempts(newAttempts);
+
+            if (newAttempts >= MAX_ATTEMPTS) {
+                setMaxAttemptsReached(true);
+            }
         }
     };
 
@@ -114,6 +123,8 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             reset();
             setVerificationCode('');
             setLastNotifiedStatus(null);
+            setFailedAttempts(0);
+            setMaxAttemptsReached(false);
         }
     };
 
@@ -159,11 +170,17 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             )}
 
             {/* Sección de verificación de código */}
-            {verificationSent && (
+            {verificationSent && !maxAttemptsReached && (
                 <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="text-sm text-blue-800">
-                        <p className="font-medium">📧 Código enviado a {email}</p>
-                        <p>Ingrese el código de 6 dígitos que recibió por correo electrónico.</p>
+                        <p className="font-medium">
+                            Ingrese el código de validación enviado a {email}</p>
+                        <p></p>
+                        {failedAttempts > 0 && (
+                            <p className="mt-2 text-red-700 font-medium">
+                                ⚠️ Intentos fallidos: {failedAttempts}/{MAX_ATTEMPTS}
+                            </p>
+                        )}
                     </div>
 
                     {/* Campo para código */}
@@ -188,8 +205,8 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
                         onClick={handleVerifyCode}
                         isLoading={isLoading}
                         loadingText="Verificando..."
-                        disabled={verificationCode.length !== 6}
-                        className="w-full"
+                        disabled={verificationCode.length !== 6 || isCodeValid === true}
+                        className="w-full !bg-dorado-nazaret hover:!bg-amber-500 !text-white"
                     >
                         Verificar Código
                     </Button>
@@ -213,27 +230,57 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
                     </div>
 
                     {/* Cambiar email */}
-                    <div className="text-center">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                reset();
-                                setVerificationCode('');
-                                setEmailTouched(false);
-                                setLastNotifiedStatus(null);
-                            }}
-                            className="text-sm text-gray-600 hover:text-gray-800 hover:underline"
-                        >
-                            Cambiar email
-                        </button>
+                    {!maxAttemptsReached && (
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    reset();
+                                    setVerificationCode('');
+                                    setEmailTouched(false);
+                                    setLastNotifiedStatus(null);
+                                    setFailedAttempts(0);
+                                    setMaxAttemptsReached(false);
+                                }}
+                                className="text-sm text-gray-600 hover:text-gray-800 hover:underline"
+                            >
+                                Cambiar email
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Máximo de intentos alcanzados */}
+            {maxAttemptsReached && (
+                <div className="space-y-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-sm text-red-800">
+                        <p className="font-bold mb-2">❌ Límite de intentos alcanzado</p>
+                        <p>Ha excedido el número máximo de intentos ({MAX_ATTEMPTS}) para verificar su código.</p>
+                        <p className="mt-2">Por favor, comience de nuevo con un nuevo email.</p>
                     </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            reset();
+                            setVerificationCode('');
+                            setEmailTouched(false);
+                            setLastNotifiedStatus(null);
+                            setFailedAttempts(0);
+                            setMaxAttemptsReached(false);
+                        }}
+                        className="w-full !border-red-300 !text-red-700 hover:!bg-red-50"
+                    >
+                        Comenzar de Nuevo
+                    </Button>
                 </div>
             )}
 
             {/* Errores */}
-            {verificationError && (
+            {verificationError && !maxAttemptsReached && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{verificationError}</p>
+                    <p className="text-sm text-red-700">❌ {verificationError}</p>
                 </div>
             )}
 

@@ -23,22 +23,15 @@ const HomePage: React.FC = () => {
             {/* Hero Section */}
             <section className="relative text-blanco-pureza py-20 sm:py-32 text-center bg-cover bg-center" style={{ backgroundImage: `url('/images/colegio.png')`}}>
                 {/* Overlay azul con opacidad 85% */}
-                <div className="absolute inset-0 bg-azul-monte-tabor" style={{ opacity: 0.85 }}></div>
+                <div className="absolute inset-0" style={{ backgroundColor: '#0e4d91', opacity: 0.85 }}></div>
                 <div className="relative container mx-auto px-4 sm:px-6">
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Formando Líderes con Espíritu de Servicio</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únase a una comunidad educativa comprometida con la excelencia académica y la formación católica.</p>
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-                        <Link to="/apoderado/login?redirect=/postulacion">
-                            <Button size="lg" variant="primary">
-                                Postular Aquí
-                            </Button>
-                        </Link>
-                        <Link to="/apoderado/login">
-                            <Button size="lg" variant="secondary">
-                                Portal Apoderados
-                            </Button>
-                        </Link>
-                    </div>
+                    <Link to="/apoderado/login">
+                        <Button size="lg" variant="primary" className="!bg-[#F59E0B] hover:!bg-[#D97706] !text-white">
+                            Inicia tu postulación aquí
+                        </Button>
+                    </Link>
                 </div>
             </section>
 
@@ -64,7 +57,7 @@ const HomePage: React.FC = () => {
                 <div className="container mx-auto px-4 sm:px-6 text-center">
                     <h2 className="text-2xl sm:text-4xl font-bold mb-4 font-serif">Portal de Exámenes de Admisión</h2>
                     <p className="text-gray-200 mb-8 max-w-3xl mx-auto text-base sm:text-lg">
-                        Una vez completada tu postulación, podrás acceder al portal de exámenes para programar 
+                        Una vez completada tu postulación, podrás acceder al portal de exámenes para programar
                         y rendir las evaluaciones de Matemática, Lenguaje e Inglés.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">

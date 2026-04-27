@@ -38,10 +38,8 @@ import {
   FiLogOut
 } from 'react-icons/fi';
 import { useApplications } from '../context/AppContext';
-import { applicationService, Application } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
-import useUserProfile from '../hooks/useUserProfile';
-import applicationWorkflowService, { type ApplicationDraft } from '../services/applicationWorkflowService';
+import { type ApplicationDraft } from '../services/applicationWorkflowService';
 import documentGatewayService from '../services/documentGatewayService';
 import FamilyInterviews from '../components/family/FamilyInterviews';
 import FamilyCalendar from '../components/family/FamilyCalendar';

@@ -84,32 +84,23 @@ const AdminLoginPage: React.FC = () => {
 
     return (
         <div
-            className="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden relative animate-bg-shift"
-            style={{
-                backgroundImage: `linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(15, 32, 87, 0.8) 100%), url('/images/colegio.png')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed',
-                animation: 'subtle-zoom 20s ease-in-out infinite alternate',
-            }}
+            className="min-h-screen w-full flex items-center justify-center bg-white overflow-hidden relative"
         >
-            {/* Decoración de esquinas */}
-            <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-dorado-nazaret/10 to-transparent rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-azul-monte-tabor/10 to-transparent rounded-full blur-3xl"></div>
+            {/* Sin decoración */}
 
             {/* Contenedor principal */}
             <div className="w-full max-w-md z-10 px-4">
                 {/* Tarjeta de login */}
-                <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in border border-white/20">
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in border border-gray-200">
 
-                    {/* Encabezado con gradiente */}
-                    <div className="bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 px-8 py-8">
+                    {/* Encabezado blanco */}
+                    <div className="bg-white px-8 py-8">
                         <div className="flex justify-center mb-4">
                             <img
                                 src="/images/logoMTN.png"
                                 alt="Logo Colegio"
                                 className="h-14 object-contain drop-shadow-lg"
-                                style={{ filter: 'drop-shadow(0 2px 8px rgba(255,255,255,0.4))' }}
+                                style={{ filter: 'drop-shadow(0 2px 8px rgba(30,64,175,0.15))' }}
                             />
                         </div>
                         <h1 className="text-2xl font-bold text-white text-center mb-2">
@@ -171,7 +162,7 @@ const AdminLoginPage: React.FC = () => {
                                     <div className="pt-4">
                                         <button
                                             type="submit"
-                                            className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                            className="w-full bg-dorado-nazaret hover:bg-amber-600 text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
                                         >
                                             Siguiente
                                         </button>
@@ -246,7 +237,7 @@ const AdminLoginPage: React.FC = () => {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="w-full bg-gradient-to-r from-azul-monte-tabor to-azul-monte-tabor/80 hover:from-azul-monte-tabor/90 hover:to-azul-monte-tabor disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                                        className="w-full bg-dorado-nazaret hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
                                     >
                                         {isLoading ? 'Ingresando...' : 'Iniciar Sesión'}
                                     </button>
@@ -267,14 +258,14 @@ const AdminLoginPage: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-6 text-center text-white/80 text-sm">
+                <div className="mt-6 text-center text-gray-600 text-sm">
                     <p>
                         {isAdmin
                             ? '¿Es familia? '
                             : '¿Es administrador? '}
                         <button
                             onClick={handleSwitchRole}
-                            className="text-white font-semibold hover:text-dorado-nazaret transition-colors"
+                            className="text-dorado-nazaret font-semibold hover:text-amber-600 transition-colors"
                         >
                             {isAdmin ? 'Acceda al portal familiar' : 'Ingrese aquí'}
                         </button>

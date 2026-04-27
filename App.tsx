@@ -24,6 +24,7 @@ const ExamPortal = lazy(() => import('./pages/ExamPortal'));
 const ExamSubjectDetail = lazy(() => import('./pages/ExamSubjectDetail'));
 const ProfessorDashboard = lazy(() => import('./pages/ProfessorDashboard'));
 const ProfessorLoginPage = lazy(() => import('./pages/ProfessorLoginPage'));
+const ApoderadoLogin = lazy(() => import('./pages/ApoderadoLogin'));
 const AdmissionReportForm = lazy(() => import('./components/evaluations/AdmissionReportForm'));
 const CycleDirectorReportForm = lazy(() => import('./components/evaluations/CycleDirectorReportForm'));
 const CycleDirectorInterviewForm = lazy(() => import('./components/evaluations/CycleDirectorInterviewForm'));
@@ -60,6 +61,7 @@ function App() {
                                 <Routes>
                             <Route path="/" element={<HomePage />} />
                             <Route path="/login" element={<LoginPage />} />
+                            <Route path="/apoderado/login" element={<ApoderadoLogin />} />
                             <Route path="/postulacion" element={<ApplicationForm />} />
                             <Route path="/dashboard-apoderado" element={
                                 <ProtectedApoderadoRoute>
