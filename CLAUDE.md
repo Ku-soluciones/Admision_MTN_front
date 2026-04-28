@@ -246,11 +246,73 @@ const { showToast } = useApp();
 showToast('Success!', 'success');
 ```
 
+## Git Workflow & Branching
+
+- **Feature branches**: Create from `main` (e.g., `Jorge_login`, `feature/xyz`)
+- **Staging branch**: `pre_produccion` auto-deploys to Vercel when pushed
+- **Main branch**: Stable production code
+- **Commit format**: `type(scope): description` in English or Spanish (e.g., `feat(login): redesign ApoderadoLogin`, `fix(navbar): hide on auth routes`)
+
+## Authentication Pages Design System
+
+All auth pages (login/registration) share a consistent design:
+- **Layout**: White card container (rounded-2xl, shadow-xl, border-gray-200)
+- **Logo**: MTN coat of arms, centered at top with drop-shadow
+- **Colors**: azul-monte-tabor (headings), dorado-nazaret (buttons), dark gray (text)
+- **Navbar**: Hidden on routes (`/login`, `/profesor/login`, `/apoderado/login`, `/postulacion`)
+- **Input Styling**: Underline-only (border-bottom-2) for simple forms, bordered boxes for complex multi-field forms
+- **Button States**: 
+  - Enabled: dorado-nazaret background
+  - Disabled: gray background with `cursor-not-allowed`
+  - Hover: amber-600 (darker shade of dorado)
+
+**Files affecting auth UI**: Header.tsx (navbar hide logic), ApoderadoLogin.tsx (login+registration), AdminLoginPage.tsx, ProfessorLoginPage.tsx
+
+## Form Components & Validation
+
+**Input Component** (`components/ui/Input.tsx`):
+- Base form field with label, error handling, optional password toggle
+- Uses bordered box styling (border rounded-lg)
+- Prefer for registration/multi-field forms
+
+**RutInput Component** (`components/ui/RutInput.tsx`):
+- Specialized for Chilean RUT field (formats automatically)
+- Auto-formats input: `12345678-9` → `12.345.678-9`
+- Validates checksum, shows visual feedback (green ✓ / red ✗)
+- Used in registration flows
+
+**EmailVerification Component** (`components/ui/EmailVerification.tsx`):
+- Handles email verification flow (6-digit code)
+- Sends code via API, validates entry
+- Tracks failed attempts (max 3 before cooldown)
+- Required in ApoderadoLogin registration
+
+**Common Validation Pattern**:
+```tsx
+// Check if form is ready before allowing submit
+disabled={!isEmailVerified || isLoading}
+className={isEmailVerified ? '!bg-dorado-nazaret' : '!bg-gray-400'}
+```
+
+## Design Review Standards
+
+When modifying UI components or pages:
+1. Check responsive design (mobile 375px, tablet 768px, desktop 1280px)
+2. Verify WCAG AA contrast ratios (body text 4.5:1, large text 3:1)
+3. Ensure input labels are always visible (never placeholder-only)
+4. Test form validation states: empty, filled, error, disabled, loading
+5. Keep form complexity in mind: simple forms → underline style, complex → boxes
+6. Use `/design-review` skill for comprehensive visual audits before major UI changes
+
 ## Notes for Future Contributors
 
 - Keep entry files at the root (App.tsx, index.tsx, types.ts)
 - Always use lazy loading for page components to improve bundle size
 - Add new API endpoints following the `*.client.ts` + `*.types.ts` pattern
+- When adding form fields, wrap them in Input component for consistency (registration forms) or styled divs (simple login forms)
+- Use `disabled` and `cursor-not-allowed` for visual feedback on disabled buttons
+- Test auth flows across all user roles (guardians/apoderados, professors, admins, coordinators)
 - Run E2E tests before merging to ensure no regressions
 - Update Playwright tests when adding new user-facing features
+- For multi-page changes (header, footer, auth flows), verify consistency across all affected pages
 - Follow existing commit message format (e.g., "feat(frontend): ...", "fix(admin): ...")
