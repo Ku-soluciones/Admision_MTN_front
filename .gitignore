@@ -22,13 +22,12 @@ out/
 .cache/
 
 # Environment variables and secrets - NEVER COMMIT THESE
-.env*
-!.env.example
-!.env.production
-.env.local
-.env.development
-.env.staging
+.env
+.env.*
 *.env
+**/.env
+**/.env.*
+**/*.env
 
 # Private keys and certificates - SECURITY CRITICAL
 *.pem
