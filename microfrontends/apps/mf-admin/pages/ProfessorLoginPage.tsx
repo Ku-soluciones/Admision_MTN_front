@@ -215,7 +215,7 @@ const ProfessorLoginPage: React.FC = () => {
                     </div>
 
                     {/* Formulario de Login */}
-                    <form onKeyPress={(e) => e.key === 'Enter' && handleLogin()} className="space-y-6 mt-8">
+                    <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-6 mt-8">
                         {loginError && (
                             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                 {loginError}
@@ -248,10 +248,9 @@ const ProfessorLoginPage: React.FC = () => {
                         />
 
                         <Button
-                            type="button"
+                            type="submit"
                             variant="secondary"
                             size="lg"
-                            onClick={handleLogin}
                             isLoading={isLoggingIn}
                             loadingText="Verificando..."
                             className="w-full bg-dorado-nazaret hover:bg-opacity-90 text-azul-monte-tabor font-bold"
