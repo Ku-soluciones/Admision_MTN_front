@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
+import { microfrontendUrls } from '../../utils/microfrontendUrls';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
-    const navLinkClasses = "text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200";
-    const activeLinkClasses = "text-azul-monte-tabor";
     const [isAdmin, setIsAdmin] = useState(false);
     const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
     const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
@@ -88,6 +87,10 @@ const Header: React.FC = () => {
         // Si no hay usuario autenticado, dejar que el link funcione normalmente
     };
 
+    const navigateTo = (url: string) => {
+        window.location.href = url;
+    };
+
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
             <div className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -100,38 +103,31 @@ const Header: React.FC = () => {
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-                    <NavLink
-                        to="/"
-                        onClick={handleLogoutAndGoHome}
-                        className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}
-                    >
+                    <a href={microfrontendUrls.home} onClick={handleLogoutAndGoHome} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">
                         Inicio
-                    </NavLink>
-                    <NavLink to="/examenes" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Exámenes</NavLink>
-                    <NavLink to="/apoderado/login" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Portal Familia</NavLink>
+                    </a>
+                    <a href={microfrontendUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
+                    <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Portal Familia</a>
                     {!isProfessorLoggedIn && (
-                        <NavLink to="/profesor/login" className={({ isActive }) => isActive ? `${navLinkClasses} ${activeLinkClasses}`: navLinkClasses}>Profesores</NavLink>
+                        <a href={microfrontendUrls.professorLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Profesores</a>
                     )}
                     {isAdmin && (
-                        <NavLink
-                            to="/admin"
-                            className={({ isActive }) => isActive ?
-                                `${navLinkClasses} ${activeLinkClasses} bg-dorado-nazaret/10 px-3 py-1 rounded-lg border border-dorado-nazaret/20` :
-                                `${navLinkClasses} hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200`
-                            }
+                        <a
+                            href={microfrontendUrls.adminDashboard}
+                            className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
                         >
                             ⚙️ Admin
-                        </NavLink>
+                        </a>
                     )}
                 </nav>
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
-                        <Link to="/postulacion" className="hidden sm:block">
+                        <a href={microfrontendUrls.admissions} className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Iniciar Postulación
                             </Button>
-                        </Link>
+                        </a>
                     )}
                     {/* Hamburger button */}
                     <button
@@ -157,52 +153,52 @@ const Header: React.FC = () => {
             {isMobileMenuOpen && (
                 <div className="md:hidden bg-blanco-pureza border-t border-gray-100 shadow-lg">
                     <nav className="container mx-auto px-4 py-3 flex flex-col gap-1">
-                        <NavLink
-                            to="/"
+                        <a
+                            href={microfrontendUrls.home}
                             onClick={(e) => { handleLogoutAndGoHome(e); setIsMobileMenuOpen(false); }}
-                            className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                         >
                             Inicio
-                        </NavLink>
-                        <NavLink
-                            to="/examenes"
+                        </a>
+                        <a
+                            href={microfrontendUrls.studentExams}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                         >
                             Exámenes
-                        </NavLink>
-                        <NavLink
-                            to="/apoderado/login"
+                        </a>
+                        <a
+                            href={microfrontendUrls.guardianLogin}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                         >
                             Portal Familia
-                        </NavLink>
+                        </a>
                         {!isProfessorLoggedIn && (
-                            <NavLink
-                                to="/profesor/login"
+                            <a
+                                href={microfrontendUrls.professorLogin}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
+                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                             >
                                 Profesores
-                            </NavLink>
+                            </a>
                         )}
                         {isAdmin && (
-                            <NavLink
-                                to="/admin"
+                            <a
+                                href={microfrontendUrls.adminDashboard}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
+                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                             >
                                 ⚙️ Admin
-                            </NavLink>
+                            </a>
                         )}
                         {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1">
-                                <Link to="/postulacion" onClick={() => setIsMobileMenuOpen(false)}>
+                                <a href={microfrontendUrls.admissions} onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full">
                                         Iniciar Postulación
                                     </Button>
-                                </Link>
+                                </a>
                             </div>
                         )}
                     </nav>

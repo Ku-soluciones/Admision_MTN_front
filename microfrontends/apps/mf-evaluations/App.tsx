@@ -14,6 +14,7 @@ import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import ToastContainer from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -38,6 +39,8 @@ const Topbar = () => (
 );
 
 function App() {
+  const legacyRedirects = createLegacyRedirectRoutes();
+
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -58,6 +61,7 @@ function App() {
         <Route path="/cycle-director-interview/:evaluationId" element={<ProtectedProfessorRoute><CycleDirectorInterviewForm /></ProtectedProfessorRoute>} />
         <Route path="/psychological-interview/:evaluationId" element={<ProtectedProfessorRoute><PsychologicalInterviewForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/estudiante/:studentId" element={<ProtectedProfessorRoute><StudentProfile /></ProtectedProfessorRoute>} />
+        {legacyRedirects}
         <Route path="*" element={<Navigate to="/profesor/login" replace />} />
     
                 </Routes>
