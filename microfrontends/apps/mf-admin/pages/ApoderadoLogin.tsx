@@ -120,25 +120,26 @@ const ApoderadoLogin: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
-                {/* Header */}
-                <div className="text-center">
-                    <div className="flex justify-center mb-8">
-                        <LogoIcon className="w-32 h-32" />
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-azul-monte-tabor">
-                        {showRegister ? 'Crear Cuenta para Postular' : 'Acceso de Apoderados'}
-                    </h2>
-                    <p className="mt-2 text-gris-piedra">
-                        {showRegister 
-                            ? 'Cree su cuenta para iniciar el proceso de postulación de su hijo/a'
-                            : 'Ingrese a su cuenta para continuar con la postulación o acceder a su dashboard'
-                        }
-                    </p>
-                </div>
-
                 <Card className="p-5 sm:p-8">
+                    {/* Header */}
+                    <div className="text-center">
+                        {!showRegister && (
+                            <div className="flex justify-center mb-6">
+                                <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-16" />
+                            </div>
+                        )}
+                        <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
+                            {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}
+                        </h2>
+                        <p className="mt-2 text-lg text-azul-monte-tabor font-light">
+                            {showRegister
+                                ? 'Cree su cuenta para iniciar el proceso de postulación de su hijo/a'
+                                : 'Inicia sesión para acceder a tu portal'
+                            }
+                        </p>
+                    </div>
                     {!showRegister ? (
                         // Formulario de Login
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -171,20 +172,20 @@ const ApoderadoLogin: React.FC = () => {
 
                             <Button
                                 type="submit"
-                                variant="primary"
+                                variant="secondary"
                                 size="lg"
                                 isLoading={isLoading}
                                 loadingText="Iniciando sesión..."
-                                className="w-full"
+                                className="w-full bg-dorado-nazaret hover:bg-opacity-90 text-azul-monte-tabor font-bold"
                             >
                                 Iniciar Sesión
                             </Button>
 
-                            <div className="text-center">
+                            <div className="text-center pt-6 border-t border-gray-200">
                                 <button
                                     type="button"
                                     onClick={() => setShowRegister(true)}
-                                    className="text-azul-monte-tabor hover:underline"
+                                    className="text-azul-monte-tabor hover:underline text-sm font-semibold"
                                 >
                                     ¿Primera vez? Crear cuenta para postular
                                 </button>
@@ -292,22 +293,20 @@ const ApoderadoLogin: React.FC = () => {
                         </form>
                     )}
 
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <div className="text-center">
-                            <Link 
-                                to="/" 
-                                className="text-azul-monte-tabor hover:underline"
-                            >
-                                ← Volver al inicio
-                            </Link>
-                        </div>
+                    {/* Volver al inicio */}
+                    <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                        <Link
+                            to="/"
+                            className="text-azul-monte-tabor hover:underline text-sm font-semibold"
+                        >
+                            ← Volver al inicio
+                        </Link>
                     </div>
                 </Card>
 
                 {/* Información adicional */}
                 <div className="text-center text-sm text-gris-piedra">
-                    <p>¿Problemas para acceder?</p>
-                    <p>Contacte a admisiones: <a href="mailto:admisiones@mtn.cl" className="text-azul-monte-tabor hover:underline">admisiones@mtn.cl</a></p>
+                    <p>¿Problemas para acceder? <a href="mailto:admisiones@mtn.cl" className="text-azul-monte-tabor hover:underline font-semibold">admisiones@mtn.cl</a></p>
                 </div>
             </div>
         </div>
