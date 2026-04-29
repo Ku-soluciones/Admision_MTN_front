@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -260,13 +260,12 @@ const ProfessorLoginPage: React.FC = () => {
                         </Button>
 
                         <div className="text-center pt-6 border-t border-gray-200">
-                            <button
-                                type="button"
-                                onClick={() => navigate('/')}
+                            <Link
+                                to="/"
                                 className="text-azul-monte-tabor hover:underline text-sm font-semibold"
                             >
                                 ← Volver al inicio
-                            </button>
+                            </Link>
                         </div>
                     </form>
                 </Card>
