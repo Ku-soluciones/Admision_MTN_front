@@ -56,19 +56,19 @@ export class MicroservicesService {
    */
   async detectArchitecture(): Promise<'microservices' | 'unavailable'> {
     try {
-      console.log('🔍 Detectando microservicios reales disponibles...');
+      console.log('Detectando microservicios reales disponibles...');
       
       const gatewayHealth = await this.checkGatewayHealth();
       const servicesHealth = await this.checkMicroservicesHealth();
 
-      console.log('📊 Estado de microservicios:', {
-        gateway: gatewayHealth.status === 'UP' ? '✅' : '❌',
-        servicios: servicesHealth.length > 0 ? '✅' : '❌'
+      console.log('Estado de microservicios:', {
+        gateway: gatewayHealth.status === 'UP' ? '' : '',
+        servicios: servicesHealth.length > 0 ? '' : ''
       });
 
       return 'microservices';
     } catch (error) {
-      console.error('❌ Error detectando microservicios:', error);
+      console.error('Error detectando microservicios:', error);
       return 'unavailable';
     }
   }
@@ -149,7 +149,7 @@ export class MicroservicesService {
         endpoints: Object.keys(gatewayResponse.data.routes || {})
       });
     } catch (error) {
-      console.warn('⚠️ No se pudo obtener información del Gateway');
+      console.warn('No se pudo obtener información del Gateway');
     }
 
     // Información de los microservicios individuales
@@ -177,17 +177,17 @@ export class MicroservicesService {
    */
   async getUsersFromMicroservice(): Promise<UserData[]> {
     try {
-      console.log('👥 Obteniendo usuarios del microservicio real...');
+      console.log('Obteniendo usuarios del microservicio real...');
       const response = await axios.get(USER_SERVICE_URL);
       
       if (response.data.success) {
-        console.log('✅ Usuarios obtenidos del microservicio:', response.data.data);
+        console.log('Usuarios obtenidos del microservicio:', response.data.data);
         return response.data.data;
       } else {
         throw new Error('Invalid response format');
       }
     } catch (error) {
-      console.error('❌ Error obteniendo usuarios del microservicio:', error);
+      console.error('Error obteniendo usuarios del microservicio:', error);
       throw new Error('No se pudieron obtener usuarios del microservicio');
     }
   }
@@ -197,17 +197,17 @@ export class MicroservicesService {
    */
   async getApplicationsFromMicroservice(): Promise<any[]> {
     try {
-      console.log('📋 Obteniendo aplicaciones del microservicio real...');
+      console.log('Obteniendo aplicaciones del microservicio real...');
       const response = await axios.get(APPLICATION_SERVICE_URL);
       
       if (response.data.success) {
-        console.log('✅ Aplicaciones obtenidas del microservicio:', response.data.data);
+        console.log('Aplicaciones obtenidas del microservicio:', response.data.data);
         return response.data.data;
       } else {
         throw new Error('Invalid response format');
       }
     } catch (error) {
-      console.error('❌ Error obteniendo aplicaciones del microservicio:', error);
+      console.error('Error obteniendo aplicaciones del microservicio:', error);
       throw new Error('No se pudieron obtener aplicaciones del microservicio');
     }
   }
@@ -237,10 +237,10 @@ export class MicroservicesService {
         testData: 'Real microservices integration test'
       };
       
-      console.log('✅ Conexión con microservicios reales exitosa:', result);
+      console.log('Conexión con microservicios reales exitosa:', result);
       return result;
     } catch (error) {
-      console.error('❌ Error en conexión con microservicios reales:', error);
+      console.error('Error en conexión con microservicios reales:', error);
       throw error;
     }
   }
@@ -250,7 +250,7 @@ export class MicroservicesService {
    */
   async getMicroserviceStats(): Promise<any> {
     try {
-      console.log('📊 Obteniendo estadísticas de microservicios reales...');
+      console.log('Obteniendo estadísticas de microservicios reales...');
       
       const [users, applications] = await Promise.all([
         this.getUsersFromMicroservice(),
@@ -272,10 +272,10 @@ export class MicroservicesService {
         source: 'real-microservices'
       };
 
-      console.log('✅ Estadísticas obtenidas:', stats);
+      console.log('Estadísticas obtenidas:', stats);
       return stats;
     } catch (error) {
-      console.error('❌ Error obteniendo estadísticas:', error);
+      console.error('Error obteniendo estadísticas:', error);
       throw error;
     }
   }
@@ -289,7 +289,7 @@ export class MicroservicesService {
     recommendations: string[];
   }> {
     try {
-      console.log('📈 Obteniendo dashboard de microservicios reales...');
+      console.log('Obteniendo dashboard de microservicios reales...');
       
       const gateway = await this.checkGatewayHealth();
       const services = await this.checkMicroservicesHealth();
@@ -310,7 +310,7 @@ export class MicroservicesService {
         recommendations
       };
     } catch (error) {
-      console.error('❌ Error obteniendo dashboard:', error);
+      console.error('Error obteniendo dashboard:', error);
       return {
         services: [],
         architecture: 'Error',

@@ -15,18 +15,18 @@ class FamilyInterviewService {
      */
     async getTemplateForGrade(grade: string): Promise<any> {
         try {
-            console.log(`📋 Getting family interview template for grade: ${grade}`);
+            console.log(`Getting family interview template for grade: ${grade}`);
 
             const response = await api.get(`/v1/evaluations/family-interview-template/${grade}`);
 
             if (response.data.success) {
-                console.log('✅ Template loaded successfully');
+                console.log('Template loaded successfully');
                 return response.data.data;
             }
 
             throw new Error('Invalid response from server');
         } catch (error: any) {
-            console.error('❌ Error getting template:', error);
+            console.error('Error getting template:', error);
             throw new Error(
                 error.response?.data?.error ||
                 error.response?.data?.message ||
@@ -47,12 +47,12 @@ class FamilyInterviewService {
         score: number;
     }> {
         try {
-            console.log(`📥 Loading interview data for evaluation: ${evaluationId}`);
+            console.log(`Loading interview data for evaluation: ${evaluationId}`);
 
             const response = await api.get(`/v1/evaluations/${evaluationId}/family-interview-data`);
 
             if (response.data.success) {
-                console.log('✅ Interview data loaded successfully');
+                console.log('Interview data loaded successfully');
                 return {
                     data: response.data.data || {},
                     score: response.data.score || 0
@@ -61,7 +61,7 @@ class FamilyInterviewService {
 
             throw new Error('Invalid response from server');
         } catch (error: any) {
-            console.error('❌ Error loading interview data:', error);
+            console.error('Error loading interview data:', error);
             throw new Error(
                 error.response?.data?.error ||
                 error.response?.data?.message ||
@@ -87,7 +87,7 @@ class FamilyInterviewService {
         interview_data: any;
     }> {
         try {
-            console.log(`💾 Saving interview data for evaluation: ${evaluationId}`);
+            console.log(`Saving interview data for evaluation: ${evaluationId}`);
 
             const response = await api.put(
                 `/v1/evaluations/${evaluationId}/family-interview-data`,
@@ -95,14 +95,14 @@ class FamilyInterviewService {
             );
 
             if (response.data.success) {
-                console.log('✅ Interview data saved successfully');
-                console.log(`📊 Total score: ${response.data.data.totalScore}/51`);
+                console.log('Interview data saved successfully');
+                console.log(`Total score: ${response.data.data.totalScore}/51`);
                 return response.data.data;
             }
 
             throw new Error('Invalid response from server');
         } catch (error: any) {
-            console.error('❌ Error saving interview data:', error);
+            console.error('Error saving interview data:', error);
             throw new Error(
                 error.response?.data?.error ||
                 error.response?.data?.message ||

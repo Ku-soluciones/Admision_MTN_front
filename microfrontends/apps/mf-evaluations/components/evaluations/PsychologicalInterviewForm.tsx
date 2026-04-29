@@ -70,7 +70,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
       {/* Header */}
       <Card className="p-4 bg-purple-50 border-purple-200">
         <h3 className="text-lg font-bold text-azul-monte-tabor mb-2">
-          🧠 Entrevista Psicológica
+          Entrevista Psicológica
         </h3>
         {evaluation.application && evaluation.application.student && (
           <div className="text-sm text-gris-piedra">
@@ -84,7 +84,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
       {/* Errors */}
       {errors.length > 0 && (
         <Card className="p-4 bg-red-50 border-red-200">
-          <h4 className="font-semibold text-red-800 mb-2">⚠️ Campos requeridos:</h4>
+          <h4 className="font-semibold text-red-800 mb-2">Campos requeridos:</h4>
           <ul className="text-sm text-red-700 space-y-1">
             {errors.map((error, index) => (
               <li key={index}>• {error}</li>
@@ -95,7 +95,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
       {/* Guidelines */}
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h4 className="font-semibold text-blue-800 mb-2">📋 Guía para la Evaluación Psicológica</h4>
+        <h4 className="font-semibold text-blue-800 mb-2">Guía para la Evaluación Psicológica</h4>
         <div className="text-sm text-blue-700 space-y-1">
           <p>• Observe el comportamiento del estudiante durante la entrevista</p>
           <p>• Evalúe la capacidad de comunicación y expresión emocional</p>
@@ -107,7 +107,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
       {/* Observaciones Generales */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">👁️ Observaciones Generales de la Entrevista</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Observaciones Generales de la Entrevista</h4>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Impresión general y comportamiento durante la entrevista *
@@ -127,12 +127,12 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
       {/* Evaluación Psicológica Específica */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">🧠 Evaluación Psicológica Específica</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Evaluación Psicológica Específica</h4>
         
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🤝 Habilidades Sociales y Comunicación *
+              Habilidades Sociales y Comunicación *
             </label>
             <textarea
               value={formData.socialSkillsAssessment || ''}
@@ -148,7 +148,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              💭 Madurez Emocional *
+              Madurez Emocional *
             </label>
             <textarea
               value={formData.emotionalMaturity || ''}
@@ -164,7 +164,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🎯 Motivación y Actitud hacia el Aprendizaje *
+              Motivación y Actitud hacia el Aprendizaje *
             </label>
             <textarea
               value={formData.motivationAssessment || ''}
@@ -180,7 +180,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              👨‍👩‍👧‍👦 Evaluación del Apoyo Familiar *
+              Evaluación del Apoyo Familiar *
             </label>
             <textarea
               value={formData.familySupportAssessment || ''}
@@ -198,12 +198,12 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
       {/* Análisis y Recomendaciones */}
       <Card className="p-6">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">💡 Análisis y Recomendaciones</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Análisis y Recomendaciones</h4>
         
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ✅ Fortalezas Psicológicas Identificadas *
+              Fortalezas Psicológicas Identificadas *
             </label>
             <textarea
               value={formData.strengths || ''}
@@ -216,7 +216,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🎯 Áreas de Desarrollo *
+              Áreas de Desarrollo *
             </label>
             <textarea
               value={formData.areasForImprovement || ''}
@@ -229,7 +229,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📋 Recomendaciones Psicopedagógicas *
+              Recomendaciones Psicopedagógicas *
             </label>
             <textarea
               value={formData.recommendations || ''}
@@ -247,7 +247,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
       {/* Criterios de Evaluación */}
       <Card className="p-6 bg-gray-50">
-        <h4 className="font-semibold text-azul-monte-tabor mb-4">📊 Criterios de Evaluación Psicológica</h4>
+        <h4 className="font-semibold text-azul-monte-tabor mb-4">Criterios de Evaluación Psicológica</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
           <div>
@@ -300,7 +300,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          💾 Guardar Borrador
+          Guardar Borrador
         </Button>
         <Button
           variant="primary"
@@ -308,7 +308,7 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
           disabled={isSubmitting}
           className="flex-1"
         >
-          {isSubmitting ? 'Procesando...' : '✅ Completar Entrevista'}
+          {isSubmitting ? 'Procesando...' : 'Completar Entrevista'}
         </Button>
       </div>
     </div>

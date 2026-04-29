@@ -148,7 +148,7 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
 
     // Estilo visual para el elemento siendo arrastrado
     const dragImage = document.createElement('div');
-    dragImage.innerHTML = `📅 ${interview.studentName}`;
+    dragImage.innerHTML = `${interview.studentName}`;
     dragImage.style.background = '#3B82F6';
     dragImage.style.color = 'white';
     dragImage.style.padding = '8px 12px';
@@ -190,7 +190,7 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
       return;
     }
 
-    // 🔒 VALIDACIÓN EN TIEMPO REAL: Verificar disponibilidad con el backend
+    // VALIDACIÓN EN TIEMPO REAL: Verificar disponibilidad con el backend
     try {
       const isAvailable = await interviewService.checkInterviewerAvailability(
         draggedInterview.interview.interviewerId,
@@ -201,7 +201,7 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
 
       if (!isAvailable) {
         // El slot está ocupado - mostrar error
-        alert('⚠️ Este horario ya no está disponible. Por favor seleccione otro horario.');
+        alert('Este horario ya no está disponible. Por favor seleccione otro horario.');
         setDraggedInterview(null);
         return;
       }
@@ -248,11 +248,11 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
     } catch (error: any) {
       console.error('Error al reprogramar:', error);
 
-      // 🔒 MANEJO DE ERROR 409: Slot ya tomado
+      // MANEJO DE ERROR 409: Slot ya tomado
       if (error?.response?.status === 409) {
         const errorData = error.response.data;
         alert(
-          `❌ ${errorData.message || 'Este horario ya está reservado'}\n\n` +
+          `${errorData.message || 'Este horario ya está reservado'}\n\n` +
           `Por favor seleccione otro horario disponible.`
         );
 
@@ -368,7 +368,7 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
           date: dateStr,
           time
         })}
-        title={`✅ Slot disponible: ${time}`}
+        title={`Slot disponible: ${time}`}
       >
         <div className="flex items-center justify-center text-green-700 font-medium">
           <FiClock className="w-3 h-3 mr-1" />
@@ -423,15 +423,15 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
         ))}
         <div className="flex items-center space-x-1">
           <div className="w-3 h-3 border-2 border-dashed border-green-300 bg-green-50 rounded" />
-          <span>✅ Slot disponible</span>
+          <span>Slot disponible</span>
         </div>
         <div className="flex items-center space-x-1">
           <div className="w-3 h-3 border-2 border-red-300 bg-red-50 rounded" />
-          <span>❌ Slot ocupado</span>
+          <span>Slot ocupado</span>
         </div>
         <div className="flex items-center space-x-1">
           <div className="w-3 h-3 border-2 border-blue-500 bg-blue-100 rounded" />
-          <span>🎯 Seleccionando...</span>
+          <span>Seleccionando...</span>
         </div>
       </div>
 
@@ -543,7 +543,7 @@ const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps> = ({
                   <FiAlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
                   <div>
                     <h5 className="font-medium text-yellow-800 mb-2">
-                      ⚠️ Conflicto de Horario
+                      Conflicto de Horario
                     </h5>
                     <p className="text-sm text-yellow-700 mb-2">
                       Ya existe una entrevista en este horario:

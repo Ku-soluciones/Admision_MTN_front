@@ -205,7 +205,7 @@ const FamilyScheduleView: React.FC<FamilyScheduleViewProps> = ({
           Cronograma de Evaluaciones
         </h2>
         <Button variant="outline" onClick={loadSchedules}>
-          🔄 Actualizar
+          Actualizar
         </Button>
       </div>
 

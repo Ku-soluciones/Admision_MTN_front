@@ -50,8 +50,8 @@ api.interceptors.request.use(
         const url = config.url || '';
         const isPublic = isPublicRoute(url);
 
-        console.log(`📤 api.ts - Runtime baseURL: ${runtimeBaseURL}`);
-        console.log(`🔍 API Request: ${url} - Is Public: ${isPublic}`);
+        console.log(`api.ts - Runtime baseURL: ${runtimeBaseURL}`);
+        console.log(`API Request: ${url} - Is Public: ${isPublic}`);
 
         // Add auth token if not a public route
         if (!isPublic) {
@@ -74,23 +74,23 @@ api.interceptors.request.use(
         const method = (config.method || 'get').toUpperCase();
         const needsCsrf = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
 
-        // console.log(`🔒 CSRF Check - Method: ${method}, NeedsCsrf: ${needsCsrf}, URL: ${url}`);
+        // console.log(`CSRF Check - Method: ${method}, NeedsCsrf: ${needsCsrf}, URL: ${url}`);
 
         // Skip CSRF token for CSRF token endpoint itself
         if (needsCsrf && !url.includes('/csrf-token')) {
-            // console.log(`🔒 Attempting to get CSRF token for ${method} request...`);
+            // console.log(`Attempting to get CSRF token for ${method} request...`);
             try {
                 const csrfHeaders = await csrfService.getCsrfHeaders();
-                // console.log(`🔒 CSRF headers received:`, csrfHeaders);
+                // console.log(`CSRF headers received:`, csrfHeaders);
                 config.headers['X-CSRF-Token'] = csrfHeaders['X-CSRF-Token'];
-                // console.log(`🛡️ Added CSRF token to ${method} request`);
+                // console.log(`Added CSRF token to ${method} request`);
             } catch (error) {
-                console.error('❌ Failed to get CSRF token:', error);
-                console.error('❌ Error details:', error);
+                console.error('Failed to get CSRF token:', error);
+                console.error('Error details:', error);
                 // Continue without CSRF token - backend will reject the request
             }
         } else {
-            // console.log(`🔒 Skipping CSRF token - needsCsrf: ${needsCsrf}, isCSRFEndpoint: ${url.includes('/csrf-token')}`);
+            // console.log(`Skipping CSRF token - needsCsrf: ${needsCsrf}, isCSRFEndpoint: ${url.includes('/csrf-token')}`);
         }
 
         return config;
@@ -105,7 +105,7 @@ api.interceptors.response.use(
     (response) => {
         // DEFENSIVE: Validate response exists before returning
         if (!response) {
-            console.error('❌ api.ts interceptor: response is undefined');
+            console.error('api.ts interceptor: response is undefined');
             return Promise.reject(new Error('No se recibió respuesta del servidor'));
         }
         return response;
@@ -123,7 +123,7 @@ api.interceptors.response.use(
             
             // Si es 401, limpiar la sesión correspondiente y redirigir
             if (error.response.status === 401) {
-                console.warn('🔐 JWT token expired or invalid - cleaning session');
+                console.warn('JWT token expired or invalid - cleaning session');
 
                 // Limpiar token de usuario regular
                 localStorage.removeItem('auth_token');
@@ -143,7 +143,7 @@ api.interceptors.response.use(
                                      requestUrl.includes('/v1/auth/register');
 
                 if (!isLoginPage && !isPublicRoute) {
-                    console.warn('🔄 Redirecting to login due to expired token');
+                    console.warn('Redirecting to login due to expired token');
                     // Usar setTimeout para evitar problemas con el contexto de React
                     setTimeout(() => {
                         if (currentPath.includes('/admin') || currentPath.includes('/profesor')) {
@@ -160,7 +160,7 @@ api.interceptors.response.use(
                 // DEFENSIVE: Use optional chaining for error.response.data
                 const errorMessage = String(error.response?.data?.error || error.response?.data?.message || '');
                 if (errorMessage.toLowerCase().includes('csrf') || errorMessage.toLowerCase().includes('invalid token')) {
-                    console.warn('🛡️ CSRF token invalid or missing - clearing token');
+                    console.warn('CSRF token invalid or missing - clearing token');
                     csrfService.clearToken();
                     // El próximo request automáticamente obtendrá un nuevo token
                 }

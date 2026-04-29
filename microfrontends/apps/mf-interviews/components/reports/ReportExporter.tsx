@@ -163,7 +163,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({ interviews, stats, clas
           throw new Error('Tipo de reporte no válido');
       }
 
-      setExportStatus('✅ Exportación completada exitosamente');
+      setExportStatus('Exportación completada exitosamente');
       
       setTimeout(() => {
         setShowModal(false);
@@ -172,7 +172,7 @@ const ReportExporter: React.FC<ReportExporterProps> = ({ interviews, stats, clas
 
     } catch (error: any) {
       console.error('Error en exportación:', error);
-      setExportStatus(`❌ Error: ${error.message}`);
+      setExportStatus(`Error: ${error.message}`);
     } finally {
       setIsExporting(false);
     }

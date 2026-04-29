@@ -19,12 +19,12 @@ class EmailVerificationService {
    */
   async sendVerificationCode(request: EmailVerificationRequest): Promise<EmailVerificationResponse> {
     try {
-      console.log('📧 Enviando código de verificación:', request);
+      console.log(' Enviando código de verificación:', request);
 
       const response = await api.post('/v1/email/send-verification', request);
       
-      console.log('✅ Código enviado exitosamente');
-      console.log('📦 Response structure:', response.data);
+      console.log('Código enviado exitosamente');
+      console.log('Response structure:', response.data);
       
       // Backend devuelve: { success: true, data: {...}, timestamp }
       // Extraer el contenido de data si existe, sino usar response.data directamente
@@ -37,8 +37,8 @@ class EmailVerificationService {
       };
 
     } catch (error: any) {
-      console.error('❌ Error enviando código de verificación:', error);
-      console.error('📦 Error response data:', error.response?.data);
+      console.error('Error enviando código de verificación:', error);
+      console.error('Error response data:', error.response?.data);
 
       // Extraer mensaje de error desde diferentes estructuras posibles
       let errorMessage = 'Error al enviar el código de verificación';
@@ -67,12 +67,12 @@ class EmailVerificationService {
    */
   async verifyCode(request: VerifyCodeRequest): Promise<VerifyCodeResponse> {
     try {
-      console.log('🔍 Verificando código:', { email: request.email, code: '***' });
+      console.log('Verificando código:', { email: request.email, code: '***' });
 
       const response = await api.post('/v1/email/verify-code', request);
       
-      console.log('✅ Código verificado exitosamente');
-      console.log('📦 Response structure:', response.data);
+      console.log('Código verificado exitosamente');
+      console.log('Response structure:', response.data);
       
       // Backend devuelve: { success: true, data: { isValid, verified, email }, timestamp }
       // Extraer el contenido de data si existe
@@ -85,8 +85,8 @@ class EmailVerificationService {
       };
 
     } catch (error: any) {
-      console.error('❌ Error verificando código:', error);
-      console.error('📦 Error response:', error.response?.data);
+      console.error('Error verificando código:', error);
+      console.error('Error response:', error.response?.data);
       
       const errorData = error.response?.data?.error || error.response?.data;
       const errorMessage = errorData?.message || 
@@ -115,7 +115,7 @@ class EmailVerificationService {
       return response.data;
 
     } catch (error: any) {
-      console.error('❌ Error verificando email (backend may be down):', error);
+      console.error('Error verificando email (backend may be down):', error);
       // Return null to indicate check failed rather than false
       return null;
     }
@@ -135,7 +135,7 @@ class EmailVerificationService {
       return response.data;
 
     } catch (error: any) {
-      console.error('❌ Error verificando RUT (backend may be down):', error);
+      console.error('Error verificando RUT (backend may be down):', error);
       // Return null to indicate check failed rather than false
       return null;
     }
@@ -159,7 +159,7 @@ class EmailVerificationService {
       return codeMatch ? codeMatch[1] : null;
 
     } catch (error: any) {
-      console.error('❌ Error obteniendo código para desarrollo:', error);
+      console.error('Error obteniendo código para desarrollo:', error);
       return null;
     }
   }
@@ -337,7 +337,7 @@ class EmailVerificationService {
    * Simular envío de código (para desarrollo sin backend)
    */
   async mockSendVerificationCode(request: EmailVerificationRequest): Promise<EmailVerificationResponse> {
-    console.log('🎭 Mock: Simulando envío de código', request);
+    console.log('Mock: Simulando envío de código', request);
     
     // Simular delay de red
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -361,7 +361,7 @@ class EmailVerificationService {
    * Simular verificación de código (para desarrollo sin backend)
    */
   async mockVerifyCode(request: VerifyCodeRequest): Promise<VerifyCodeResponse> {
-    console.log('🎭 Mock: Simulando verificación de código', { 
+    console.log('Mock: Simulando verificación de código', {
       email: request.email, 
       code: '***' 
     });

@@ -289,7 +289,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-yellow-800 flex items-center">
               <FiClock className="w-5 h-5 mr-2" />
-              📅 PRÓXIMAS - 7 días
+              PRÓXIMAS - 7 días
             </h3>
           </div>
 
@@ -355,7 +355,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-green-800 flex items-center">
               <FiCheckCircle className="w-5 h-5 mr-2" />
-              ✅ COMPLETADAS - Recientes
+              COMPLETADAS - Recientes
             </h3>
           </div>
 

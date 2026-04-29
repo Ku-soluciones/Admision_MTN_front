@@ -68,7 +68,7 @@ export class EmailTemplateService {
       console.error('Error fetching email templates:', error);
       
       // Fallback to mock data if API fails
-      console.log('📧 Using mock templates as fallback');
+      console.log('Using mock templates as fallback');
       return {
         success: true,
         data: this.getMockTemplates(),
@@ -113,7 +113,7 @@ export class EmailTemplateService {
 
   async createTemplate(templateData: CreateTemplateRequest): Promise<SingleTemplateResponse> {
     try {
-      console.log('🎨 Creando nuevo template:', templateData.templateKey);
+      console.log('Creando nuevo template:', templateData.templateKey);
       const response = await api.post(`${this.baseUrl}/create`, templateData);
       return {
         success: true,
@@ -125,7 +125,7 @@ export class EmailTemplateService {
       
       // Si el backend no está disponible, simular creación local
       if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
-        console.log('📝 Backend no disponible, simulando creación de template...');
+        console.log('Backend no disponible, simulando creación de template...');
         const newTemplate: EmailTemplate = {
           id: Date.now(),
           ...templateData,

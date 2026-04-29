@@ -76,7 +76,7 @@ const CycleDirectorReportForm: React.FC = () => {
             
             try {
                 setIsLoading(true);
-                console.log('🔄 Cargando evaluación director de ciclo:', evaluationId);
+                console.log('Cargando evaluación director de ciclo:', evaluationId);
                 
                 // Cargar la evaluación del director de ciclo
                 const directorEvaluation = await professorEvaluationService.getEvaluationById(parseInt(evaluationId));
@@ -84,7 +84,7 @@ const CycleDirectorReportForm: React.FC = () => {
                 if (directorEvaluation) {
                     setEvaluation(directorEvaluation);
 
-                    console.log('📋 Director evaluation data:', {
+                    console.log('Director evaluation data:', {
                         applicationId: directorEvaluation.applicationId,
                         studentName: directorEvaluation.studentName,
                         studentGrade: directorEvaluation.studentGrade
@@ -154,9 +154,9 @@ const CycleDirectorReportForm: React.FC = () => {
                     // Cargar todas las evaluaciones del mismo estudiante para obtener resultados académicos
                     await loadSubjectEvaluations(directorEvaluation.applicationId);
 
-                    console.log('✅ Evaluación director cargada completamente');
+                    console.log('Evaluación director cargada completamente');
                 } else {
-                    console.error('❌ Evaluación no encontrada');
+                    console.error('Evaluación no encontrada');
                     addNotification({
                         type: 'error',
                         title: 'Error',
@@ -165,7 +165,7 @@ const CycleDirectorReportForm: React.FC = () => {
                 }
                 
             } catch (error: any) {
-                console.error('❌ Error cargando evaluación:', error);
+                console.error('Error cargando evaluación:', error);
                 addNotification({
                     type: 'error',
                     title: 'Error',
@@ -177,23 +177,23 @@ const CycleDirectorReportForm: React.FC = () => {
         };
 
         loadEvaluationData();
-    }, [evaluationId]); // ✅ SOLO evaluationId como dependencia
+    }, [evaluationId]); // SOLO evaluationId como dependencia
 
     const loadStudentInfo = async (applicationId: number): Promise<Partial<CycleDirectorReportData>> => {
         try {
-            console.log('🔄 Cargando información completa del estudiante para application:', applicationId);
+            console.log('Cargando información completa del estudiante para application:', applicationId);
 
             // Obtener la aplicación completa que incluye todos los datos del estudiante
             const response = await api.get(`/v1/applications/${applicationId}`);
             const data = response.data;
             const application = data.data || data;
 
-            console.log('📊 Aplicación completa recibida:', application);
+            console.log('Aplicación completa recibida:', application);
 
             if (application && application.student) {
                 const student = application.student;
 
-                console.log('👤 Datos del estudiante:', {
+                console.log('Datos del estudiante:', {
                     firstName: student.firstName,
                     paternalLastName: student.paternalLastName,
                     maternalLastName: student.maternalLastName,
@@ -223,14 +223,14 @@ const CycleDirectorReportForm: React.FC = () => {
                     gradeApplied: student.gradeApplied || ''
                 };
 
-                console.log('✅ Información del estudiante procesada:', studentInfo);
+                console.log('Información del estudiante procesada:', studentInfo);
                 return studentInfo;
             }
 
             return {};
 
         } catch (error) {
-            console.error('❌ Error cargando información del estudiante:', error);
+            console.error('Error cargando información del estudiante:', error);
             addNotification({
                 type: 'warning',
                 title: 'Atención',
@@ -242,14 +242,14 @@ const CycleDirectorReportForm: React.FC = () => {
 
     const loadSubjectEvaluations = async (applicationId: number) => {
         try {
-            console.log('🔄 Cargando evaluaciones académicas para application:', applicationId);
+            console.log('Cargando evaluaciones académicas para application:', applicationId);
 
             // Obtener todas las evaluaciones de esta aplicación desde el backend
             const response = await api.get(`/v1/evaluations?applicationId=${applicationId}`);
             const data = response.data;
             const allEvaluations = data.data || data;
 
-            console.log('📊 Todas las evaluaciones de la aplicación:', allEvaluations);
+            console.log('Todas las evaluaciones de la aplicación:', allEvaluations);
 
             // Filtrar solo las evaluaciones académicas completadas
             const subjectEvals = allEvaluations.filter((evalItem: any) =>
@@ -274,10 +274,10 @@ const CycleDirectorReportForm: React.FC = () => {
             }));
 
             setSubjectEvaluations(mappedEvals as any);
-            console.log('✅ Evaluaciones académicas cargadas y mapeadas:', mappedEvals);
+            console.log('Evaluaciones académicas cargadas y mapeadas:', mappedEvals);
 
         } catch (error) {
-            console.error('❌ Error cargando evaluaciones académicas:', error);
+            console.error('Error cargando evaluaciones académicas:', error);
             addNotification({
                 type: 'warning',
                 title: 'Atención',
@@ -329,10 +329,10 @@ const CycleDirectorReportForm: React.FC = () => {
     };
 
     const updateReportData = (field: keyof CycleDirectorReportData, value: string) => {
-        console.log('📝 Updating field:', field, 'with value:', value);
+        console.log('Updating field:', field, 'with value:', value);
         setReportData(prev => {
             const newData = { ...prev, [field]: value };
-            console.log('📊 New reportData:', newData);
+            console.log('New reportData:', newData);
             return newData;
         });
     };
@@ -340,7 +340,7 @@ const CycleDirectorReportForm: React.FC = () => {
     const handleSave = async () => {
         if (!evaluation) return;
 
-        console.log('💾 Saving report with data:', reportData);
+        console.log('Saving report with data:', reportData);
         setIsSubmitting(true);
 
         try {
@@ -353,9 +353,9 @@ const CycleDirectorReportForm: React.FC = () => {
                 status: 'COMPLETED'
             };
 
-            console.log('📤 Sending to backend:', updatedEvaluation);
+            console.log('Sending to backend:', updatedEvaluation);
             const response = await professorEvaluationService.updateEvaluation(evaluation.id, updatedEvaluation);
-            console.log('✅ Backend response:', response);
+            console.log('Backend response:', response);
 
             // Actualizar el objeto evaluation local con los datos guardados
             setEvaluation(prev => prev ? {
@@ -367,7 +367,7 @@ const CycleDirectorReportForm: React.FC = () => {
                 status: 'COMPLETED'
             } : null);
 
-            console.log('🔄 Evaluation local actualizada con los cambios guardados');
+            console.log('Evaluation local actualizada con los cambios guardados');
 
             addNotification({
                 type: 'success',
@@ -376,7 +376,7 @@ const CycleDirectorReportForm: React.FC = () => {
             });
             
         } catch (error) {
-            console.error('❌ Error al guardar informe:', error);
+            console.error('Error al guardar informe:', error);
             addNotification({
                 type: 'error',
                 title: 'Error al guardar',

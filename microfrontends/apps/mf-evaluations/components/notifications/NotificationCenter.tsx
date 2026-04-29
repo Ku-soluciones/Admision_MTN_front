@@ -278,7 +278,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
 
                         {notification.data.scheduledDate && notification.data.scheduledTime && (
                           <div className="text-xs text-gray-500 mb-2">
-                            📅 {new Date(notification.data.scheduledDate).toLocaleDateString('es-CL')} a las {notification.data.scheduledTime}
+                            {new Date(notification.data.scheduledDate).toLocaleDateString('es-CL')} a las {notification.data.scheduledTime}
                           </div>
                         )}
 

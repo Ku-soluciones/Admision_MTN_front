@@ -114,7 +114,7 @@ const CycleDirectorInterviewForm: React.FC = () => {
 
             try {
                 setIsLoading(true);
-                console.log('🔄 Cargando evaluación para entrevista director de ciclo:', evaluationId);
+                console.log('Cargando evaluación para entrevista director de ciclo:', evaluationId);
 
                 const foundEvaluation = await professorEvaluationService.getEvaluationById(parseInt(evaluationId));
 
@@ -153,11 +153,11 @@ const CycleDirectorInterviewForm: React.FC = () => {
                         try {
                             // Intentar parsear como JSON
                             savedInterviewData = JSON.parse(foundEvaluation.strengths);
-                            console.log('✅ Datos de entrevista recuperados desde strengths (JSON):', savedInterviewData);
+                            console.log('Datos de entrevista recuperados desde strengths (JSON):', savedInterviewData);
                         } catch (e) {
                             // Si no es JSON válido, puede ser texto plano de una versión anterior
                             // En este caso, simplemente no usamos datos guardados y permitimos editar
-                            console.log('ℹ️ Campo strengths contiene texto plano (no JSON). Se permitirá editar la entrevista.');
+                            console.log('Campo strengths contiene texto plano (no JSON). Se permitirá editar la entrevista.');
                             savedInterviewData = null;
                             // NO establecer error - esto es normal para entrevistas antiguas
                         }
@@ -176,21 +176,21 @@ const CycleDirectorInterviewForm: React.FC = () => {
                         ...(savedInterviewData || {})
                     }));
 
-                    console.log('✅ Evaluación cargada para entrevista:', foundEvaluation);
-                    console.log('📊 Student data:', {
+                    console.log('Evaluación cargada para entrevista:', foundEvaluation);
+                    console.log('Student data:', {
                         name: foundEvaluation.studentName,
                         birthDate: formattedBirthDate,
                         school: foundEvaluation.currentSchool,
                         grade: foundEvaluation.studentGrade
                     });
                 } else {
-                    console.error('❌ Evaluación no encontrada');
+                    console.error('Evaluación no encontrada');
                     setEvaluation(null);
                     setLoadError('not_found');
                 }
 
             } catch (error: any) {
-                console.error('❌ Error cargando evaluación:', error);
+                console.error('Error cargando evaluación:', error);
                 setEvaluation(null);
                 setLoadError('network_error');
             } finally {
@@ -290,7 +290,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                 status: 'COMPLETED'
             };
 
-            console.log('💾 Guardando datos de entrevista en JSON:', interviewDataJSON.substring(0, 200) + '...');
+            console.log('Guardando datos de entrevista en JSON:', interviewDataJSON.substring(0, 200) + '...');
             
             await professorEvaluationService.updateEvaluation(evaluation.id, updatedEvaluation);
             
@@ -306,7 +306,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
             }, 1500);
             
         } catch (error) {
-            console.error('❌ Error al guardar entrevista:', error);
+            console.error('Error al guardar entrevista:', error);
             addNotification({
                 type: 'error',
                 title: 'Error al guardar',

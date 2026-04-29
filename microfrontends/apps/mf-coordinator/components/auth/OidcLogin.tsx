@@ -83,13 +83,13 @@ export const OidcLogin: React.FC<OidcLoginProps> = ({
       setIsLoggingIn(true);
       clearError();
       
-      console.log(`🔐 Iniciando login como ${selectedLoginType}...`);
+      console.log(`Iniciando login como ${selectedLoginType}...`);
       
       await login(selectedLoginType);
       
       // El manejo del éxito se realiza en el useEffect de isAuthenticated
     } catch (error) {
-      console.error('❌ Error en login:', error);
+      console.error('Error en login:', error);
       setIsLoggingIn(false);
       
       const errorMessage = error instanceof Error 
