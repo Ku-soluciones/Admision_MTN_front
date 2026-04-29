@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { FileText, Users, CheckCircle, Clock, Calendar, Calculator, BookOpen, Globe } from 'lucide-react';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const HomePage: React.FC = () => {
     const admissionSteps = [
@@ -28,16 +29,16 @@ const HomePage: React.FC = () => {
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Formando Líderes con Espíritu de Servicio</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únase a una comunidad educativa comprometida con la excelencia académica y la formación católica.</p>
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-                        <Link to="/apoderado/login?redirect=/postulacion">
+                        <a href={microfrontendUrls.guardianLogin}>
                             <Button size="lg" variant="primary">
                                 Postular Aquí
                             </Button>
-                        </Link>
-                        <Link to="/apoderado/login">
+                        </a>
+                        <a href={microfrontendUrls.guardianLogin}>
                             <Button size="lg" variant="secondary">
                                 Portal Apoderados
                             </Button>
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </section>
@@ -90,11 +91,11 @@ const HomePage: React.FC = () => {
                             <p className="text-gray-200 text-sm">Gramática, vocabulario y comprensión</p>
                         </div>
                     </div>
-                    <Link to="/examenes">
+                    <a href={microfrontendUrls.studentExams}>
                         <Button size="lg" variant="secondary">
                             Conocer Portal de Exámenes
                         </Button>
-                    </Link>
+                    </a>
                 </div>
             </section>
 

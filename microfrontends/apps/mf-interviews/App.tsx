@@ -10,6 +10,7 @@ import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import ToastContainer from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -34,6 +35,8 @@ const Topbar = () => (
 );
 
 function App() {
+  const legacyRedirects = createLegacyRedirectRoutes();
+
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -49,6 +52,7 @@ function App() {
         <Route path="/entrevistas" element={<ProtectedProfessorRoute><InterviewModule /></ProtectedProfessorRoute>} />
         <Route path="/calendario" element={<ProtectedProfessorRoute><CalendarNotifications /></ProtectedProfessorRoute>} />
         <Route path="/profesor/entrevista-familiar/:evaluationId" element={<ProtectedProfessorRoute><FamilyInterviewPage /></ProtectedProfessorRoute>} />
+        {legacyRedirects}
         <Route path="*" element={<Navigate to="/entrevistas" replace />} />
     
                 </Routes>
