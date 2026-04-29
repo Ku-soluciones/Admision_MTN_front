@@ -5,9 +5,6 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { ApplicationStatus, Document } from '../types';
 import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
-import { applicationService } from '../services/applicationService';
-import { applicationWorkflowService } from '../services/applicationWorkflowService';
-import { useUserProfile } from '../hooks/useUserProfile';
 import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
 import { 
   FiFileText, 
