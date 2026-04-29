@@ -7,6 +7,7 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../context/AuthContext';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -259,12 +260,12 @@ const ProfessorLoginPage: React.FC = () => {
                         </Button>
 
                         <div className="text-center pt-6 border-t border-gray-200">
-                            <Link
-                                to="/"
+                            <a
+                                href={microfrontendUrls.home}
                                 className="text-azul-monte-tabor hover:underline text-sm font-semibold"
                             >
                                 ← Volver al inicio
-                            </Link>
+                            </a>
                         </div>
                     </form>
                 </Card>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
 import ProfessorDashboard from './pages/ProfessorDashboard';
 import EvaluationForm from './pages/EvaluationForm';
@@ -26,13 +26,15 @@ const LoadingFallback = () => (
 
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/profesor/login';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            <Header />
+            {!isLoginPage && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
