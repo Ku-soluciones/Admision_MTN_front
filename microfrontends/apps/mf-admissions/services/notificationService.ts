@@ -62,7 +62,7 @@ class NotificationService {
   notifyInterviewScheduled(interview: Interview): void {
     const notification: PushNotification = {
       id: `interview_scheduled_${interview.id}_${Date.now()}`,
-      title: '📅 Nueva Entrevista Programada',
+      title: 'Nueva Entrevista Programada',
       message: `Entrevista programada para ${interview.studentName} el ${new Date(interview.scheduledDate).toLocaleDateString('es-CL')} a las ${interview.scheduledTime}`,
       type: 'interview_scheduled',
       priority: 'high',
@@ -92,7 +92,7 @@ class NotificationService {
     
     const notification: PushNotification = {
       id: `interview_reminder_${interview.id}_${hoursUntil}h_${Date.now()}`,
-      title: '⏰ Recordatorio de Entrevista',
+      title: 'Recordatorio de Entrevista',
       message: `Entrevista con ${interview.studentName} en ${timeText}`,
       type: 'interview_reminder',
       priority: urgency,
@@ -119,7 +119,7 @@ class NotificationService {
   notifyInterviewCancelled(interview: Interview, reason?: string): void {
     const notification: PushNotification = {
       id: `interview_cancelled_${interview.id}_${Date.now()}`,
-      title: '❌ Entrevista Cancelada',
+      title: 'Entrevista Cancelada',
       message: `La entrevista con ${interview.studentName} ha sido cancelada${reason ? `: ${reason}` : ''}`,
       type: 'interview_cancelled',
       priority: 'high',
@@ -143,7 +143,7 @@ class NotificationService {
   notifyInterviewCompleted(interview: Interview): void {
     const notification: PushNotification = {
       id: `interview_completed_${interview.id}_${Date.now()}`,
-      title: '✅ Entrevista Completada',
+      title: 'Entrevista Completada',
       message: `Entrevista con ${interview.studentName} completada exitosamente`,
       type: 'interview_completed',
       priority: 'normal',
@@ -167,7 +167,7 @@ class NotificationService {
   notifyInterviewUpdated(interview: Interview, changes: string[]): void {
     const notification: PushNotification = {
       id: `interview_updated_${interview.id}_${Date.now()}`,
-      title: '🔄 Entrevista Actualizada',
+      title: 'Entrevista Actualizada',
       message: `Entrevista con ${interview.studentName} ha sido modificada: ${changes.join(', ')}`,
       type: 'interview_updated',
       priority: 'normal',

@@ -394,7 +394,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
         <div className="flex flex-wrap justify-between items-start gap-3">
           <div>
             <h2 className="text-2xl font-bold mb-2">
-              📊 Reportes de Evaluaciones
+              Reportes de Evaluaciones
             </h2>
             <p className="text-blue-100">
               Visualiza y gestiona los informes de evaluación completos
@@ -405,7 +405,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
             onClick={loadEvaluations}
             className="text-white border-white hover:bg-white hover:text-azul-monte-tabor"
           >
-            🔄 Actualizar
+            Actualizar
           </Button>
         </div>
       </Card>

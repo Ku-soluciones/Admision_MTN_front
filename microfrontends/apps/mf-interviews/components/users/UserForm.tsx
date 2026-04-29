@@ -208,9 +208,9 @@ const UserForm: React.FC<UserFormProps> = ({
                        formData.role === UserRole.COORDINATOR ||
                        formData.role === UserRole.INTERVIEWER;
   
-  console.log(`👤 UserForm - Usuario: ${formData.firstName} ${formData.lastName}`);
+  console.log(`UserForm - Usuario: ${formData.firstName} ${formData.lastName}`);
   console.log(`🏷️ UserForm - Role: ${formData.role}`);
-  console.log(`📅 UserForm - canInterview: ${canInterview}`);
+  console.log(`UserForm - canInterview: ${canInterview}`);
   console.log(`🆔 UserForm - userForSchedule.id: ${user?.id || 0}`);
   
   // Para el InterviewerScheduleManager necesitamos un objeto User
@@ -407,7 +407,7 @@ const UserForm: React.FC<UserFormProps> = ({
                 </optgroup>
 
                 {/* Docentes */}
-                <optgroup label="🎓 Educación">
+                <optgroup label="Educación">
                   <option value={UserRole.TEACHER}>
                     {USER_ROLE_LABELS[UserRole.TEACHER]}
                   </option>
@@ -508,7 +508,7 @@ const UserForm: React.FC<UserFormProps> = ({
           {canInterview && user && user.id > 0 && !isCreateMode && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-5 h-5 bg-azul-monte-tabor text-white rounded text-xs">⏰</div>
+                <div className="flex items-center justify-center w-5 h-5 bg-azul-monte-tabor text-white rounded text-xs"></div>
                 <h3 className="text-lg font-medium text-gray-900">Gestión de Horarios de Entrevistas</h3>
               </div>
               

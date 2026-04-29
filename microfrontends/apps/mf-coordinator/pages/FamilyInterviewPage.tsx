@@ -60,10 +60,10 @@ const FamilyInterviewPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await professorEvaluationService.getEvaluationById(parseInt(evaluationId));
-      console.log('📊 Evaluation data received:', data);
-      console.log('👨‍👦 Father data:', data.father);
-      console.log('👩‍👦 Mother data:', data.mother);
-      console.log('👨‍🏫 Evaluator data:', data.evaluator);
+      console.log('Evaluation data received:', data);
+      console.log('Father data:', data.father);
+      console.log('Mother data:', data.mother);
+      console.log('Evaluator data:', data.evaluator);
       setEvaluation(data as any);
 
       // Si ya existe data, cargarla en el formulario
@@ -93,7 +93,7 @@ const FamilyInterviewPage: React.FC = () => {
       setSaving(true);
       setError(null);
 
-      console.log('💾 Saving family interview data:', data);
+      console.log('Saving family interview data:', data);
 
       // Use the correct endpoint: PUT /v1/evaluations/:id/family-interview-data
       // This endpoint expects { interviewData: {...} } and has INTERVIEWER role permission
@@ -102,12 +102,12 @@ const FamilyInterviewPage: React.FC = () => {
         data
       );
 
-      console.log('✅ Interview data saved successfully:', result);
+      console.log('Interview data saved successfully:', result);
 
       // Navigate back to dashboard
       navigate('/profesor');
     } catch (err: any) {
-      console.error('❌ Error saving family interview:', err);
+      console.error('Error saving family interview:', err);
       setError(err.message || 'Error al guardar la entrevista familiar');
       throw err; // Re-throw para que el formulario lo maneje
     } finally {

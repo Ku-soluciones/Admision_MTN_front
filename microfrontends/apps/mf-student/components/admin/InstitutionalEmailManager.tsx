@@ -328,10 +328,10 @@ const InstitutionalEmailManager: React.FC<InstitutionalEmailManagerProps> = ({ o
       let result;
       
       if (editorMode === 'create') {
-        console.log('📝 Creando nuevo template:', template.templateKey);
+        console.log('Creando nuevo template:', template.templateKey);
         result = await emailTemplateService.createTemplate(template);
       } else {
-        console.log('✏️ Actualizando template:', template.templateKey);
+        console.log('Actualizando template:', template.templateKey);
         result = await emailTemplateService.updateTemplate(template.id, template);
       }
       
@@ -814,13 +814,13 @@ const InstitutionalEmailManager: React.FC<InstitutionalEmailManagerProps> = ({ o
           <div className="bg-blue-50 p-4 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">Características del Sistema:</h4>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• ✅ Sistema de cola profesional con rate limiting</li>
-              <li>• ✅ Emails personalizados por género y colegio</li>
-              <li>• ✅ Tracking de apertura y respuestas automáticas</li>
-              <li>• ✅ Reintentos automáticos con backoff exponencial</li>
-              <li>• ✅ Límites institucionales: 50/hora, 200/día, 5000/mes</li>
-              <li>• ✅ SMTP institucional con autenticación segura</li>
-              <li>• ✅ Templates HTML responsive con branding del colegio</li>
+              <li>• Sistema de cola profesional con rate limiting</li>
+              <li>• Emails personalizados por género y colegio</li>
+              <li>• Tracking de apertura y respuestas automáticas</li>
+              <li>• Reintentos automáticos con backoff exponencial</li>
+              <li>• Límites institucionales: 50/hora, 200/día, 5000/mes</li>
+              <li>• SMTP institucional con autenticación segura</li>
+              <li>• Templates HTML responsive con branding del colegio</li>
             </ul>
           </div>
           

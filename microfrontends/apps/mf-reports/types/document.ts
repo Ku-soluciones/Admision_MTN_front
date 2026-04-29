@@ -154,11 +154,11 @@ export const DocumentUtils = {
   // Obtener el icono apropiado para el tipo de archivo
   getFileIcon: (contentType: string): string => {
     if (contentType.startsWith('image/')) {
-      return '🖼️';
+      return '';
     } else if (contentType === 'application/pdf') {
-      return '📄';
+      return '';
     }
-    return '📎';
+    return '';
   },
 
   // Formatear el tamaño del archivo

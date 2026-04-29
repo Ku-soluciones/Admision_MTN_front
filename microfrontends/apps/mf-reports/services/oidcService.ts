@@ -310,30 +310,30 @@ class OidcService {
    * Event handlers
    */
   private handleUserLoaded(user: User): void {
-    console.log('👤 Usuario OIDC cargado:', this.maskUserInfo(user));
+    console.log('Usuario OIDC cargado:', this.maskUserInfo(user));
     this.user = user as MTNUser;
     this.notifyAuthStateChange();
   }
 
   private handleUserUnloaded(): void {
-    console.log('👤 Usuario OIDC descargado');
+    console.log('Usuario OIDC descargado');
     this.user = null;
     this.notifyAuthStateChange();
   }
 
   private handleTokenExpiring(): void {
-    console.log('⏰ Token OIDC próximo a expirar, renovando...');
+    console.log('Token OIDC próximo a expirar, renovando...');
     this.renewToken();
   }
 
   private handleTokenExpired(): void {
-    console.log('⏰ Token OIDC expirado');
+    console.log('Token OIDC expirado');
     this.user = null;
     this.notifyAuthStateChange();
   }
 
   private handleSilentRenewError(error: Error): void {
-    console.error('❌ Error en renovación silenciosa:', error);
+    console.error('Error en renovación silenciosa:', error);
     this.notifyAuthStateChange();
   }
 

@@ -86,12 +86,12 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
 
-    // 🔄 Estado para forzar recarga de datos (cache busting)
+    // Estado para forzar recarga de datos (cache busting)
     const [refreshKey, setRefreshKey] = useState(0);
 
-    // 🔄 Callback para refrescar dashboard desde componentes hijos
+    // Callback para refrescar dashboard desde componentes hijos
     const handleRefreshDashboard = useCallback(() => {
-        console.log('🔄 Dashboard refresh triggered by child component');
+        console.log('Dashboard refresh triggered by child component');
         setRefreshKey(prev => prev + 1);
     }, []);
 
@@ -154,11 +154,11 @@ const ProfessorDashboard: React.FC = () => {
                     localStorage.setItem('currentProfessor', JSON.stringify(updatedProfessor));
                     setCurrentProfessor(updatedProfessor);
                 } else if (!professorData) {
-                    console.warn('⚠️ getCurrentProfessor() retornó null');
+                    console.warn('getCurrentProfessor() retornó null');
                 }
             } catch (error) {
                 if (!abortController.signal.aborted) {
-                    console.error('❌ Error actualizando datos del profesor:', error);
+                    console.error('Error actualizando datos del profesor:', error);
                 }
             }
         };
@@ -194,14 +194,14 @@ const ProfessorDashboard: React.FC = () => {
                     setEvaluations(evaluationsData);
                     setEvaluationStats(statsData);
                     setInterviews(interviewsData);
-                    console.log('📅 Loaded interviews for professor:', interviewsData.length);
-                    console.log('👤 Professor ID:', currentProfessor.id);
-                    console.log('📋 Interview details:', interviewsData);
+                    console.log('Loaded interviews for professor:', interviewsData.length);
+                    console.log('Professor ID:', currentProfessor.id);
+                    console.log('Interview details:', interviewsData);
                 }
 
             } catch (error: any) {
                 if (!abortController.signal.aborted) {
-                    console.error('❌ Error cargando evaluaciones:', error);
+                    console.error('Error cargando evaluaciones:', error);
 
                     // Si no hay evaluaciones asignadas, mostrar estado vacío
                     if (error.message.includes('No se encontraron evaluaciones') && isMounted) {
@@ -230,7 +230,7 @@ const ProfessorDashboard: React.FC = () => {
             isMounted = false;
             abortController.abort();
         };
-    }, [refreshKey]); // 🔄 Re-ejecuta cuando refreshKey cambia (force refresh)
+    }, [refreshKey]); // Re-ejecuta cuando refreshKey cambia (force refresh)
 
 
     // Datos mock para compatibilidad (se pueden eliminar después)
@@ -615,7 +615,7 @@ const ProfessorDashboard: React.FC = () => {
         });
 
         // DEBUG: Log interview counts
-        console.log('📊 DEBUG - Interview counts:');
+        console.log('DEBUG - Interview counts:');
         console.log(`  Total interviews loaded: ${interviews.length}`);
         console.log(`  Completed interviews (with COMPLETED evaluation): ${completedInterviews.length}`);
         console.log(`  Family interviews in completedInterviews: ${completedInterviews.filter(i => i.type === 'FAMILY').length}`);
@@ -647,10 +647,10 @@ const ProfessorDashboard: React.FC = () => {
                             <FiCalendar className="mr-2" />
                             💬 Mis Entrevistas e Informes
                         </h2>
-                        {/* 🔄 Botón de recarga manual */}
+                        {/* Botón de recarga manual */}
                         <Button
                             onClick={() => {
-                                console.log('🔄 Manual refresh triggered - incrementing refreshKey');
+                                console.log('Manual refresh triggered - incrementing refreshKey');
                                 setRefreshKey(prev => prev + 1);
                             }}
                             variant="outline"
@@ -681,7 +681,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                         }`}
                                     >
-                                        👨‍👩‍👧‍👦 Entrevistas Familiares ({familyInterviews.length})
+                                        Entrevistas Familiares ({familyInterviews.length})
                                     </button>
                                     <button
                                         onClick={() => setActiveInterviewTab('director_ciclo')}
@@ -691,7 +691,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                         }`}
                                     >
-                                        🎓 Entrevistas Director de Ciclo ({directorInterviews.length})
+                                        Entrevistas Director de Ciclo ({directorInterviews.length})
                                     </button>
                                     {/* Solo mostrar Informes Finales para Directores de Ciclo */}
                                     {currentProfessor?.role === 'CYCLE_DIRECTOR' && (
@@ -703,7 +703,7 @@ const ProfessorDashboard: React.FC = () => {
                                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                             }`}
                                         >
-                                            📊 Informes Finales
+                                            Informes Finales
                                         </button>
                                     )}
                                 </nav>
@@ -716,7 +716,7 @@ const ProfessorDashboard: React.FC = () => {
                                     <div>
                                         <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
                                             <FileTextIcon className="w-5 h-5 mr-2" />
-                                            📊 Informes Finales de Director de Ciclo
+                                            Informes Finales de Director de Ciclo
                                         </h3>
                                         <p className="text-sm text-gray-600 mb-4">
                                             Crear informes integrales basados en los 3 exámenes académicos (Lenguaje, Matemática, Inglés)
@@ -749,9 +749,9 @@ const ProfessorDashboard: React.FC = () => {
                                                                             report.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
                                                                             'bg-blue-100 text-blue-800'
                                                                         }`}>
-                                                                            {report.status === 'COMPLETED' ? '✅ Completado' :
-                                                                             report.status === 'IN_PROGRESS' ? '⏳ En Progreso' :
-                                                                             '📝 Pendiente'}
+                                                                            {report.status === 'COMPLETED' ? 'Completado' :
+                                                                             report.status === 'IN_PROGRESS' ? 'En Progreso' :
+                                                                             'Pendiente'}
                                                                         </span>
                                                                     </div>
                                                                 </div>
@@ -764,7 +764,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                                 : 'bg-azul-monte-tabor text-white hover:bg-blue-700'
                                                                         }`}
                                                                     >
-                                                                        {report.status === 'COMPLETED' ? '👁️ Ver Informe' : '📝 Completar Informe'}
+                                                                        {report.status === 'COMPLETED' ? 'Ver Informe' : 'Completar Informe'}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -781,7 +781,7 @@ const ProfessorDashboard: React.FC = () => {
                             <div>
                                 <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
                                     <ClockIcon className="w-5 h-5 mr-2" />
-                                    📅 {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Programadas ({upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
+                                    {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Programadas ({upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
                                 </h3>
                                 {upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length === 0 ? (
                                     <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -800,7 +800,7 @@ const ProfessorDashboard: React.FC = () => {
                                                             Tipo: {INTERVIEW_TYPE_LABELS[interview.type as InterviewType] || interview.type}
                                                         </p>
                                                         <div className="text-xs text-gray-600 mt-1 space-y-1">
-                                                            <div>📅 {(() => {
+                                                            <div>{(() => {
                                                                 // Parse date in local timezone to avoid offset issues
                                                                 const [year, month, day] = interview.scheduledDate.split('-');
                                                                 const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -811,17 +811,17 @@ const ProfessorDashboard: React.FC = () => {
                                                                     year: 'numeric'
                                                                 });
                                                             })()}</div>
-                                                            <div>🕐 {interview.scheduledTime} ({interview.duration} min)</div>
-                                                            {interview.location && <div>📍 {interview.location}</div>}
+                                                            <div>{interview.scheduledTime} ({interview.duration} min)</div>
+                                                            {interview.location && <div>{interview.location}</div>}
                                                             {/* Show both interviewers if there's a second one, otherwise just show the main interviewer */}
                                                             {interview.secondInterviewerName ? (
-                                                                <div>👥 Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
+                                                                <div>Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
                                                             ) : (
-                                                                <div>👥 Entrevistador: {interview.interviewerName}</div>
+                                                                <div>Entrevistador: {interview.interviewerName}</div>
                                                             )}
                                                             {interview.notes && (
                                                                 <div className="mt-2 pt-2 border-t border-gray-200">
-                                                                    <div className="font-medium text-gray-700">📝 Notas/Enlaces:</div>
+                                                                    <div className="font-medium text-gray-700">Notas/Enlaces:</div>
                                                                     <div className="text-gray-600 whitespace-pre-wrap break-words">
                                                                         {interview.notes}
                                                                     </div>
@@ -844,9 +844,9 @@ const ProfessorDashboard: React.FC = () => {
                                                                     // Buscar evaluación existente
                                                                     try {
                                                                         const evals = await professorEvaluationService.getMyEvaluations();
-                                                                        console.log('🔍 Total evaluaciones cargadas:', evals.length);
-                                                                        console.log('📋 Buscando evaluación para application_id:', interview.applicationId);
-                                                                        console.log('📋 Tipo de entrevista:', interview.type);
+                                                                        console.log('Total evaluaciones cargadas:', evals.length);
+                                                                        console.log('Buscando evaluación para application_id:', interview.applicationId);
+                                                                        console.log('Tipo de entrevista:', interview.type);
 
                                                                         // Determinar qué tipo de evaluación buscar según el tipo de entrevista
                                                                         const expectedEvalType =
@@ -854,7 +854,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                             interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
                                                                             'PSYCHOLOGICAL_INTERVIEW';
 
-                                                                        console.log('🔍 Buscando evaluación de tipo:', expectedEvalType);
+                                                                        console.log('Buscando evaluación de tipo:', expectedEvalType);
 
                                                                         // Buscar evaluación que coincida con applicationId y tipo
                                                                         const matchingEval = evals.find(e => {
@@ -866,25 +866,25 @@ const ProfessorDashboard: React.FC = () => {
                                                                         });
 
                                                                         if (matchingEval) {
-                                                                            console.log('✅ Evaluación encontrada:', matchingEval.id);
-                                                                            console.log('📝 Tipo de evaluación encontrada:', matchingEval.evaluationType);
+                                                                            console.log('Evaluación encontrada:', matchingEval.id);
+                                                                            console.log('Tipo de evaluación encontrada:', matchingEval.evaluationType);
 
                                                                             // Navegar al formulario correspondiente según el tipo de evaluación
                                                                             if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
-                                                                                console.log('➡️ Navegando a formulario de Director de Ciclo');
+                                                                                console.log('Navegando a formulario de Director de Ciclo');
                                                                                 navigate(`/cycle-director-interview/${matchingEval.id}`);
                                                                             } else if (matchingEval.evaluationType === 'PSYCHOLOGICAL_INTERVIEW') {
-                                                                                console.log('➡️ Navegando a formulario Psicológico');
+                                                                                console.log('Navegando a formulario Psicológico');
                                                                                 navigate(`/psychological-interview/${matchingEval.id}`);
                                                                             } else if (matchingEval.evaluationType === 'FAMILY_INTERVIEW') {
-                                                                                console.log('➡️ Navegando a formulario de Entrevista Familiar');
+                                                                                console.log('Navegando a formulario de Entrevista Familiar');
                                                                                 navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                             } else {
-                                                                                console.warn('⚠️ Tipo de evaluación no reconocido:', matchingEval.evaluationType);
+                                                                                console.warn('Tipo de evaluación no reconocido:', matchingEval.evaluationType);
                                                                                 alert(`Tipo de evaluación no soportado: ${matchingEval.evaluationType}`);
                                                                             }
                                                                         } else {
-                                                                            console.warn('⚠️ No se encontró evaluación existente para esta entrevista');
+                                                                            console.warn('No se encontró evaluación existente para esta entrevista');
                                                                             alert(
                                                                                 `Esta entrevista aún no tiene una evaluación asignada.\n\n` +
                                                                                 `Por favor, contacta al administrador para que te asigne esta evaluación.`
@@ -896,7 +896,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                     }
                                                                 }}
                                                             >
-                                                                {isInterviewCompleted(interview) ? '✏️ Modificar' : '📝 Realizar'}
+                                                                {isInterviewCompleted(interview) ? 'Modificar' : 'Realizar'}
                                                             </Button>
                                                             <Button
                                                                 variant="outline"
@@ -907,7 +907,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                     alert(`Detalles de entrevista:\n\nEstudiante: ${interview.studentName}\nFecha: ${interview.scheduledDate}\nHora: ${interview.scheduledTime}\nTipo: ${INTERVIEW_TYPE_LABELS[interview.type as InterviewType]}`);
                                                                 }}
                                                             >
-                                                                👁️ Ver
+                                                                Ver
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -922,7 +922,7 @@ const ProfessorDashboard: React.FC = () => {
                             <div>
                                 <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
                                     <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
-                                    ✅ {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Realizadas ({completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
+                                    {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Realizadas ({completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
                                 </h3>
                                 {completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length === 0 ? (
                                     <div className="text-center py-4 bg-green-50 border border-green-200 rounded-lg">
@@ -944,7 +944,7 @@ const ProfessorDashboard: React.FC = () => {
                                                             Realizada el {new Date(interview.scheduledDate).toLocaleDateString('es-CL')} a las {interview.scheduledTime}
                                                         </div>
                                                         {interview.secondInterviewerName && (
-                                                            <div className="text-xs text-gray-600">👥 Con: {interview.secondInterviewerName}</div>
+                                                            <div className="text-xs text-gray-600">Con: {interview.secondInterviewerName}</div>
                                                         )}
                                                     </div>
                                                     <div className="flex flex-col items-end gap-2">
@@ -973,8 +973,8 @@ const ProfessorDashboard: React.FC = () => {
                                                                     );
 
                                                                     if (matchingEval) {
-                                                                        console.log('✅ Evaluación encontrada para ver resultados:', matchingEval.id);
-                                                                        console.log('📝 Tipo:', matchingEval.evaluationType);
+                                                                        console.log('Evaluación encontrada para ver resultados:', matchingEval.id);
+                                                                        console.log('Tipo:', matchingEval.evaluationType);
 
                                                                         // Navegar al formulario correspondiente según el tipo de evaluación
                                                                         if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
@@ -985,7 +985,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                             navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                         }
                                                                     } else {
-                                                                        console.error('❌ No se encontró evaluación para ver resultados');
+                                                                        console.error('No se encontró evaluación para ver resultados');
                                                                         alert(`No se encontró la evaluación de tipo "${expectedEvalType}" asociada a esta entrevista.`);
                                                                     }
                                                                 } catch (error) {
@@ -994,7 +994,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                 }
                                                             }}
                                                         >
-                                                            📄 Ver Resultados
+                                                            Ver Resultados
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -1481,7 +1481,7 @@ const ProfessorDashboard: React.FC = () => {
                         userId={currentProfessor.id}
                         userRole={currentProfessor.role}
                         onScheduleChange={() => {
-                            console.log('📅 Horarios actualizados en ProfessorDashboard - Usando WeeklyCalendar');
+                            console.log('Horarios actualizados en ProfessorDashboard - Usando WeeklyCalendar');
                         }}
                     />
                 ) : (

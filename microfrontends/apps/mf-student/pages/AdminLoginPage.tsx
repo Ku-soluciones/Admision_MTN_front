@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
                         </div>
                         {loginError && (
                             <div className="flex items-start gap-2 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                <span className="mt-0.5 shrink-0">⚠️</span>
+                                <span className="mt-0.5 shrink-0"></span>
                                 <span>{loginError}</span>
                             </div>
                         )}

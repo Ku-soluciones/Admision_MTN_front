@@ -87,20 +87,20 @@ export const useTokenManager = () => {
       
       // Si el token expira en menos de 5 minutos, intentar renovar
       if (timeUntilExpiry <= fiveMinutes && tokenRenewalAttempts < 3) {
-        console.log('⏰ Token próximo a expirar, renovando automáticamente...');
+        console.log('Token próximo a expirar, renovando automáticamente...');
         
         renewToken()
           .then((newUser) => {
             if (newUser) {
-              console.log('✅ Token renovado automáticamente');
+              console.log('Token renovado automáticamente');
               setTokenRenewalAttempts(0);
             } else {
-              console.warn('⚠️ No se pudo renovar el token automáticamente');
+              console.warn('No se pudo renovar el token automáticamente');
               setTokenRenewalAttempts(prev => prev + 1);
             }
           })
           .catch((error) => {
-            console.error('❌ Error renovando token automáticamente:', error);
+            console.error('Error renovando token automáticamente:', error);
             setTokenRenewalAttempts(prev => prev + 1);
           });
       }
@@ -120,7 +120,7 @@ export const useTokenManager = () => {
     const currentToken = getAccessToken();
     
     if (!currentToken) {
-      console.warn('⚠️ No hay token disponible');
+      console.warn('No hay token disponible');
       return null;
     }
     
@@ -134,13 +134,13 @@ export const useTokenManager = () => {
     
     // Si el token expira en menos de 1 minuto, renovar
     if (expiresAt - now <= oneMinute) {
-      console.log('🔄 Token expirando pronto, renovando...');
+      console.log('Token expirando pronto, renovando...');
       
       try {
         const newUser = await renewToken();
         return newUser ? getAccessToken() : null;
       } catch (error) {
-        console.error('❌ Error renovando token:', error);
+        console.error('Error renovando token:', error);
         return null;
       }
     }
@@ -224,14 +224,14 @@ export const useAuthRedirect = () => {
   
   const redirectIfNotAuthenticated = useCallback((fallbackPath: string = '/login') => {
     if (!authState.isLoading && !authState.isAuthenticated) {
-      console.log('🔄 Usuario no autenticado, redirigiendo a:', fallbackPath);
+      console.log('Usuario no autenticado, redirigiendo a:', fallbackPath);
       window.location.href = fallbackPath;
     }
   }, [authState.isAuthenticated, authState.isLoading]);
   
   const redirectIfAuthenticated = useCallback((fallbackPath: string = '/dashboard') => {
     if (!authState.isLoading && authState.isAuthenticated) {
-      console.log('🔄 Usuario ya autenticado, redirigiendo a:', fallbackPath);
+      console.log('Usuario ya autenticado, redirigiendo a:', fallbackPath);
       window.location.href = fallbackPath;
     }
   }, [authState.isAuthenticated, authState.isLoading]);
@@ -271,7 +271,7 @@ export const useAuthPersistence = () => {
       const stored = localStorage.getItem('mtn_auth_state');
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
-      console.error('❌ Error leyendo estado persistido:', error);
+      console.error('Error leyendo estado persistido:', error);
       return null;
     }
   }, []);

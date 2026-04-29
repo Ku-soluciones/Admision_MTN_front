@@ -294,7 +294,7 @@ const ComplementaryApplicationForm: React.FC = () => {
             <div className="flex items-start gap-3">
               <FiAlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Importante</h3>
+                <h3 className="font-semibold text-yellow-900 mb-2">Importante</h3>
                 <p className="text-sm text-yellow-800 mb-1">
                   Este formulario debe ser completado y <strong>enviado antes de la entrevista familiar</strong>.
                 </p>
@@ -312,7 +312,7 @@ const ComplementaryApplicationForm: React.FC = () => {
             <div className="flex items-start gap-3">
               <FiCheck className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-blue-900 mb-2">✓ Formulario Enviado</h3>
+                <h3 className="font-semibold text-blue-900 mb-2">Formulario Enviado</h3>
                 <p className="text-sm text-blue-800">
                   Este formulario ya fue enviado el {formData.submittedAt ? new Date(formData.submittedAt).toLocaleDateString('es-CL', {
                     year: 'numeric',
@@ -406,7 +406,7 @@ const ComplementaryApplicationForm: React.FC = () => {
 
           {/* Información de los Padres */}
           <Card className="p-6">
-            <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">👨‍👩‍👧‍👦 Información de los Padres</h2>
+            <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">Información de los Padres</h2>
 
             <div className="space-y-6">
               {/* Padre */}
@@ -481,7 +481,7 @@ const ComplementaryApplicationForm: React.FC = () => {
 
           {/* Preguntas sobre la familia */}
           <Card className="p-6">
-            <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">💭 Preguntas sobre su Familia</h2>
+            <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">Preguntas sobre su Familia</h2>
 
             <div className="space-y-6">
               <div>
@@ -585,7 +585,7 @@ const ComplementaryApplicationForm: React.FC = () => {
           {/* Descripción de los hijos */}
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-azul-monte-tabor">👶 Descripción de sus Hijos</h2>
+              <h2 className="text-xl font-bold text-azul-monte-tabor">Descripción de sus Hijos</h2>
               <Button
                 type="button"
                 variant="outline"

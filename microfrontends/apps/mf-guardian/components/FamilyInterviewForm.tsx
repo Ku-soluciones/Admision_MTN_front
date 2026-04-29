@@ -32,24 +32,24 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
 
         // Template is now imported as TypeScript constant (not JSON)
         // This ensures it's bundled as native JS and works in Vercel production
-        console.log('🔍 Loading FULL template (TypeScript constant, no grade filtering)');
-        console.log('🔍 fullTemplateData imported:', fullTemplateData);
-        console.log('🔍 typeof fullTemplateData:', typeof fullTemplateData);
-        console.log('🔍 fullTemplateData keys:', fullTemplateData ? Object.keys(fullTemplateData) : 'NULL/UNDEFINED');
+        console.log('Loading FULL template (TypeScript constant, no grade filtering)');
+        console.log('fullTemplateData imported:', fullTemplateData);
+        console.log('typeof fullTemplateData:', typeof fullTemplateData);
+        console.log('fullTemplateData keys:', fullTemplateData ? Object.keys(fullTemplateData) : 'NULL/UNDEFINED');
 
         // Use the statically imported template
         const templateData = fullTemplateData as any;
 
         if (!templateData) {
-          console.error('❌ Template is null or undefined after import!');
+          console.error('Template is null or undefined after import!');
           alert('Error: El template no se pudo cargar. Ver consola para detalles.');
           return;
         }
 
         setTemplate(templateData);
-        console.log('✅ FULL Template loaded:', templateData);
-        console.log('📋 Sections available:', Object.keys(templateData.sections || {}));
-        console.log('👁️ Observations:', templateData.observations);
+        console.log('FULL Template loaded:', templateData);
+        console.log('Sections available:', Object.keys(templateData.sections || {}));
+        console.log('Observations:', templateData.observations);
 
         // Load existing interview data if evaluation exists
         if (evaluation.id) {
@@ -59,20 +59,20 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
             if (data && Object.keys(data).length > 0) {
               setInterviewData(data);
               setCurrentScore(score);
-              console.log('✅ Existing interview data loaded:', data);
+              console.log('Existing interview data loaded:', data);
             } else {
               // Initialize empty structure
               setInterviewData(initializeEmptyData(templateData));
             }
           } catch (error) {
-            console.log('ℹ️ No existing interview data found, starting fresh');
+            console.log('No existing interview data found, starting fresh');
             setInterviewData(initializeEmptyData(templateData));
           }
         } else {
           setInterviewData(initializeEmptyData(templateData));
         }
       } catch (error: any) {
-        console.error('❌ Error loading template:', error);
+        console.error('Error loading template:', error);
         alert(error.message || 'Error al cargar el template de entrevista');
       } finally {
         setLoading(false);
@@ -178,7 +178,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       const validation = familyInterviewService.validateResponses(template, interviewData);
 
       if (!validation.valid) {
-        console.warn('⚠️ Validation errors:', validation.errors);
+        console.warn('Validation errors:', validation.errors);
         alert(`Formulario incompleto: ${validation.errors.length} campos faltantes`);
         return;
       }
@@ -186,7 +186,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       // Save to backend
       const result = await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
 
-      console.log('✅ Interview data saved:', result);
+      console.log('Interview data saved:', result);
 
       // Call parent onSave callback if provided
       // Parent will handle navigation and success message
@@ -194,7 +194,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         await onSave(result.interview_data, result.totalScore);
       }
     } catch (error: any) {
-      console.error('❌ Error saving interview:', error);
+      console.error('Error saving interview:', error);
       alert(error.message || 'Error al guardar la entrevista');
     } finally {
       setSaving(false);
@@ -336,7 +336,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       {/* Presentación Familia Postulante */}
       <section className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600 p-6 rounded-lg">
         <h2 className="text-2xl font-bold text-blue-900 mb-4 flex items-center">
-          <span className="mr-2">👥</span>
+          <span className="mr-2"></span>
           PRESENTACIÓN FAMILIA POSTULANTE
         </h2>
         <div className="space-y-3 text-gray-700">

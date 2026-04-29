@@ -13,7 +13,7 @@ interface ErrorModalProps {
 const ErrorModal: React.FC<ErrorModalProps> = ({
     isOpen,
     onClose,
-    title = '⚠️ Error en la Postulación',
+    title = 'Error en la Postulación',
     message,
     errors = []
 }) => {

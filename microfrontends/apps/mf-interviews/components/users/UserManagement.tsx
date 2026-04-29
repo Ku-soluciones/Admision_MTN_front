@@ -79,7 +79,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
       // DEFENSIVE CHECK: Verify response exists before accessing properties
       if (!response) {
-        console.error('❌ No se recibió respuesta del servicio de usuarios');
+        console.error('No se recibió respuesta del servicio de usuarios');
         setState(prev => ({
           ...prev,
           error: 'No se pudo conectar con el servidor',
@@ -102,7 +102,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
           // DEFENSIVE CHECK: Verify reload response exists
           if (!reloadResponse) {
-            console.error('❌ No se recibió respuesta en la recarga de usuarios');
+            console.error('No se recibió respuesta en la recarga de usuarios');
             setState(prev => ({
               ...prev,
               error: 'No se pudo conectar con el servidor',
@@ -239,7 +239,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
     switch (action) {
       case 'delete':
-        message = `⚠️ ¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al usuario ${user.fullName}?\n\nEsta acción:\n• Eliminará completamente la cuenta del usuario\n• El usuario no podrá acceder al sistema\n• NO se puede deshacer esta acción\n• Se perderán todos los datos asociados\n\n⚠️ IMPORTANTE: Si este usuario tiene evaluaciones asociadas, no se podrá eliminar y deberás desactivarlo en su lugar.`;
+        message = `¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al usuario ${user.fullName}?\n\nEsta acción:\n• Eliminará completamente la cuenta del usuario\n• El usuario no podrá acceder al sistema\n• NO se puede deshacer esta acción\n• Se perderán todos los datos asociados\n\nIMPORTANTE: Si este usuario tiene evaluaciones asociadas, no se podrá eliminar y deberás desactivarlo en su lugar.`;
         break;
       case 'toggle':
         message = user.active

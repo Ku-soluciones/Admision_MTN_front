@@ -120,7 +120,7 @@ const Header: React.FC = () => {
                                 `${navLinkClasses} hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200`
                             }
                         >
-                            ⚙️ Admin
+                            Admin
                         </NavLink>
                     )}
                 </nav>
@@ -193,7 +193,7 @@ const Header: React.FC = () => {
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={({ isActive }) => `px-4 py-3 rounded-lg font-semibold transition-colors ${isActive ? 'text-azul-monte-tabor bg-blue-50' : 'text-gris-piedra hover:bg-gray-50'}`}
                             >
-                                ⚙️ Admin
+                                Admin
                             </NavLink>
                         )}
                         {!isAnyUserLoggedIn && (

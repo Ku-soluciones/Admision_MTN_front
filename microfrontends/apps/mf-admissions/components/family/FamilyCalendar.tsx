@@ -52,7 +52,7 @@ const FamilyCalendar: React.FC<FamilyCalendarProps> = ({ className = '' }) => {
       const familyInterviews = response.interviews || [];
       setInterviews(familyInterviews);
     } catch (error) {
-      console.error('❌ Error cargando entrevistas:', error);
+      console.error('Error cargando entrevistas:', error);
       setError('Error al cargar las entrevistas');
     } finally {
       setIsLoading(false);
