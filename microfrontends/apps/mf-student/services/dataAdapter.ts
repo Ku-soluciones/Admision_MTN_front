@@ -259,7 +259,7 @@ export class DataAdapter {
   } {
     // DEFENSIVE: Handle undefined or null response
     if (!response) {
-      console.error('❌ DataAdapter: response is undefined or null');
+      console.error('DataAdapter: response is undefined or null');
       return {
         content: [],
         totalElements: 0,
@@ -287,7 +287,7 @@ export class DataAdapter {
       // Direct content array
       users = response.content;
     } else {
-      console.error('❌ DataAdapter: Unexpected response structure', response);
+      console.error('DataAdapter: Unexpected response structure', response);
     }
 
     const adaptedUsers = this.adaptUsers(users);

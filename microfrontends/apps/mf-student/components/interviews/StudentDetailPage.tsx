@@ -63,33 +63,33 @@ interface StudentDetail {
 const REQUIRED_INTERVIEW_TYPES = [
   {
     type: 'FAMILY',
-    title: '👨‍👩‍👧‍👦 Entrevista Familiar',
+    title: 'Entrevista Familiar',
     description: 'Entrevista con los padres y familia del estudiante (requiere 2 entrevistadores)',
-    icon: '👨‍👩‍👧‍👦',
+    icon: '',
     required: true,
     order: 1
   },
   {
     type: 'INDIVIDUAL',
-    title: '🎓 Entrevista Director de Ciclo',
+    title: 'Entrevista Director de Ciclo',
     description: 'Entrevista con el Director de Ciclo',
-    icon: '🎓',
+    icon: '',
     required: true,
     order: 2
   },
   {
     type: 'PSYCHOLOGICAL',
-    title: '🧠 Evaluación Psicológica',
+    title: 'Evaluación Psicológica',
     description: 'Evaluación psicopedagógica del estudiante',
-    icon: '🧠',
+    icon: '',
     required: true,
     order: 3
   },
   {
     type: 'BEHAVIORAL',
-    title: '⚖️ Entrevista Conductual',
+    title: 'Entrevista Conductual',
     description: 'Evaluación conductual del estudiante',
-    icon: '⚖️',
+    icon: '',
     required: false,
     order: 4
   }
@@ -114,7 +114,7 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
   isLoading = false
 }) => {
   // Debug: log interviews and type
-  console.log(`🎯 InterviewCard for type ${interviewType.type}:`, {
+  console.log(`InterviewCard for type ${interviewType.type}:`, {
     totalInterviews: interviews.length,
     interviews: interviews.map(i => ({ id: i.id, type: i.type, status: i.status }))
   });
@@ -126,7 +126,7 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
     interview.status !== 'NO_SHOW'
   );
 
-  console.log(`🎯 Found existing interview for ${interviewType.type}:`, existingInterview ? {
+  console.log(`Found existing interview for ${interviewType.type}:`, existingInterview ? {
     id: existingInterview.id,
     status: existingInterview.status,
     interviewerName: existingInterview.interviewerName,
@@ -218,17 +218,17 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
           {existingInterview && (
             <div className="space-y-1 mb-3">
               <p className="text-xs text-gray-500">
-                📅 {(() => {
+                {(() => {
                   const [year, month, day] = existingInterview.scheduledDate.split('-');
                   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                   return date.toLocaleDateString('es-CL');
                 })()}
               </p>
               <p className="text-xs text-gray-500">
-                🕐 {existingInterview.scheduledTime}
+                {existingInterview.scheduledTime}
               </p>
               <p className="text-xs text-gray-500">
-                👤 {existingInterview.interviewerName}
+                {existingInterview.interviewerName}
                 {existingInterview.secondInterviewerName && (
                   <> & {existingInterview.secondInterviewerName}</>
                 )}
@@ -299,7 +299,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
       }
       setError(null);
 
-      console.log('📋 Loading student detail for application:', applicationId);
+      console.log('Loading student detail for application:', applicationId);
 
       // Cargar información del estudiante y sus entrevistas en paralelo
       const [applications, interviewsResponse] = await Promise.all([
@@ -313,16 +313,16 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
         return;
       }
 
-      console.log('📋 Found application:', application);
-      console.log('📋 RAW interviews response:', interviewsResponse);
-      console.log('📋 Found interviews array:', interviewsResponse.interviews);
-      console.log('📋 Interviews count:', interviewsResponse.interviews?.length || 0);
+      console.log('Found application:', application);
+      console.log('RAW interviews response:', interviewsResponse);
+      console.log('Found interviews array:', interviewsResponse.interviews);
+      console.log('Interviews count:', interviewsResponse.interviews?.length || 0);
 
       const interviews = interviewsResponse.interviews || [];
 
       // Debug cada entrevista
       interviews.forEach(interview => {
-        console.log(`🔍 Interview ${interview.id}:`, {
+        console.log(`Interview ${interview.id}:`, {
           id: interview.id,
           type: interview.type,
           status: interview.status,
@@ -364,7 +364,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
         }
       });
 
-      console.log('📋 Student detail loaded successfully with progress:', {
+      console.log('Student detail loaded successfully with progress:', {
         completed: completedCount,
         scheduled: scheduledCount,
         missing: missingCount,
@@ -440,13 +440,13 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
 
       await interviewService.deleteInterview(interviewId);
 
-      console.log(`✅ Entrevista ${interviewId} eliminada correctamente`);
+      console.log(`Entrevista ${interviewId} eliminada correctamente`);
 
       // Recargar los detalles del estudiante para actualizar la lista
       await loadStudentDetail(true);
 
     } catch (error: any) {
-      console.error('❌ Error eliminando entrevista:', error);
+      console.error('Error eliminando entrevista:', error);
       alert('Error al eliminar la entrevista. Por favor intente nuevamente.');
     } finally {
       setDeletingInterviewId(null);
@@ -583,7 +583,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
                     isScheduled ? 'bg-blue-500 text-white' :
                     'bg-gray-200 text-gray-600'
                   }`}>
-                    {isCompleted ? '✓' : isScheduled ? index + 1 : index + 1}
+                    {isCompleted ? '' : isScheduled ? index + 1 : index + 1}
                   </div>
                   <div className="text-xs text-gray-600">{type.icon}</div>
                 </div>
@@ -655,7 +655,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({
                     <div>
                       <h3 className="font-medium text-gray-900 flex items-center">
                         <span className="text-lg mr-2">
-                          {REQUIRED_INTERVIEW_TYPES.find(t => t.type === interview.type)?.icon || '📋'}
+                          {REQUIRED_INTERVIEW_TYPES.find(t => t.type === interview.type)?.icon || ''}
                         </span>
                         {INTERVIEW_TYPE_LABELS[interview.type]}
                       </h3>

@@ -116,7 +116,7 @@ const Header: React.FC = () => {
                             href={microfrontendUrls.adminDashboard}
                             className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
                         >
-                            ⚙️ Admin
+                            Admin
                         </a>
                     )}
                 </nav>
@@ -189,7 +189,7 @@ const Header: React.FC = () => {
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                             >
-                                ⚙️ Admin
+                                Admin
                             </a>
                         )}
                         {!isAnyUserLoggedIn && (

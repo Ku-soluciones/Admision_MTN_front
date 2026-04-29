@@ -242,7 +242,7 @@ class DashboardClient {
    */
   async getApplicantMetrics(filters?: ApplicantMetricsFilters): Promise<ApplicantMetricsResponse> {
     try {
-      console.log('🔍 [dashboardClient] getApplicantMetrics - Filtros recibidos:', filters);
+      console.log('[dashboardClient] getApplicantMetrics - Filtros recibidos:', filters);
 
       const params: Record<string, string | number> = {};
 
@@ -252,15 +252,15 @@ class DashboardClient {
       if (filters?.sortBy) params.sortBy = filters.sortBy;
       if (filters?.sortOrder) params.sortOrder = filters.sortOrder;
 
-      console.log('📤 [dashboardClient] Parámetros de consulta construidos:', params);
-      console.log('🌐 [dashboardClient] URL completa:', `${this.basePath}/applicant-metrics?${new URLSearchParams(params as any).toString()}`);
+      console.log('[dashboardClient] Parámetros de consulta construidos:', params);
+      console.log('[dashboardClient] URL completa:', `${this.basePath}/applicant-metrics?${new URLSearchParams(params as any).toString()}`);
 
       const response = await httpClient.get<ApplicantMetricsResponse>(
         `${this.basePath}/applicant-metrics`,
         { params }
       );
 
-      // console.log('📥 [dashboardClient] Respuesta del servidor:', {
+      // console.log('[dashboardClient] Respuesta del servidor:', {
       //   success: response.data.success,
       //   totalRecords: response.data.data?.length || 0,
       //   filters: response.data.filters
@@ -268,8 +268,8 @@ class DashboardClient {
 
       return response.data;
     } catch (error: any) {
-      console.error('❌ [dashboardClient] Error fetching applicant metrics:', error);
-      console.error('❌ [dashboardClient] Error response:', error.response?.data);
+      console.error('[dashboardClient] Error fetching applicant metrics:', error);
+      console.error('[dashboardClient] Error response:', error.response?.data);
       throw new Error(
         error.response?.data?.message || 'Error al obtener métricas de postulantes'
       );

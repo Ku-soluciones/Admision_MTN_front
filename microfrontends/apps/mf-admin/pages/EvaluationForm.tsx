@@ -448,7 +448,7 @@ const EvaluationForm: React.FC = () => {
         {hasInterview && interviewData && (
           <Card className="p-6 bg-blue-50 border-blue-200">
             <h2 className="text-xl font-bold text-azul-monte-tabor mb-4 flex items-center gap-2">
-              <span>🎤</span> Información de Entrevista Realizada
+              <span></span> Información de Entrevista Realizada
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

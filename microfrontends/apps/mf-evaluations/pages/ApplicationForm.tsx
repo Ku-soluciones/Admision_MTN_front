@@ -36,7 +36,7 @@ const schoolOptions = [
     { value: 'NAZARET', label: 'Nazaret' }
 ];
 
-console.log('📚 School options loaded:', schoolOptions);
+console.log('School options loaded:', schoolOptions);
 
 const validationConfig = {
     firstName: { required: true, minLength: 2 },
@@ -155,10 +155,10 @@ const ApplicationForm: React.FC = () => {
             ? toUpperCase(value)
             : value;
 
-        console.log(`📝 updateField called - ${name}:`, value, '→', processedValue);
+        console.log(`updateField called - ${name}:`, value, '→', processedValue);
         setData(prev => {
             const newData = { ...prev, [name]: processedValue };
-            console.log('📦 New data state:', newData);
+            console.log('New data state:', newData);
             return newData;
         });
     }, []);
@@ -181,21 +181,21 @@ const ApplicationForm: React.FC = () => {
     // Función para manejar login
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('🔐 ApplicationForm - handleLogin: Starting login process');
+        console.log('ApplicationForm - handleLogin: Starting login process');
         setAuthLoading(true);
         setAuthError('');
 
         try {
-            console.log('🔐 ApplicationForm - handleLogin: Calling login with:', authData.email);
+            console.log('ApplicationForm - handleLogin: Calling login with:', authData.email);
             await login(authData.email, authData.password, 'apoderado');
-            console.log('✅ ApplicationForm - handleLogin: Login successful, hiding auth form');
+            console.log('ApplicationForm - handleLogin: Login successful, hiding auth form');
             setShowAuthForm(false);
 
             // Pre-llenar el formulario con datos del usuario autenticado
             await loadUserProfileAndPopulate();
-            console.log('✅ ApplicationForm - handleLogin: Profile loaded and populated');
+            console.log('ApplicationForm - handleLogin: Profile loaded and populated');
         } catch (err) {
-            console.error('❌ ApplicationForm - handleLogin: Login failed:', err);
+            console.error('ApplicationForm - handleLogin: Login failed:', err);
             setAuthError('Credenciales inválidas. Verifique su email y contraseña.');
         } finally {
             setAuthLoading(false);
@@ -205,13 +205,13 @@ const ApplicationForm: React.FC = () => {
     // Función para manejar registro
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('📝 ApplicationForm - handleRegister: Starting registration process');
+        console.log('ApplicationForm - handleRegister: Starting registration process');
         setAuthLoading(true);
         setAuthError('');
 
         // Validar verificación de email
         if (!isEmailVerified) {
-            console.warn('⚠️ ApplicationForm - handleRegister: Email not verified');
+            console.warn('ApplicationForm - handleRegister: Email not verified');
             setAuthError('Debe verificar su dirección de correo electrónico antes de continuar');
             setAuthLoading(false);
             return;
@@ -238,9 +238,9 @@ const ApplicationForm: React.FC = () => {
 
         try {
             // Registrar usuario con información básica
-            console.log('📝 ApplicationForm - handleRegister: Calling register with:', authData.email);
+            console.log('ApplicationForm - handleRegister: Calling register with:', authData.email);
             await register(authData, 'apoderado');
-            console.log('✅ ApplicationForm - handleRegister: Registration successful, hiding auth form');
+            console.log('ApplicationForm - handleRegister: Registration successful, hiding auth form');
             setShowAuthForm(false);
 
             // Intentar actualizar el perfil con información adicional
@@ -302,7 +302,7 @@ const ApplicationForm: React.FC = () => {
 
             // Mostrar modal de error
             setErrorModalData({
-                title: '❌ Error al Crear Cuenta',
+                title: 'Error al Crear Cuenta',
                 message: errorMessage,
                 errors: errorDetails
             });
@@ -370,14 +370,14 @@ const ApplicationForm: React.FC = () => {
 
     // Verificar si el usuario ya está autenticado
     useEffect(() => {
-        console.log('🔍 ApplicationForm - Auth Status Changed:', { isAuthenticated, user: user ? { email: user.email, role: user.role } : null, showAuthForm });
+        console.log('ApplicationForm - Auth Status Changed:', { isAuthenticated, user: user ? { email: user.email, role: user.role } : null, showAuthForm });
         if (isAuthenticated && user) {
-            console.log('✅ ApplicationForm - User authenticated, hiding auth form');
+            console.log('ApplicationForm - User authenticated, hiding auth form');
             setShowAuthForm(false);
             // Cargar perfil completo y popular campos
             loadUserProfileAndPopulate();
         } else {
-            console.log('❌ ApplicationForm - User not authenticated, should show auth form');
+            console.log('ApplicationForm - User not authenticated, should show auth form');
         }
     }, [isAuthenticated, user, loadUserProfileAndPopulate]);
     
@@ -433,17 +433,17 @@ const ApplicationForm: React.FC = () => {
     // Pre-fill form when in edit mode (from dashboard) OR when adding another child (prefill family data)
     useEffect(() => {
         const loadEditModeData = async () => {
-            console.log('🔍 ApplicationForm useEffect - Checking location.state:', location.state);
+            console.log('ApplicationForm useEffect - Checking location.state:', location.state);
 
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
             if (location.state?.prefillFamilyData && location.state?.familyData) {
                 const familyData = location.state.familyData;
-                console.log('👨‍👩‍👧‍👦 Prefill family data detected!');
-                console.log('👨‍👩‍👧‍👦 Family data received:', familyData);
-                console.log('👨‍👩‍👧‍👦 Father data:', familyData.father);
-                console.log('👨‍👩‍👧‍👦 Mother data:', familyData.mother);
-                console.log('👨‍👩‍👧‍👦 Guardian data:', familyData.guardian);
-                console.log('👨‍👩‍👧‍👦 Supporter data:', familyData.supporter);
+                console.log('Prefill family data detected!');
+                console.log('Family data received:', familyData);
+                console.log('Father data:', familyData.father);
+                console.log('Mother data:', familyData.mother);
+                console.log('Guardian data:', familyData.guardian);
+                console.log('Supporter data:', familyData.supporter);
 
                 // Hide auth form since user is already authenticated
                 setShowAuthForm(false);
@@ -498,14 +498,14 @@ const ApplicationForm: React.FC = () => {
                     guardianRelation: familyData.guardian?.relationship || ''
                 });
 
-                console.log('✅ Family data pre-filled successfully - student fields remain empty for new application');
+                console.log('Family data pre-filled successfully - student fields remain empty for new application');
                 return; // Exit early - no need to check edit mode
             }
 
             // CASO 2: Modo edición - pre-llenar toda la postulación existente
             if (location.state?.editMode && location.state?.applicationData) {
                 const appData = location.state.applicationData;
-                console.log('✏️ Edit mode detected, pre-filling form with:', appData);
+                console.log('Edit mode detected, pre-filling form with:', appData);
 
                 // Hide auth form when in edit mode
                 setShowAuthForm(false);
@@ -571,19 +571,19 @@ const ApplicationForm: React.FC = () => {
                     guardianRelation: appData.guardian?.relationship || ''
                 });
 
-                console.log('✅ Form pre-filled successfully');
+                console.log('Form pre-filled successfully');
 
                 // Load existing documents
                 if (location.state.applicationId) {
                     try {
-                        console.log('📄 Loading existing documents for application:', location.state.applicationId);
+                        console.log('Loading existing documents for application:', location.state.applicationId);
                         const response = await applicationService.getApplicationDocuments(location.state.applicationId);
                         // El endpoint devuelve { success: true, documents: [...] }
                         const documents = response.documents || response || [];
                         setExistingDocuments(documents);
-                        console.log('✅ Existing documents loaded:', documents);
+                        console.log('Existing documents loaded:', documents);
                     } catch (error) {
-                        console.error('❌ Error loading documents:', error);
+                        console.error('Error loading documents:', error);
                         setExistingDocuments([]);
                     }
                 }
@@ -597,9 +597,9 @@ const ApplicationForm: React.FC = () => {
     useEffect(() => {
         if (data.studentAddress && !data.studentAddressStreet) {
             // Only parse if we have the combined address but not the separate fields
-            console.log('📍 Parsing address from backend:', data.studentAddress);
+            console.log('Parsing address from backend:', data.studentAddress);
             const parsed = parseAddress(data.studentAddress);
-            console.log('✅ Parsed address:', parsed);
+            console.log('Parsed address:', parsed);
 
             // Update separate fields without triggering re-combination
             setData((prev: any) => ({
@@ -693,14 +693,14 @@ const ApplicationForm: React.FC = () => {
         // Validation by step
         switch (currentStep) {
             case 0:
-                console.log('🔍 Validating Step 0 with data:', data);
+                console.log('Validating Step 0 with data:', data);
 
                 // Validate postulant data
                 if (!data.firstName?.trim() || !data.paternalLastName?.trim() || !data.maternalLastName?.trim() ||
                     !data.rut?.trim() || !data.birthDate || !data.grade || !data.schoolApplied ||
                     !data.studentAddressStreet?.trim() || !data.studentAddressNumber?.trim() || !data.studentAddressCommune?.trim() ||
                     !data.admissionPreference) {
-                    console.log('❌ Basic fields validation failed');
+                    console.log('Basic fields validation failed');
                     console.log('firstName:', data.firstName);
                     console.log('paternalLastName:', data.paternalLastName);
                     console.log('maternalLastName:', data.maternalLastName);
@@ -719,7 +719,7 @@ const ApplicationForm: React.FC = () => {
                 const pais = data.pais || 'Chile';
                 if (pais === 'Chile') {
                     if (!data.region?.trim() || !data.comuna?.trim()) {
-                        console.log('❌ Location validation failed - region:', data.region, 'comuna:', data.comuna);
+                        console.log('Location validation failed - region:', data.region, 'comuna:', data.comuna);
                         return false;
                     }
                 }
@@ -728,30 +728,30 @@ const ApplicationForm: React.FC = () => {
                 const currentYear = new Date().getFullYear();
                 const applicationYear = parseInt(data.applicationYear);
                 if (!data.applicationYear || applicationYear !== currentYear + 1) {
-                    console.log('❌ Application year validation failed - expected:', currentYear + 1, 'got:', applicationYear);
+                    console.log('Application year validation failed - expected:', currentYear + 1, 'got:', applicationYear);
                     return false;
                 }
 
                 // Validate birth date coherence with grade
                 const birthDateValidation = validateBirthDateForGrade(data.birthDate, data.grade);
                 if (!birthDateValidation.valid) {
-                    console.log('❌ Birth date validation failed:', birthDateValidation.message);
+                    console.log('Birth date validation failed:', birthDateValidation.message);
                     return false;
                 }
 
                 // Check for school if required
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
-                    console.log('❌ Current school validation failed - currentSchool:', data.currentSchool);
+                    console.log('Current school validation failed - currentSchool:', data.currentSchool);
                     return false;
                 }
 
                 // Validate optional email if provided
                 if (data.studentEmail && !isValidEmail(data.studentEmail)) {
-                    console.log('❌ Email validation failed:', data.studentEmail);
+                    console.log('Email validation failed:', data.studentEmail);
                     return false;
                 }
 
-                console.log('✅ Step 0 validation passed!');
+                console.log('Step 0 validation passed!');
                 return true;
                 
             case 1:
@@ -820,7 +820,7 @@ const ApplicationForm: React.FC = () => {
             let nextStepIndex = currentStep + 1;
             if (isAddingAnotherChild && currentStep === 0) {
                 nextStepIndex = 4; // Skip to documents step
-                console.log('👨‍👩‍👧‍👦 Adding another child - skipping family data steps (1,2,3), going directly to step 4 (documents)');
+                console.log('Adding another child - skipping family data steps (1,2,3), going directly to step 4 (documents)');
             }
 
             // Si es el último paso (documentos), enviar la postulación
@@ -1029,7 +1029,7 @@ const ApplicationForm: React.FC = () => {
 
                     // Mostrar modal de error
                     setErrorModalData({
-                        title: '❌ Error al Enviar Postulación',
+                        title: 'Error al Enviar Postulación',
                         message: errorMessage,
                         errors: errorDetails
                     });
@@ -1783,7 +1783,7 @@ const ApplicationForm: React.FC = () => {
                         {data.admissionPreference === 'HIJO_EX_ALUMNO' && (
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p className="text-sm text-blue-800">
-                                    <strong>ℹ️ Hijo/a de Ex-Alumno:</strong> Deberá adjuntar documentación que acredite que uno de los padres es ex-alumno del colegio (ej: certificado de alumno regular, concentración de notas, etc.).
+                                    <strong>Hijo/a de Ex-Alumno:</strong> Deberá adjuntar documentación que acredite que uno de los padres es ex-alumno del colegio (ej: certificado de alumno regular, concentración de notas, etc.).
                                 </p>
                             </div>
                         )}
@@ -1791,7 +1791,7 @@ const ApplicationForm: React.FC = () => {
                         {data.admissionPreference === 'HIJO_FUNCIONARIO' && (
                             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                                 <p className="text-sm text-green-800">
-                                    <strong>ℹ️ Hijo/a de Funcionario:</strong> Deberá adjuntar documentación que acredite que uno de los padres trabaja actualmente en el colegio (ej: certificado de antigüedad, contrato, liquidación de sueldo).
+                                    <strong>Hijo/a de Funcionario:</strong> Deberá adjuntar documentación que acredite que uno de los padres trabaja actualmente en el colegio (ej: certificado de antigüedad, contrato, liquidación de sueldo).
                                 </p>
                             </div>
                         )}
@@ -1823,14 +1823,14 @@ const ApplicationForm: React.FC = () => {
                             {isLoadingProfile && (
                                 <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                                     <p className="text-sm text-azul-monte-tabor">
-                                        📋 Cargando datos del perfil para completar automáticamente...
+                                        Cargando datos del perfil para completar automáticamente...
                                     </p>
                                 </div>
                             )}
                             {!isLoadingProfile && userProfile && (
                                 <div className="mb-4 p-3 bg-green-50 rounded-lg">
                                     <p className="text-sm text-green-800">
-                                        ✅ Datos completados automáticamente desde su perfil. Puede editarlos si es necesario.
+                                        Datos completados automáticamente desde su perfil. Puede editarlos si es necesario.
                                     </p>
                                 </div>
                             )}
@@ -2007,7 +2007,7 @@ const ApplicationForm: React.FC = () => {
                         {(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
-                                    ✅ Los datos se han completado automáticamente con la información del {data.supporterRelation} ingresada anteriormente.
+                                    Los datos se han completado automáticamente con la información del {data.supporterRelation} ingresada anteriormente.
                                 </p>
                             </div>
                         )}
@@ -2093,7 +2093,7 @@ const ApplicationForm: React.FC = () => {
                         {(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
-                                    ✅ Los datos se han completado automáticamente con la información del {data.guardianRelation} ingresada anteriormente.
+                                    Los datos se han completado automáticamente con la información del {data.guardianRelation} ingresada anteriormente.
                                 </p>
                             </div>
                         )}
@@ -2180,12 +2180,12 @@ const ApplicationForm: React.FC = () => {
                                 {/* Documentos existentes (en modo edición) */}
                                 {existingDocuments && existingDocuments.length > 0 && (
                                     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                        <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">📎 Documentos Actuales ({existingDocuments.length})</h4>
+                                        <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3"> Documentos Actuales ({existingDocuments.length})</h4>
                                         <div className="space-y-2">
                                             {existingDocuments.map((doc: any, index: number) => (
                                                 <div key={doc.id || index} className="flex justify-between items-center p-2 bg-white rounded border border-blue-100">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-verde-esperanza">✓</span>
+                                                        <span className="text-verde-esperanza"></span>
                                                         <span className="text-sm font-medium">{getDocumentLabel(doc.document_type || doc.documentType)}</span>
                                                         <span className="text-xs text-gris-piedra">({doc.file_name || doc.fileName || 'archivo'})</span>
                                                     </div>
@@ -2194,7 +2194,7 @@ const ApplicationForm: React.FC = () => {
                                             ))}
                                         </div>
                                         <p className="text-xs text-gris-piedra mt-3">
-                                            ℹ️ Los documentos anteriores se mantendrán. Solo suba documentos si desea reemplazarlos.
+                                            Los documentos anteriores se mantendrán. Solo suba documentos si desea reemplazarlos.
                                         </p>
                                     </div>
                                 )}
@@ -2220,7 +2220,7 @@ const ApplicationForm: React.FC = () => {
                                                             className="text-sm"
                                                         />
                                                         {uploadedDocuments.has(doc.key) && (
-                                                            <span className="text-verde-esperanza text-sm">✓ Seleccionado</span>
+                                                            <span className="text-verde-esperanza text-sm">Seleccionado</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -2246,7 +2246,7 @@ const ApplicationForm: React.FC = () => {
                                                             className="text-sm"
                                                         />
                                                         {uploadedDocuments.has(doc.key) && (
-                                                            <span className="text-verde-esperanza text-sm">✓ Seleccionado</span>
+                                                            <span className="text-verde-esperanza text-sm">Seleccionado</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -2258,7 +2258,7 @@ const ApplicationForm: React.FC = () => {
                                     {uploadedDocuments.size > 0 && (
                                         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                                             <p className="text-sm text-azul-monte-tabor mb-3">
-                                                📄 {uploadedDocuments.size} documento(s) seleccionado(s) para subir
+                                                {uploadedDocuments.size} documento(s) seleccionado(s) para subir
                                             </p>
                                             <p className="text-xs text-gris-piedra">
                                                 Los documentos se subirán automáticamente al enviar la postulación
@@ -2283,7 +2283,7 @@ const ApplicationForm: React.FC = () => {
                         
                         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                             <p className="text-sm text-azul-monte-tabor">
-                                <strong>💡 Consejo:</strong> Si no tiene todos los documentos listos, puede enviar su postulación ahora y completar los documentos faltantes más tarde desde su dashboard familiar.
+                                <strong>Consejo:</strong> Si no tiene todos los documentos listos, puede enviar su postulación ahora y completar los documentos faltantes más tarde desde su dashboard familiar.
                             </p>
                         </div>
                     </div>
@@ -2385,7 +2385,7 @@ const ApplicationForm: React.FC = () => {
                             </div>
                             <div className="ml-4 flex-1">
                                 <h3 className="text-lg font-bold text-red-900 mb-3">
-                                    ⚠️ FALTAN {getMissingFields.length} CAMPO(S) OBLIGATORIO(S)
+                                    FALTAN {getMissingFields.length} CAMPO(S) OBLIGATORIO(S)
                                 </h3>
                                 <p className="text-sm text-red-800 mb-3">
                                     Por favor complete los siguientes campos para continuar:
@@ -2394,7 +2394,7 @@ const ApplicationForm: React.FC = () => {
                                     <ul className="list-disc list-inside text-base text-red-900 space-y-2">
                                         {getMissingFields.map((field, index) => (
                                             <li key={index} className="font-semibold">
-                                                ❌ {field}
+                                                {field}
                                             </li>
                                         ))}
                                     </ul>

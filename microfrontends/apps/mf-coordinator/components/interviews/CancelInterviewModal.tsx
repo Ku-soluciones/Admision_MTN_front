@@ -34,13 +34,13 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
 
       await interviewService.deleteInterview(interview.id);
 
-      console.log('✅ Entrevista eliminada exitosamente');
+      console.log('Entrevista eliminada exitosamente');
 
       // Cerrar modal y notificar éxito
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('❌ Error al eliminar entrevista:', error);
+      console.error('Error al eliminar entrevista:', error);
       setError(error.response?.data?.message || error.message || 'Error al eliminar la entrevista');
     } finally {
       setIsSubmitting(false);
@@ -117,7 +117,7 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
 
             {/* Tipo de Entrevista */}
             <div className="flex items-start space-x-2">
-              <div className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0">📝</div>
+              <div className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0"></div>
               <div className="flex-1">
                 <p className="text-xs text-gray-600">Tipo de Entrevista</p>
                 <p className="text-sm font-medium text-gray-900">{INTERVIEW_TYPE_LABELS[interview.type]}</p>
@@ -156,7 +156,7 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
         {/* Error message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-700">❌ {error}</p>
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 

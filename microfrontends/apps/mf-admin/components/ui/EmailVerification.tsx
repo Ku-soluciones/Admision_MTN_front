@@ -162,7 +162,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             {verificationSent && (
                 <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="text-sm text-blue-800">
-                        <p className="font-medium">📧 Código enviado a {email}</p>
+                        <p className="font-medium">Código enviado a {email}</p>
                         <p>Ingrese el código de 6 dígitos que recibió por correo electrónico.</p>
                     </div>
 
@@ -241,7 +241,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             {isCodeValid === true && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm text-green-700 font-medium">
-                        ✅ Email verificado exitosamente
+                        Email verificado exitosamente
                     </p>
                 </div>
             )}

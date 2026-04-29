@@ -56,7 +56,7 @@ export const OidcCallback: React.FC<OidcCallbackProps> = ({
           const errorDescription = urlParams.get('error_description');
           const fullError = errorDescription || error || 'Error desconocido en la autenticación';
           
-          console.error('❌ Error en callback OIDC:', fullError);
+          console.error('Error en callback OIDC:', fullError);
           throw new Error(fullError);
         }
 
@@ -75,7 +75,7 @@ export const OidcCallback: React.FC<OidcCallbackProps> = ({
           attempts++;
           
           if (isAuthenticated && user) {
-            console.log('✅ Callback OIDC completado exitosamente');
+            console.log('Callback OIDC completado exitosamente');
             setCallbackStatus('success');
             setProcessingMessage('Autenticación exitosa. Redirigiendo...');
             
@@ -111,7 +111,7 @@ export const OidcCallback: React.FC<OidcCallbackProps> = ({
         }
 
       } catch (error) {
-        console.error('❌ Error procesando callback:', error);
+        console.error('Error procesando callback:', error);
         
         const errorMessage = error instanceof Error ? error.message : 'Error procesando autenticación';
         

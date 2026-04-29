@@ -70,7 +70,7 @@ const AvailabilityScheduleManager: React.FC<AvailabilityScheduleManagerProps> = 
         ? parseInt(interviewerId, 10)
         : interviewerId;
 
-      console.log('📅 Creando horario con interviewerId:', numericInterviewerId, typeof numericInterviewerId);
+      console.log('Creando horario con interviewerId:', numericInterviewerId, typeof numericInterviewerId);
 
       await scheduleService.createAvailabilitySchedule({
         interviewerId: numericInterviewerId,

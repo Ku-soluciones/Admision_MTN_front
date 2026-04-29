@@ -241,7 +241,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           onClick={loadDocuments}
           disabled={disabled}
         >
-          🔄 Actualizar
+          Actualizar
         </Button>
       </div>
 

@@ -117,21 +117,21 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
       try {
         const currentYear = new Date().getFullYear();
-        console.log(`🔍 Cargando entrevistadores con horarios configurados para ${currentYear}...`);
+        console.log(`Cargando entrevistadores con horarios configurados para ${currentYear}...`);
 
         const data = await httpClient.get(`/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`);
-        console.log('✅ Datos recibidos del servidor:', data);
+        console.log('Datos recibidos del servidor:', data);
 
         // httpClient.get ya retorna response.data directamente
         // Puede ser un array directamente o {data: array}
         const dataArray = Array.isArray(data) ? data : (data as any).data;
 
         if (!Array.isArray(dataArray)) {
-          console.error('❌ Formato de datos inválido. Se esperaba un array:', data);
+          console.error('Formato de datos inválido. Se esperaba un array:', data);
           throw new Error('No se encontraron entrevistadores con horarios configurados');
         }
 
-        console.log('✅ Array de entrevistadores:', dataArray);
+        console.log('Array de entrevistadores:', dataArray);
 
         // El backend ya devuelve el formato correcto con firstName, lastName, role, scheduleCount
         const mappedInterviewers: BackendInterviewer[] = dataArray.map((item: any) => ({
@@ -146,10 +146,10 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         // Filtrar solo entrevistadores con horarios configurados
         const interviewersWithSchedules = mappedInterviewers.filter(i => i.scheduleCount > 0);
 
-        console.log(`✅ Entrevistadores con horarios: ${interviewersWithSchedules.length}/${mappedInterviewers.length}`);
+        console.log(`Entrevistadores con horarios: ${interviewersWithSchedules.length}/${mappedInterviewers.length}`);
         setInterviewers(interviewersWithSchedules);
       } catch (error: any) {
-        console.error('❌ Error cargando entrevistadores:', error);
+        console.error('Error cargando entrevistadores:', error);
 
         // Manejar errores específicos
         if (error.status === 401) {
@@ -168,10 +168,10 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   }, []);
 
   useEffect(() => {
-    console.log('🔄 InterviewForm useEffect - interview:', interview, 'mode:', mode);
+    console.log('InterviewForm useEffect - interview:', interview, 'mode:', mode);
 
     if (interview && (mode === InterviewFormMode.EDIT || mode === InterviewFormMode.VIEW || mode === InterviewFormMode.COMPLETE)) {
-      console.log('📝 Modo EDIT/VIEW/COMPLETE - Cargando datos de entrevista existente');
+      console.log('Modo EDIT/VIEW/COMPLETE - Cargando datos de entrevista existente');
       setFormData({
         applicationId: interview.applicationId,
         interviewerId: interview.interviewerId,
@@ -211,7 +211,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         type: validType
       }));
 
-      console.log('✅ FormData actualizado con datos pre-llenados');
+      console.log('FormData actualizado con datos pre-llenados');
     }
   }, [interview, mode]);
 
@@ -237,9 +237,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   const loadApplications = async () => {
     try {
-      console.log('📋 InterviewForm: Cargando aplicaciones disponibles...');
+      console.log('InterviewForm: Cargando aplicaciones disponibles...');
       const response = await applicationService.getAllApplications();
-      console.log('📋 InterviewForm: Aplicaciones obtenidas:', response);
+      console.log('InterviewForm: Aplicaciones obtenidas:', response);
 
       // Filtrar solo aplicaciones con datos válidos
       const validApplications = response.filter(app =>
@@ -250,10 +250,10 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         app.student.lastName
       );
 
-      console.log('📋 InterviewForm: Aplicaciones válidas filtradas:', validApplications);
+      console.log('InterviewForm: Aplicaciones válidas filtradas:', validApplications);
       setApplications(validApplications);
     } catch (error) {
-      console.error('❌ InterviewForm: Error loading applications:', error);
+      console.error('InterviewForm: Error loading applications:', error);
       setApplications([]);
     }
   };
@@ -262,14 +262,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   const loadAvailableTimeSlots = async () => {
     // Validación de parámetros requeridos
     if (!formData.interviewerId || !formData.scheduledDate) {
-      console.log('⚠️ [loadAvailableTimeSlots] Faltan parámetros requeridos - abortando');
+      console.log('[loadAvailableTimeSlots] Faltan parámetros requeridos - abortando');
       setAvailableTimeSlots(INTERVIEW_CONFIG.DEFAULT_TIME_SLOTS);
       return;
     }
 
     // Verificar si ya hay una llamada en progreso
     if (loadingSlotsRef.current) {
-      console.log('⚠️ [loadAvailableTimeSlots] Ya hay una llamada en progreso - abortando llamada anterior');
+      console.log('[loadAvailableTimeSlots] Ya hay una llamada en progreso - abortando llamada anterior');
       // Cancelar la llamada anterior si existe
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -284,13 +284,13 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     abortControllerRef.current = currentController;
 
     const timestamp = Date.now();
-    console.log(`🚀 [loadAvailableTimeSlots #${timestamp}] INICIO - Llamada iniciada`);
+    console.log(`[loadAvailableTimeSlots #${timestamp}] INICIO - Llamada iniciada`);
 
     try {
       setIsLoadingSlots(true);
       let slots: string[];
 
-      console.log(`🔍 [#${timestamp}] Datos:`, {
+      console.log(`[#${timestamp}] Datos:`, {
         type: formData.type,
         interviewerId: formData.interviewerId,
         secondInterviewerId: formData.secondInterviewerId,
@@ -300,7 +300,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
       // Si es entrevista FAMILY o CYCLE_DIRECTOR y hay dos entrevistadores, obtener horarios comunes
       if ((formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId) {
-        console.log(`🔍 [#${timestamp}] Obteniendo horarios comunes para entrevista ${formData.type} (entrevistador 1: ${formData.interviewerId}, entrevistador 2: ${formData.secondInterviewerId})`);
+        console.log(`[#${timestamp}] Obteniendo horarios comunes para entrevista ${formData.type} (entrevistador 1: ${formData.interviewerId}, entrevistador 2: ${formData.secondInterviewerId})`);
 
         slots = await interviewService.getCommonTimeSlots(
           parseInt(formData.interviewerId as string),
@@ -309,10 +309,10 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
           formData.duration
         );
 
-        console.log(`✅ [#${timestamp}] Horarios comunes obtenidos (${slots.length} slots):`, slots);
+        console.log(`[#${timestamp}] Horarios comunes obtenidos (${slots.length} slots):`, slots);
       } else {
         // Para otros tipos o si solo hay un entrevistador, obtener horarios individuales
-        console.log(`📋 [#${timestamp}] Obteniendo horarios individuales para entrevistador ${formData.interviewerId}`);
+        console.log(`[#${timestamp}] Obteniendo horarios individuales para entrevistador ${formData.interviewerId}`);
 
         slots = await interviewService.getAvailableTimeSlots(
           parseInt(formData.interviewerId as string),
@@ -320,33 +320,33 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
           formData.duration
         );
 
-        console.log(`✅ [#${timestamp}] Horarios individuales obtenidos (${slots.length} slots):`, slots);
+        console.log(`[#${timestamp}] Horarios individuales obtenidos (${slots.length} slots):`, slots);
       }
 
       // Solo actualizar estado si esta llamada no fue cancelada
       if (currentController.signal.aborted) {
-        console.log(`⚠️ [#${timestamp}] Llamada cancelada - NO actualizando estado`);
+        console.log(`[#${timestamp}] Llamada cancelada - NO actualizando estado`);
         return;
       }
 
-      console.log(`✅ [#${timestamp}] Actualizando availableTimeSlots a:`, slots);
+      console.log(`[#${timestamp}] Actualizando availableTimeSlots a:`, slots);
       setAvailableTimeSlots(slots);
 
       // Si la hora actual ya no está disponible, limpiarla
       if (formData.scheduledTime && !slots.includes(formData.scheduledTime)) {
-        console.log(`⚠️ [#${timestamp}] Hora seleccionada "${formData.scheduledTime}" ya no disponible - limpiando`);
+        console.log(`[#${timestamp}] Hora seleccionada "${formData.scheduledTime}" ya no disponible - limpiando`);
         setFormData(prev => ({ ...prev, scheduledTime: '' }));
       }
 
-      console.log(`✅ [#${timestamp}] FIN - Llamada completada exitosamente`);
+      console.log(`[#${timestamp}] FIN - Llamada completada exitosamente`);
     } catch (error: any) {
       // Ignorar errores de cancelación
       if (error.name === 'AbortError') {
-        console.log(`⚠️ [#${timestamp}] Llamada abortada intencionalmente`);
+        console.log(`[#${timestamp}] Llamada abortada intencionalmente`);
         return;
       }
 
-      console.error(`❌ [#${timestamp}] Error loading available time slots:`, error);
+      console.error(`[#${timestamp}] Error loading available time slots:`, error);
 
       // Solo actualizar estado si no fue cancelada
       if (!currentController.signal.aborted) {
@@ -357,7 +357,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       if (!currentController.signal.aborted) {
         setIsLoadingSlots(false);
         loadingSlotsRef.current = false;
-        console.log(`✅ [#${timestamp}] Loading state limpiado`);
+        console.log(`[#${timestamp}] Loading state limpiado`);
       }
     }
   };
@@ -368,17 +368,17 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       return;
     }
 
-    console.log(`🔄 [useEffect] Cambio detectado en dependencias - programando carga de horarios con debounce (300ms)`);
+    console.log(`[useEffect] Cambio detectado en dependencias - programando carga de horarios con debounce (300ms)`);
 
     // Limpiar timer anterior si existe
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
-      console.log(`⚠️ [useEffect] Timer anterior cancelado`);
+      console.log(`[useEffect] Timer anterior cancelado`);
     }
 
     // Programar nueva carga con debounce de 300ms
     debounceTimerRef.current = setTimeout(() => {
-      console.log(`✅ [useEffect] Debounce completado - ejecutando loadAvailableTimeSlots`);
+      console.log(`[useEffect] Debounce completado - ejecutando loadAvailableTimeSlots`);
       loadAvailableTimeSlots();
     }, 300);
 
@@ -415,8 +415,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   // Función para manejar selección de fecha y hora desde DayScheduleSelector
   const handleDateTimeSelect = async (date: string, time: string) => {
-    console.log(`📅 InterviewForm: handleDateTimeSelect llamado con fecha="${date}" y hora="${time}"`);
-    console.log(`📅 InterviewForm: Estado actual - fecha="${formData.scheduledDate}" y hora="${formData.scheduledTime}"`);
+    console.log(`InterviewForm: handleDateTimeSelect llamado con fecha="${date}" y hora="${time}"`);
+    console.log(`InterviewForm: Estado actual - fecha="${formData.scheduledDate}" y hora="${formData.scheduledTime}"`);
 
     setFormData(prev => ({
       ...prev,
@@ -434,10 +434,10 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
     // Verificar disponibilidad automáticamente solo si ambos parámetros están presentes
     if (date && time) {
-      console.log(`✅ Verificando disponibilidad para fecha="${date}" hora="${time}"`);
+      console.log(`Verificando disponibilidad para fecha="${date}" hora="${time}"`);
       await checkAvailability(date, time);
     } else {
-      console.log(`⚠️ Omitiendo verificación de disponibilidad: fecha="${date}" hora="${time}" (uno o ambos están vacíos)`);
+      console.log(`Omitiendo verificación de disponibilidad: fecha="${date}" hora="${time}" (uno o ambos están vacíos)`);
     }
   };
 
@@ -451,7 +451,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       // httpClient.get ya retorna response.data directamente
       const { count, interviewers } = data;
 
-      console.log(`✅ Entrevistadores disponibles para ${date} ${time}: ${count}`);
+      console.log(`Entrevistadores disponibles para ${date} ${time}: ${count}`);
 
       if (count < 2) {
         setConflictWarning(
@@ -459,7 +459,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
           `Se requieren al menos 2 entrevistadores disponibles simultáneamente para realizar la entrevista.`
         );
       } else {
-        console.log(`✅ Horario válido: ${count} entrevistadores disponibles`);
+        console.log(`Horario válido: ${count} entrevistadores disponibles`);
       }
     } catch (error: any) {
       console.error('Error verificando disponibilidad:', error);
@@ -592,7 +592,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     }
 
     try {
-      console.log('🔍 Validando disponibilidad de entrevistadores:', {
+      console.log('Validando disponibilidad de entrevistadores:', {
         date: formData.scheduledDate,
         time: formData.scheduledTime,
         duration: formData.duration
@@ -860,8 +860,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
               {(mode === InterviewFormMode.CREATE && interview?.type) ? (
                 <div className="w-full px-3 py-2 border border-blue-300 rounded-md bg-blue-50 text-blue-900 font-medium">
                   <span className="text-lg mr-2">
-                    {formData.type === 'FAMILY' ? '👨‍👩‍👧‍👦' :
-                     formData.type === 'CYCLE_DIRECTOR' ? '🎓' : '➕'}
+                    {formData.type === 'FAMILY' ? '' :
+                     formData.type === 'CYCLE_DIRECTOR' ? '' : ''}
                   </span>
                   {INTERVIEW_TYPE_LABELS[formData.type] || 'Tipo no especificado'}
                 </div>
@@ -978,7 +978,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                       return interviewer.id.toString() !== firstInterviewerId;
                     });
 
-                    console.log(`📋 Segundo entrevistador - Total entrevistadores: ${interviewers.length}, Después del filtro: ${filteredInterviewers.length}, Primer entrevistador ID: ${formData.interviewerId}`);
+                    console.log(`Segundo entrevistador - Total entrevistadores: ${interviewers.length}, Después del filtro: ${filteredInterviewers.length}, Primer entrevistador ID: ${formData.interviewerId}`);
 
                     if (filteredInterviewers.length === 0) {
                       return <option disabled>No hay otros entrevistadores disponibles</option>;
@@ -1022,7 +1022,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.interviewerId && !formData.secondInterviewerId ? (
                   <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-md">
                     <p className="text-sm text-yellow-800 text-center font-medium">
-                      ⚠️ Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
+                      Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
                     </p>
                     <p className="text-xs text-yellow-700 text-center mt-1">
                       Los horarios disponibles serán solo aquellos donde ambos entrevistadores están libres
@@ -1034,7 +1034,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                     {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId && (
                       <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
                         <p className="text-sm font-medium text-blue-900 mb-1">
-                          📅 Horarios comunes para:
+                          Horarios comunes para:
                         </p>
                         <div className="text-sm text-blue-700 space-y-1">
                           <p>• {interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
@@ -1077,7 +1077,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                       <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
                         <p className="text-sm text-red-700">
                           <FiClock className="inline w-4 h-4 mr-1" />
-                          <strong>⚠️ Conflicto de horarios:</strong> {conflictWarning}
+                          <strong>Conflicto de horarios:</strong> {conflictWarning}
                         </p>
                       </div>
                     )}

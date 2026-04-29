@@ -224,7 +224,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
                 customSchedules: useCustomSchedules && isEvaluatorRole(formData.role) ? schedules : undefined
             };
 
-            console.log('🚀 CreateUserForm - Llamando onSubmit con datos procesados:', processedFormData);
+            console.log('CreateUserForm - Llamando onSubmit con datos procesados:', processedFormData);
             await onSubmit(processedFormData);
             console.log('CreateUserForm - onSubmit completado');
             

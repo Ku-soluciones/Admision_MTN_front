@@ -89,7 +89,7 @@ class HttpClient {
         const runtimeBaseURL = getApiBaseUrl();
 
         if (this.metrics.requestCount === 0) {
-          console.log('📤 http.ts - Runtime baseURL:', runtimeBaseURL);
+          console.log('http.ts - Runtime baseURL:', runtimeBaseURL);
         }
 
         config.baseURL = runtimeBaseURL;

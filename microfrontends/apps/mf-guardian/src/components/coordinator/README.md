@@ -4,7 +4,7 @@ Componentes React para el dashboard y funcionalidades del Coordinador/Administra
 
 ## Historias de Usuario Implementadas
 
-### ✅ HU-001: Dashboard de Indicadores Generales
+### HU-001: Dashboard de Indicadores Generales
 **Componente:** `CoordinatorDashboard.tsx`
 
 Permite al coordinador/admin visualizar indicadores generales del proceso de admisión para tomar decisiones informadas.
@@ -29,7 +29,7 @@ Permite al coordinador/admin visualizar indicadores generales del proceso de adm
 
 ---
 
-### ✅ HU-005: Visualizaciones Comparativas Año/Nivel
+### HU-005: Visualizaciones Comparativas Año/Nivel
 **Componente:** `TemporalTrendsView.tsx`
 
 Permite visualizar comparativas de postulaciones por año/nivel para evaluar tendencias.
@@ -51,7 +51,7 @@ Permite visualizar comparativas de postulaciones por año/nivel para evaluar ten
 
 ---
 
-### ✅ HU-008: Sistema de Búsqueda Avanzada
+### HU-008: Sistema de Búsqueda Avanzada
 **Componente:** `AdvancedSearchView.tsx`
 
 Sistema completo de búsqueda avanzada de postulantes con 20+ filtros.
@@ -115,15 +115,15 @@ function App() {
 ## Dependencias
 
 ### Instaladas
-- ✅ `recharts` ^3.2.1 - Gráficos (Line, Bar, Pie)
-- ✅ `@tanstack/react-query` ^5.90.2 - State management y cache
-- ✅ `date-fns` ^4.1.0 - Formateo de fechas
-- ✅ `react-router-dom` ^7.6.3 - Routing
-- ✅ `axios` ^1.11.0 - HTTP requests
+- `recharts` ^3.2.1 - Gráficos (Line, Bar, Pie)
+- `@tanstack/react-query` ^5.90.2 - State management y cache
+- `date-fns` ^4.1.0 - Formateo de fechas
+- `react-router-dom` ^7.6.3 - Routing
+- `axios` ^1.11.0 - HTTP requests
 
 ### API Clients
-- ✅ `dashboardClient` - Para HU-001 y HU-005
-- ✅ `searchClient` - Para HU-008
+- `dashboardClient` - Para HU-001 y HU-005
+- `searchClient` - Para HU-008
 
 ---
 
@@ -235,10 +235,10 @@ Para problemas o consultas:
 ## Changelog
 
 ### v1.0.0 (2025-01-31)
-- ✅ Implementación inicial de HU-001 (Dashboard)
-- ✅ Implementación inicial de HU-005 (Tendencias)
-- ✅ Implementación inicial de HU-008 (Búsqueda Avanzada)
-- ✅ Integración con backend mock services
-- ✅ Gráficos con Recharts
-- ✅ Exportación CSV
-- ✅ Búsquedas guardadas (localStorage)
+- Implementación inicial de HU-001 (Dashboard)
+- Implementación inicial de HU-005 (Tendencias)
+- Implementación inicial de HU-008 (Búsqueda Avanzada)
+- Integración con backend mock services
+- Gráficos con Recharts
+- Exportación CSV
+- Búsquedas guardadas (localStorage)

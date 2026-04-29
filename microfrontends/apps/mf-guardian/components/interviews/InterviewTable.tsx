@@ -65,7 +65,7 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
       const interviewService = (await import('../../services/interviewService')).default;
       await interviewService.cancelInterview(interview.id, 'Cancelada por administrador');
 
-      console.log('🔄 Interview cancelled successfully, triggering dashboard refresh');
+      console.log('Interview cancelled successfully, triggering dashboard refresh');
 
       // Use callback to refresh parent dashboard instead of full page reload
       if (onRefreshDashboard) {

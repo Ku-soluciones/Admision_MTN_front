@@ -69,13 +69,13 @@ class WhatsAppSMSService {
       name: 'Recordatorio 24 horas - WhatsApp',
       type: 'whatsapp',
       reminderType: '24h',
-      template: `🏫 *Colegio Monte Tabor y Nazaret*
+      template: `*Colegio Monte Tabor y Nazaret*
 
 ¡Hola {{parentNames}}! 👋
 
 Te recordamos que mañana tienes programada la entrevista de admisión para {{studentName}}.
 
-📅 *Detalles de la entrevista:*
+*Detalles de la entrevista:*
 • Fecha: {{interviewDate}}
 • Hora: {{interviewTime}}
 • Modalidad: {{interviewMode}}
@@ -83,7 +83,7 @@ Te recordamos que mañana tienes programada la entrevista de admisión para {{st
 {{#if isInPerson}}• Lugar: {{location}}{{/if}}
 • Entrevistador(a): {{interviewerName}}
 
-📝 *Recuerda traer:*
+*Recuerda traer:*
 • Documentos de identidad
 • Certificados académicos
 • Cualquier documento solicitado previamente
@@ -108,15 +108,15 @@ Si necesitas reprogramar, contáctanos al +56 2 2345 6789
       name: 'Recordatorio 2 horas - WhatsApp',
       type: 'whatsapp',
       reminderType: '2h',
-      template: `🏫 *Recordatorio Urgente*
+      template: `*Recordatorio Urgente*
 
 ¡Hola {{parentNames}}! 
 
-Tu entrevista para {{studentName}} es en 2 horas ⏰
+Tu entrevista para {{studentName}} es en 2 horas 
 
-🕐 {{interviewTime}} - {{interviewMode}}
+{{interviewTime}} - {{interviewMode}}
 {{#if isVirtual}}📞 {{meetingLink}}{{/if}}
-{{#if isInPerson}}📍 {{location}}{{/if}}
+{{#if isInPerson}}{{location}}{{/if}}
 
 ¡Te esperamos!`,
       variables: ['parentNames', 'studentName', 'interviewTime', 'interviewMode', 'meetingLink', 'location'],
@@ -142,10 +142,10 @@ Hola {{parentNames}},
 
 Hemos confirmado tu entrevista para {{studentName}}:
 
-📅 {{interviewDate}} a las {{interviewTime}}
-👩‍🏫 Entrevistador(a): {{interviewerName}}
+{{interviewDate}} a las {{interviewTime}}
+Entrevistador(a): {{interviewerName}}
 {{#if isVirtual}}💻 Enlace: {{meetingLink}}{{/if}}
-{{#if isInPerson}}📍 Ubicación: {{location}}{{/if}}
+{{#if isInPerson}}Ubicación: {{location}}{{/if}}
 
 Recibirás recordatorios antes de la cita.
 
@@ -158,7 +158,7 @@ Recibirás recordatorios antes de la cita.
       name: 'Entrevista cancelada - WhatsApp',
       type: 'whatsapp',
       reminderType: 'cancelled',
-      template: `❌ *Entrevista Cancelada*
+      template: `*Entrevista Cancelada*
 
 Hola {{parentNames}},
 

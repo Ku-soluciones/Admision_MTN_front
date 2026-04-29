@@ -78,32 +78,32 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
   // NUEVA FUNCIÓN QUE SOLO CARGA USUARIOS REALES
   const loadEvaluators = async () => {
     try {
-      console.log('🔄 NUEVA FUNCIÓN - Cargando SOLO usuarios reales...');
+      console.log('NUEVA FUNCIÓN - Cargando SOLO usuarios reales...');
 
       // Cargar usuarios reales desde el endpoint público
       const usersResponse = await userService.getSchoolStaffUsersPublic();
 
       // Defensive check: ensure usersResponse exists and has content
       if (!usersResponse) {
-        console.error('❌ No se recibió respuesta del servicio de usuarios');
+        console.error('No se recibió respuesta del servicio de usuarios');
         addNotification('error', 'Error al cargar evaluadores: No se pudo conectar con el servidor');
         return;
       }
 
       const allStaff = usersResponse.content || usersResponse.data || [];
 
-      console.log('📊 Total staff encontrado:', allStaff.length);
-      console.log('👥 Usuarios encontrados:', allStaff.map(u => `${u.firstName} ${u.lastName} - ${u.role} - ${u.subject}`));
+      console.log('Total staff encontrado:', allStaff.length);
+      console.log('Usuarios encontrados:', allStaff.map(u => `${u.firstName} ${u.lastName} - ${u.role} - ${u.subject}`));
 
       // Filtrar usuarios por especialización
-      console.log('🎯 FILTROS DE ESPECIALIZACIÓN:');
+      console.log('FILTROS DE ESPECIALIZACIÓN:');
 
       const languageTeachers = allStaff.filter(user =>
         (user.role === 'TEACHER' || user.role === 'COORDINATOR') &&
         (user.subject === 'LANGUAGE' || user.subject === 'ALL_SUBJECTS') &&
         user.active && user.emailVerified
       );
-      console.log('📚 LANGUAGE teachers:', languageTeachers.map(u => `${u.firstName} ${u.lastName}`));
+      console.log('LANGUAGE teachers:', languageTeachers.map(u => `${u.firstName} ${u.lastName}`));
 
       const mathTeachers = allStaff.filter(user =>
         (user.role === 'TEACHER' || user.role === 'COORDINATOR') &&
@@ -122,12 +122,12 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
       const cycleDirectors = allStaff.filter(user =>
         user.role === 'CYCLE_DIRECTOR' && user.active && user.emailVerified
       );
-      console.log('👥 CYCLE_DIRECTOR:', cycleDirectors.map(u => `${u.firstName} ${u.lastName}`));
+      console.log('CYCLE_DIRECTOR:', cycleDirectors.map(u => `${u.firstName} ${u.lastName}`));
 
       const psychologists = allStaff.filter(user =>
         user.role === 'PSYCHOLOGIST' && user.active && user.emailVerified
       );
-      console.log('🧠 PSYCHOLOGIST:', psychologists.map(u => `${u.firstName} ${u.lastName}`));
+      console.log('PSYCHOLOGIST:', psychologists.map(u => `${u.firstName} ${u.lastName}`));
 
       const cache: EvaluatorCache = {
         'TEACHER_LANGUAGE': languageTeachers,
@@ -137,19 +137,19 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
         'PSYCHOLOGIST': psychologists
       };
 
-      console.log('🔍 Filtros aplicados por rol:');
+      console.log('Filtros aplicados por rol:');
       Object.entries(cache).forEach(([role, users]) => {
-        console.log(`📝 ${role}:`, users.map(u => `${u.firstName} ${u.lastName} (${u.subject})`));
+        console.log(`${role}:`, users.map(u => `${u.firstName} ${u.lastName} (${u.subject})`));
       });
 
       const allEvaluators = Object.values(cache).flat();
 
       setEvaluatorCache(cache);
       setEvaluators(allEvaluators);
-      console.log('✅ Solo usuarios reales cargados:', allEvaluators.length);
+      console.log('Solo usuarios reales cargados:', allEvaluators.length);
 
     } catch (error) {
-      console.error('❌ Error cargando usuarios reales:', error);
+      console.error('Error cargando usuarios reales:', error);
       addNotification('Error al cargar evaluadores. Por favor, intenta de nuevo.', 'error');
       setEvaluators([]);
       setEvaluatorCache({});
@@ -223,15 +223,15 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
 
     const serviceRole = getEvaluatorServiceRole(evaluationType);
     if (!serviceRole) {
-      console.log(`❌ getEvaluatorsByType(${evaluationType}) -> Sin role mapping`);
+      console.log(`getEvaluatorsByType(${evaluationType}) -> Sin role mapping`);
       return [];
     }
 
     // Usar cache si está disponible
     const availableEvaluators = evaluatorCache[serviceRole] || [];
-    console.log(`🔍 getEvaluatorsByType(${evaluationType}) -> serviceRole: ${serviceRole}`);
-    console.log(`📊 Cache disponible:`, Object.keys(evaluatorCache));
-    console.log(`📋 Evaluadores disponibles para ${serviceRole}:`, availableEvaluators.map(e => `${e.firstName} ${e.lastName} (${e.subject})`));
+    console.log(`getEvaluatorsByType(${evaluationType}) -> serviceRole: ${serviceRole}`);
+    console.log(`Cache disponible:`, Object.keys(evaluatorCache));
+    console.log(`Evaluadores disponibles para ${serviceRole}:`, availableEvaluators.map(e => `${e.firstName} ${e.lastName} (${e.subject})`));
 
     if (evaluationType === EvaluationType.MATHEMATICS_EXAM) {
       console.log(`🧮 MATEMÁTICAS - Evaluadores:`, availableEvaluators);
@@ -284,7 +284,7 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
               onClick={loadEvaluators}
               disabled={isLoading}
             >
-              🔄 Actualizar
+              Actualizar
             </Button>
           </div>
         </div>
@@ -496,11 +496,11 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
   const loadExistingEvaluations = async () => {
     try {
       setIsLoadingEvaluations(true);
-      console.log(`📋 Cargando evaluaciones existentes para application ${application.id}...`);
+      console.log(`Cargando evaluaciones existentes para application ${application.id}...`);
 
       // Cargar evaluaciones existentes para esta application desde evaluation-service
       const evals = await evaluationService.getEvaluationsByApplicationId(application.id);
-      console.log(`✅ ${evals.length} evaluaciones encontradas:`, evals);
+      console.log(`${evals.length} evaluaciones encontradas:`, evals);
 
       setExistingEvaluations(evals);
 
@@ -511,7 +511,7 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
         );
 
         if (existingEvaluation) {
-          console.log(`✓ Evaluación existente encontrada para ${type}:`, existingEvaluation);
+          console.log(`Evaluación existente encontrada para ${type}:`, existingEvaluation);
         }
 
         return {
@@ -526,11 +526,11 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
       setSubmitMessage(null);
       setIsSubmitting(false);
     } catch (error) {
-      console.error('❌ Error loading evaluations:', error);
+      console.error('Error loading evaluations:', error);
       // Si hay error al cargar, mostrar advertencia al usuario
       setSubmitMessage({
         type: 'error',
-        text: '⚠️ No se pudieron cargar las evaluaciones existentes. Por favor, cierre y vuelva a abrir este modal.'
+        text: 'No se pudieron cargar las evaluaciones existentes. Por favor, cierre y vuelva a abrir este modal.'
       });
 
       // Inicializar sin evaluaciones existentes (modo seguro)
@@ -561,7 +561,7 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    console.log('📝 Intentando asignar evaluadores...');
+    console.log('Intentando asignar evaluadores...');
     console.log('Existing evaluations:', existingEvaluations);
     console.log('Current assignments:', assignments);
 
@@ -590,7 +590,7 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
       await onAssign(application.id, validAssignments);
       setSubmitMessage({
         type: 'success',
-        text: `✅ Se asignaron ${validAssignments.length} evaluador(es) correctamente. Se han enviado notificaciones por email.`
+        text: `Se asignaron ${validAssignments.length} evaluador(es) correctamente. Se han enviado notificaciones por email.`
       });
 
       // Recargar evaluaciones existentes para actualizar la UI
@@ -601,20 +601,20 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
         onClose();
       }, 2000);
     } catch (error: any) {
-      console.error('❌ Error en handleSubmit:', error);
+      console.error('Error en handleSubmit:', error);
 
       // Manejar error 409 (duplicado) específicamente
       if (error.response?.status === 409) {
         setSubmitMessage({
           type: 'error',
-          text: '⚠️ Una o más evaluaciones ya fueron asignadas. Recargando información...'
+          text: 'Una o más evaluaciones ya fueron asignadas. Recargando información...'
         });
         // Recargar evaluaciones para actualizar el estado
         await loadExistingEvaluations();
       } else {
         setSubmitMessage({
           type: 'error',
-          text: `❌ Error: ${error.message || 'No se pudieron asignar los evaluadores. Por favor intente nuevamente.'}`
+          text: `Error: ${error.message || 'No se pudieron asignar los evaluadores. Por favor intente nuevamente.'}`
         });
       }
       setIsSubmitting(false);

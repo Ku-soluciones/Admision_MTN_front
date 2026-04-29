@@ -80,12 +80,12 @@ class ScheduleService {
       
       // Intentar endpoint público como fallback
       if (error.code === 'ECONNREFUSED' || error.response?.status === 500) {
-        console.log('🔄 Intentando endpoint público como fallback...');
+        console.log('Intentando endpoint público como fallback...');
         try {
           const response = await api.get(`${API_ENDPOINTS.SCHEDULES}/public/mock-schedules/${applicationId}`);
           return response.data;
         } catch (publicError) {
-          console.log('🔄 Generando datos mock locales para demostración...');
+          console.log('Generando datos mock locales para demostración...');
           return this.generateMockFamilySchedules(applicationId);
         }
       }
@@ -106,7 +106,7 @@ class ScheduleService {
       
       // Para demostración, simular confirmación exitosa si el backend no está disponible
       if (error.code === 'ECONNREFUSED' || error.response?.status >= 500) {
-        console.log('🔄 Simulando confirmación exitosa para demostración...');
+        console.log('Simulando confirmación exitosa para demostración...');
         const mockConfirmedSchedule = this.generateMockFamilySchedules(1)
           .find(s => s.id === scheduleId);
         
@@ -402,7 +402,7 @@ class ScheduleService {
   async getInterviewerAvailabilitySchedules(interviewerId: number): Promise<any[]> {
     try {
       const response = await api.get(`/v1/interviewer-schedules/interviewer/${interviewerId}`);
-      console.log(`✅ Horarios de disponibilidad obtenidos para entrevistador ${interviewerId}:`, response.data);
+      console.log(`Horarios de disponibilidad obtenidos para entrevistador ${interviewerId}:`, response.data);
       return response.data;
     } catch (error) {
       console.error('Error obteniendo horarios de disponibilidad:', error);
@@ -438,7 +438,7 @@ class ScheduleService {
   }): Promise<any> {
     try {
       const response = await api.post('/v1/interviewer-schedules', schedule);
-      console.log('✅ Horario de disponibilidad creado:', response.data);
+      console.log('Horario de disponibilidad creado:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creando horario de disponibilidad:', error);
@@ -459,7 +459,7 @@ class ScheduleService {
   }): Promise<any> {
     try {
       const response = await api.put(`/v1/interviewer-schedules/${scheduleId}`, updates);
-      console.log(`✅ Horario ${scheduleId} actualizado:`, response.data);
+      console.log(`Horario ${scheduleId} actualizado:`, response.data);
       return response.data;
     } catch (error) {
       console.error('Error actualizando horario:', error);
@@ -473,7 +473,7 @@ class ScheduleService {
   async deleteAvailabilitySchedule(scheduleId: number): Promise<void> {
     try {
       await api.delete(`/v1/interviewer-schedules/${scheduleId}`);
-      console.log(`✅ Horario ${scheduleId} eliminado`);
+      console.log(`Horario ${scheduleId} eliminado`);
     } catch (error) {
       console.error('Error eliminando horario:', error);
       throw error;

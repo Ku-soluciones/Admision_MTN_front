@@ -44,12 +44,12 @@ class EvaluationService {
      */
     async createGenericSchedule(request: CreateGenericScheduleRequest): Promise<ScheduleResponse> {
       try {
-        console.log('📅 Creando programación genérica:', request);
+        console.log('Creando programación genérica:', request);
 
         const response = await api.post('/v1/schedules/generic', request);
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error creando programación genérica:', error);
+        console.error('Error creando programación genérica:', error);
         throw new Error(
           error.response?.data?.message ||
           error.message ||
@@ -63,12 +63,12 @@ class EvaluationService {
      */
     async createIndividualSchedule(request: CreateIndividualScheduleRequest): Promise<ScheduleResponse> {
       try {
-        console.log('📅 Creando programación individual:', request);
+        console.log('Creando programación individual:', request);
 
         const response = await api.post('/v1/schedules/individual', request);
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error creando programación individual:', error);
+        console.error('Error creando programación individual:', error);
         throw new Error(
           error.response?.data?.message ||
           error.message ||
@@ -82,12 +82,12 @@ class EvaluationService {
      */
     async getFamilySchedules(applicationId: number): Promise<EvaluationSchedule[]> {
       try {
-        console.log('📋 Obteniendo citas para aplicación:', applicationId);
+        console.log('Obteniendo citas para aplicación:', applicationId);
 
         const response = await api.get(`/v1/schedules/family/${applicationId}`);
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error obteniendo citas familiares:', error);
+        console.error('Error obteniendo citas familiares:', error);
         throw new Error('Error al obtener las citas programadas');
       }
     }
@@ -101,14 +101,14 @@ class EvaluationService {
       endDate: string
     ): Promise<EvaluationSchedule[]> {
       try {
-        console.log('👨‍🏫 Obteniendo calendario del evaluador:', evaluatorId);
+        console.log('Obteniendo calendario del evaluador:', evaluatorId);
 
         const response = await api.get(`/v1/schedules/evaluator/${evaluatorId}`, {
           params: { startDate, endDate }
         });
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error obteniendo calendario del evaluador:', error);
+        console.error('Error obteniendo calendario del evaluador:', error);
         throw new Error('Error al obtener el calendario del evaluador');
       }
     }
@@ -118,14 +118,14 @@ class EvaluationService {
      */
     async confirmSchedule(scheduleId: number, userId: number): Promise<EvaluationSchedule> {
       try {
-        console.log('✅ Confirmando cita:', scheduleId);
+        console.log('Confirmando cita:', scheduleId);
 
         const response = await api.put(`/v1/schedules/${scheduleId}/confirm`, null, {
           params: { userId }
         });
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error confirmando cita:', error);
+        console.error('Error confirmando cita:', error);
         throw new Error(
           error.response?.data?.message ||
           'Error al confirmar la cita'
@@ -138,12 +138,12 @@ class EvaluationService {
      */
     async rescheduleAppointment(scheduleId: number, request: RescheduleRequest): Promise<EvaluationSchedule> {
       try {
-        console.log('🔄 Reprogramando cita:', scheduleId, request);
+        console.log('Reprogramando cita:', scheduleId, request);
 
         const response = await api.put(`/v1/schedules/${scheduleId}/reschedule`, request);
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error reprogramando cita:', error);
+        console.error('Error reprogramando cita:', error);
         throw new Error(
           error.response?.data?.message ||
           'Error al reprogramar la cita'
@@ -156,12 +156,12 @@ class EvaluationService {
      */
     async getPendingConfirmations(): Promise<EvaluationSchedule[]> {
       try {
-        console.log('⏰ Obteniendo citas pendientes de confirmación');
+        console.log('Obteniendo citas pendientes de confirmación');
 
         const response = await api.get('/v1/schedules/pending-confirmations');
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error obteniendo citas pendientes:', error);
+        console.error('Error obteniendo citas pendientes:', error);
         throw new Error('Error al obtener las citas pendientes de confirmación');
       }
     }
@@ -171,12 +171,12 @@ class EvaluationService {
      */
     async markAsCompleted(scheduleId: number): Promise<EvaluationSchedule> {
       try {
-        console.log('✅ Marcando cita como completada:', scheduleId);
+        console.log('Marcando cita como completada:', scheduleId);
 
         const response = await api.put(`/v1/schedules/${scheduleId}/complete`);
         return response.data;
       } catch (error: any) {
-        console.error('❌ Error marcando cita como completada:', error);
+        console.error('Error marcando cita como completada:', error);
         throw new Error('Error al marcar la cita como completada');
       }
     }
@@ -186,14 +186,14 @@ class EvaluationService {
      */
     async getMockFamilySchedules(applicationId: number): Promise<EvaluationSchedule[]> {
       try {
-        console.log('🎭 Obteniendo citas mock para aplicación:', applicationId);
+        console.log('Obteniendo citas mock para aplicación:', applicationId);
 
         const response = await api.get(`/v1/schedules/public/mock-schedules/${applicationId}`);
 
         // Convertir datos mock a formato TypeScript
         return response.data.map((mockSchedule: any) => this.convertMockToSchedule(mockSchedule));
       } catch (error: any) {
-        console.error('❌ Error obteniendo citas mock:', error);
+        console.error('Error obteniendo citas mock:', error);
         throw new Error('Error al obtener las citas de demostración');
       }
     }
@@ -341,18 +341,18 @@ class EvaluationService {
      */
     async getAllEvaluations(): Promise<Evaluation[]> {
         try {
-            console.log('📊 Obteniendo todas las evaluaciones...');
+            console.log('Obteniendo todas las evaluaciones...');
 
             const response = await api.get('/v1/evaluations');
 
             if (response.data.success) {
-                // console.log(`✅ ${response.data.count} evaluaciones obtenidas`);
+                // console.log(`${response.data.count} evaluaciones obtenidas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluaciones:', error);
+            console.error('Error obteniendo evaluaciones:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -367,18 +367,18 @@ class EvaluationService {
      */
     async getEvaluationById(evaluationId: number): Promise<Evaluation> {
         try {
-            console.log(`📋 Obteniendo evaluación ${evaluationId}...`);
+            console.log(`Obteniendo evaluación ${evaluationId}...`);
 
             const response = await api.get(`/v1/evaluations/${evaluationId}`);
 
             if (response.data.success) {
-                console.log('✅ Evaluación obtenida');
+                console.log('Evaluación obtenida');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluación:', error);
+            console.error('Error obteniendo evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -393,17 +393,17 @@ class EvaluationService {
      */
     async getEvaluationsByApplicationId(applicationId: number): Promise<Evaluation[]> {
         try {
-            console.log(`📋 Obteniendo evaluaciones para application ${applicationId}...`);
+            console.log(`Obteniendo evaluaciones para application ${applicationId}...`);
 
             const response = await api.get(`/v1/evaluations/application/${applicationId}`);
 
             // Backend returns { success: true, data: [...] }
             const evaluations = response.data.data || response.data;
-            // console.log(`✅ ${evaluations.length} evaluaciones obtenidas`);
+            // console.log(`${evaluations.length} evaluaciones obtenidas`);
             // console.log('Evaluaciones:', evaluations);
             return evaluations;
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluaciones por application:', error);
+            console.error('Error obteniendo evaluaciones por application:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -413,7 +413,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Obtener estadísticas de evaluaciones
+     * CORREGIDO: Obtener estadísticas de evaluaciones
      * GET /v1/evaluations/statistics
      */
     async getEvaluationStatistics(): Promise<{
@@ -423,18 +423,18 @@ class EvaluationService {
         averageScore: string;
     }> {
         try {
-            console.log('📊 Obteniendo estadísticas de evaluaciones...');
+            console.log('Obteniendo estadísticas de evaluaciones...');
 
             const response = await api.get('/v1/evaluations/statistics');
 
             if (response.data.success) {
-                console.log('✅ Estadísticas obtenidas');
+                console.log('Estadísticas obtenidas');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo estadísticas:', error);
+            console.error('Error obteniendo estadísticas:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -444,23 +444,23 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Obtener asignaciones activas (PENDING, IN_PROGRESS)
+     * NUEVO: Obtener asignaciones activas (PENDING, IN_PROGRESS)
      * GET /v1/evaluations/assignments
      */
     async getActiveAssignments(): Promise<Evaluation[]> {
         try {
-            console.log('📋 Obteniendo asignaciones activas...');
+            console.log('Obteniendo asignaciones activas...');
 
             const response = await api.get('/v1/evaluations/assignments');
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.count} asignaciones activas`);
+                console.log(`${response.data.count} asignaciones activas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo asignaciones:', error);
+            console.error('Error obteniendo asignaciones:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -470,7 +470,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Exportar evaluaciones a JSON o CSV
+     * NUEVO: Exportar evaluaciones a JSON o CSV
      * GET /v1/evaluations/export?status=X&type=Y&format=csv
      */
     async exportEvaluations(filters?: {
@@ -479,7 +479,7 @@ class EvaluationService {
         format?: 'json' | 'csv';
     }): Promise<Blob | any> {
         try {
-            console.log('📥 Exportando evaluaciones...', filters);
+            console.log('Exportando evaluaciones...', filters);
 
             const params = new URLSearchParams();
             if (filters?.status) params.append('status', filters.status);
@@ -490,10 +490,10 @@ class EvaluationService {
                 responseType: filters?.format === 'csv' ? 'blob' : 'json'
             });
 
-            console.log('✅ Evaluaciones exportadas');
+            console.log('Evaluaciones exportadas');
             return response.data;
         } catch (error: any) {
-            console.error('❌ Error exportando evaluaciones:', error);
+            console.error('Error exportando evaluaciones:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -503,24 +503,24 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Obtener evaluaciones por evaluador
+     * CORREGIDO: Obtener evaluaciones por evaluador
      * GET /v1/evaluations/evaluator/:evaluatorId
      * (antes: getMyEvaluations - endpoint incorrecto)
      */
     async getEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
-            console.log(`👨‍🏫 Obteniendo evaluaciones del evaluador ${evaluatorId}...`);
+            console.log(`Obteniendo evaluaciones del evaluador ${evaluatorId}...`);
 
             const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}`);
 
             if (response.data.success) {
-                // console.log(`✅ ${response.data.count} evaluaciones obtenidas`);
+                // console.log(`${response.data.count} evaluaciones obtenidas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluaciones del evaluador:', error);
+            console.error('Error obteniendo evaluaciones del evaluador:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -530,24 +530,24 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Obtener evaluaciones pendientes de un evaluador
+     * CORREGIDO: Obtener evaluaciones pendientes de un evaluador
      * GET /v1/evaluations/evaluator/:id/pending
      * (antes: getMyPendingEvaluations - endpoint incorrecto)
      */
     async getPendingEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
-            console.log(`⏳ Obteniendo evaluaciones pendientes del evaluador ${evaluatorId}...`);
+            console.log(`Obteniendo evaluaciones pendientes del evaluador ${evaluatorId}...`);
 
             const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/pending`);
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.count} evaluaciones pendientes`);
+                console.log(`${response.data.count} evaluaciones pendientes`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluaciones pendientes:', error);
+            console.error('Error obteniendo evaluaciones pendientes:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -557,23 +557,23 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Obtener evaluaciones completadas de un evaluador
+     * NUEVO: Obtener evaluaciones completadas de un evaluador
      * GET /v1/evaluations/evaluator/:id/completed
      */
     async getCompletedEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
-            console.log(`✅ Obteniendo evaluaciones completadas del evaluador ${evaluatorId}...`);
+            console.log(`Obteniendo evaluaciones completadas del evaluador ${evaluatorId}...`);
 
             const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/completed`);
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.count} evaluaciones completadas`);
+                console.log(`${response.data.count} evaluaciones completadas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error obteniendo evaluaciones completadas:', error);
+            console.error('Error obteniendo evaluaciones completadas:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -583,23 +583,23 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Filtrar evaluaciones por tipo
+     * NUEVO: Filtrar evaluaciones por tipo
      * GET /v1/evaluations/type/:type
      */
     async getEvaluationsByType(type: EvaluationType): Promise<Evaluation[]> {
         try {
-            console.log(`🔍 Filtrando evaluaciones por tipo: ${type}...`);
+            console.log(`Filtrando evaluaciones por tipo: ${type}...`);
 
             const response = await api.get(`/v1/evaluations/type/${type}`);
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.count} evaluaciones encontradas`);
+                console.log(`${response.data.count} evaluaciones encontradas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error filtrando por tipo:', error);
+            console.error('Error filtrando por tipo:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -609,23 +609,23 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Filtrar evaluaciones por materia
+     * NUEVO: Filtrar evaluaciones por materia
      * GET /v1/evaluations/subject/:subject
      */
     async getEvaluationsBySubject(subject: 'LANGUAGE' | 'MATHEMATICS' | 'ENGLISH'): Promise<Evaluation[]> {
         try {
-            console.log(`🔍 Filtrando evaluaciones por materia: ${subject}...`);
+            console.log(`Filtrando evaluaciones por materia: ${subject}...`);
 
             const response = await api.get(`/v1/evaluations/subject/${subject}`);
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.count} evaluaciones encontradas`);
+                console.log(`${response.data.count} evaluaciones encontradas`);
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error filtrando por materia:', error);
+            console.error('Error filtrando por materia:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -635,23 +635,23 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Actualizar una evaluación
+     * CORREGIDO: Actualizar una evaluación
      * PUT /v1/evaluations/:id
      */
     async updateEvaluation(evaluationId: number, evaluationData: Partial<Evaluation>): Promise<Evaluation> {
         try {
-            console.log(`✏️ Actualizando evaluación ${evaluationId}...`);
+            console.log(`Actualizando evaluación ${evaluationId}...`);
 
             const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
 
             if (response.data.success) {
-                console.log('✅ Evaluación actualizada');
+                console.log('Evaluación actualizada');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error actualizando evaluación:', error);
+            console.error('Error actualizando evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -661,7 +661,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Marcar evaluación como completada
+     * NUEVO: Marcar evaluación como completada
      * POST /v1/evaluations/:id/complete
      */
     async completeEvaluation(
@@ -673,18 +673,18 @@ class EvaluationService {
         }
     ): Promise<Evaluation> {
         try {
-            console.log(`✅ Completando evaluación ${evaluationId}...`);
+            console.log(`Completando evaluación ${evaluationId}...`);
 
             const response = await api.post(`/v1/evaluations/${evaluationId}/complete`, data);
 
             if (response.data.success) {
-                console.log('✅ Evaluación completada exitosamente');
+                console.log('Evaluación completada exitosamente');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error completando evaluación:', error);
+            console.error('Error completando evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -694,7 +694,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Asignar evaluación a evaluador
+     * CORREGIDO: Asignar evaluación a evaluador
      * POST /v1/evaluations/:id/assign
      * (antes: reassignEvaluation con PUT - endpoint incorrecto)
      */
@@ -704,7 +704,7 @@ class EvaluationService {
         evaluationDate?: string
     ): Promise<Evaluation> {
         try {
-            console.log(`👨‍🏫 Asignando evaluación ${evaluationId} al evaluador ${evaluatorId}...`);
+            console.log(`Asignando evaluación ${evaluationId} al evaluador ${evaluatorId}...`);
 
             const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
@@ -712,13 +712,13 @@ class EvaluationService {
             });
 
             if (response.data.success) {
-                console.log('✅ Evaluación asignada exitosamente');
+                console.log('Evaluación asignada exitosamente');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error asignando evaluación:', error);
+            console.error('Error asignando evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -728,25 +728,25 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Reprogramar evaluación
+     * NUEVO: Reprogramar evaluación
      * POST /v1/evaluations/:id/reschedule
      */
     async rescheduleEvaluation(evaluationId: number, evaluationDate: string): Promise<Evaluation> {
         try {
-            console.log(`🔄 Reprogramando evaluación ${evaluationId}...`);
+            console.log(`Reprogramando evaluación ${evaluationId}...`);
 
             const response = await api.post(`/v1/evaluations/${evaluationId}/reschedule`, {
                 evaluationDate
             });
 
             if (response.data.success) {
-                console.log('✅ Evaluación reprogramada exitosamente');
+                console.log('Evaluación reprogramada exitosamente');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error reprogramando evaluación:', error);
+            console.error('Error reprogramando evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -756,25 +756,25 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Cancelar evaluación
+     * NUEVO: Cancelar evaluación
      * POST /v1/evaluations/:id/cancel
      */
     async cancelEvaluation(evaluationId: number, reason?: string): Promise<Evaluation> {
         try {
-            console.log(`❌ Cancelando evaluación ${evaluationId}...`);
+            console.log(`Cancelando evaluación ${evaluationId}...`);
 
             const response = await api.post(`/v1/evaluations/${evaluationId}/cancel`, {
                 reason
             });
 
             if (response.data.success) {
-                console.log('✅ Evaluación cancelada exitosamente');
+                console.log('Evaluación cancelada exitosamente');
                 return response.data.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error cancelando evaluación:', error);
+            console.error('Error cancelando evaluación:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -784,7 +784,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ CORREGIDO: Asignar evaluaciones en lote
+     * CORREGIDO: Asignar evaluaciones en lote
      * POST /v1/evaluations/bulk/assign
      * PARÁMETROS CORREGIDOS: evaluationIds (no applicationIds), evaluatorId, evaluationDate
      */
@@ -798,7 +798,7 @@ class EvaluationService {
         data: Evaluation[];
     }> {
         try {
-            console.log(`📦 Asignando ${evaluationIds.length} evaluaciones en lote...`);
+            console.log(`Asignando ${evaluationIds.length} evaluaciones en lote...`);
 
             const response = await api.post('/v1/evaluations/bulk/assign', {
                 evaluationIds,
@@ -807,13 +807,13 @@ class EvaluationService {
             });
 
             if (response.data.success) {
-                console.log(`✅ ${response.data.data.length} evaluaciones asignadas`);
+                console.log(`${response.data.data.length} evaluaciones asignadas`);
                 return response.data;
             }
 
             throw new Error('Respuesta inválida del servidor');
         } catch (error: any) {
-            console.error('❌ Error asignando evaluaciones en lote:', error);
+            console.error('Error asignando evaluaciones en lote:', error);
             throw new Error(
                 error.response?.data?.message ||
                 error.message ||
@@ -823,7 +823,7 @@ class EvaluationService {
     }
 
     /**
-     * ✅ NUEVO: Crear y asignar evaluación específica (flujo de 2 pasos)
+     * NUEVO: Crear y asignar evaluación específica (flujo de 2 pasos)
      * Paso 1: Crear evaluación con POST /v1/evaluations
      * Paso 2: Asignar evaluación con POST /v1/evaluations/:id/assign
      *
@@ -835,7 +835,7 @@ class EvaluationService {
         evaluatorId: number
     ): Promise<Evaluation> {
         try {
-            console.log(`🔧 Creating evaluation for application ${applicationId}, type ${evaluationType}`);
+            console.log(`Creating evaluation for application ${applicationId}, type ${evaluationType}`);
 
             // Paso 1: Crear la evaluación con el evaluatorId
             const createResponse = await api.post('/v1/evaluations', {
@@ -854,8 +854,8 @@ class EvaluationService {
             const createdEvaluation = createResponse.data.data;
             const evaluationId = createdEvaluation.id;
 
-            console.log(`✅ Evaluation created with ID: ${evaluationId}`);
-            console.log(`👨‍🏫 Assigning to evaluator ${evaluatorId}...`);
+            console.log(`Evaluation created with ID: ${evaluationId}`);
+            console.log(`Assigning to evaluator ${evaluatorId}...`);
 
             // Paso 2: Asignar al evaluador
             const assignResponse = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
@@ -863,10 +863,10 @@ class EvaluationService {
                 evaluationDate: new Date().toISOString().split('T')[0],
             });
 
-            console.log('✅ Evaluation assigned successfully');
+            console.log('Evaluation assigned successfully');
             return assignResponse.data.data;
         } catch (error: any) {
-            console.error('❌ Error assigning specific evaluation:', error);
+            console.error('Error assigning specific evaluation:', error);
             console.error('Error details:', {
                 message: error.message,
                 response: error.response?.data,

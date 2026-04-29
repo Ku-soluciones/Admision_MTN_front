@@ -27,7 +27,7 @@ const InterviewSummary: React.FC<InterviewSummaryProps> = ({
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-red-800">
-              {urgentCount > 0 ? '🚨 URGENTE' : '✅ Al día'}
+              {urgentCount > 0 ? '🚨 URGENTE' : 'Al día'}
             </p>
             <p className="text-2xl font-bold text-red-600">
               {urgentCount}

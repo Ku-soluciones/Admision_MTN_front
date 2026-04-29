@@ -224,7 +224,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               </Badge>
               {existingDocument && (
                 <Badge variant="success">
-                  ✓ Subido
+                  Subido
                 </Badge>
               )}
             </div>
@@ -318,7 +318,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   <div className="text-left">
                     {validationWarnings.map((warning, index) => (
                       <p key={index} className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                        ⚠️ {warning}
+                        {warning}
                       </p>
                     ))}
                   </div>
@@ -362,7 +362,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         {uploadState.status === UploadStatus.ERROR && (
           <div className="p-3 bg-red-50 border border-red-200 rounded">
             <p className="text-sm text-red-700">
-              ❌ {uploadState.error || VALIDATION_MESSAGES.UPLOAD_ERROR}
+              {uploadState.error || VALIDATION_MESSAGES.UPLOAD_ERROR}
             </p>
           </div>
         )}
@@ -371,7 +371,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         {uploadState.status === UploadStatus.SUCCESS && (
           <div className="p-3 bg-green-50 border border-green-200 rounded">
             <p className="text-sm text-green-700">
-              ✅ {VALIDATION_MESSAGES.UPLOAD_SUCCESS}
+              {VALIDATION_MESSAGES.UPLOAD_SUCCESS}
             </p>
           </div>
         )}

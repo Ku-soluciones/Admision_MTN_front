@@ -36,14 +36,14 @@ const AvailableInterviewersSelector: React.FC<AvailableInterviewersSelectorProps
       setLoading(true);
       setError(null);
       
-      console.log('🔍 Buscando entrevistadores disponibles para:', { selectedDate, selectedTime });
+      console.log('Buscando entrevistadores disponibles para:', { selectedDate, selectedTime });
       
       const available = await interviewerScheduleService.findAvailableInterviewers(
         selectedDate, 
         selectedTime
       );
       
-      console.log('✅ Entrevistadores disponibles encontrados:', available);
+      console.log('Entrevistadores disponibles encontrados:', available);
       setAvailableInterviewers(available);
       
       // Si no hay entrevistadores disponibles, limpiar selección
@@ -56,7 +56,7 @@ const AvailableInterviewersSelector: React.FC<AvailableInterviewersSelectorProps
       }
       
     } catch (error) {
-      console.error('❌ Error buscando entrevistadores disponibles:', error);
+      console.error('Error buscando entrevistadores disponibles:', error);
       setError('Error al buscar entrevistadores disponibles');
       setAvailableInterviewers([]);
     } finally {
@@ -193,7 +193,7 @@ const AvailableInterviewersSelector: React.FC<AvailableInterviewersSelectorProps
           
           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-700">
-              ✅ {availableInterviewers.length} entrevistador{availableInterviewers.length !== 1 ? 'es' : ''} disponible{availableInterviewers.length !== 1 ? 's' : ''} en este horario
+              {availableInterviewers.length} entrevistador{availableInterviewers.length !== 1 ? 'es' : ''} disponible{availableInterviewers.length !== 1 ? 's' : ''} en este horario
             </p>
           </div>
         </div>

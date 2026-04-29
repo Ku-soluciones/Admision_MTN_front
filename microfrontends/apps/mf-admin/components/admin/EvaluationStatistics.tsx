@@ -125,7 +125,7 @@ const EvaluationStatistics: React.FC = () => {
         <div className="flex flex-wrap justify-between items-start gap-3">
           <div>
             <h2 className="text-2xl font-bold mb-2">
-              📊 Estadísticas de Evaluaciones
+              Estadísticas de Evaluaciones
             </h2>
             <p className="text-blue-100">
               Análisis completo del sistema de evaluación
@@ -136,7 +136,7 @@ const EvaluationStatistics: React.FC = () => {
             onClick={loadStatistics}
             className="text-white border-white hover:bg-white hover:text-azul-monte-tabor"
           >
-            🔄 Actualizar
+            Actualizar
           </Button>
         </div>
       </Card>
@@ -144,9 +144,9 @@ const EvaluationStatistics: React.FC = () => {
       {/* Navigation tabs */}
       <div className="flex flex-wrap gap-2">
         {[
-          { key: 'overview', label: '📈 Resumen General', icon: ChartBarIcon },
+          { key: 'overview', label: 'Resumen General', icon: ChartBarIcon },
           { key: 'performance', label: '🏆 Rendimiento', icon: TrophyIcon },
-          { key: 'workload', label: '👥 Carga de Trabajo', icon: UserIcon }
+          { key: 'workload', label: 'Carga de Trabajo', icon: UserIcon }
         ].map(tab => (
           <Button
             key={tab.key}
@@ -169,7 +169,7 @@ const EvaluationStatistics: React.FC = () => {
 
           <Card className="p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-              <span className="text-2xl">✅</span>
+              <span className="text-2xl"></span>
             </div>
             <p className="text-3xl font-bold text-green-600">{Math.round(stats.completionRate)}%</p>
             <p className="text-sm text-gris-piedra">Tasa de Finalización</p>
@@ -198,7 +198,7 @@ const EvaluationStatistics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-6">
             <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">
-              📊 Estado de Evaluaciones
+              Estado de Evaluaciones
             </h3>
             <div className="space-y-3">
               {Object.entries(stats.statusBreakdown).map(([status, count]) => (
@@ -221,7 +221,7 @@ const EvaluationStatistics: React.FC = () => {
 
           <Card className="p-6">
             <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">
-              📚 Tipos de Evaluación
+              Tipos de Evaluación
             </h3>
             <div className="space-y-3">
               {Object.entries(stats.typeBreakdown).map(([type, count]) => (
@@ -288,7 +288,7 @@ const EvaluationStatistics: React.FC = () => {
       {selectedView === 'workload' && (
         <Card className="p-6">
           <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">
-            👥 Evaluadores Más Activos
+            Evaluadores Más Activos
           </h3>
           <div className="space-y-4">
             {getTopPerformers().map(([evaluator, count], index) => (
