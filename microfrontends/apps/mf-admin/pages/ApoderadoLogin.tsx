@@ -126,8 +126,8 @@ const ApoderadoLogin: React.FC = () => {
                     {/* Header */}
                     <div className="text-center">
                         {!showRegister && (
-                            <div className="flex justify-center mb-6">
-                                <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-16" />
+                            <div className="flex justify-center mb-8">
+                                <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-24" />
                             </div>
                         )}
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
