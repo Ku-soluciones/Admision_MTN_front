@@ -125,11 +125,9 @@ const ApoderadoLogin: React.FC = () => {
                 <Card className="p-5 sm:p-8">
                     {/* Header */}
                     <div className="text-center">
-                        {!showRegister && (
-                            <div className="flex justify-center mb-8">
-                                <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-24" />
-                            </div>
-                        )}
+                        <div className="flex justify-center mb-8">
+                            <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                        </div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                             {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}
                         </h2>
@@ -193,7 +191,7 @@ const ApoderadoLogin: React.FC = () => {
                         </form>
                     ) : (
                         // Formulario de Registro
-                        <form onSubmit={handleRegister} className="space-y-4">
+                        <form onSubmit={handleRegister} className="space-y-6 mt-8">
                             {error && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                     {error}
