@@ -5,6 +5,70 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/admissions",
+      "destination": "/admissions/index.html"
+    },
+    {
+      "source": "/admissions/(.*)",
+      "destination": "/admissions/index.html"
+    },
+    {
+      "source": "/guardian",
+      "destination": "/guardian/index.html"
+    },
+    {
+      "source": "/guardian/(.*)",
+      "destination": "/guardian/index.html"
+    },
+    {
+      "source": "/student",
+      "destination": "/student/index.html"
+    },
+    {
+      "source": "/student/(.*)",
+      "destination": "/student/index.html"
+    },
+    {
+      "source": "/evaluations",
+      "destination": "/evaluations/index.html"
+    },
+    {
+      "source": "/evaluations/(.*)",
+      "destination": "/evaluations/index.html"
+    },
+    {
+      "source": "/interviews",
+      "destination": "/interviews/index.html"
+    },
+    {
+      "source": "/interviews/(.*)",
+      "destination": "/interviews/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/reports",
+      "destination": "/reports/index.html"
+    },
+    {
+      "source": "/reports/(.*)",
+      "destination": "/reports/index.html"
+    },
+    {
+      "source": "/coordinator",
+      "destination": "/coordinator/index.html"
+    },
+    {
+      "source": "/coordinator/(.*)",
+      "destination": "/coordinator/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -12,6 +76,15 @@
   "headers": [
     {
       "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/:app/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   // Load env files from project root (3 levels up from shell location)
   envDir: path.resolve(__dirname, '../../..'),
+  base: './',
   server: {
     port: 5200,
     strictPort: true,
