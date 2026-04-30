@@ -5,6 +5,7 @@
 
 import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 interface ProtectedCoordinatorRouteProps {
   children: ReactNode;
@@ -12,14 +13,14 @@ interface ProtectedCoordinatorRouteProps {
 
 const ProtectedCoordinatorRoute: React.FC<ProtectedCoordinatorRouteProps> = ({ children }) => {
   // Verificar autenticación - revisar múltiples posibles tokens
-  const authToken = localStorage.getItem('auth_token');
+  const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
   const adminToken = localStorage.getItem('admin_token');
-  const professorToken = localStorage.getItem('professor_token');
+  const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
 
   // Verificar múltiples ubicaciones de usuario en localStorage
-  const userStr = localStorage.getItem('authenticated_user') ||
+  const userStr = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
                   localStorage.getItem('user') ||
-                  localStorage.getItem('professor_user');
+                  localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
 
   // Si hay un token de autenticación
   const isAuthenticated = !!(authToken || adminToken || professorToken);

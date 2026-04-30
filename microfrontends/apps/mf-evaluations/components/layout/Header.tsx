@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
@@ -15,10 +16,10 @@ const Header: React.FC = () => {
     useEffect(() => {
         const checkAuthStatus = () => {
             // Verificar múltiples fuentes de autenticación
-            const currentProfessor = localStorage.getItem('currentProfessor');
-            const authToken = localStorage.getItem('auth_token');
-            const professorToken = localStorage.getItem('professor_token');
-            const apoderadoToken = localStorage.getItem('apoderado_token');
+            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
 
             // Verificar si hay profesor autenticado
             const hasProfessorAuth = !!(professorToken && currentProfessor);
@@ -66,10 +67,10 @@ const Header: React.FC = () => {
             e.preventDefault(); // Prevenir navegación predeterminada
 
             // Limpiar TODOS los tokens y datos de autenticación
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('professor_token');
-            localStorage.removeItem('apoderado_token');
-            localStorage.removeItem('currentProfessor');
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
             localStorage.removeItem('currentUser');
             localStorage.removeItem('currentApoderado');
 
