@@ -56,8 +56,6 @@ class HttpClient {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Client-Type': 'mtn-admission-web',
-        'X-Client-Version': import.meta.env.VITE_APP_VERSION || '1.0.0',
       },
     });
 
@@ -93,13 +91,7 @@ class HttpClient {
         } else {
           console.warn('http.ts - No token available, request will be sent without auth');
         }
-
-        config.headers = {
-          ...config.headers,
-          'X-Correlation-Id': correlationId,
-          'X-Request-Time': new Date().toISOString(),
-          'X-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
+        (config as any).correlationId = correlationId;
 
         // Add CSRF token for POST, PUT, DELETE, PATCH requests
         const method = String(config.method || 'get').toUpperCase();
@@ -139,7 +131,7 @@ class HttpClient {
     // Response Interceptor
     this.client.interceptors.response.use(
       (response) => {
-        const correlationId = response.config.headers['X-Correlation-Id'] as string;
+        const correlationId = (response.config as any).correlationId as string;
         
         // Actualizar métricas
         if (correlationId && this.metrics.has(correlationId)) {
@@ -197,7 +189,7 @@ class HttpClient {
   }
 
   private async handleError(error: AxiosError): Promise<never> {
-    const correlationId = error.config?.headers?.['X-Correlation-Id'] as string;
+    const correlationId = (error.config as any)?.correlationId as string;
     
     // Actualizar métricas de error
     if (correlationId && this.metrics.has(correlationId)) {
