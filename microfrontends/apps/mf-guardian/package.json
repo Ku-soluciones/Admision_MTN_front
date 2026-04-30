@@ -1,0 +1,42 @@
+{
+  "name": "@mtn-mf/mf-guardian",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@tanstack/react-query": "^5.90.2",
+    "axios": "^1.11.0",
+    "axios-retry": "^4.5.0",
+    "date-fns": "^4.1.0",
+    "express": "^4.18.2",
+    "firebase": "^12.12.1",
+    "lucide-react": "^0.540.0",
+    "oidc-client-ts": "^3.3.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-dropzone": "^14.3.8",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.6.3",
+    "recharts": "^3.2.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.0",
+    "openapi-typescript": "^7.9.1",
+    "terser": "^5.44.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}

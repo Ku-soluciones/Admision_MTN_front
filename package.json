@@ -3,16 +3,25 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "workspaces": [
+    "microfrontends/apps/*",
+    "microfrontends/packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "dev:prod": "vite --mode production",
-    "build": "vite build",
-    "preview": "vite preview",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "e2e:headed": "playwright test --headed",
-    "e2e:debug": "playwright test --debug",
-    "playwright:install": "playwright install"
+    "dev": "node scripts/dev-all-microfrontends.mjs",
+    "build": "node scripts/build-all-microfrontends.mjs",
+    "dev:mfs": "node scripts/dev-all-microfrontends.mjs",
+    "build:mfs": "node scripts/build-all-microfrontends.mjs",
+    "dev:mf:shell": "vite --config microfrontends/apps/shell/vite.config.ts",
+    "dev:mf:admissions": "vite --config microfrontends/apps/mf-admissions/vite.config.ts",
+    "dev:mf:guardian": "vite --config microfrontends/apps/mf-guardian/vite.config.ts",
+    "dev:mf:student": "vite --config microfrontends/apps/mf-student/vite.config.ts",
+    "dev:mf:evaluations": "vite --config microfrontends/apps/mf-evaluations/vite.config.ts",
+    "dev:mf:interviews": "vite --config microfrontends/apps/mf-interviews/vite.config.ts",
+    "dev:mf:admin": "vite --config microfrontends/apps/mf-admin/vite.config.ts",
+    "dev:mf:reports": "vite --config microfrontends/apps/mf-reports/vite.config.ts",
+    "dev:mf:coordinator": "vite --config microfrontends/apps/mf-coordinator/vite.config.ts",
+    "preview:mf:shell": "vite preview --config microfrontends/apps/shell/vite.config.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -21,6 +30,7 @@
     "axios-retry": "^4.5.0",
     "date-fns": "^4.1.0",
     "express": "^4.18.2",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.540.0",
     "oidc-client-ts": "^3.3.0",
     "react": "^19.1.0",

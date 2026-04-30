@@ -1,0 +1,21 @@
+{"ts":"2026-04-29T15:43:27.060Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":757,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T15:43:29.220Z","cmd":"snapshot","args":"-i -a -o /tmp/apoderado-login.png","origin":"http://localhost:5206/#/login","durationMs":107,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:14:23.720Z","cmd":"reload","args":"","origin":"about:blank","durationMs":7,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:14:26.815Z","cmd":"screenshot","args":"/tmp/apoderado-login-v2.png","origin":"about:blank","durationMs":44,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:19:19.155Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":339,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:19:21.269Z","cmd":"screenshot","args":"/tmp/apoderado-login.png","origin":"http://localhost:5206/#/login","durationMs":44,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:20:14.497Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T17:20:16.600Z","cmd":"screenshot","args":"/tmp/apoderado-login-sin-navbar.png","origin":"http://localhost:5206/#/login","durationMs":41,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:40:03.703Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":330,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:40:05.912Z","cmd":"screenshot","args":"/tmp/apoderado-login-background.png","origin":"http://localhost:5206/#/login","durationMs":146,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:51:43.164Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:51:45.261Z","cmd":"screenshot","args":"/tmp/apoderado-login-blanco.png","origin":"http://localhost:5206/#/login","durationMs":35,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:53:20.157Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:53:22.296Z","cmd":"snapshot","args":"-i -a -o /tmp/design-review-login.png","origin":"http://localhost:5206/#/login","durationMs":81,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:53:22.332Z","cmd":"perf","args":"","origin":"http://localhost:5206/#/login","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:58:56.324Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:58:58.426Z","cmd":"screenshot","args":"/tmp/login-mejorado.png","origin":"http://localhost:5206/#/login","durationMs":40,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T19:10:31.758Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T19:10:33.855Z","cmd":"screenshot","args":"/tmp/login-logo-mejorado.png","origin":"http://localhost:5206/#/login","durationMs":38,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T19:29:29.609Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T19:29:31.711Z","cmd":"screenshot","args":"/tmp/login-spacing.png","origin":"http://localhost:5206/#/login","durationMs":40,"status":"ok","hasCookies":false,"mode":"launched"}
