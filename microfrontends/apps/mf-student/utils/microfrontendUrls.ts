@@ -13,6 +13,32 @@ const localPorts = {
   coordinator: 5208,
 } as const;
 
+const subdomains: Partial<Record<keyof typeof localPorts, string>> = {
+  admissions: 'admision',
+  guardian: 'guard',
+  student: 'estudiantes',
+  evaluations: 'evaluaciones',
+  interviews: 'entrevistas',
+  admin: 'admin',
+  reports: 'reportes',
+  coordinator: 'coordinadores',
+};
+
+const defaultBaseDomain = 'admitia.dedyn.io';
+
+const getEnvironmentDomain = () => {
+  const baseDomain = ((import.meta as any).env?.VITE_MF_BASE_DOMAIN || defaultBaseDomain)
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+  const environment = ((import.meta as any).env?.VITE_MF_ENV || '').trim().toLowerCase();
+
+  if (!environment || environment === 'production' || environment === 'prod') {
+    return baseDomain;
+  }
+
+  return `${environment}.${baseDomain}`;
+};
+
 const buildUrl = (app: keyof typeof localPorts, hashPath: string) => {
   const envUrl = (import.meta as any).env?.[`VITE_MF_${app.toUpperCase()}_URL`];
   if (envUrl) return `${envUrl.replace(/\/$/, '')}/#${hashPath}`;
@@ -21,7 +47,12 @@ const buildUrl = (app: keyof typeof localPorts, hashPath: string) => {
     return `http://${host}:${localPorts[app]}/#${hashPath}`;
   }
 
-  return `${protocol}//${host}/${app}/#${hashPath}`;
+  const subdomain = subdomains[app];
+  if (subdomain) {
+    return `https://${subdomain}.${getEnvironmentDomain()}/#${hashPath}`;
+  }
+
+  return `${protocol}//${host}/#${hashPath}`;
 };
 
 export const microfrontendUrls = {
