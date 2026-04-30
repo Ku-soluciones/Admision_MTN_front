@@ -1,22 +1,44 @@
-const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const isBrowser = typeof window !== 'undefined';
+const host = isBrowser ? window.location.hostname : 'localhost';
+const protocol = isBrowser ? window.location.protocol : 'http:';
 
-const buildUrl = (port: number, hashPath: string) => `http://${host}:${port}/#${hashPath}`;
+const localPorts = {
+  admissions: 5201,
+  guardian: 5202,
+  student: 5203,
+  evaluations: 5204,
+  interviews: 5205,
+  admin: 5206,
+  reports: 5207,
+  coordinator: 5208,
+} as const;
+
+const buildUrl = (app: keyof typeof localPorts, hashPath: string) => {
+  const envUrl = (import.meta as any).env?.[`VITE_MF_${app.toUpperCase()}_URL`];
+  if (envUrl) return `${envUrl.replace(/\/$/, '')}/#${hashPath}`;
+
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return `http://${host}:${localPorts[app]}/#${hashPath}`;
+  }
+
+  return `${protocol}//${host}/${app}/#${hashPath}`;
+};
 
 export const microfrontendUrls = {
-  home: buildUrl(5201, '/'),
-  admissions: buildUrl(5201, '/postulacion'),
-  admissionsComplementary: buildUrl(5201, '/postulacion/complementaria'),
-  guardianLogin: buildUrl(5202, '/apoderado/login'),
-  guardianDashboard: buildUrl(5202, '/familia'),
-  studentExams: buildUrl(5203, '/examenes'),
-  professorLogin: buildUrl(5204, '/profesor/login'),
-  professorDashboard: buildUrl(5204, '/profesor'),
-  adminLogin: buildUrl(5206, '/login'),
-  adminDashboard: buildUrl(5206, '/admin'),
-  interviews: buildUrl(5205, '/entrevistas'),
-  calendar: buildUrl(5205, '/calendario'),
-  reports: buildUrl(5207, '/reportes'),
-  coordinator: buildUrl(5208, '/coordinador'),
-  coordinatorTrends: buildUrl(5208, '/coordinador/tendencias'),
-  coordinatorSearch: buildUrl(5208, '/coordinador/busqueda'),
+  home: buildUrl('admissions', '/'),
+  admissions: buildUrl('admissions', '/postulacion'),
+  admissionsComplementary: buildUrl('admissions', '/postulacion/complementaria'),
+  guardianLogin: buildUrl('guardian', '/apoderado/login'),
+  guardianDashboard: buildUrl('guardian', '/familia'),
+  studentExams: buildUrl('student', '/examenes'),
+  professorLogin: buildUrl('evaluations', '/profesor/login'),
+  professorDashboard: buildUrl('evaluations', '/profesor'),
+  adminLogin: buildUrl('admin', '/login'),
+  adminDashboard: buildUrl('admin', '/admin'),
+  interviews: buildUrl('interviews', '/entrevistas'),
+  calendar: buildUrl('interviews', '/calendario'),
+  reports: buildUrl('reports', '/reportes'),
+  coordinator: buildUrl('coordinator', '/coordinador'),
+  coordinatorTrends: buildUrl('coordinator', '/coordinador/tendencias'),
+  coordinatorSearch: buildUrl('coordinator', '/coordinador/busqueda'),
 };
