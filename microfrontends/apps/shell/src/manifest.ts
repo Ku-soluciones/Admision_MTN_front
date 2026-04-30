@@ -3,15 +3,38 @@ import { resolveBackendEndpoints } from '../../../packages/backend-sdk/src/index
 
 const backend = resolveBackendEndpoints(import.meta.env as Record<string, string | undefined>);
 
+const isBrowser = typeof window !== 'undefined';
+
+const isLocalhost = isBrowser && window.location.hostname === 'localhost';
+
+const getMfUrl = (name: string, localPort: number, localPath: string, prodPath: string) => {
+
+  const individualUrl = (import.meta as any).env?.[`VITE_MF_${name.toUpperCase()}_URL`];
+  if (individualUrl) return individualUrl;
+
+  const baseDomain = (import.meta as any).env?.VITE_MF_BASE_DOMAIN;
+  if (baseDomain) {
+  
+    if (baseDomain.includes('/')) {
+      return `${baseDomain}/${name}/#${prodPath}`;
+    }
+    // Otherwise use subdomain pattern
+    return `https://${name}.${baseDomain}/#${prodPath}`;
+  }
+
+  // Default to localhost for development
+  return `http://localhost:${localPort}/#${localPath}`;
+};
+
 const appUrls = {
-  admissions: import.meta.env.VITE_MF_ADMISSIONS_URL || 'http://localhost:5201/#/postulacion',
-  guardian: import.meta.env.VITE_MF_GUARDIAN_URL || 'http://localhost:5202/#/apoderado/login',
-  student: import.meta.env.VITE_MF_STUDENT_URL || 'http://localhost:5203/#/examenes',
-  evaluations: import.meta.env.VITE_MF_EVALUATIONS_URL || 'http://localhost:5204/#/profesor/login',
-  interviews: import.meta.env.VITE_MF_INTERVIEWS_URL || 'http://localhost:5205/#/entrevistas',
-  admin: import.meta.env.VITE_MF_ADMIN_URL || 'http://localhost:5206/#/login',
-  reports: import.meta.env.VITE_MF_REPORTS_URL || 'http://localhost:5207/#/reportes',
-  coordinator: import.meta.env.VITE_MF_COORDINATOR_URL || 'http://localhost:5208/#/coordinador',
+  admissions: getMfUrl('admissions', 5201, '/postulacion', '/postulacion'),
+  guardian: getMfUrl('guardian', 5202, '/apoderado/login', '/apoderado/login'),
+  student: getMfUrl('student', 5203, '/examenes', '/examenes'),
+  evaluations: getMfUrl('evaluations', 5204, '/profesor/login', '/profesor/login'),
+  interviews: getMfUrl('interviews', 5205, '/entrevistas', '/entrevistas'),
+  admin: getMfUrl('admin', 5206, '/login', '/login'),
+  reports: getMfUrl('reports', 5207, '/reportes', '/reportes'),
+  coordinator: getMfUrl('coordinator', 5208, '/coordinador', '/coordinador'),
 };
 
 export const shellManifest: ShellManifest = {
