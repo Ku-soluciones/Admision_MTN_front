@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Input from '../components/ui/Input';
 import RutInput from '../components/ui/RutInput';
 import Button from '../components/ui/Button';
@@ -8,6 +8,7 @@ import EmailVerification from '../components/ui/EmailVerification';
 import { LogoIcon } from '../components/icons/Icons';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -102,7 +103,7 @@ const ApoderadoLogin: React.FC = () => {
             await register(registerData, 'apoderado');
             // Para usuarios nuevos registrados, redirigir al formulario de postulación
             // no al dashboard directamente
-            navigate('/postulacion');
+            window.location.href = microfrontendUrls.admissions;
         } catch (err: any) {
             const msg = err.message || 'Error al crear la cuenta. Intente nuevamente.';
             setError(msg);
@@ -293,12 +294,12 @@ const ApoderadoLogin: React.FC = () => {
 
                     {/* Volver al inicio */}
                     <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                        <Link
-                            to="/"
+                        <a
+                            href={microfrontendUrls.home}
                             className="text-azul-monte-tabor hover:underline text-sm font-semibold"
                         >
                             ← Volver al inicio
-                        </Link>
+                        </a>
                     </div>
                 </Card>
 
