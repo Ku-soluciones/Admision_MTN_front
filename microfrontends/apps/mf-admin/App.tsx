@@ -2,8 +2,6 @@ import React from 'react';
 import { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import ApoderadoLogin from './pages/ApoderadoLogin';
-import ProfessorLoginPage from './pages/ProfessorLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
 import { AppProvider } from './context/AppContext';
@@ -23,24 +21,21 @@ const LoadingFallback = () => (
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/profesor';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800 font-sans">
-            {!isLoginPage && <Header />}
+            <Header />
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
 
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<ApoderadoLogin />} />
-        <Route path="/profesor" element={<ProfessorLoginPage />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
         {legacyRedirects}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
 
                 </Routes>
               </Suspense>
