@@ -302,7 +302,7 @@ class HttpClient {
     const currentPath = window.location.pathname + window.location.search;
     sessionStorage.setItem('redirectAfterLogin', currentPath);
     
-    window.location.href = '/login';
+    window.location.href = '/#/login';
   }
 
   private createHttpError(error: AxiosError, correlationId?: string): HttpError {

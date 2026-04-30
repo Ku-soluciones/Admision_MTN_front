@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('authenticated_user');
         setUser(null);
-        window.location.href = '/apoderado-login';
+        window.location.href = '/#/examenes';
     };
 
     const value: AuthContextType = {
