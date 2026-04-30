@@ -5,57 +5,24 @@ const backend = resolveBackendEndpoints(import.meta.env as Record<string, string
 
 const isBrowser = typeof window !== 'undefined';
 
-const isLocalhost = isBrowser && window.location.hostname === 'localhost';
-
-// Auto-detect environment from current domain
-const getEnvironmentFromDomain = () => {
-  if (!isBrowser) return 'development';
-  const hostname = window.location.hostname;
-  
-  if (hostname === 'localhost') return 'development';
-  if (hostname.includes('vercel.app')) {
-    // Preview deployments have random subdomains
-    if (hostname.includes('-git-') || hostname.match(/^[^-]+-[a-z0-9]+-mtn/)) return 'preview';
-    return 'production';
-  }
-  if (hostname.includes('uat.')) return 'uat';
-  if (hostname.includes('staging.')) return 'staging';
-  if (hostname.includes('dev.')) return 'development';
-  // Production domain (custom domain without prefixes)
-  return 'production';
-};
-
-// Map environments to their microfrontend domains
-const environmentDomains: Record<string, string> = {
-  development: 'localhost',
-  uat: 'uat.admitia.eu.org',
-  staging: 'staging.admitia.eu.org', // Use staging for preview deployments
-  production: 'admitia.eu.org',
-};
-
 const getMfUrl = (name: string, localPort: number, localPath: string, prodPath: string) => {
-  // Priority 1: Individual URL from env var
   const individualUrl = (import.meta as any).env?.[`VITE_MF_${name.toUpperCase()}_URL`];
-  if (individualUrl) return individualUrl;
+  if (individualUrl) return `${individualUrl.replace(/\/$/, '')}/#${prodPath}`;
 
-  // Priority 2: Base domain from env var
   const envBaseDomain = (import.meta as any).env?.VITE_MF_BASE_DOMAIN;
   if (envBaseDomain) {
-    if (envBaseDomain.includes('/')) {
-      return `${envBaseDomain}/${name}/#${prodPath}`;
+    const normalizedBase = envBaseDomain.replace(/\/$/, '');
+    if (normalizedBase.startsWith('http://') || normalizedBase.startsWith('https://')) {
+      return `${normalizedBase}/${name}/#${prodPath}`;
     }
-    return `https://${name}.${envBaseDomain}/#${prodPath}`;
+    return `https://${normalizedBase}/${name}/#${prodPath}`;
   }
 
-  // Priority 3: Auto-detect from current domain
-  const env = getEnvironmentFromDomain();
-  const baseDomain = environmentDomains[env] || environmentDomains.development;
-  
-  if (env === 'development') {
+  if (!isBrowser || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return `http://localhost:${localPort}/#${localPath}`;
   }
-  
-  return `https://${name}.${baseDomain}/#${prodPath}`;
+
+  return `${window.location.origin}/${name}/#${prodPath}`;
 };
 
 const appUrls = {
