@@ -58,7 +58,6 @@ class HttpClient {
         'Accept': 'application/json',
       },
     });
-
     this.setupInterceptors();
   }
 
