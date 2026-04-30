@@ -26,7 +26,7 @@ interface AdminDataTablesProps {
 }
 
 const AdminDataTables: React.FC<AdminDataTablesProps> = ({ className = '' }) => {
-    const [activeView, setActiveView] = useState<TableView>('users');
+    const [activeView, setActiveView] = useState<TableView>('postulantes');
     const [showCreateUserModal, setShowCreateUserModal] = useState(false);
     const [showEditUserModal, setShowEditUserModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);

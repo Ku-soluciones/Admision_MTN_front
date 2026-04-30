@@ -135,7 +135,7 @@ api.interceptors.response.use(
                 localStorage.removeItem('currentProfessor');
 
                 // Solo redirigir si no estamos ya en una página de login o si no es una ruta pública
-                const currentPath = window.location.pathname;
+                const currentPath = window.location.hash || window.location.pathname;
                 const isLoginPage = currentPath.includes('/login') || currentPath === '/';
                 const requestUrl = error.config?.url || '';
                 const isPublicRoute = requestUrl.includes('/public/') ||
@@ -146,11 +146,7 @@ api.interceptors.response.use(
                     console.warn('Redirecting to login due to expired token');
                     // Usar setTimeout para evitar problemas con el contexto de React
                     setTimeout(() => {
-                        if (currentPath.includes('/admin') || currentPath.includes('/profesor')) {
-                            window.location.href = '/admin/login';
-                        } else {
-                            window.location.href = '/login';
-                        }
+                        window.location.href = '/#/login';
                     }, 100);
                 }
             }

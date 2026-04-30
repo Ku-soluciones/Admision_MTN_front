@@ -98,10 +98,10 @@ const ProfessorLoginPage: React.FC = () => {
                     // Redirigir según el rol del usuario
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, redirigiendo al panel de administración...');
-                        navigate('/admin');
+                        navigate('/admin', { replace: true });
                     } else {
                         console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
-                        navigate('/profesor');
+                        window.location.href = microfrontendUrls.professorDashboard;
                     }
                     
                 } else {

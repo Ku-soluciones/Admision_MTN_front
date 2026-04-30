@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { microfrontendUrls } from '../../utils/microfrontendUrls';
 
 interface ProtectedAdminRouteProps {
     children: React.ReactNode;
@@ -20,12 +21,10 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
 
     // Verificar que tenga permisos de admin
     if (user.role !== 'ADMIN') {
-        // Si no es admin, redirigir según su rol
-        if (user.role === 'APODERADO') {
-            return <Navigate to="/familia" replace />;
-        } else {
-            return <Navigate to="/profesor" replace />;
-        }
+        window.location.replace(user.role === 'APODERADO'
+            ? microfrontendUrls.guardianDashboard
+            : microfrontendUrls.professorDashboard);
+        return <div>Redirigiendo...</div>;
     }
 
     return <>{children}</>;
