@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { LogoIcon } from '../components/icons/Icons';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../context/AuthContext';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -199,88 +199,81 @@ const ProfessorLoginPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-azul-monte-tabor via-blue-700 to-blue-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
-                {/* Logo y Header */}
-                <div className="text-center">
-                    <div className="mx-auto flex justify-center">
-                        <LogoIcon className="w-32 h-32" />
+                <Card className="p-5 sm:p-8">
+                    {/* Header */}
+                    <div className="text-center">
+                        <div className="flex justify-center mb-8">
+                            <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                        </div>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
+                            Portal de Profesores
+                        </h2>
+                        <p className="mt-2 text-lg text-azul-monte-tabor font-light">
+                            Accede al sistema de evaluación
+                        </p>
                     </div>
-                    <h2 className="mt-6 text-3xl font-bold text-blanco-pureza">
-                        Portal de Profesores
-                    </h2>
-                    <p className="mt-2 text-sm text-blue-200">
-                        Sistema de Evaluación de Exámenes de Admisión
-                    </p>
-                </div>
 
-                {/* Formulario de Login */}
-                <Card className="p-8 bg-blanco-pureza">
-                    <div className="space-y-6">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-azul-monte-tabor">
-                                Iniciar Sesión
-                            </h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Input
-                                id="email"
-                                label="Email Institucional"
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => updateField('email', e.target.value)}
-                                onBlur={() => touchField('email')}
-                                onKeyPress={handleKeyPress}
-                                error={errors.email}
-                                placeholder="nombre@mtn.cl"
-                                isRequired
-                            />
-
-                            <Input
-                                id="password"
-                                label="Contraseña"
-                                type="password"
-                                value={data.password}
-                                onChange={(e) => updateField('password', e.target.value)}
-                                onBlur={() => touchField('password')}
-                                onKeyPress={handleKeyPress}
-                                error={errors.password}
-                                placeholder="Ingresa tu contraseña"
-                                isRequired
-                                showPasswordToggle
-                            />
-                        </div>
-
+                    {/* Formulario de Login */}
+                    <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-6 mt-8">
                         {loginError && (
-                            <div className="flex items-start gap-2 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                <span className="mt-0.5 shrink-0"></span>
-                                <span>{loginError}</span>
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                                {loginError}
                             </div>
                         )}
 
+                        <Input
+                            id="email"
+                            label="Email Institucional"
+                            type="email"
+                            placeholder="nombre@mtn.cl"
+                            value={data.email}
+                            onChange={(e) => updateField('email', e.target.value)}
+                            onBlur={() => touchField('email')}
+                            error={errors.email}
+                            isRequired
+                        />
+
+                        <Input
+                            id="password"
+                            label="Contraseña"
+                            type="password"
+                            placeholder="••••••••"
+                            value={data.password}
+                            onChange={(e) => updateField('password', e.target.value)}
+                            onBlur={() => touchField('password')}
+                            error={errors.password}
+                            isRequired
+                            showPasswordToggle
+                        />
+
                         <Button
-                            variant="primary"
-                            onClick={handleLogin}
+                            type="submit"
+                            variant="secondary"
+                            size="lg"
                             isLoading={isLoggingIn}
                             loadingText="Verificando..."
-                            className="w-full"
+                            className="w-full bg-dorado-nazaret hover:bg-opacity-90 text-azul-monte-tabor font-bold"
                         >
                             Iniciar Sesión
                         </Button>
 
-                        <div className="text-center pt-4 border-t border-gray-200">
-                            <button
-                                onClick={() => navigate('/')}
-                                className="text-sm text-azul-monte-tabor hover:text-blue-800 transition-colors"
+                        <div className="text-center pt-6 border-t border-gray-200">
+                            <a
+                                href={microfrontendUrls.home}
+                                className="text-azul-monte-tabor hover:underline text-sm font-semibold"
                             >
-                                ← Volver al Portal Principal
-                            </button>
+                                ← Volver al inicio
+                            </a>
                         </div>
-                    </div>
+                    </form>
                 </Card>
 
-
+                {/* Información adicional */}
+                <div className="text-center text-sm text-gris-piedra">
+                    <p>¿Problemas para acceder? <a href="mailto:admisiones@mtn.cl" className="text-azul-monte-tabor hover:underline font-semibold">admisiones@mtn.cl</a></p>
+                </div>
             </div>
         </div>
     );

@@ -145,13 +145,14 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             </div>
 
             {/* Botón para enviar código */}
-            {!verificationSent && isEmailValid && (
+            {!verificationSent && (
                 <Button
                     type="button"
                     variant="outline"
                     onClick={handleSendCode}
                     isLoading={isLoading}
                     loadingText="Enviando código..."
+                    disabled={!isEmailValid}
                     className="w-full"
                 >
                     Enviar Código de Verificación
