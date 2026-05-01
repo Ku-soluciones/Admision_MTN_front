@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const AdminLogin: React.FC = () => {
     const navigate = useNavigate();
@@ -34,10 +35,10 @@ const AdminLogin: React.FC = () => {
         try {
             await login(email, password, 'ADMIN');
 
-            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
+            const storedUser = JSON.parse(localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) || 'null');
             if (!storedUser || storedUser.role !== 'ADMIN') {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
 
                 if (storedUser?.role === 'APODERADO') {
                     window.location.href = microfrontendUrls.guardianDashboard;
