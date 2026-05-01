@@ -7,6 +7,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } f
 import { oidcService } from './oidcService';
 import { getApiBaseUrl } from '../config/api.config';
 import { csrfService } from './csrfService';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 // Tipos
 interface RetryConfig {
@@ -154,12 +155,12 @@ class HttpClient {
   private async getAccessToken(): Promise<string | null> {
     try {
       // Primero intentar obtener el token de usuario regular (apoderado)
-      let token = localStorage.getItem('auth_token');
+      let token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
       console.log('http.ts - auth_token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
 
       // Si no hay token de usuario regular, intentar con token de profesor
       if (!token) {
-        token = localStorage.getItem('professor_token');
+        token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         console.log('http.ts - professor_token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
       }
 
@@ -257,8 +258,8 @@ class HttpClient {
       console.warn('Session invalidated - User logged in from another device');
 
       // Clear ALL tokens
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('professor_token');
+      localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+      localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
       sessionStorage.clear();
 
       // Show alert to user

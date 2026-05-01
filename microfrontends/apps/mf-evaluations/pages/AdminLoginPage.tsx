@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const LoginPage: React.FC = () => {
     const [userType, setUserType] = useState<'familia' | 'admin'>('familia');
@@ -21,7 +22,7 @@ const LoginPage: React.FC = () => {
     React.useEffect(() => {
         if (isAuthenticated && user) {
             if (user.role === 'ADMIN') {
-                navigate('/admin');
+                window.location.href = microfrontendUrls.adminDashboard;
             } else if (user.role === 'APODERADO') {
                 navigate('/familia');
             } else {
@@ -93,7 +94,7 @@ const LoginPage: React.FC = () => {
                             if (userType === 'familia') {
                                 navigate('/familia');
                             } else {
-                                navigate('/admin');
+                                window.location.href = microfrontendUrls.adminDashboard;
                             }
                         } catch (error: any) {
                             const msg = error.message || 'Credenciales inválidas. Verifique su email y contraseña.';

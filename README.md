@@ -277,4 +277,4 @@ microfrontends/
 
 - La integración con backend se mantiene con los mismos servicios y endpoints que usaba el frontend original.
 - El código legado raíz fue reemplazado por proyectos aislados; la evolución debe hacerse dentro de `microfrontends/apps/*`.
-- El repositorio ya no conserva el monolito original; la fuente de trabajo es cada microfrontend por separado.
+- El repositorio ya no conserva el monolito original; la fuente de trabajo es cada microfrontend por separado

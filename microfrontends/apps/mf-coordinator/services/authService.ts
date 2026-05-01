@@ -5,6 +5,7 @@ import {
     signOut,
 } from 'firebase/auth';
 import { auth } from '../src/lib/firebase';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 export interface LoginRequest {
     email: string;
@@ -64,7 +65,7 @@ class AuthService {
             const data = response.data;
 
             // 3. Store the Firebase idToken for immediate use until interceptor takes over
-            localStorage.setItem('auth_token', idToken);
+            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
 
             return {
                 success: true,
@@ -104,7 +105,7 @@ class AuthService {
             });
             const data = response.data;
 
-            localStorage.setItem('auth_token', idToken);
+            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
 
             return {
                 success: true,
@@ -141,8 +142,8 @@ class AuthService {
         } catch (e) {
             // Ignore Firebase signOut errors
         }
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('authenticated_user');
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
     }
 }
 

@@ -1,5 +1,5 @@
 import type { ShellManifest } from '../../../packages/contracts/src/index';
-import { resolveBackendEndpoints } from '../../../packages/backend-sdk/src/index';
+import { resolveBackendEndpoints, resolveEnvironmentDomain } from '../../../packages/backend-sdk/src/index';
 
 const backend = resolveBackendEndpoints(import.meta.env as Record<string, string | undefined>);
 
@@ -16,21 +16,6 @@ const subdomains: Record<string, string | undefined> = {
   coordinator: 'coordinadores',
 };
 
-const defaultBaseDomain = 'admitia.dedyn.io';
-
-const getEnvironmentDomain = () => {
-  const baseDomain = ((import.meta as any).env?.VITE_MF_BASE_DOMAIN || defaultBaseDomain)
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '');
-  const environment = ((import.meta as any).env?.VITE_MF_ENV || '').trim().toLowerCase();
-
-  if (!environment || environment === 'production' || environment === 'prod') {
-    return baseDomain;
-  }
-
-  return `${environment}.${baseDomain}`;
-};
-
 const getMfUrl = (name: string, localPort: number, localPath: string, prodPath: string) => {
   const individualUrl = (import.meta as any).env?.[`VITE_MF_${name.toUpperCase()}_URL`];
   if (individualUrl) return `${individualUrl.replace(/\/$/, '')}/#${prodPath}`;
@@ -41,7 +26,7 @@ const getMfUrl = (name: string, localPort: number, localPath: string, prodPath: 
 
   const subdomain = subdomains[name];
   if (subdomain) {
-    return `https://${subdomain}.${getEnvironmentDomain()}/#${prodPath}`;
+    return `https://${subdomain}.${resolveEnvironmentDomain((import.meta as any).env)}/#${prodPath}`;
   }
 
   return `${window.location.origin}/#${prodPath}`;

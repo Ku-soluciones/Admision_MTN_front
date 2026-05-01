@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 interface User {
     id: string;
@@ -57,7 +58,7 @@ const buildUserFromBff = (u: any): User => ({
 
 const setAdminCompat = (user: User, token: string, subject?: string) => {
     if (user.role === 'ADMIN') {
-        localStorage.setItem('currentProfessor', JSON.stringify({
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify({
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -67,8 +68,8 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
             assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
             isAdmin: true,
         }));
-        localStorage.setItem('professor_token', token);
-        localStorage.setItem('professor_user', JSON.stringify({
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), token);
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -80,6 +81,39 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Quick session restoration from localStorage before Firebase check
+    useEffect(() => {
+        const restoreSessionFromStorage = async () => {
+            const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            const cachedUser = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+
+            if (token && cachedUser) {
+                try {
+                    const userData = JSON.parse(cachedUser);
+                    // Quick validation of token with BFF (200ms timeout)
+                    try {
+                        const response = await Promise.race([
+                            api.get('/v1/auth/check'),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 200))
+                        ]);
+
+                        if (response.data?.success && response.data?.user) {
+                            setUser(userData);
+                            setIsLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // Token validation failed or timed out, will retry with Firebase
+                    }
+                } catch {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                }
+            }
+        };
+
+        restoreSessionFromStorage();
+    }, []);
 
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
@@ -93,17 +127,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 // Firebase user is signed in — get fresh idToken and fetch profile from BFF
                 try {
                     const idToken = await firebaseUser.getIdToken();
-                    localStorage.setItem('auth_token', idToken);
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
 
                     // Check if we already have cached user data
-                    const cached = localStorage.getItem('authenticated_user');
+                    const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     if (cached) {
                         try {
                             setUser(JSON.parse(cached));
                             setIsLoading(false);
                             return;
                         } catch {
-                            localStorage.removeItem('authenticated_user');
+                            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                         }
                     }
 
@@ -111,20 +145,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
-                        localStorage.setItem('authenticated_user', JSON.stringify(userData));
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                         setAdminCompat(userData, idToken, response.data.user?.subject);
                         setUser(userData);
                     }
                 } catch {
                     // BFF call failed — clear state
-                    localStorage.removeItem('auth_token');
-                    localStorage.removeItem('authenticated_user');
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     setUser(null);
                 }
             } else {
                 // No Firebase user — clear everything
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 setUser(null);
             }
             setIsLoading(false);
@@ -141,7 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (response.success && u) {
                 const userData = buildUserFromBff(u);
                 setAdminCompat(userData, response.token ?? '', u?.subject);
-                localStorage.setItem('authenticated_user', JSON.stringify(userData));
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                 setUser(userData);
             } else {
                 throw new Error(response.message || 'Error en la autenticación');
@@ -170,7 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const newUser = buildUserFromBff(u);
                 newUser.phone = userData.phone;
                 newUser.rut = userData.rut;
-                localStorage.setItem('authenticated_user', JSON.stringify(newUser));
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(newUser));
                 setUser(newUser);
             } else {
                 throw new Error(response.message || 'Error al crear la cuenta');
@@ -184,13 +218,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         authService.logout();
-        localStorage.removeItem('currentProfessor');
-        localStorage.removeItem('professor_token');
-        localStorage.removeItem('professor_user');
-        localStorage.removeItem('apoderado_token');
-        localStorage.removeItem('apoderado_user');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('authenticated_user');
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
         setUser(null);
         window.location.href = '/#/login';
     };

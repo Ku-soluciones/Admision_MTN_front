@@ -397,11 +397,12 @@ class EvaluationService {
 
             const response = await api.get(`/v1/evaluations/application/${applicationId}`);
 
-            // Backend returns { success: true, data: [...] }
-            const evaluations = response.data.data || response.data;
-            // console.log(`${evaluations.length} evaluaciones obtenidas`);
-            // console.log('Evaluaciones:', evaluations);
-            return evaluations;
+            const raw = response.data?.data ?? response.data;
+            const list = Array.isArray(raw) ? raw : [];
+            return list.map((e: Record<string, unknown>) => ({
+                ...e,
+                evaluationType: (e.evaluationType || e.type) as string
+            })) as Evaluation[];
         } catch (error: any) {
             console.error('Error obteniendo evaluaciones por application:', error);
             throw new Error(
