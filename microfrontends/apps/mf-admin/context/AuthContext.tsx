@@ -82,6 +82,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Quick session restoration from localStorage before Firebase check
+    useEffect(() => {
+        const restoreSessionFromStorage = async () => {
+            const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            const cachedUser = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+
+            if (token && cachedUser) {
+                try {
+                    const userData = JSON.parse(cachedUser);
+                    // Quick validation of token with BFF (200ms timeout)
+                    try {
+                        const response = await Promise.race([
+                            api.get('/v1/auth/check'),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 200))
+                        ]);
+
+                        if (response.data?.success && response.data?.user) {
+                            setUser(userData);
+                            setIsLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // Token validation failed or timed out, will retry with Firebase
+                    }
+                } catch {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                }
+            }
+        };
+
+        restoreSessionFromStorage();
+    }, []);
+
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
         if (!auth || !hasFirebaseConfig) {

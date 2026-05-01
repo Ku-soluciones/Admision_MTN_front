@@ -390,6 +390,25 @@ const ApplicationForm: React.FC = () => {
         }
     }, []);
 
+    // Verificar si el usuario se acaba de registrar y validar token rápidamente
+    useEffect(() => {
+        const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        if (hashParams.get('justRegistered') === 'true') {
+            console.log('👤 Usuario registrado, verificando autenticación rápidamente...');
+            api.get('/v1/auth/check')
+                .then(response => {
+                    if (response.data?.success && response.data?.user) {
+                        console.log('✅ Token válido, usuario autenticado');
+                        setShowAuthForm(false);
+                    }
+                })
+                .catch(error => {
+                    console.log('❌ Verificación de token falló, mostrando login');
+                    setShowAuthForm(true);
+                });
+        }
+    }, []);
+
     // Helper function to check if current school is required
     const requiresCurrentSchool = useCallback((grade: string): boolean => {
         const schoolRequiredGrades = [
