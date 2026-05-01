@@ -4,6 +4,7 @@
  */
 
 import httpClient from '../../services/http';
+import { unwrapBffData } from './bffResponse';
 import type {
   User,
   CreateUserRequest,
@@ -20,43 +21,32 @@ export class UsersClient {
    * Get all users with optional filtering and pagination
    */
   async getUsers(params?: UserSearchParams): Promise<PaginatedResponse<User>> {
-    const response = await httpClient.get(
-      this.basePath,
-      { params }
-    );
-    return response.data as PaginatedResponse<User>;
+    const body = await httpClient.get(this.basePath, { params });
+    return body as PaginatedResponse<User>;
   }
 
   /**
    * Get user by ID
    */
   async getUserById(id: number): Promise<User> {
-    const response = await httpClient.get(
-      `${this.basePath}/${id}`
-    );
-    return response.data as User;
+    const body = await httpClient.get(`${this.basePath}/${id}`);
+    return unwrapBffData<User>(body);
   }
 
   /**
    * Create new user (admin only)
    */
   async createUser(userData: CreateUserRequest): Promise<User> {
-    const response = await httpClient.post<{ success: boolean; data: User }>(
-      this.basePath,
-      userData
-    );
-    return (response.data as any).data;
+    const body = await httpClient.post(this.basePath, userData);
+    return unwrapBffData<User>(body);
   }
 
   /**
    * Update existing user
    */
   async updateUser(id: number, userData: UpdateUserRequest): Promise<User> {
-    const response = await httpClient.put<{ success: boolean; data: User }>(
-      `${this.basePath}/${id}`,
-      userData
-    );
-    return (response.data as any).data;
+    const body = await httpClient.put(`${this.basePath}/${id}`, userData);
+    return unwrapBffData<User>(body);
   }
 
   /**
@@ -70,11 +60,8 @@ export class UsersClient {
    * Activate/deactivate user
    */
   async toggleUserStatus(id: number, active: boolean): Promise<User> {
-    const response = await httpClient.patch<{ success: boolean; data: User }>(
-      `${this.basePath}/${id}/status`,
-      { active }
-    );
-    return (response.data as any).data;
+    const body = await httpClient.patch(`${this.basePath}/${id}/status`, { active });
+    return unwrapBffData<User>(body);
   }
 
   /**

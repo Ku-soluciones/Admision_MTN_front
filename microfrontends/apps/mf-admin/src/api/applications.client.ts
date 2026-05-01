@@ -4,6 +4,7 @@
  */
 
 import httpClient from '../../services/http';
+import { extractBffList, unwrapBffData } from './bffResponse';
 import type {
   Application,
   CreateApplicationRequest,
@@ -20,64 +21,48 @@ export class ApplicationsClient {
    * Get all applications with optional filtering and pagination
    */
   async getApplications(params?: ApplicationSearchParams): Promise<PaginatedResponse<Application>> {
-    const response = await httpClient.get(
-      this.basePath,
-      { params }
-    );
-    return response.data as PaginatedResponse<Application>;
+    const body = await httpClient.get(this.basePath, { params });
+    return body as PaginatedResponse<Application>;
   }
 
   /**
    * Get public applications (for admin dashboard)
    */
   async getPublicApplications(params?: ApplicationSearchParams): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/public/all`,
-      { params }
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/public/all`, { params });
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get application by ID with full details
    */
   async getApplicationById(id: number): Promise<Application> {
-    const response = await httpClient.get(
-      `${this.basePath}/${id}`
-    );
-    return response.data as Application;
+    const body = await httpClient.get(`${this.basePath}/${id}`);
+    return unwrapBffData<Application>(body);
   }
 
   /**
    * Create new application
    */
   async createApplication(applicationData: CreateApplicationRequest): Promise<Application> {
-    const response = await httpClient.post<{ success: boolean; data: Application }>(
-      this.basePath,
-      applicationData
-    );
-    return (response.data as any).data;
+    const body = await httpClient.post(this.basePath, applicationData);
+    return unwrapBffData<Application>(body);
   }
 
   /**
    * Update application status and details
    */
   async updateApplication(id: number, applicationData: UpdateApplicationRequest): Promise<Application> {
-    const response = await httpClient.put<{ success: boolean; data: Application }>(
-      `${this.basePath}/${id}`,
-      applicationData
-    );
-    return (response.data as any).data;
+    const body = await httpClient.put(`${this.basePath}/${id}`, applicationData);
+    return unwrapBffData<Application>(body);
   }
 
   /**
    * Archive application (admin only)
    */
   async archiveApplication(id: number): Promise<Application> {
-    const response = await httpClient.put<{ success: boolean; data: Application }>(
-      `${this.basePath}/${id}/archive`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.put(`${this.basePath}/${id}/archive`);
+    return unwrapBffData<Application>(body);
   }
 
   /**
@@ -94,31 +79,24 @@ export class ApplicationsClient {
     status: Application['status'], 
     params?: Omit<ApplicationSearchParams, 'status'>
   ): Promise<Application[]> {
-    const response = await httpClient.get(
-      `${this.basePath}/status/${status}`,
-      { params }
-    );
-    return (response.data?.content || response.data?.data || []) as Application[];
+    const body = await httpClient.get(`${this.basePath}/status/${status}`, { params });
+    return extractBffList<Application>(body);
   }
 
   /**
    * Get applications by user (for families)
    */
   async getUserApplications(userId: number): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/user/${userId}`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/user/${userId}`);
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get application statistics (admin only)
    */
   async getApplicationStatistics(): Promise<ApplicationStatistics> {
-    const response = await httpClient.get<{ success: boolean; data: ApplicationStatistics }>(
-      `${this.basePath}/statistics`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/statistics`);
+    return unwrapBffData<ApplicationStatistics>(body);
   }
 
   /**
@@ -128,31 +106,24 @@ export class ApplicationsClient {
     query: string, 
     params?: Omit<ApplicationSearchParams, 'studentName'>
   ): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/search`,
-      { params: { query, ...params } }
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/search`, { params: { query, ...params } });
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get applications requiring evaluation
    */
   async getApplicationsForEvaluation(evaluatorId: number): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/for-evaluation/${evaluatorId}`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/for-evaluation/${evaluatorId}`);
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get applications with special categories
    */
   async getSpecialCategoryApplications(category: 'employee' | 'alumni' | 'inclusion'): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/special-category/${category}`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/special-category/${category}`);
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
@@ -177,32 +148,24 @@ export class ApplicationsClient {
     applicationIds: number[], 
     status: Application['status']
   ): Promise<Application[]> {
-    const response = await httpClient.post<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/bulk/update-status`,
-      { applicationIds, status }
-    );
-    return (response.data as any).data;
+    const body = await httpClient.post(`${this.basePath}/bulk/update-status`, { applicationIds, status });
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get applications requiring documents
    */
   async getApplicationsRequiringDocuments(): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/requiring-documents`
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/requiring-documents`);
+    return unwrapBffData<Application[]>(body);
   }
 
   /**
    * Get recent applications (last 7 days)
    */
   async getRecentApplications(days: number = 7): Promise<Application[]> {
-    const response = await httpClient.get<{ success: boolean; data: Application[] }>(
-      `${this.basePath}/recent`,
-      { params: { days } }
-    );
-    return (response.data as any).data;
+    const body = await httpClient.get(`${this.basePath}/recent`, { params: { days } });
+    return unwrapBffData<Application[]>(body);
   }
 }
 

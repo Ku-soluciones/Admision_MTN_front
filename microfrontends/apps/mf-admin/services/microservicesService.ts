@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '../config/api.config';
+import { extractBffList } from '../src/api/bffResponse';
 
 /**
  * Servicio para conectar el frontend con la arquitectura de microservicios REAL
@@ -198,14 +199,12 @@ export class MicroservicesService {
   async getApplicationsFromMicroservice(): Promise<any[]> {
     try {
       console.log('Obteniendo aplicaciones del microservicio real...');
-      const response = await axios.get(APPLICATION_SERVICE_URL);
-      
-      if (response.data.success) {
-        console.log('Aplicaciones obtenidas del microservicio:', response.data.data);
-        return response.data.data;
-      } else {
-        throw new Error('Invalid response format');
+      const response = await axios.get(APPLICATION_SERVICE_URL, { params: { size: 500, page: 0 } });
+      const body = response.data;
+      if (body?.success && Array.isArray(body.data)) {
+        return body.data;
       }
+      return extractBffList(body);
     } catch (error) {
       console.error('Error obteniendo aplicaciones del microservicio:', error);
       throw new Error('No se pudieron obtener aplicaciones del microservicio');
