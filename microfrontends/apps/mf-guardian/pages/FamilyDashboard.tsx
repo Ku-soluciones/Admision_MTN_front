@@ -39,7 +39,7 @@ import { applicationService, Application } from '../services/applicationService'
 import { useAuth } from '../context/AuthContext';
 import useUserProfile from '../hooks/useUserProfile';
 import applicationWorkflowService, { type ApplicationDraft } from '../services/applicationWorkflowService';
-import documentGatewayService from '../services/documentGatewayService';
+import { documentService } from '../services/documentService';
 import FamilyInterviews from '../components/family/FamilyInterviews';
 import FamilyCalendar from '../components/family/FamilyCalendar';
 import ComplementaryApplicationForm from './ComplementaryApplicationForm';
@@ -85,23 +85,24 @@ const FamilyDashboard: React.FC = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   // Function to download/view document
-  const handleViewDocument = (documentId: number, documentName: string) => {
-    // Try to get token from different possible storage keys
-    const token = localStorage.getItem('apoderado_token') ||
-                  localStorage.getItem('auth_token') ||
-                  localStorage.getItem('professor_token');
+  const handleViewDocument = async (documentId: number, documentName: string) => {
+    const viewer = window.open('', '_blank');
 
-    if (!token) {
-      alert('No se encontró el token de autenticación. Por favor, inicia sesión nuevamente.');
-      return;
+    try {
+      const blob = await documentService.viewDocument(documentId);
+      const url = window.URL.createObjectURL(blob);
+
+      if (viewer) {
+        viewer.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
+
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch (error: any) {
+      viewer?.close();
+      alert(error.message || `No se pudo abrir el documento ${documentName || ''}`.trim());
     }
-
-    // Use environment variable for API URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const downloadUrl = `${baseUrl}/v1/documents/${documentId}/download?token=${encodeURIComponent(token)}`;
-
-    // Open in new tab for viewing (browser will handle display based on content type)
-    window.open(downloadUrl, '_blank');
   };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
