@@ -1,14 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const isHomePage = location.pathname === '/';
     const [isAdmin, setIsAdmin] = useState(false);
     const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
     const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
@@ -125,19 +123,7 @@ const Header: React.FC = () => {
                 </nav>
 
                 <div className="flex items-center gap-2 sm:gap-4">
-                    {!isAnyUserLoggedIn && isHomePage && (
-                        <div className="hidden sm:flex items-center gap-3">
-                            <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">
-                                Iniciar sesión
-                            </a>
-                            <a href={microfrontendUrls.admissions}>
-                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
-                        </div>
-                    )}
-                    {!isAnyUserLoggedIn && !isHomePage && (
+                    {!isAnyUserLoggedIn && (
                         <a href={microfrontendUrls.admissions} className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Iniciar Postulación
@@ -207,21 +193,7 @@ const Header: React.FC = () => {
                                 Admin
                             </a>
                         )}
-                        {!isAnyUserLoggedIn && isHomePage && (
-                            <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={microfrontendUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="outline" className="w-full">
-                                        Iniciar sesión
-                                    </Button>
-                                </a>
-                                <a href={microfrontendUrls.admissions} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full">
-                                        Iniciar Postulación
-                                    </Button>
-                                </a>
-                            </div>
-                        )}
-                        {!isAnyUserLoggedIn && !isHomePage && (
+                        {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1">
                                 <a href={microfrontendUrls.admissions} onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full">
