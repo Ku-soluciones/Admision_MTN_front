@@ -33,7 +33,7 @@ const getMfUrl = (name: string, localPort: number, localPath: string, prodPath: 
 };
 
 const appUrls = {
-  admissions: getMfUrl('admissions', 5201, '/postulacion', '/postulacion'),
+  admissions: getMfUrl('admissions', 5201, '/', '/'),
   guardian: getMfUrl('guardian', 5202, '/apoderado/login', '/apoderado/login'),
   student: getMfUrl('student', 5203, '/examenes', '/examenes'),
   evaluations: getMfUrl('evaluations', 5204, '/profesor/login', '/profesor/login'),
