@@ -1080,7 +1080,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 ) : (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
                     <p className="text-sm text-gray-600 text-center">
-                      👆 Primero seleccione {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'ambos entrevistadores' : 'un entrevistador'} para ver los horarios disponibles
+                      Primero seleccione {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'ambos entrevistadores' : 'un entrevistador'} para ver los horarios disponibles
                     </p>
                   </div>
                 )}
