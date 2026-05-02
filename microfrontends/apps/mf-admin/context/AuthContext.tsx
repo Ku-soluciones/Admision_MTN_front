@@ -185,10 +185,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(null);
                 }
             } else {
-                // No Firebase user — clear everything
-                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
-                setUser(null);
+                // No Firebase user — but don't clear if user is already authenticated from another source
+                // (e.g., from cookies set by non-Firebase auth like professorAuthService)
+                if (!user) {
+                    console.log('[AuthContext] No Firebase user and no local user, clearing auth state');
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                    setUser(null);
+                } else {
+                    console.log('[AuthContext] No Firebase user, but user authenticated from other source. Keeping session.');
+                }
             }
             setIsLoading(false);
         });
