@@ -108,11 +108,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return false;
         };
 
-        // Only try storage restore if Firebase is not available
+        // Try storage restore FIRST, regardless of Firebase config
+        // This ensures non-Firebase sessions (like from professorAuthService) work immediately
+        if (tryRestoreFromStorage()) {
+            return;
+        }
+
+        // Only continue to Firebase check if storage restore failed
         if (!auth || !hasFirebaseConfig) {
-            if (!tryRestoreFromStorage()) {
-                setIsLoading(false);
-            }
+            setIsLoading(false);
             return;
         }
     }, []);
