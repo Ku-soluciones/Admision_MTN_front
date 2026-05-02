@@ -8,6 +8,7 @@ import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../context/AuthContext';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -69,7 +70,7 @@ const ProfessorLoginPage: React.FC = () => {
                 // Verificar que el rol sea de profesor
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
 
-                    // Si es admin, guardar datos en localStorage del AuthContext
+                    // Si es admin, guardar datos en localStorage del AuthContext con keys ambientales
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, guardando en AuthContext...');
                         const adminUser = {
@@ -79,8 +80,8 @@ const ProfessorLoginPage: React.FC = () => {
                             lastName: respLastName,
                             role: 'ADMIN',
                         };
-                        localStorage.setItem('authenticated_user', JSON.stringify(adminUser));
-                        localStorage.setItem('auth_token', response.token);
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(adminUser));
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), response.token);
                     }
 
                     // Guardar información del profesor en localStorage para compatibilidad

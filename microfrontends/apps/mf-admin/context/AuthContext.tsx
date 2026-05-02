@@ -82,10 +82,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Fallback: Restore session from localStorage if available (for non-Firebase auth methods)
+    useEffect(() => {
+        if (user !== null) {
+            // User already loaded, skip
+            return;
+        }
+
+        const tryRestoreFromStorage = () => {
+            try {
+                // Try to restore from localStorage with environment-aware key
+                const cached =
+                    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
+                    localStorage.getItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+
+                if (cached) {
+                    const userData = JSON.parse(cached);
+                    setUser(userData);
+                    setIsLoading(false);
+                    return true;
+                }
+            } catch (error) {
+                // Fallback failed, continue to Firebase check
+            }
+            return false;
+        };
+
+        // Only try storage restore if Firebase is not available
+        if (!auth || !hasFirebaseConfig) {
+            if (!tryRestoreFromStorage()) {
+                setIsLoading(false);
+            }
+            return;
+        }
+    }, []);
+
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
         if (!auth || !hasFirebaseConfig) {
-            setIsLoading(false);
             return;
         }
 
