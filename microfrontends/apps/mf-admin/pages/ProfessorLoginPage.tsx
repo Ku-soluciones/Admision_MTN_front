@@ -68,13 +68,21 @@ const ProfessorLoginPage: React.FC = () => {
             if (response.success && response.token) {
                 // Verificar que el rol sea de profesor
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
-                    
-                    // Si es admin, registrar en AuthContext principal
+
+                    // Si es admin, guardar datos en localStorage del AuthContext
                     if (respRole === 'ADMIN') {
-                        console.log('Usuario admin detectado, registrando en AuthContext principal...');
-                        await loginWithAuth(data.email, data.password, 'ADMIN');
+                        console.log('Usuario admin detectado, guardando en AuthContext...');
+                        const adminUser = {
+                            id: String(respId),
+                            email: respEmail,
+                            firstName: respFirstName,
+                            lastName: respLastName,
+                            role: 'ADMIN',
+                        };
+                        localStorage.setItem('authenticated_user', JSON.stringify(adminUser));
+                        localStorage.setItem('auth_token', response.token);
                     }
-                    
+
                     // Guardar información del profesor en localStorage para compatibilidad
                     localStorage.setItem('currentProfessor', JSON.stringify({
                         id: respId,
@@ -94,11 +102,11 @@ const ProfessorLoginPage: React.FC = () => {
                     });
 
                     console.log('Login exitoso, redirigiendo al dashboard...');
-                    
+
                     // Redirigir según el rol del usuario
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, redirigiendo al panel de administración...');
-                        navigate('/admin', { replace: true });
+                        window.location.href = '/#/admin';
                     } else {
                         console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
                         window.location.href = microfrontendUrls.professorDashboard;
