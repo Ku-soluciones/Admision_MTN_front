@@ -85,12 +85,17 @@ const ProfessorLoginPage: React.FC = () => {
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(adminUser));
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), response.token);
 
-                        // Also save to cookies for cross-origin access (port 5204 to 5206)
+                        // Also save to cookies for cross-port access (port 5204 to 5206)
                         // Use a 7-day expiration and path=/
                         const expirationDate = new Date();
                         expirationDate.setDate(expirationDate.getDate() + 7);
-                        document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(adminUser))}; path=/; expires=${expirationDate.toUTCString()}`;
-                        document.cookie = `auth_token=${encodeURIComponent(response.token)}; path=/; expires=${expirationDate.toUTCString()}`;
+                        const userCookie = `auth_user=${encodeURIComponent(JSON.stringify(adminUser))}; path=/; expires=${expirationDate.toUTCString()}`;
+                        const tokenCookie = `auth_token=${encodeURIComponent(response.token)}; path=/; expires=${expirationDate.toUTCString()}`;
+
+                        console.log('[ProfessorLogin] Setting cookies for cross-port access');
+                        document.cookie = userCookie;
+                        document.cookie = tokenCookie;
+                        console.log('[ProfessorLogin] Cookies set. Current cookies:', document.cookie);
                     }
 
                     // Guardar información del profesor en localStorage para compatibilidad
