@@ -44,7 +44,7 @@ const buildUrl = (app: keyof typeof localPorts, hashPath: string) => {
 
 export const microfrontendUrls = {
   home: buildUrl('admissions', '/'),
-  admissions: buildUrl('admin', '/apoderado/login'),
+  admissions: buildUrl('admissions', '/postulacion'),
   admissionsComplementary: buildUrl('admissions', '/postulacion/complementaria'),
   guardianLogin: buildUrl('guardian', '/apoderado/login'),
   guardianDashboard: buildUrl('guardian', '/familia'),
