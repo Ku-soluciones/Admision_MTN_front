@@ -83,9 +83,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     // Fallback: Restore session from localStorage if available (for non-Firebase auth methods)
+    const [sessionRestoredFromStorage, setSessionRestoredFromStorage] = React.useState(false);
+
     useEffect(() => {
-        if (user !== null) {
-            // User already loaded, skip
+        if (user !== null || sessionRestoredFromStorage) {
+            // User already loaded or restoration was attempted, skip
             return;
         }
 
@@ -132,8 +134,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Try storage restore FIRST, regardless of Firebase config
         // This ensures non-Firebase sessions (like from professorAuthService) work immediately
-        if (tryRestoreFromStorage()) {
-            console.log('[AuthContext] Successfully restored from localStorage');
+        const restored = tryRestoreFromStorage();
+        setSessionRestoredFromStorage(true);
+
+        if (restored) {
+            console.log('[AuthContext] Successfully restored from storage');
             return;
         }
 
@@ -148,6 +153,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
         if (!auth || !hasFirebaseConfig) {
+            return;
+        }
+
+        // Skip Firebase listener if session was already restored from storage (cookies/localStorage)
+        if (sessionRestoredFromStorage && user !== null) {
+            console.log('[AuthContext] Session already restored from storage, skipping Firebase listener');
+            setIsLoading(false);
             return;
         }
 
