@@ -4,6 +4,7 @@ import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 interface User {
     id: string;
@@ -268,8 +269,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_USER));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+        // Also clear cookies for cross-port sessions
+        document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
         setUser(null);
-        window.location.href = '/#/login';
+        window.location.href = microfrontendUrls.home;
     };
 
     const value: AuthContextType = {
