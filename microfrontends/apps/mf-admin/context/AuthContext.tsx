@@ -83,11 +83,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     // Fallback: Restore session from localStorage if available (for non-Firebase auth methods)
-    const [sessionRestoredFromStorage, setSessionRestoredFromStorage] = React.useState(false);
-
     useEffect(() => {
-        if (user !== null || sessionRestoredFromStorage) {
-            // User already loaded or restoration was attempted, skip
+        if (user !== null) {
+            // User already loaded, skip
             return;
         }
 
@@ -135,7 +133,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Try storage restore FIRST, regardless of Firebase config
         // This ensures non-Firebase sessions (like from professorAuthService) work immediately
         const restored = tryRestoreFromStorage();
-        setSessionRestoredFromStorage(true);
 
         if (restored) {
             console.log('[AuthContext] Successfully restored from storage');
@@ -152,14 +149,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
-        if (!auth || !hasFirebaseConfig) {
+        // Skip Firebase entirely if user already authenticated from storage
+        if (user !== null) {
+            console.log('[AuthContext] User already authenticated, skipping Firebase listener');
             return;
         }
 
-        // Skip Firebase listener if session was already restored from storage (cookies/localStorage)
-        if (sessionRestoredFromStorage && user !== null) {
-            console.log('[AuthContext] Session already restored from storage, skipping Firebase listener');
-            setIsLoading(false);
+        if (!auth || !hasFirebaseConfig) {
             return;
         }
 
@@ -211,7 +207,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [user]);
 
     const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);
