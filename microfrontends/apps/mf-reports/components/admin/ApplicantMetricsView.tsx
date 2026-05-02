@@ -5,7 +5,8 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import { dashboardClient } from '../../src/api/dashboard.client';
 import type { ApplicantMetric, ApplicantMetricsFilters } from '../../src/api/dashboard.types';
-import { PieChart, Pie, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 
 // Version: 2025-11-11 - Added overallOpinionScore display
 export const ApplicantMetricsView: React.FC = () => {
@@ -178,6 +179,48 @@ export const ApplicantMetricsView: React.FC = () => {
   };
 
   const { performanceData, avgData } = getChartData();
+
+  const performanceDistributionOption: EChartsOption = {
+    color: performanceData.map(item => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: { bottom: 0 },
+    series: [{
+      type: 'pie',
+      radius: ['42%', '70%'],
+      center: ['50%', '44%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { formatter: '{d}%' },
+      data: performanceData.map(item => ({ name: item.name, value: item.value }))
+    }]
+  };
+
+  const examAverageOption: EChartsOption = {
+    color: ['#3B82F6'],
+    tooltip: { trigger: 'axis', valueFormatter: value => `${value}%` },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 8, top: 24, bottom: 48, containLabel: true },
+    xAxis: { type: 'category', data: avgData.map(item => item.name) },
+    yAxis: { type: 'value', min: 0, max: 100 },
+    series: [{
+      name: 'Promedio (%)',
+      type: 'bar',
+      data: avgData.map(item => item.promedio),
+      barMaxWidth: 48,
+      label: { show: true, position: 'top', formatter: '{c}%' }
+    }]
+  };
+
+  const subjectDistributionOption: EChartsOption = {
+    color: subjectDistribution.map(item => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [{
+      type: 'pie',
+      radius: ['42%', '72%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { formatter: '{b}: {d}%' },
+      data: subjectDistribution.map(item => ({ name: item.name, value: item.value }))
+    }]
+  };
 
   const uniqueGrades = [...new Set(applicants.map(a => a.gradeApplied))].sort();
   const uniqueStatuses = [...new Set(applicants.map(a => a.applicationStatus))];
@@ -420,56 +463,17 @@ export const ApplicantMetricsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Rendimiento</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={performanceData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ percent }: { percent?: number }) => `${Math.round((percent || 0) * 100)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {performanceData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                formatter={(value, entry: any) => entry.payload.name}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <EChart option={performanceDistributionOption} height={300} />
         </Card>
 
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Promedio por Examen</h3>
           <p className="text-sm text-gray-500 mb-2">Haz clic en una barra para ver la distribución detallada</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={avgData} onClick={(data) => {
-              if (data && data.activeLabel) {
-                handleSubjectClick(data.activeLabel);
-              }
-            }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar
-                dataKey="promedio"
-                fill="#3B82F6"
-                name="Promedio (%)"
-                cursor="pointer"
-              >
-                <LabelList dataKey="promedio" position="top" formatter={(value: number) => `${value}%`} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <EChart
+            option={examAverageOption}
+            height={300}
+            onEvents={{ click: params => params.name && handleSubjectClick(String(params.name)) }}
+          />
         </Card>
       </div>
 
@@ -680,27 +684,7 @@ export const ApplicantMetricsView: React.FC = () => {
               </div>
 
               <div className="mb-6">
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={subjectDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }: { name: string, percent?: number }) =>
-                        `${name}: ${Math.round((percent || 0) * 100)}%`
-                      }
-                      outerRadius={120}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {subjectDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <EChart option={subjectDistributionOption} height={350} />
               </div>
 
               <div className="border-t pt-4">

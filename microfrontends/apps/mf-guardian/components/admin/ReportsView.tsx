@@ -7,7 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { FiDownload, FiFilter, FiCalendar, FiBarChart2, FiPieChart, FiTrendingUp } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 import { dashboardClient } from '../../src/api/dashboard.client';
 
 interface ReportFilters {
@@ -85,6 +86,64 @@ export const ReportsView: React.FC = () => {
     };
 
     const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+    const statusBarOption: EChartsOption = {
+        color: ['#3B82F6'],
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { bottom: 0 },
+        grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+        xAxis: { type: 'category', data: statusData.map(item => item.name) },
+        yAxis: { type: 'value' },
+        series: [{ name: 'Cantidad', type: 'bar', data: statusData.map(item => item.value), barMaxWidth: 44 }]
+    };
+
+    const statusPieOption: EChartsOption = {
+        color: COLORS,
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{
+            type: 'pie',
+            radius: ['42%', '70%'],
+            itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+            label: { formatter: '{b}: {c}' },
+            data: statusData.map(item => ({ name: item.name, value: item.value }))
+        }]
+    };
+
+    const gradeBarOption: EChartsOption = {
+        color: ['#10B981'],
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { bottom: 0 },
+        grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+        xAxis: { type: 'category', data: gradeData.map(item => item.grade) },
+        yAxis: { type: 'value' },
+        series: [{ name: 'Postulaciones', type: 'bar', data: gradeData.map(item => item.count), barMaxWidth: 44 }]
+    };
+
+    const gradePieOption: EChartsOption = {
+        color: COLORS,
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{
+            type: 'pie',
+            radius: ['42%', '70%'],
+            itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+            label: { formatter: '{b}: {c}' },
+            data: gradeData.map(item => ({ name: item.grade, value: item.count }))
+        }]
+    };
+
+    const temporalOption: EChartsOption = {
+        color: ['#3B82F6', '#10B981', '#EF4444'],
+        tooltip: { trigger: 'axis' },
+        legend: { bottom: 0 },
+        grid: { left: 8, right: 8, top: 24, bottom: 48, containLabel: true },
+        xAxis: { type: 'category', data: temporalData.map(item => item.month) },
+        yAxis: { type: 'value' },
+        series: [
+            { name: 'Postulaciones', type: 'line', smooth: true, data: temporalData.map(item => item.applications) },
+            { name: 'Aprobadas', type: 'line', smooth: true, data: temporalData.map(item => item.approved) },
+            { name: 'Rechazadas', type: 'line', smooth: true, data: temporalData.map(item => item.rejected) }
+        ]
+    };
 
     if (loading) {
         return (
@@ -196,38 +255,11 @@ export const ReportsView: React.FC = () => {
                     <>
                         <Card className="p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución por Estado (Barras)</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={statusData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="value" fill="#3B82F6" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <EChart option={statusBarOption} height={300} />
                         </Card>
                         <Card className="p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución por Estado (Pastel)</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={statusData}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={(entry) => `${entry.name}: ${entry.value}`}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {statusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <EChart option={statusPieOption} height={300} />
                         </Card>
                     </>
                 )}
@@ -236,38 +268,11 @@ export const ReportsView: React.FC = () => {
                     <>
                         <Card className="p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Postulaciones por Grado (Barras)</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={gradeData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="grade" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="count" fill="#10B981" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <EChart option={gradeBarOption} height={300} />
                         </Card>
                         <Card className="p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Postulaciones por Grado (Pastel)</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={gradeData}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={(entry) => `${entry.grade}: ${entry.count}`}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="count"
-                                    >
-                                        {gradeData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <EChart option={gradePieOption} height={300} />
                         </Card>
                     </>
                 )}
@@ -275,18 +280,7 @@ export const ReportsView: React.FC = () => {
                 {selectedReport === 'temporal' && (
                     <Card className="p-6 lg:col-span-2">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendencias Temporales de Postulaciones</h3>
-                        <ResponsiveContainer width="100%" height={400}>
-                            <LineChart data={temporalData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="applications" stroke="#3B82F6" strokeWidth={2} name="Postulaciones" />
-                                <Line type="monotone" dataKey="approved" stroke="#10B981" strokeWidth={2} name="Aprobadas" />
-                                <Line type="monotone" dataKey="rejected" stroke="#EF4444" strokeWidth={2} name="Rechazadas" />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        <EChart option={temporalOption} height={400} />
                     </Card>
                 )}
             </div>

@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { FiTrendingUp, FiUsers, FiAward, FiClock } from 'react-icons/fi';
 import Card from '../ui/Card';
-import { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 import { dashboardClient } from '../../src/api/dashboard.client';
 
 export const AnalyticsView: React.FC = () => {
@@ -54,7 +55,34 @@ export const AnalyticsView: React.FC = () => {
         );
     }
 
-    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+    const evaluatorPerformanceOption: EChartsOption = {
+        color: ['#10B981', '#F59E0B'],
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { bottom: 0 },
+        grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+        xAxis: { type: 'category', data: evaluatorData.map(item => item.name) },
+        yAxis: { type: 'value' },
+        series: [
+            { name: 'Completadas', type: 'bar', data: evaluatorData.map(item => item.completed) },
+            { name: 'Pendientes', type: 'bar', data: evaluatorData.map(item => item.pending) }
+        ]
+    };
+
+    const radarData = evaluatorData.slice(0, 6);
+    const evaluatorWorkloadOption: EChartsOption = {
+        color: ['#3B82F6'],
+        tooltip: {},
+        radar: {
+            indicator: radarData.map(item => ({ name: item.name, max: Math.max(...radarData.map(e => e.total || 0), 1) })),
+            splitArea: { areaStyle: { color: ['rgba(59, 130, 246, 0.04)', 'rgba(59, 130, 246, 0.1)'] } }
+        },
+        series: [{
+            name: 'Evaluaciones',
+            type: 'radar',
+            areaStyle: { opacity: 0.35 },
+            data: [{ name: 'Evaluaciones', value: radarData.map(item => item.total || 0) }]
+        }]
+    };
 
     return (
         <div className="space-y-6">
@@ -136,31 +164,13 @@ export const AnalyticsView: React.FC = () => {
                 {/* Evaluator Performance */}
                 <Card className="p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Rendimiento de Evaluadores</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={evaluatorData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="completed" fill="#10B981" name="Completadas" />
-                            <Bar dataKey="pending" fill="#F59E0B" name="Pendientes" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <EChart option={evaluatorPerformanceOption} height={300} />
                 </Card>
 
                 {/* Evaluator Workload Radar */}
                 <Card className="p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Carga de Trabajo</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <RadarChart data={evaluatorData.slice(0, 6)}>
-                            <PolarGrid />
-                            <PolarAngleAxis dataKey="name" />
-                            <PolarRadiusAxis />
-                            <Radar name="Evaluaciones" dataKey="total" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
-                            <Tooltip />
-                        </RadarChart>
-                    </ResponsiveContainer>
+                    <EChart option={evaluatorWorkloadOption} height={300} />
                 </Card>
             </div>
 

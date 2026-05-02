@@ -7,7 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { FiX, FiRefreshCw } from 'react-icons/fi';
 import { dashboardClient } from '../../src/api/dashboard.client';
 import type { DetailedAdminStats, Alert } from '../../src/api/dashboard.types';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 
 interface CoordinatorDashboardModalProps {
   isOpen: boolean;
@@ -115,6 +116,32 @@ export const CoordinatorDashboardModal: React.FC<CoordinatorDashboardModalProps>
   const acceptanceRate = stats && stats.totalApplications > 0
     ? ((stats.statusBreakdown.approved / stats.totalApplications) * 100).toFixed(1)
     : '0.0';
+
+  const statusChartOption: EChartsOption = {
+    color: statusData.map(item => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['42%', '70%'],
+        center: ['50%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+        label: { formatter: '{b}: {d}%' },
+        data: statusData.map(item => ({ name: item.name, value: item.value }))
+      }
+    ]
+  };
+
+  const gradeChartOption: EChartsOption = {
+    color: ['#3B82F6'],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+    xAxis: { type: 'category', data: gradeData.map(item => item.grade), axisTick: { alignWithLabel: true } },
+    yAxis: { type: 'value' },
+    series: [{ name: 'Postulaciones', type: 'bar', data: gradeData.map(item => item.count), barMaxWidth: 42 }]
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -348,25 +375,7 @@ export const CoordinatorDashboardModal: React.FC<CoordinatorDashboardModalProps>
                   {/* Status Distribution Pie Chart */}
                   <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Distribución por Estado</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={statusData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {statusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <EChart option={statusChartOption} height={300} />
                     <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                       {statusData.map((item, index) => (
                         <div key={index} className="flex items-center">
@@ -383,16 +392,7 @@ export const CoordinatorDashboardModal: React.FC<CoordinatorDashboardModalProps>
                   {/* Grade Distribution Bar Chart */}
                   <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Distribución por Nivel</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={gradeData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="grade" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="count" fill="#3B82F6" name="Postulaciones" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <EChart option={gradeChartOption} height={300} />
                   </div>
                 </div>
 
