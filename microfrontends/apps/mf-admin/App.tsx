@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AdminLogin from './pages/AdminLogin';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
+import ApoderadoLogin from './pages/ApoderadoLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
 import { AppProvider } from './context/AppContext';
@@ -23,7 +24,7 @@ const LoadingFallback = () => (
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname === '/profesor';
+  const isLoginPage = location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname === '/profesor' || location.pathname === '/apoderado/login';
 
   return (
     <ErrorBoundary>
@@ -39,6 +40,7 @@ function App() {
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/profesor" element={<ProfessorLoginPage />} />
+        <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
         {legacyRedirects}
         <Route path="*" element={<Navigate to="/login" replace />} />
