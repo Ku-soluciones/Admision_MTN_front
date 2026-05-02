@@ -92,6 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const tryRestoreFromStorage = () => {
             try {
                 console.log('[AuthContext] Attempting to restore from storage');
+                console.log('[AuthContext] Available cookies:', document.cookie);
 
                 // Try localStorage first (environment-aware key)
                 let cached =
@@ -109,6 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     if (cookieValue) {
                         cached = decodeURIComponent(cookieValue);
                         console.log('[AuthContext] Found user in cookies');
+                    } else {
+                        console.log('[AuthContext] No auth_user cookie found. Available:', document.cookie);
                     }
                 }
 
