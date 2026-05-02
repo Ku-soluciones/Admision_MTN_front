@@ -133,21 +133,18 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
         console.log('Array de entrevistadores:', dataArray);
 
-        // El backend ya devuelve el formato correcto con firstName, lastName, role, scheduleCount
+        // El backend puede devolver array directo o envuelto, y nombres separados o name.
         const mappedInterviewers: BackendInterviewer[] = dataArray.map((item: any) => ({
-          id: item.id,
-          name: `${item.firstName} ${item.lastName}`,
-          role: item.role,
-          subject: item.subject,
+          id: Number(item.id),
+          name: item.name || `${item.firstName || ''} ${item.lastName || ''}`.trim() || item.email,
+          role: item.role || '',
+          subject: item.subject || '',
           educationalLevel: item.educationalLevel,
-          scheduleCount: item.scheduleCount || 0
-        }));
+          scheduleCount: Number(item.scheduleCount || 0)
+        })).filter((item) => item.id && item.name);
 
-        // Filtrar solo entrevistadores con horarios configurados
-        const interviewersWithSchedules = mappedInterviewers.filter(i => i.scheduleCount > 0);
-
-        console.log(`Entrevistadores con horarios: ${interviewersWithSchedules.length}/${mappedInterviewers.length}`);
-        setInterviewers(interviewersWithSchedules);
+        console.log(`Entrevistadores cargados: ${mappedInterviewers.length}`);
+        setInterviewers(mappedInterviewers);
       } catch (error: any) {
         console.error('Error cargando entrevistadores:', error);
 
@@ -263,7 +260,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     // Validación de parámetros requeridos
     if (!formData.interviewerId || !formData.scheduledDate) {
       console.log('[loadAvailableTimeSlots] Faltan parámetros requeridos - abortando');
-      setAvailableTimeSlots(INTERVIEW_CONFIG.DEFAULT_TIME_SLOTS);
+      setAvailableTimeSlots([]);
       return;
     }
 
@@ -350,7 +347,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
       // Solo actualizar estado si no fue cancelada
       if (!currentController.signal.aborted) {
-        setAvailableTimeSlots(INTERVIEW_CONFIG.DEFAULT_TIME_SLOTS);
+        setAvailableTimeSlots([]);
       }
     } finally {
       // Solo limpiar loading state si esta es la llamada más reciente
@@ -936,9 +933,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                     <option
                       key={interviewer.id}
                       value={interviewer.id}
-                      disabled={interviewer.scheduleCount === 0}
                     >
-                      {interviewer.name} - {interviewer.role} {interviewer.scheduleCount === 0 ? '(Sin horarios)' : `(${interviewer.scheduleCount} horarios)`}
+                      {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
                     </option>
                   ))
                 )}
@@ -969,7 +965,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 ) : interviewersError ? (
                   <option disabled>{interviewersError}</option>
                 ) : interviewers.length === 0 ? (
-                  <option disabled>No hay entrevistadores con horarios configurados</option>
+                  <option disabled>No hay entrevistadores disponibles</option>
                 ) : (
                   (() => {
                     const filteredInterviewers = interviewers.filter(interviewer => {
@@ -988,9 +984,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                       <option
                         key={interviewer.id}
                         value={interviewer.id}
-                        disabled={interviewer.scheduleCount === 0}
                       >
-                        {interviewer.name} - {interviewer.role} {interviewer.scheduleCount === 0 ? '(Sin horarios)' : `(${interviewer.scheduleCount} horarios)`}
+                        {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
                       </option>
                     ));
                   })()
