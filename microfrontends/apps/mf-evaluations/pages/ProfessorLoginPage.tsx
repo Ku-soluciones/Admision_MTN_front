@@ -9,6 +9,7 @@ import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../context/AuthContext';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -95,10 +96,32 @@ const ProfessorLoginPage: React.FC = () => {
                     });
 
                     console.log('Login exitoso, redirigiendo al dashboard...');
-                    
+
                     // Redirigir según el rol del usuario
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, redirigiendo al panel de administración...');
+
+                        // Save auth data to cookies for cross-port access (5204 -> 5206)
+                        const adminUser = {
+                            id: String(respId),
+                            email: respEmail,
+                            firstName: respFirstName,
+                            lastName: respLastName,
+                            role: 'ADMIN',
+                        };
+
+                        // Also save to localStorage with environment-aware key (for same-port restore)
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(adminUser));
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), response.token);
+
+                        // Save to cookies for cross-port access (port 5204 to 5206)
+                        const expirationDate = new Date();
+                        expirationDate.setDate(expirationDate.getDate() + 7);
+                        console.log('[EvaluationsLogin] Setting cookies for cross-port admin access');
+                        document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(adminUser))}; path=/; expires=${expirationDate.toUTCString()}`;
+                        document.cookie = `auth_token=${encodeURIComponent(response.token)}; path=/; expires=${expirationDate.toUTCString()}`;
+                        console.log('[EvaluationsLogin] Redirecting to admin dashboard');
+
                         window.location.href = microfrontendUrls.adminDashboard;
                     } else {
                         console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
