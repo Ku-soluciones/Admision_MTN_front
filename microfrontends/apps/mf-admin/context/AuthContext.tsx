@@ -91,18 +91,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const tryRestoreFromStorage = () => {
             try {
+                console.log('[AuthContext] Attempting to restore from localStorage');
                 // Try to restore from localStorage with environment-aware key
                 const cached =
                     localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
                     localStorage.getItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
 
+                console.log('[AuthContext] Cached user data:', cached ? 'found' : 'not found');
                 if (cached) {
                     const userData = JSON.parse(cached);
+                    console.log('[AuthContext] Restoring user from localStorage:', userData);
                     setUser(userData);
                     setIsLoading(false);
                     return true;
                 }
             } catch (error) {
+                console.log('[AuthContext] Fallback restoration failed:', error);
                 // Fallback failed, continue to Firebase check
             }
             return false;
@@ -111,11 +115,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Try storage restore FIRST, regardless of Firebase config
         // This ensures non-Firebase sessions (like from professorAuthService) work immediately
         if (tryRestoreFromStorage()) {
+            console.log('[AuthContext] Successfully restored from localStorage');
             return;
         }
 
         // Only continue to Firebase check if storage restore failed
         if (!auth || !hasFirebaseConfig) {
+            console.log('[AuthContext] No Firebase config, not waiting for Firebase auth');
             setIsLoading(false);
             return;
         }
