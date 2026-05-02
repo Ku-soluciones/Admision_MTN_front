@@ -70,7 +70,7 @@ const ProfessorLoginPage: React.FC = () => {
                 // Verificar que el rol sea de profesor
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
 
-                    // Si es admin, guardar datos en localStorage del AuthContext con keys ambientales
+                    // Si es admin, guardar datos para acceso cross-origin (localStorage + cookies)
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, guardando en AuthContext...');
                         const adminUser = {
@@ -80,8 +80,17 @@ const ProfessorLoginPage: React.FC = () => {
                             lastName: respLastName,
                             role: 'ADMIN',
                         };
+
+                        // Save to localStorage with environment-aware key
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(adminUser));
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), response.token);
+
+                        // Also save to cookies for cross-origin access (port 5204 to 5206)
+                        // Use a 7-day expiration and path=/
+                        const expirationDate = new Date();
+                        expirationDate.setDate(expirationDate.getDate() + 7);
+                        document.cookie = `auth_user=${encodeURIComponent(JSON.stringify(adminUser))}; path=/; expires=${expirationDate.toUTCString()}`;
+                        document.cookie = `auth_token=${encodeURIComponent(response.token)}; path=/; expires=${expirationDate.toUTCString()}`;
                     }
 
                     // Guardar información del profesor en localStorage para compatibilidad
@@ -107,7 +116,8 @@ const ProfessorLoginPage: React.FC = () => {
                     // Redirigir según el rol del usuario
                     if (respRole === 'ADMIN') {
                         console.log('Usuario admin detectado, redirigiendo al panel de administración...');
-                        window.location.href = '/#/admin';
+                        // Save auth data before redirecting across origins (localhost:5204 -> localhost:5206)
+                        window.location.href = microfrontendUrls.adminDashboard;
                     } else {
                         console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
                         window.location.href = microfrontendUrls.professorDashboard;

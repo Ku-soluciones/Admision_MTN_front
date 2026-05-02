@@ -91,16 +91,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const tryRestoreFromStorage = () => {
             try {
-                console.log('[AuthContext] Attempting to restore from localStorage');
-                // Try to restore from localStorage with environment-aware key
-                const cached =
+                console.log('[AuthContext] Attempting to restore from storage');
+
+                // Try localStorage first (environment-aware key)
+                let cached =
                     localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
                     localStorage.getItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+
+                // If not found in localStorage, try cookies (for cross-origin redirects)
+                if (!cached) {
+                    console.log('[AuthContext] Not in localStorage, checking cookies...');
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('auth_user='))
+                        ?.split('=')[1];
+
+                    if (cookieValue) {
+                        cached = decodeURIComponent(cookieValue);
+                        console.log('[AuthContext] Found user in cookies');
+                    }
+                }
 
                 console.log('[AuthContext] Cached user data:', cached ? 'found' : 'not found');
                 if (cached) {
                     const userData = JSON.parse(cached);
-                    console.log('[AuthContext] Restoring user from localStorage:', userData);
+                    console.log('[AuthContext] Restoring user from storage:', userData);
                     setUser(userData);
                     setIsLoading(false);
                     return true;
