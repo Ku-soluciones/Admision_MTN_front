@@ -84,7 +84,7 @@ const ApplicationForm: React.FC = () => {
     const [isVerifying, setIsVerifying] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
     const [verificationError, setVerificationError] = useState('');
-    const [showAuthForm, setShowAuthForm] = useState(true);
+    const [showAuthForm, setShowAuthForm] = useState(false); // TEMP: Deshabilitado para desarrollo
     const [showRegister, setShowRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
@@ -2330,7 +2330,8 @@ const ApplicationForm: React.FC = () => {
     };
 
     // Si no está autenticado, mostrar formulario de autenticación
-    if (showAuthForm || !isAuthenticated) {
+    // TEMP: Deshabilitado !isAuthenticated para desarrollo - permitir acceso directo
+    if (showAuthForm) {
         return renderAuthForm();
     }
 
@@ -2345,10 +2346,12 @@ const ApplicationForm: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <p className="text-sm text-gris-piedra">Apoderado:</p>
-                        <p className="font-semibold text-azul-monte-tabor">{user?.firstName} {user?.lastName}</p>
-                        <Link to="/dashboard-apoderado" className="text-sm text-azul-monte-tabor hover:underline">
-                            Ver mi dashboard →
-                        </Link>
+                        <p className="font-semibold text-azul-monte-tabor">{user?.firstName || 'Usuario Prueba'} {user?.lastName || 'Development'}</p>
+                        {user && (
+                            <Link to="/dashboard-apoderado" className="text-sm text-azul-monte-tabor hover:underline">
+                                Ver mi dashboard →
+                            </Link>
+                        )}
                     </div>
                 </div>
 
