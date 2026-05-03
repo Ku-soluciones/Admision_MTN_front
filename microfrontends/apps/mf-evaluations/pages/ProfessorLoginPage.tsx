@@ -7,7 +7,7 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -68,7 +68,7 @@ const ProfessorLoginPage: React.FC = () => {
                 // Verificar que el rol sea de profesor (ADMIN excluido: tiene su propio portal)
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
 
-                    // Guardar información del profesor en localStorage para compatibilidad
+                    clearAllSessions();
                     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify({
                         id: respId,
                         firstName: respFirstName,
