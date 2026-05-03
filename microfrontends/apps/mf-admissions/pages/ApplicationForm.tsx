@@ -2370,21 +2370,43 @@ const ApplicationForm: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar con Círculos */}
                 <div className="mb-8 sm:mb-10">
-                    <div className="hidden sm:flex justify-between mb-2">
+                    {/* Desktop View */}
+                    <div className="hidden sm:flex justify-between items-center gap-2 mb-8">
                         {steps.map((step, index) => (
-                             <div key={index} className={`text-center w-1/4 text-sm ${index <= currentStep ? 'text-azul-monte-tabor font-bold' : 'text-gris-piedra'}`}>
-                                {step}
+                            <div key={index} className="flex flex-col items-center flex-1">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                                    index < currentStep
+                                        ? 'bg-verde-esperanza text-white'
+                                        : index === currentStep
+                                        ? 'bg-dorado-nazaret text-azul-monte-tabor border-2 border-dorado-nazaret'
+                                        : 'bg-gray-300 text-white'
+                                }`}>
+                                    {index + 1}
+                                </div>
+                                {index < steps.length - 1 && (
+                                    <div className={`h-0.5 w-full mt-3 transition-all duration-300 ${
+                                        index < currentStep ? 'bg-verde-esperanza' : 'bg-gray-300'
+                                    }`}></div>
+                                )}
                             </div>
                         ))}
                     </div>
-                    <div className="sm:hidden flex justify-between mb-2 text-xs">
-                        <span className={currentStep > 0 ? 'text-azul-monte-tabor font-bold' : 'text-gris-piedra'}>Paso {currentStep + 1}/{steps.length}</span>
-                        <span className="font-semibold text-azul-monte-tabor">{steps[currentStep]}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-dorado-nazaret h-2.5 rounded-full" style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}></div>
+
+                    {/* Mobile View */}
+                    <div className="sm:hidden text-center mb-6">
+                        <div className="inline-flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
+                                currentStep === 0
+                                    ? 'bg-dorado-nazaret text-azul-monte-tabor border-2 border-dorado-nazaret'
+                                    : 'bg-verde-esperanza text-white'
+                            }`}>
+                                {currentStep + 1}
+                            </div>
+                            <span className="text-sm text-gris-piedra">de {steps.length}</span>
+                        </div>
+                        <p className="text-xs text-gris-piedra mt-3">Paso {currentStep + 1}</p>
                     </div>
                 </div>
 
