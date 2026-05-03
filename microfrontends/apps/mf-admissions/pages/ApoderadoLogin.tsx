@@ -49,7 +49,7 @@ const ApoderadoLogin: React.FC = () => {
         }
 
         try {
-            await login(email, password, 'apoderado');
+            await login(email, password, 'APODERADO');
 
             // Verificar que el rol sea APODERADO
             const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
@@ -99,7 +99,7 @@ const ApoderadoLogin: React.FC = () => {
         }
 
         try {
-            await register(registerData, 'apoderado');
+            await register(registerData, 'APODERADO');
             // Para usuarios nuevos registrados, redirigir al formulario de postulación
             // no al dashboard directamente
             navigate('/postulacion');
