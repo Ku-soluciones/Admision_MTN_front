@@ -119,6 +119,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 console.log('[AuthContext] Cached user data:', cached ? 'found' : 'not found');
                 if (cached) {
                     const userData = JSON.parse(cached);
+                    if (userData?.role !== 'ADMIN') {
+                        console.log('[AuthContext] Cached user is not ADMIN, clearing session');
+                        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                        localStorage.removeItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+                        document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                        return false;
+                    }
                     console.log('[AuthContext] Restoring user from storage:', userData);
                     setUser(userData);
                     setIsLoading(false);
@@ -171,9 +178,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     if (cached) {
                         try {
-                            setUser(JSON.parse(cached));
-                            setIsLoading(false);
-                            return;
+                            const cachedUser = JSON.parse(cached);
+                            if (cachedUser?.role !== 'ADMIN') {
+                                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                            } else {
+                                setUser(cachedUser);
+                                setIsLoading(false);
+                                return;
+                            }
                         } catch {
                             localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                         }
@@ -183,9 +195,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
-                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
-                        setAdminCompat(userData, idToken, response.data.user?.subject);
-                        setUser(userData);
+                        if (userData.role === 'ADMIN') {
+                            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
+                            setAdminCompat(userData, idToken, response.data.user?.subject);
+                            setUser(userData);
+                        } else {
+                            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                        }
                     }
                 } catch {
                     // BFF call failed — clear state
@@ -194,16 +210,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(null);
                 }
             } else {
-                // No Firebase user — but don't clear if user is already authenticated from another source
-                // (e.g., from cookies set by non-Firebase auth like professorAuthService)
-                if (!user) {
-                    console.log('[AuthContext] No Firebase user and no local user, clearing auth state');
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
-                    setUser(null);
-                } else {
-                    console.log('[AuthContext] No Firebase user, but user authenticated from other source. Keeping session.');
-                }
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                setUser(null);
             }
             setIsLoading(false);
         });
@@ -218,6 +227,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const u = response.user;
             if (response.success && u) {
                 const userData = buildUserFromBff(u);
+
+                if (userData.role !== 'ADMIN') {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    throw new Error('Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.');
+                }
+
                 setAdminCompat(userData, response.token ?? '', u?.subject);
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                 setUser(userData);

@@ -39,7 +39,7 @@ class ProfessorAuthService {
 
             // Send credentials directly over HTTPS (no RSA encryption)
             console.log('[Professor Auth] Sending credentials over HTTPS');
-            const response = await api.post('/v1/auth/login', request);
+            const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
             const data = response.data;
 
             console.log('Login exitoso para profesor:', data);
@@ -64,8 +64,10 @@ class ProfessorAuthService {
             
             if (error.response?.status === 401) {
                 throw new Error('Credenciales inválidas');
+            } else if (error.response?.status === 403) {
+                throw new Error(error.response?.data?.error?.message || 'Su cuenta no tiene acceso al portal de profesores. Use el portal correspondiente a su rol.');
             } else if (error.response?.status === 400) {
-                throw new Error('Datos de login inválidos');
+                throw new Error(error.response?.data?.error?.message || 'Datos de login inválidos');
             } else if (error.response?.status === 500) {
                 throw new Error('Error del servidor');
             }
@@ -119,9 +121,6 @@ class ProfessorAuthService {
     // Método para verificar si el usuario es un profesor válido
     isProfessorRole(role: string): boolean {
         const professorRoles = [
-            // Administración
-            'ADMIN',
-
             // Roles del backend (actuales)
             'TEACHER',
             'COORDINATOR',

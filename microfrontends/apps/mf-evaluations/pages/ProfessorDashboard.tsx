@@ -37,6 +37,8 @@ import {
 import { interviewService } from '../services/interviewService';
 import { UserRole, USER_ROLE_LABELS } from '../types/user';
 import api from '../services/api';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const baseSections = [
     { key: 'dashboard', label: 'Dashboard General', icon: DashboardIcon },
@@ -50,9 +52,10 @@ const baseSections = [
 const ProfessorDashboard: React.FC = () => {
     const navigate = useNavigate();
 
-    // Obtener profesor actual del localStorage
+    // Obtener profesor actual del localStorage (con namespace de entorno)
     const [currentProfessor, setCurrentProfessor] = useState(() => {
-        const storedProfessor = localStorage.getItem('currentProfessor');
+        const key = getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR);
+        const storedProfessor = localStorage.getItem(key) || localStorage.getItem('currentProfessor');
         const parsed = storedProfessor ? JSON.parse(storedProfessor) : null;
         return parsed;
     });
@@ -151,7 +154,7 @@ const ProfessorDashboard: React.FC = () => {
                         email: professorData.email,
                         role: professorData.role
                     };
-                    localStorage.setItem('currentProfessor', JSON.stringify(updatedProfessor));
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(updatedProfessor));
                     setCurrentProfessor(updatedProfessor);
                 } else if (!professorData) {
                     console.warn('getCurrentProfessor() retornó null');
@@ -177,26 +180,34 @@ const ProfessorDashboard: React.FC = () => {
         let abortController = new AbortController();
 
         const loadEvaluations = async () => {
-            if (!currentProfessor) {
-                return;
-            }
-
             try {
                 if (isMounted) setIsLoading(true);
+
+                // Fetch fresh professor data to guarantee correct ID regardless of localStorage state
+                const freshProfessor = await professorAuthService.getCurrentProfessor();
+                if (!freshProfessor) {
+                    console.warn('No se pudo obtener el profesor actual');
+                    if (isMounted) setIsLoading(false);
+                    return;
+                }
+
+                if (isMounted && freshProfessor.id !== currentProfessorRef.current?.id) {
+                    const updated = { ...currentProfessorRef.current, ...freshProfessor };
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(updated));
+                    setCurrentProfessor(updated);
+                }
 
                 const [evaluationsData, statsData, interviewsData] = await Promise.all([
                     professorEvaluationService.getMyEvaluations(),
                     professorEvaluationService.getMyEvaluationStats(),
-                    interviewService.getInterviewsByInterviewer(currentProfessor.id)
+                    interviewService.getInterviewsByInterviewer(freshProfessor.id)
                 ]);
 
                 if (isMounted) {
                     setEvaluations(evaluationsData);
                     setEvaluationStats(statsData);
                     setInterviews(interviewsData);
-                    console.log('Loaded interviews for professor:', interviewsData.length);
-                    console.log('Professor ID:', currentProfessor.id);
-                    console.log('Interview details:', interviewsData);
+                    console.log('Loaded interviews for professor:', interviewsData.length, 'id:', freshProfessor.id);
                 }
 
             } catch (error: any) {
@@ -243,8 +254,8 @@ const ProfessorDashboard: React.FC = () => {
     }, [currentProfessor?.id]);
 
     const handleLogout = () => {
-        localStorage.removeItem('currentProfessor');
-        navigate('/profesor/login');
+        professorAuthService.logout();
+        window.location.href = microfrontendUrls.home;
     };
 
     // Determinar si mostrar sección de administrador
@@ -1591,23 +1602,13 @@ const ProfessorDashboard: React.FC = () => {
                     );
                 })}
             </nav>
-            <div className="mt-8 pt-8 border-t border-blue-700 space-y-2">
-                <Link to="/" onClick={() => onNavigate?.()}>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-blanco-pureza border-blanco-pureza hover:bg-blanco-pureza hover:text-azul-monte-tabor"
-                        ariaLabel="Volver al portal principal del sistema"
-                    >
-                        Volver al Portal Principal
-                    </Button>
-                </Link>
+            <div className="mt-8 pt-8 border-t border-blue-700">
                 <Button
                     variant="outline"
                     size="sm"
                     className="w-full text-blanco-pureza border-blanco-pureza hover:bg-red-500 hover:text-blanco-pureza"
                     onClick={handleLogout}
-                    ariaLabel="Cerrar sesión y salir del portal de profesores"
+                    ariaLabel="Cerrar sesión y volver al portal principal"
                 >
                     Cerrar Sesión
                 </Button>

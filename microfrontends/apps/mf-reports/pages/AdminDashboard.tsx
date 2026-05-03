@@ -61,6 +61,7 @@ import CoordinatorDashboardModal from '../components/modals/CoordinatorDashboard
 import { useAuth } from '../context/AuthContext';
 import ApplicationsTable from '../components/admin/ApplicationsTable';
 import SimpleToast from '../components/ui/SimpleToast';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 import AdminDataTables from '../components/admin/AdminDataTables';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
@@ -80,7 +81,7 @@ const sections = [
 ];
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -892,8 +893,8 @@ Esta acción:
         <Button
           variant="primary"
           className="w-full bg-azul-monte-tabor hover:bg-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-md hover:shadow-lg"
-          onClick={() => logout()}
-          ariaLabel="Cerrar sesión y salir del panel de administración"
+          onClick={() => { logout(); window.location.href = microfrontendUrls.home; }}
+          ariaLabel="Cerrar sesión y volver al portal principal"
         >
           Cerrar Sesión
         </Button>

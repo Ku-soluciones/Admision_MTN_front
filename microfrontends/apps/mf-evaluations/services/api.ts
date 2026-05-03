@@ -56,18 +56,25 @@ api.interceptors.request.use(
 
         // Add auth token if not a public route
         if (!isPublic) {
-            const currentUser = auth.currentUser;
-            if (currentUser) {
-                try {
-                    const idToken = await currentUser.getIdToken();
-                    config.headers.Authorization = `Bearer ${idToken}`;
-                } catch {
+            // PROFESSOR_TOKEN takes priority: professor portal uses BFF login (not Firebase),
+            // so auth.currentUser may hold a stale session from a different user.
+            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            if (professorToken) {
+                config.headers.Authorization = `Bearer ${professorToken}`;
+            } else {
+                const currentUser = auth.currentUser;
+                if (currentUser) {
+                    try {
+                        const idToken = await currentUser.getIdToken();
+                        config.headers.Authorization = `Bearer ${idToken}`;
+                    } catch {
+                        const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                        if (token) config.headers.Authorization = `Bearer ${token}`;
+                    }
+                } else {
                     const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                     if (token) config.headers.Authorization = `Bearer ${token}`;
                 }
-            } else {
-                const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) || localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-                if (token) config.headers.Authorization = `Bearer ${token}`;
             }
         }
 

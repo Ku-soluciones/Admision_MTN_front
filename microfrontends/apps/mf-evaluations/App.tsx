@@ -28,13 +28,14 @@ function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
   const isLoginPage = location.pathname === '/profesor/login';
+  const isDashboard = !isLoginPage && location.pathname !== '/';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            {!isLoginPage && <Header />}
+            {!isLoginPage && !isDashboard && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>

@@ -100,8 +100,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: 2025`);
-      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
+      const currentYear = new Date().getFullYear();
+      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: ${currentYear}`);
+      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, currentYear);
       console.log(`[WeeklyCalendar] Horarios recibidos del backend:`, schedules);
       console.log(`[WeeklyCalendar] Total de horarios: ${schedules.length}`);
 
