@@ -166,6 +166,34 @@ export function resolveSession(storage: Pick<Storage, 'getItem'> = window.localS
   }
 }
 
+/**
+ * Limpia TODAS las claves de sesión conocidas del localStorage.
+ * Llamar antes de cualquier login para evitar cruce de sesiones entre roles.
+ */
+export function clearAllSessions(storage: Pick<Storage, 'removeItem'> = window.localStorage): void {
+  const baseKeys = [
+    BASE_STORAGE_KEYS.AUTH_TOKEN,
+    BASE_STORAGE_KEYS.PROFESSOR_TOKEN,
+    BASE_STORAGE_KEYS.APODERADO_TOKEN,
+    BASE_STORAGE_KEYS.AUTHENTICATED_USER,
+    BASE_STORAGE_KEYS.PROFESSOR_USER,
+    BASE_STORAGE_KEYS.CURRENT_PROFESSOR,
+    BASE_STORAGE_KEYS.APODERADO_USER,
+  ];
+  const envs = ['development', 'staging', 'sta', 'production', 'dev', 'qa', 'uat', 'test'];
+  for (const key of baseKeys) {
+    storage.removeItem(key);
+    for (const env of envs) {
+      storage.removeItem(`${key}__${env}`);
+    }
+  }
+  // Legacy plain keys
+  storage.removeItem('currentProfessor');
+  storage.removeItem('currentUser');
+  storage.removeItem('currentApoderado');
+  storage.removeItem('mtn_auth_state');
+}
+
 export function buildAuthHeaders(storage: Pick<Storage, 'getItem'> = window.localStorage): HeadersInit {
   const token = resolveAccessToken(storage);
   if (!token) {

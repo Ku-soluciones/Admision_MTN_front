@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email: string, password: string, _role: string) => {
+    const login = async (email: string, password: string, portalRole: string) => {
         setIsLoading(true);
         try {
             const response = await authService.login({ email, password });
@@ -141,6 +141,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const u = response.user;
             if (response.success && u) {
                 const userData = buildUserFromBff(u);
+                const expectedRole = portalRole.toUpperCase();
+
+                if (expectedRole === 'ADMIN' && userData.role !== 'ADMIN') {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    throw new Error('Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.');
+                }
+
+                if (expectedRole === 'APODERADO' && userData.role !== 'APODERADO') {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    throw new Error('Esta cuenta no corresponde a un apoderado. Use el portal de profesores o administración.');
+                }
+
                 setAdminCompat(userData, response.token ?? '', u?.subject);
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                 setUser(userData);

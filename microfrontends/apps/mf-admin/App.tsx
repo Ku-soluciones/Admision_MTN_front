@@ -24,14 +24,20 @@ const LoadingFallback = () => (
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname === '/profesor' || location.pathname === '/apoderado/login';
+  const hideHeader = location.pathname === '/login'
+    || location.pathname === '/admin/login'
+    || location.pathname === '/profesor'
+    || location.pathname === '/apoderado/login'
+    || location.pathname === '/admin'
+    || location.pathname.startsWith('/admin/')
+    || location.pathname === '/familia';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800 font-sans">
-            {!isLoginPage && <Header />}
+            {!hideHeader && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>

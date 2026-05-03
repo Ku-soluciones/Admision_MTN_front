@@ -37,6 +37,7 @@ import {
 import { interviewService } from '../services/interviewService';
 import { UserRole, USER_ROLE_LABELS } from '../types/user';
 import api from '../services/api';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 const baseSections = [
     { key: 'dashboard', label: 'Dashboard General', icon: DashboardIcon },
@@ -243,8 +244,8 @@ const ProfessorDashboard: React.FC = () => {
     }, [currentProfessor?.id]);
 
     const handleLogout = () => {
-        localStorage.removeItem('currentProfessor');
-        navigate('/profesor/login');
+        professorAuthService.logout();
+        window.location.href = microfrontendUrls.home;
     };
 
     // Determinar si mostrar sección de administrador
@@ -1591,23 +1592,13 @@ const ProfessorDashboard: React.FC = () => {
                     );
                 })}
             </nav>
-            <div className="mt-8 pt-8 border-t border-blue-700 space-y-2">
-                <Link to="/" onClick={() => onNavigate?.()}>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-blanco-pureza border-blanco-pureza hover:bg-blanco-pureza hover:text-azul-monte-tabor"
-                        ariaLabel="Volver al portal principal del sistema"
-                    >
-                        Volver al Portal Principal
-                    </Button>
-                </Link>
+            <div className="mt-8 pt-8 border-t border-blue-700">
                 <Button
                     variant="outline"
                     size="sm"
                     className="w-full text-blanco-pureza border-blanco-pureza hover:bg-red-500 hover:text-blanco-pureza"
                     onClick={handleLogout}
-                    ariaLabel="Cerrar sesión y salir del portal de profesores"
+                    ariaLabel="Cerrar sesión y volver al portal principal"
                 >
                     Cerrar Sesión
                 </Button>

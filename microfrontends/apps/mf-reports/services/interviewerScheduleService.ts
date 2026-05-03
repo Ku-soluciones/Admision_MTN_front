@@ -191,10 +191,7 @@ export class InterviewerScheduleService {
      */
     async getInterviewerSchedulesByYear(interviewerId: number, year: number): Promise<InterviewerSchedule[]> {
         try {
-            const response = await axios.get(`${this.baseURL}/interviewer/${interviewerId}/year/${year}`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/interviewer/${interviewerId}/year/${year}`);
         } catch (error) {
             console.error('Error fetching schedules by year:', error);
             throw new Error(axios.isAxiosError(error) ? 
