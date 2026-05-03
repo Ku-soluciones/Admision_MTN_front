@@ -499,34 +499,24 @@ class InterviewService {
 
   async getInterviewsByInterviewer(interviewerId: number): Promise<Interview[]> {
     try {
-      // Add cache-busting headers and timestamp to force fresh data
       const timestamp = Date.now();
-      console.log(`[getInterviewsByInterviewer] Fetching with timestamp: ${timestamp} for interviewer ${interviewerId}`);
+      console.log(`[getInterviewsByInterviewer] Fetching for interviewer ${interviewerId}`);
 
-      const response = await api.get<InterviewResponse[]>(
-        `${this.baseUrl}/interviewer/${interviewerId}?_t=${timestamp}`,
-        {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        }
+      const response = await api.get<any>(
+        `${this.baseUrl}/interviewer/${interviewerId}?_t=${timestamp}`
       );
 
-      // Verificar si la respuesta es del placeholder (microservicio no implementado)
-      if (response.data && typeof response.data === 'object' && 'error' in response.data) {
-        console.log('Interviews by interviewer service no implementado, devolviendo array vacío');
-        return [];
+      // Backend returns { success: true, data: [...], count: n }
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        console.log(`[getInterviewsByInterviewer] Received ${response.data.data.length} interviews`);
+        return response.data.data.map((item: any) => this.mapBackendResponse(item));
       }
 
-      // Verificar si es un array válido
+      // Fallback: bare array (legacy)
       if (Array.isArray(response.data)) {
-        console.log(`[getInterviewsByInterviewer] Received ${response.data.length} interviews for interviewer ${interviewerId}`);
-        return response.data.map(item => this.mapInterviewResponse(item));
+        return response.data.map((item: any) => this.mapBackendResponse(item));
       }
 
-      console.log('Estructura de respuesta inesperada para interviews by interviewer');
       return [];
     } catch (error) {
       console.error('Error fetching interviews by interviewer:', error);

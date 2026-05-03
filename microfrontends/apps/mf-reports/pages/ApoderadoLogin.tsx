@@ -50,19 +50,6 @@ const ApoderadoLogin: React.FC = () => {
 
         try {
             await login(email, password, 'apoderado');
-
-            // Verificar que el rol sea APODERADO
-            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
-            if (storedUser && storedUser.role !== 'APODERADO') {
-                const msg = 'Esta cuenta no corresponde a un apoderado. Use el portal de profesores.';
-                setError(msg);
-                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
-                setIsLoading(false);
-                return;
-            }
-
             navigate(redirectTo);
         } catch (err: any) {
             const msg = err.message || 'Credenciales inválidas. Verifique su email y contraseña.';
