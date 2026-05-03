@@ -2408,6 +2408,24 @@ const ApplicationForm: React.FC = () => {
                         </div>
                         <p className="text-xs text-gris-piedra mt-3">Paso {currentStep + 1}</p>
                     </div>
+
+                    {/* Barra de Progreso */}
+                    <div className="w-full">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-medium text-azul-monte-tabor">
+                                {Math.round(((currentStep + 1) / steps.length) * 100)}%
+                            </span>
+                            <span className="text-xs text-gris-piedra">
+                                {currentStep + 1} de {steps.length}
+                            </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-dorado-nazaret to-verde-esperanza rounded-full transition-all duration-500"
+                                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
 
                 <Card className="p-4 sm:p-8 md:p-12">
