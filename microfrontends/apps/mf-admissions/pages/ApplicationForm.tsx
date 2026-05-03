@@ -17,12 +17,15 @@ import { documentService, DOCUMENT_TYPES } from '../services/documentService';
 import profileService from '../services/profileService';
 
 const steps = [
-  "Datos del Postulante",
-  "Datos de los Padres",
-  "Sostenedor",
-  "Apoderado",
-  "Documentación",
-  "Confirmación"
+  "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
+  "Lugar de Residencia",           // 1 - Dirección, Comuna, Ciudad
+  "Postulación",                   // 2 - Grado, Colegio, Preferencia
+  "Datos del Padre",               // 3
+  "Datos de la Madre",             // 4
+  "Sostenedor",                    // 5
+  "Apoderado",                     // 6
+  "Documentación",                 // 7
+  "Confirmación"                   // 8
 ];
 
 const gradeOptions = educationalLevels.map(level => ({
@@ -678,124 +681,109 @@ const ApplicationForm: React.FC = () => {
     }, [data.parent1Name, data.parent1Email, data.parent1Phone, data.parent1Rut, data.parent2Name, data.parent2Email, data.parent2Phone, data.parent2Rut, updateField]);
 
     const validateCurrentStep = useCallback((): boolean => {
-        // Email validation helper
         const isValidEmail = (email: string): boolean => {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return emailRegex.test(email);
         };
 
-        // Phone validation helper
         const isValidPhone = (phone: string): boolean => {
             const phoneRegex = /^[+]?[\d\s-]{8,}$/;
             return phoneRegex.test(phone);
         };
 
-        // Validation by step
         switch (currentStep) {
+            // Step 0: Información del Postulante
             case 0:
-                console.log('Validating Step 0 with data:', data);
-
-                // Validate postulant data
                 if (!data.firstName?.trim() || !data.paternalLastName?.trim() || !data.maternalLastName?.trim() ||
-                    !data.rut?.trim() || !data.birthDate || !data.grade || !data.schoolApplied ||
-                    !data.studentAddressStreet?.trim() || !data.studentAddressNumber?.trim() || !data.studentAddressCommune?.trim() ||
-                    !data.admissionPreference) {
-                    console.log('Basic fields validation failed');
-                    console.log('firstName:', data.firstName);
-                    console.log('paternalLastName:', data.paternalLastName);
-                    console.log('maternalLastName:', data.maternalLastName);
-                    console.log('rut:', data.rut);
-                    console.log('birthDate:', data.birthDate);
-                    console.log('grade:', data.grade);
-                    console.log('schoolApplied:', data.schoolApplied);
-                    console.log('studentAddressStreet:', data.studentAddressStreet);
-                    console.log('studentAddressNumber:', data.studentAddressNumber);
-                    console.log('studentAddressCommune:', data.studentAddressCommune);
-                    console.log('admissionPreference:', data.admissionPreference);
+                    !data.rut?.trim() || !data.birthDate) {
                     return false;
                 }
-
-                // Validate location fields
-                const pais = data.pais || 'Chile';
-                if (pais === 'Chile') {
-                    if (!data.region?.trim() || !data.comuna?.trim()) {
-                        console.log('Location validation failed - region:', data.region, 'comuna:', data.comuna);
+                // Validate birth date coherence with grade
+                if (data.grade) {
+                    const birthDateValidation = validateBirthDateForGrade(data.birthDate, data.grade);
+                    if (!birthDateValidation.valid) {
                         return false;
                     }
                 }
-
-                // Validate application year (must be current year + 1)
-                const currentYear = new Date().getFullYear();
-                const applicationYear = parseInt(data.applicationYear);
-                if (!data.applicationYear || applicationYear !== currentYear + 1) {
-                    console.log('Application year validation failed - expected:', currentYear + 1, 'got:', applicationYear);
-                    return false;
-                }
-
-                // Validate birth date coherence with grade
-                const birthDateValidation = validateBirthDateForGrade(data.birthDate, data.grade);
-                if (!birthDateValidation.valid) {
-                    console.log('Birth date validation failed:', birthDateValidation.message);
-                    return false;
-                }
-
-                // Check for school if required
-                if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
-                    console.log('Current school validation failed - currentSchool:', data.currentSchool);
-                    return false;
-                }
-
                 // Validate optional email if provided
                 if (data.studentEmail && !isValidEmail(data.studentEmail)) {
-                    console.log('Email validation failed:', data.studentEmail);
                     return false;
                 }
-
-                console.log('Step 0 validation passed!');
                 return true;
-                
+
+            // Step 1: Lugar de Residencia
             case 1:
-                // Validate both parents data
+                if (!data.studentAddressStreet?.trim() || !data.studentAddressNumber?.trim() || !data.studentAddressCommune?.trim()) {
+                    return false;
+                }
+                const pais = data.pais || 'Chile';
+                if (pais === 'Chile' && !data.region?.trim()) {
+                    return false;
+                }
+                return true;
+
+            // Step 2: Postulación
+            case 2:
+                if (!data.grade || !data.schoolApplied || !data.applicationYear || !data.admissionPreference) {
+                    return false;
+                }
+                if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
+                    return false;
+                }
+                return true;
+
+            // Step 3: Datos del Padre
+            case 3:
                 if (!data.parent1Name?.trim() || !data.parent1Email?.trim() || !data.parent1Phone?.trim() ||
-                    !data.parent1Rut?.trim() || !data.parent1Address?.trim() || !data.parent1Profession?.trim() ||
-                    !data.parent2Name?.trim() || !data.parent2Email?.trim() || !data.parent2Phone?.trim() ||
+                    !data.parent1Rut?.trim() || !data.parent1Address?.trim() || !data.parent1Profession?.trim()) {
+                    return false;
+                }
+                if (!isValidEmail(data.parent1Email || '') || !isValidPhone(data.parent1Phone || '')) {
+                    return false;
+                }
+                return true;
+
+            // Step 4: Datos de la Madre
+            case 4:
+                if (!data.parent2Name?.trim() || !data.parent2Email?.trim() || !data.parent2Phone?.trim() ||
                     !data.parent2Rut?.trim() || !data.parent2Address?.trim() || !data.parent2Profession?.trim()) {
                     return false;
                 }
-                // Validate email formats
-                if (!isValidEmail(data.parent1Email || '') || !isValidEmail(data.parent2Email || '')) {
-                    return false;
-                }
-                // Validate phone formats
-                if (!isValidPhone(data.parent1Phone || '') || !isValidPhone(data.parent2Phone || '')) {
+                if (!isValidEmail(data.parent2Email || '') || !isValidPhone(data.parent2Phone || '')) {
                     return false;
                 }
                 return true;
-                
-            case 2:
-                // Validate supporter data
+
+            // Step 5: Sostenedor
+            case 5:
                 if (!data.supporterName?.trim() || !data.supporterEmail?.trim() || !data.supporterPhone?.trim() ||
                     !data.supporterRut?.trim() || !data.supporterRelation) {
                     return false;
                 }
-                // Validate email and phone formats
                 if (!isValidEmail(data.supporterEmail || '') || !isValidPhone(data.supporterPhone || '')) {
                     return false;
                 }
                 return true;
-                
-            case 3:
-                // Validate guardian data
+
+            // Step 6: Apoderado
+            case 6:
                 if (!data.guardianName?.trim() || !data.guardianEmail?.trim() || !data.guardianPhone?.trim() ||
                     !data.guardianRut?.trim() || !data.guardianRelation) {
                     return false;
                 }
-                // Validate email and phone formats
                 if (!isValidEmail(data.guardianEmail || '') || !isValidPhone(data.guardianPhone || '')) {
                     return false;
                 }
                 return true;
-                
+
+            // Step 7: Documentación (opcional)
+            case 7:
+                return true;
+
+            // Step 8: Confirmación
+            case 8:
+                return true;
+
             default:
                 return true;
         }
@@ -815,16 +803,10 @@ const ApplicationForm: React.FC = () => {
 
     const nextStep = async () => {
         if (validateCurrentStep()) {
-            // When adding another child, skip steps 1, 2, 3 (family data)
-            // Jump from step 0 (student data) directly to step 4 (documents)
             let nextStepIndex = currentStep + 1;
-            if (isAddingAnotherChild && currentStep === 0) {
-                nextStepIndex = 4; // Skip to documents step
-                console.log('Adding another child - skipping family data steps (1,2,3), going directly to step 4 (documents)');
-            }
 
-            // Si es el último paso (documentos), enviar la postulación
-            if (currentStep === 4) {
+            // Si es el paso de documentación (step 7), enviar la postulación
+            if (currentStep === 7) {
                 setIsSubmitting(true);
                 try {
                     // Determinar si estamos en modo edición o creación
@@ -1093,65 +1075,85 @@ const ApplicationForm: React.FC = () => {
     // Helper function to get missing fields for current step
     const getMissingFields = useMemo((): string[] => {
         const missing: string[] = [];
-        
+
         switch (currentStep) {
+            // Step 0: Información del Postulante
             case 0:
                 if (!data.firstName?.trim()) missing.push('Nombres');
                 if (!data.paternalLastName?.trim()) missing.push('Apellido Paterno');
                 if (!data.maternalLastName?.trim()) missing.push('Apellido Materno');
                 if (!data.rut?.trim()) missing.push('RUT');
                 if (!data.birthDate) missing.push('Fecha de Nacimiento');
-                if (!data.grade) missing.push('Nivel al que postula');
-                if (!data.schoolApplied) missing.push('Colegio');
-                if (!data.admissionPreference) missing.push('Preferencia de Admisión');
-                if (!data.studentAddress?.trim()) missing.push('Dirección');
-
-                // Validate location fields
-                const paisValidation = data.pais || 'Chile';
-                if (paisValidation === 'Chile') {
-                    if (!data.region?.trim()) missing.push('Región');
-                    if (!data.comuna?.trim()) missing.push('Comuna');
-                }
-
-                // Validate application year
-                const currentYear = new Date().getFullYear();
-                const applicationYear = parseInt(data.applicationYear);
-                if (!data.applicationYear || applicationYear !== currentYear + 1) {
-                    missing.push('Año al que postula');
-                }
-
-                if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) missing.push('Colegio de Procedencia');
                 break;
+
+            // Step 1: Lugar de Residencia
             case 1:
-                if (!data.parent1Name?.trim()) missing.push('Nombre del Tutor 1');
-                if (!data.parent1Email?.trim()) missing.push('Email del Tutor 1');
-                if (!data.parent1Phone?.trim()) missing.push('Teléfono del Tutor 1');
-                if (!data.parent1Rut?.trim()) missing.push('RUT del Tutor 1');
-                if (!data.parent1Address?.trim()) missing.push('Dirección del Tutor 1');
-                if (!data.parent1Profession?.trim()) missing.push('Profesión del Tutor 1');
-                if (!data.parent2Name?.trim()) missing.push('Nombre del Tutor 2');
-                if (!data.parent2Email?.trim()) missing.push('Email del Tutor 2');
-                if (!data.parent2Phone?.trim()) missing.push('Teléfono del Tutor 2');
-                if (!data.parent2Rut?.trim()) missing.push('RUT del Tutor 2');
-                if (!data.parent2Address?.trim()) missing.push('Dirección del Tutor 2');
-                if (!data.parent2Profession?.trim()) missing.push('Profesión del Tutor 2');
+                if (!data.studentAddressStreet?.trim()) missing.push('Calle');
+                if (!data.studentAddressNumber?.trim()) missing.push('Número');
+                if (!data.studentAddressCommune?.trim()) missing.push('Comuna');
+                if (!data.pais && !data.pais) missing.push('País');
+                const pais = data.pais || 'Chile';
+                if (pais === 'Chile' && !data.region?.trim()) missing.push('Región');
                 break;
+
+            // Step 2: Postulación
             case 2:
-                if (!data.supporterRelation) missing.push('Parentesco del Sostenedor');
-                if (!data.supporterName?.trim()) missing.push('Nombre del Sostenedor');
-                if (!data.supporterEmail?.trim()) missing.push('Email del Sostenedor');
-                if (!data.supporterPhone?.trim()) missing.push('Teléfono del Sostenedor');
-                if (!data.supporterRut?.trim()) missing.push('RUT del Sostenedor');
+                if (!data.grade) missing.push('Nivel al que postula');
+                if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) missing.push('Colegio de Procedencia');
+                if (!data.schoolApplied) missing.push('Colegio al que postula');
+                if (!data.applicationYear) missing.push('Año al que postula');
+                if (!data.admissionPreference) missing.push('Tipo de Relación Familiar');
                 break;
+
+            // Step 3: Datos del Padre
             case 3:
-                if (!data.guardianRelation) missing.push('Parentesco del Apoderado');
-                if (!data.guardianName?.trim()) missing.push('Nombre del Apoderado');
-                if (!data.guardianEmail?.trim()) missing.push('Email del Apoderado');
-                if (!data.guardianPhone?.trim()) missing.push('Teléfono del Apoderado');
-                if (!data.guardianRut?.trim()) missing.push('RUT del Apoderado');
+                if (!data.parent1Name?.trim()) missing.push('Nombre');
+                if (!data.parent1Rut?.trim()) missing.push('RUT');
+                if (!data.parent1Email?.trim()) missing.push('Email');
+                if (!data.parent1Phone?.trim()) missing.push('Teléfono');
+                if (!data.parent1Address?.trim()) missing.push('Dirección');
+                if (!data.parent1Profession?.trim()) missing.push('Profesión');
+                break;
+
+            // Step 4: Datos de la Madre
+            case 4:
+                if (!data.parent2Name?.trim()) missing.push('Nombre');
+                if (!data.parent2Rut?.trim()) missing.push('RUT');
+                if (!data.parent2Email?.trim()) missing.push('Email');
+                if (!data.parent2Phone?.trim()) missing.push('Teléfono');
+                if (!data.parent2Address?.trim()) missing.push('Dirección');
+                if (!data.parent2Profession?.trim()) missing.push('Profesión');
+                break;
+
+            // Step 5: Sostenedor
+            case 5:
+                if (!data.supporterRelation) missing.push('Parentesco');
+                if (!data.supporterName?.trim()) missing.push('Nombre');
+                if (!data.supporterEmail?.trim()) missing.push('Email');
+                if (!data.supporterPhone?.trim()) missing.push('Teléfono');
+                if (!data.supporterRut?.trim()) missing.push('RUT');
+                break;
+
+            // Step 6: Apoderado
+            case 6:
+                if (!data.guardianRelation) missing.push('Parentesco');
+                if (!data.guardianName?.trim()) missing.push('Nombre');
+                if (!data.guardianEmail?.trim()) missing.push('Email');
+                if (!data.guardianPhone?.trim()) missing.push('Teléfono');
+                if (!data.guardianRut?.trim()) missing.push('RUT');
+                break;
+
+            // Step 7: Documentación (opcional)
+            case 7:
+                // No validation needed - documents are optional
+                break;
+
+            // Step 8: Confirmación (solo muestra info)
+            case 8:
+                // No validation needed
                 break;
         }
-        
+
         return missing;
     }, [data, currentStep, requiresCurrentSchool]);
 
@@ -1436,36 +1438,37 @@ const ApplicationForm: React.FC = () => {
 
     const renderStepContent = () => {
         switch (currentStep) {
+            // Step 0: Información del Postulante
             case 0:
                 return (
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Postulante</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Input 
-                                id="firstName" 
-                                label="Nombres" 
-                                placeholder="Juan Carlos" 
-                                isRequired 
+                            <Input
+                                id="firstName"
+                                label="Nombres"
+                                placeholder="Juan Carlos"
+                                isRequired
                                 value={data.firstName || ''}
                                 onChange={(e) => updateField('firstName', e.target.value)}
                                 onBlur={() => touchField('firstName')}
                                 error={errors.firstName}
                             />
-                            <Input 
-                                id="paternalLastName" 
-                                label="Apellido Paterno" 
-                                placeholder="Pérez" 
-                                isRequired 
+                            <Input
+                                id="paternalLastName"
+                                label="Apellido Paterno"
+                                placeholder="Pérez"
+                                isRequired
                                 value={data.paternalLastName || ''}
                                 onChange={(e) => updateField('paternalLastName', e.target.value)}
                                 onBlur={() => touchField('paternalLastName')}
                                 error={errors.paternalLastName}
                             />
-                            <Input 
-                                id="maternalLastName" 
-                                label="Apellido Materno" 
-                                placeholder="González" 
-                                isRequired 
+                            <Input
+                                id="maternalLastName"
+                                label="Apellido Materno"
+                                placeholder="González"
+                                isRequired
                                 value={data.maternalLastName || ''}
                                 onChange={(e) => updateField('maternalLastName', e.target.value)}
                                 onBlur={() => touchField('maternalLastName')}
@@ -1517,6 +1520,14 @@ const ApplicationForm: React.FC = () => {
                             onBlur={() => touchField('studentEmail')}
                             error={errors.studentEmail}
                         />
+                    </div>
+                );
+
+            // Step 1: Lugar de Residencia
+            case 1:
+                return (
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-bold text-azul-monte-tabor">Lugar de Residencia</h3>
 
                         {/* Dirección segmentada */}
                         <div className="space-y-4">
@@ -1530,7 +1541,6 @@ const ApplicationForm: React.FC = () => {
                                     value={data.studentAddressStreet || ''}
                                     onChange={(e) => {
                                         updateField('studentAddressStreet', e.target.value);
-                                        // Update combined address
                                         const combined = `${e.target.value || ''} ${data.studentAddressNumber || ''}, ${data.studentAddressCommune || ''}, ${data.studentAddressApartment || ''}`.trim();
                                         updateField('studentAddress', combined);
                                     }}
@@ -1544,7 +1554,6 @@ const ApplicationForm: React.FC = () => {
                                     value={data.studentAddressNumber || ''}
                                     onChange={(e) => {
                                         updateField('studentAddressNumber', e.target.value);
-                                        // Update combined address
                                         const combined = `${data.studentAddressStreet || ''} ${e.target.value || ''}, ${data.studentAddressCommune || ''}, ${data.studentAddressApartment || ''}`.trim();
                                         updateField('studentAddress', combined);
                                     }}
@@ -1558,9 +1567,7 @@ const ApplicationForm: React.FC = () => {
                                     value={data.studentAddressCommune || ''}
                                     onChange={(e) => {
                                         updateField('studentAddressCommune', e.target.value);
-                                        // Also update the comuna field for geographic location (synchronize)
                                         updateField('comuna', e.target.value);
-                                        // Update combined address
                                         const combined = `${data.studentAddressStreet || ''} ${data.studentAddressNumber || ''}, ${e.target.value || ''}, ${data.studentAddressApartment || ''}`.trim();
                                         updateField('studentAddress', combined);
                                     }}
@@ -1574,7 +1581,6 @@ const ApplicationForm: React.FC = () => {
                                 value={data.studentAddressApartment || ''}
                                 onChange={(e) => {
                                     updateField('studentAddressApartment', e.target.value);
-                                    // Update combined address
                                     const combined = `${data.studentAddressStreet || ''} ${data.studentAddressNumber || ''}, ${data.studentAddressCommune || ''}, ${e.target.value || ''}`.trim();
                                     updateField('studentAddress', combined);
                                 }}
@@ -1600,7 +1606,6 @@ const ApplicationForm: React.FC = () => {
                                 value={data.pais || 'Chile'}
                                 onChange={(e) => {
                                     updateField('pais', e.target.value);
-                                    // Clear region if not Chile (comuna is handled via address field)
                                     if (e.target.value !== 'Chile') {
                                         updateField('region', '');
                                     }
@@ -1609,7 +1614,6 @@ const ApplicationForm: React.FC = () => {
                                 error={errors.pais}
                             />
 
-                            {/* Conditional fields for Chile */}
                             {(data.pais === 'Chile' || !data.pais) && (
                                 <>
                                     <Select
@@ -1644,7 +1648,6 @@ const ApplicationForm: React.FC = () => {
                                 </>
                             )}
 
-                            {/* Information message for non-Chilean countries */}
                             {data.pais && data.pais !== 'Chile' && (
                                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                     <p className="text-sm text-blue-800">
@@ -1653,6 +1656,14 @@ const ApplicationForm: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
+                );
+
+            // Step 2: Postulación
+            case 2:
+                return (
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-bold text-azul-monte-tabor">Postulación</h3>
 
                         <Select
                             id="grade"
@@ -1665,7 +1676,6 @@ const ApplicationForm: React.FC = () => {
                             error={errors.grade}
                         />
 
-                        {/* Campo condicional para Colegio de Procedencia - MOVIDO DESPUÉS DEL NIVEL */}
                         {requiresCurrentSchool(data.grade || '') && (
                             <Input
                                 id="currentSchool"
@@ -1679,7 +1689,6 @@ const ApplicationForm: React.FC = () => {
                             />
                         )}
 
-                        {/* Mensaje informativo para niveles que no requieren colegio anterior */}
                         {!requiresCurrentSchool(data.grade || '') && data.grade && (
                             <div className="p-4 bg-blue-50 rounded-lg">
                                 <p className="text-sm text-blue-800">
@@ -1701,7 +1710,7 @@ const ApplicationForm: React.FC = () => {
                             onBlur={() => touchField('schoolApplied')}
                             error={errors.schoolApplied}
                         />
-                        
+
                         <Input
                             id="applicationYear"
                             label="Año al que postula"
@@ -1723,7 +1732,6 @@ const ApplicationForm: React.FC = () => {
                             helpText={`Las postulaciones son siempre para el año ${new Date().getFullYear() + 1}`}
                         />
 
-                        {/* Tipo de Relación Familiar / Preferencia de Admisión */}
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-gray-700">
                                 Tipo de Relación Familiar <span className="text-red-500">*</span>
@@ -1779,7 +1787,6 @@ const ApplicationForm: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Información adicional según preferencia seleccionada */}
                         {data.admissionPreference === 'HIJO_EX_ALUMNO' && (
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p className="text-sm text-blue-800">
@@ -1796,7 +1803,6 @@ const ApplicationForm: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Campo de observaciones adicionales */}
                         <div className="mt-4">
                             <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-2">
                                 Observaciones Adicionales (Opcional)
@@ -1815,177 +1821,183 @@ const ApplicationForm: React.FC = () => {
                         </div>
                     </div>
                 );
-            case 1:
+
+            // Step 3: Datos del Padre
+            case 3:
                 return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Información del Tutor 1</h3>
-                            {isLoadingProfile && (
-                                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                    <p className="text-sm text-azul-monte-tabor">
-                                        Cargando datos del perfil para completar automáticamente...
-                                    </p>
-                                </div>
-                            )}
-                            {!isLoadingProfile && userProfile && (
-                                <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                                    <p className="text-sm text-green-800">
-                                        Datos completados automáticamente desde su perfil. Puede editarlos si es necesario.
-                                    </p>
-                                </div>
-                            )}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input 
-                                    id="parent1-name" 
-                                    label="Nombre Completo" 
-                                    placeholder="María Elena González"
-                                    isRequired 
-                                    value={data.parent1Name || ''}
-                                    onChange={(e) => updateField('parent1Name', e.target.value)}
-                                    onBlur={() => touchField('parent1Name')}
-                                    error={errors.parent1Name}
-                                />
-                                <RutInput 
-                                    name="parent1-rut" 
-                                    label="RUT" 
-                                    placeholder="16.789.123-4"
-                                    required 
-                                    value={data.parent1Rut || ''}
-                                    onChange={(value) => updateField('parent1Rut', value)}
-                                    onBlur={() => touchField('parent1Rut')}
-                                    error={errors.parent1Rut}
-                                />
-                                <Input 
-                                    id="parent1-email" 
-                                    label="Email" 
-                                    type="email" 
-                                    placeholder="maria.gonzalez@ejemplo.com"
-                                    isRequired 
-                                    value={data.parent1Email || ''}
-                                    onChange={(e) => updateField('parent1Email', e.target.value)}
-                                    onBlur={() => touchField('parent1Email')}
-                                    error={errors.parent1Email}
-                                />
-                                <Input 
-                                    id="parent1-phone" 
-                                    label="Teléfono" 
-                                    type="tel" 
-                                    isRequired 
-                                    placeholder="+569 1234 5678"
-                                    value={data.parent1Phone || ''}
-                                    onChange={(e) => updateField('parent1Phone', e.target.value)}
-                                    onBlur={() => touchField('parent1Phone')}
-                                    error={errors.parent1Phone}
-                                />
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Datos del Padre</h3>
+                        {isLoadingProfile && (
+                            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                <p className="text-sm text-azul-monte-tabor">
+                                    Cargando datos del perfil para completar automáticamente...
+                                </p>
                             </div>
-                            <div className="mt-4">
-                                <Input 
-                                    id="parent1-address" 
-                                    label="Dirección" 
-                                    placeholder="Los Leones 456, Providencia, Santiago"
-                                    isRequired 
-                                    value={data.parent1Address || ''}
-                                    onChange={(e) => updateField('parent1Address', e.target.value)}
-                                    onBlur={() => touchField('parent1Address')}
-                                    error={errors.parent1Address}
-                                />
+                        )}
+                        {!isLoadingProfile && userProfile && (
+                            <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                                <p className="text-sm text-green-800">
+                                    Datos completados automáticamente desde su perfil. Puede editarlos si es necesario.
+                                </p>
                             </div>
-                            <div className="mt-4">
-                                <Input 
-                                    id="parent1-profession" 
-                                    label="Profesión" 
-                                    placeholder="Ingeniero Comercial"
-                                    isRequired 
-                                    value={data.parent1Profession || ''}
-                                    onChange={(e) => updateField('parent1Profession', e.target.value)}
-                                    onBlur={() => touchField('parent1Profession')}
-                                    error={errors.parent1Profession}
-                                />
-                            </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                id="parent1-name"
+                                label="Nombre Completo"
+                                placeholder="María Elena González"
+                                isRequired
+                                value={data.parent1Name || ''}
+                                onChange={(e) => updateField('parent1Name', e.target.value)}
+                                onBlur={() => touchField('parent1Name')}
+                                error={errors.parent1Name}
+                            />
+                            <RutInput
+                                name="parent1-rut"
+                                label="RUT"
+                                placeholder="16.789.123-4"
+                                required
+                                value={data.parent1Rut || ''}
+                                onChange={(value) => updateField('parent1Rut', value)}
+                                onBlur={() => touchField('parent1Rut')}
+                                error={errors.parent1Rut}
+                            />
+                            <Input
+                                id="parent1-email"
+                                label="Email"
+                                type="email"
+                                placeholder="maria.gonzalez@ejemplo.com"
+                                isRequired
+                                value={data.parent1Email || ''}
+                                onChange={(e) => updateField('parent1Email', e.target.value)}
+                                onBlur={() => touchField('parent1Email')}
+                                error={errors.parent1Email}
+                            />
+                            <Input
+                                id="parent1-phone"
+                                label="Teléfono"
+                                type="tel"
+                                isRequired
+                                placeholder="+569 1234 5678"
+                                value={data.parent1Phone || ''}
+                                onChange={(e) => updateField('parent1Phone', e.target.value)}
+                                onBlur={() => touchField('parent1Phone')}
+                                error={errors.parent1Phone}
+                            />
                         </div>
-                         <div>
-                            <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Información del Tutor 2</h3>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input 
-                                    id="parent2-name" 
-                                    label="Nombre Completo"
-                                    placeholder="María Elena González"
-                                    isRequired
-                                    value={data.parent2Name || ''}
-                                    onChange={(e) => updateField('parent2Name', e.target.value)}
-                                    onBlur={() => touchField('parent2Name')}
-                                    error={errors.parent2Name}
-                                />
-                                <RutInput 
-                                    name="parent2-rut" 
-                                    label="RUT"
-                                    placeholder="15.678.912-3"
-                                    required
-                                    value={data.parent2Rut || ''}
-                                    onChange={(value) => updateField('parent2Rut', value)}
-                                    onBlur={() => touchField('parent2Rut')}
-                                    error={errors.parent2Rut}
-                                />
-                                <Input 
-                                    id="parent2-email" 
-                                    label="Email" 
-                                    type="email"
-                                    placeholder="maria.gonzalez@ejemplo.com"
-                                    isRequired
-                                    value={data.parent2Email || ''}
-                                    onChange={(e) => updateField('parent2Email', e.target.value)}
-                                    onBlur={() => touchField('parent2Email')}
-                                    error={errors.parent2Email}
-                                />
-                                <Input 
-                                    id="parent2-phone" 
-                                    label="Teléfono" 
-                                    type="tel"
-                                    placeholder="+569 8765 4321"
-                                    isRequired
-                                    value={data.parent2Phone || ''}
-                                    onChange={(e) => updateField('parent2Phone', e.target.value)}
-                                    onBlur={() => touchField('parent2Phone')}
-                                    error={errors.parent2Phone}
-                                />
-                            </div>
-                            <div className="mt-4">
-                                <Input 
-                                    id="parent2-address" 
-                                    label="Dirección"
-                                    placeholder="Av. Vitacura 789, Las Condes, Santiago"
-                                    isRequired
-                                    value={data.parent2Address || ''}
-                                    onChange={(e) => updateField('parent2Address', e.target.value)}
-                                    onBlur={() => touchField('parent2Address')}
-                                    error={errors.parent2Address}
-                                />
-                            </div>
-                            <div className="mt-4">
-                                <Input 
-                                    id="parent2-profession" 
-                                    label="Profesión"
-                                    placeholder="Profesora de Educación Básica"
-                                    isRequired
-                                    value={data.parent2Profession || ''}
-                                    onChange={(e) => updateField('parent2Profession', e.target.value)}
-                                    onBlur={() => touchField('parent2Profession')}
-                                    error={errors.parent2Profession}
-                                />
-                            </div>
+                        <div className="mt-4">
+                            <Input
+                                id="parent1-address"
+                                label="Dirección"
+                                placeholder="Los Leones 456, Providencia, Santiago"
+                                isRequired
+                                value={data.parent1Address || ''}
+                                onChange={(e) => updateField('parent1Address', e.target.value)}
+                                onBlur={() => touchField('parent1Address')}
+                                error={errors.parent1Address}
+                            />
+                        </div>
+                        <div className="mt-4">
+                            <Input
+                                id="parent1-profession"
+                                label="Profesión"
+                                placeholder="Ingeniero Comercial"
+                                isRequired
+                                value={data.parent1Profession || ''}
+                                onChange={(e) => updateField('parent1Profession', e.target.value)}
+                                onBlur={() => touchField('parent1Profession')}
+                                error={errors.parent1Profession}
+                            />
                         </div>
                     </div>
                 );
-            case 2:
+
+            // Step 4: Datos de la Madre
+            case 4:
+                return (
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Datos de la Madre</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                id="parent2-name"
+                                label="Nombre Completo"
+                                placeholder="María Elena González"
+                                isRequired
+                                value={data.parent2Name || ''}
+                                onChange={(e) => updateField('parent2Name', e.target.value)}
+                                onBlur={() => touchField('parent2Name')}
+                                error={errors.parent2Name}
+                            />
+                            <RutInput
+                                name="parent2-rut"
+                                label="RUT"
+                                placeholder="15.678.912-3"
+                                required
+                                value={data.parent2Rut || ''}
+                                onChange={(value) => updateField('parent2Rut', value)}
+                                onBlur={() => touchField('parent2Rut')}
+                                error={errors.parent2Rut}
+                            />
+                            <Input
+                                id="parent2-email"
+                                label="Email"
+                                type="email"
+                                placeholder="maria.gonzalez@ejemplo.com"
+                                isRequired
+                                value={data.parent2Email || ''}
+                                onChange={(e) => updateField('parent2Email', e.target.value)}
+                                onBlur={() => touchField('parent2Email')}
+                                error={errors.parent2Email}
+                            />
+                            <Input
+                                id="parent2-phone"
+                                label="Teléfono"
+                                type="tel"
+                                placeholder="+569 8765 4321"
+                                isRequired
+                                value={data.parent2Phone || ''}
+                                onChange={(e) => updateField('parent2Phone', e.target.value)}
+                                onBlur={() => touchField('parent2Phone')}
+                                error={errors.parent2Phone}
+                            />
+                        </div>
+                        <div className="mt-4">
+                            <Input
+                                id="parent2-address"
+                                label="Dirección"
+                                placeholder="Av. Vitacura 789, Las Condes, Santiago"
+                                isRequired
+                                value={data.parent2Address || ''}
+                                onChange={(e) => updateField('parent2Address', e.target.value)}
+                                onBlur={() => touchField('parent2Address')}
+                                error={errors.parent2Address}
+                            />
+                        </div>
+                        <div className="mt-4">
+                            <Input
+                                id="parent2-profession"
+                                label="Profesión"
+                                placeholder="Profesora de Educación Básica"
+                                isRequired
+                                value={data.parent2Profession || ''}
+                                onChange={(e) => updateField('parent2Profession', e.target.value)}
+                                onBlur={() => touchField('parent2Profession')}
+                                error={errors.parent2Profession}
+                            />
+                        </div>
+                    </div>
+                );
+
+            // Step 5: Sostenedor
+            case 5:
                 return (
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Sostenedor</h3>
                         <p className="text-gris-piedra mb-4">Persona responsable del pago de mensualidades y compromisos económicos.</p>
-                        
-                        {/* Selección de parentesco primero */}
-                        <Select 
-                            id="supporter-relation" 
-                            label="Parentesco con el postulante" 
+
+                        <Select
+                            id="supporter-relation"
+                            label="Parentesco con el postulante"
                             options={[
                                 { value: '', label: 'Seleccione...' },
                                 { value: 'padre', label: 'Padre' },
@@ -1996,14 +2008,13 @@ const ApplicationForm: React.FC = () => {
                                 { value: 'tutor', label: 'Tutor Legal' },
                                 { value: 'otro', label: 'Otro' }
                             ]}
-                            isRequired 
+                            isRequired
                             value={data.supporterRelation || ''}
                             onChange={(e) => handleParentRelationChange('supporterRelation', e.target.value, 'supporter')}
                             onBlur={() => touchField('supporterRelation')}
                             error={errors.supporterRelation}
                         />
 
-                        {/* Mensaje informativo para padre/madre */}
                         {(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
@@ -2013,45 +2024,45 @@ const ApplicationForm: React.FC = () => {
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input 
-                                id="supporter-name" 
-                                label="Nombre Completo" 
+                            <Input
+                                id="supporter-name"
+                                label="Nombre Completo"
                                 placeholder="Ana María Rodríguez"
-                                isRequired 
+                                isRequired
                                 value={data.supporterName || ''}
                                 onChange={(e) => updateField('supporterName', e.target.value)}
                                 onBlur={() => touchField('supporterName')}
                                 error={errors.supporterName}
                                 disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
                             />
-                            <RutInput 
-                                name="supporter-rut" 
-                                label="RUT" 
+                            <RutInput
+                                name="supporter-rut"
+                                label="RUT"
                                 placeholder="18.456.789-2"
-                                required 
+                                required
                                 value={data.supporterRut || ''}
                                 onChange={(value) => updateField('supporterRut', value)}
                                 onBlur={() => touchField('supporterRut')}
                                 error={errors.supporterRut}
                                 disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
                             />
-                            <Input 
-                                id="supporter-email" 
-                                label="Email" 
-                                type="email" 
+                            <Input
+                                id="supporter-email"
+                                label="Email"
+                                type="email"
                                 placeholder="ana.rodriguez@ejemplo.com"
-                                isRequired 
+                                isRequired
                                 value={data.supporterEmail || ''}
                                 onChange={(e) => updateField('supporterEmail', e.target.value)}
                                 onBlur={() => touchField('supporterEmail')}
                                 error={errors.supporterEmail}
                                 disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
                             />
-                            <Input 
-                                id="supporter-phone" 
-                                label="Teléfono" 
-                                type="tel" 
-                                isRequired 
+                            <Input
+                                id="supporter-phone"
+                                label="Teléfono"
+                                type="tel"
+                                isRequired
                                 placeholder="+569 9876 5432"
                                 value={data.supporterPhone || ''}
                                 onChange={(e) => updateField('supporterPhone', e.target.value)}
@@ -2062,16 +2073,17 @@ const ApplicationForm: React.FC = () => {
                         </div>
                     </div>
                 );
-            case 3:
+
+            // Step 6: Apoderado
+            case 6:
                 return (
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Apoderado</h3>
                         <p className="text-gris-piedra mb-4">Persona responsable de la representación del estudiante en el colegio.</p>
-                        
-                        {/* Selección de parentesco primero */}
-                        <Select 
-                            id="guardian-relation" 
-                            label="Parentesco con el postulante" 
+
+                        <Select
+                            id="guardian-relation"
+                            label="Parentesco con el postulante"
                             options={[
                                 { value: '', label: 'Seleccione...' },
                                 { value: 'padre', label: 'Padre' },
@@ -2082,14 +2094,13 @@ const ApplicationForm: React.FC = () => {
                                 { value: 'tutor', label: 'Tutor Legal' },
                                 { value: 'otro', label: 'Otro' }
                             ]}
-                            isRequired 
+                            isRequired
                             value={data.guardianRelation || ''}
                             onChange={(e) => handleParentRelationChange('guardianRelation', e.target.value, 'guardian')}
                             onBlur={() => touchField('guardianRelation')}
                             error={errors.guardianRelation}
                         />
 
-                        {/* Mensaje informativo para padre/madre */}
                         {(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
@@ -2099,45 +2110,45 @@ const ApplicationForm: React.FC = () => {
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input 
-                                id="guardian-name" 
-                                label="Nombre Completo" 
+                            <Input
+                                id="guardian-name"
+                                label="Nombre Completo"
                                 placeholder="Roberto Silva Martínez"
-                                isRequired 
+                                isRequired
                                 value={data.guardianName || ''}
                                 onChange={(e) => updateField('guardianName', e.target.value)}
                                 onBlur={() => touchField('guardianName')}
                                 error={errors.guardianName}
                                 disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
                             />
-                            <RutInput 
-                                name="guardian-rut" 
-                                label="RUT" 
+                            <RutInput
+                                name="guardian-rut"
+                                label="RUT"
                                 placeholder="19.234.567-8"
-                                required 
+                                required
                                 value={data.guardianRut || ''}
                                 onChange={(value) => updateField('guardianRut', value)}
                                 onBlur={() => touchField('guardianRut')}
                                 error={errors.guardianRut}
                                 disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
                             />
-                            <Input 
-                                id="guardian-email" 
-                                label="Email" 
-                                type="email" 
+                            <Input
+                                id="guardian-email"
+                                label="Email"
+                                type="email"
                                 placeholder="roberto.silva@ejemplo.com"
-                                isRequired 
+                                isRequired
                                 value={data.guardianEmail || ''}
                                 onChange={(e) => updateField('guardianEmail', e.target.value)}
                                 onBlur={() => touchField('guardianEmail')}
                                 error={errors.guardianEmail}
                                 disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
                             />
-                            <Input 
-                                id="guardian-phone" 
-                                label="Teléfono" 
-                                type="tel" 
-                                isRequired 
+                            <Input
+                                id="guardian-phone"
+                                label="Teléfono"
+                                type="tel"
+                                isRequired
                                 placeholder="+569 5555 1234"
                                 value={data.guardianPhone || ''}
                                 onChange={(e) => updateField('guardianPhone', e.target.value)}
@@ -2148,7 +2159,9 @@ const ApplicationForm: React.FC = () => {
                         </div>
                     </div>
                 );
-            case 4:
+
+            // Step 7: Documentación
+            case 7:
                 const documentTypes = [
                     { key: 'BIRTH_CERTIFICATE', label: 'Certificado de Nacimiento', required: true },
                     { key: 'GRADES_2023', label: 'Certificado de Estudios 2023 (si aplica)', required: true },
@@ -2288,7 +2301,9 @@ const ApplicationForm: React.FC = () => {
                         </div>
                     </div>
                 );
-            case 5:
+
+            // Step 8: Confirmación
+            case 8:
                 return (
                     <div className="text-center">
                         <h3 className="text-2xl font-bold text-azul-monte-tabor mb-4">Postulación Enviada</h3>
@@ -2377,35 +2392,6 @@ const ApplicationForm: React.FC = () => {
                     {renderStepContent()}
                 </Card>
 
-                {/* Missing Fields Warning */}
-                {currentStep < 4 && getMissingFields.length > 0 && (
-                    <div className="mt-6 p-6 bg-red-100 border-4 border-red-500 rounded-lg shadow-lg">
-                        <div className="flex items-start">
-                            <div className="flex-shrink-0">
-                                <svg className="h-8 w-8 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <h3 className="text-lg font-bold text-red-900 mb-3">
-                                    FALTAN {getMissingFields.length} CAMPO(S) OBLIGATORIO(S)
-                                </h3>
-                                <p className="text-sm text-red-800 mb-3">
-                                    Por favor complete los siguientes campos para continuar:
-                                </p>
-                                <div className="bg-white p-4 rounded-lg border-2 border-red-300">
-                                    <ul className="list-disc list-inside text-base text-red-900 space-y-2">
-                                        {getMissingFields.map((field, index) => (
-                                            <li key={index} className="font-semibold">
-                                                {field}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Navigation Buttons */}
                 {currentStep < steps.length - 1 && (
@@ -2420,7 +2406,7 @@ const ApplicationForm: React.FC = () => {
                             loadingText={location.state?.editMode ? "Guardando..." : "Enviando..."}
                             disabled={!canProceedToNextStep && !isSubmitting}
                         >
-                            {currentStep === 4
+                            {currentStep === 7
                                 ? (location.state?.editMode ? 'Guardar Cambios' : 'Enviar Postulación')
                                 : 'Siguiente'
                             }
