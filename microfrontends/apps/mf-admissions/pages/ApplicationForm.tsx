@@ -11,6 +11,7 @@ import { CheckCircleIcon, LogoIcon, UploadIcon } from '../components/icons/Icons
 import { useApplications, useNotifications } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { educationalLevelsForForm as educationalLevels } from '../services/staticData';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 import api from '../services/api';
 import { applicationService } from '../services/applicationService';
 import { documentService, DOCUMENT_TYPES } from '../services/documentService';
@@ -2321,17 +2322,16 @@ const ApplicationForm: React.FC = () => {
                             </ol>
                         </div>
                         <div className="mt-6 space-y-3">
-                            <Link to="/dashboard-apoderado">
-                                <Button 
-                                    variant="primary"
-                                    className="w-full"
-                                >
-                                    Ver Mi Dashboard
-                                </Button>
-                            </Link>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = '/'}
+                            <Button
+                                variant="primary"
+                                onClick={() => window.location.href = microfrontendUrls.guardianDashboard}
+                                className="w-full"
+                            >
+                                Ver Mi Dashboard
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => window.location.href = microfrontendUrls.home}
                                 className="w-full"
                             >
                                 Volver al Inicio
