@@ -191,7 +191,7 @@ const ApplicationForm: React.FC = () => {
 
         try {
             console.log('ApplicationForm - handleLogin: Calling login with:', authData.email);
-            await login(authData.email, authData.password, 'apoderado');
+            await login(authData.email, authData.password, 'APODERADO');
             console.log('ApplicationForm - handleLogin: Login successful, hiding auth form');
             setShowAuthForm(false);
 
@@ -243,7 +243,7 @@ const ApplicationForm: React.FC = () => {
         try {
             // Registrar usuario con información básica
             console.log('ApplicationForm - handleRegister: Calling register with:', authData.email);
-            await register(authData, 'apoderado');
+            await register(authData, 'APODERADO');
             console.log('ApplicationForm - handleRegister: Registration successful, hiding auth form');
             setShowAuthForm(false);
 
