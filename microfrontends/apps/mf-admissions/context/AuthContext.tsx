@@ -78,6 +78,22 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
     }
 };
 
+// Extraer mf_token del hash de la URL de forma síncrona al cargar el módulo.
+// Esto garantiza que el token esté en localStorage antes de que onAuthStateChanged dispare.
+(function extractCrossOriginToken() {
+    try {
+        const hash = window.location.hash; // "#/postulacion?mf_token=eyJ..."
+        const queryStart = hash.indexOf('?');
+        if (queryStart === -1) return;
+        const params = new URLSearchParams(hash.slice(queryStart + 1));
+        const mfToken = params.get('mf_token');
+        if (!mfToken) return;
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), mfToken);
+        const cleanHash = hash.slice(0, queryStart);
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + cleanHash);
+    } catch { /* no-op en SSR o entornos sin window */ }
+})();
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -123,7 +139,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(null);
                 }
             } else {
-                // No Firebase user — clear everything
+                // Firebase no tiene usuario en este origen (IndexedDB es por-origen).
+                // Si hay un AUTH_TOKEN en localStorage (de handoff cross-origin vía mf_token),
+                // validarlo contra el BFF antes de descartar la sesión.
+                const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                if (existingToken) {
+                    try {
+                        const response = await api.get('/v1/auth/check');
+                        if (response.data?.success && response.data?.user) {
+                            const userData = buildUserFromBff(response.data.user);
+                            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
+                            setAdminCompat(userData, existingToken, response.data.user?.subject);
+                            setUser(userData);
+                            setIsLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // token inválido — cae al branch de limpieza
+                    }
+                }
                 localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                 localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 setUser(null);

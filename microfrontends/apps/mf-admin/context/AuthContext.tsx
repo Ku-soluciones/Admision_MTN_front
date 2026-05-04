@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
-import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 interface User {
@@ -222,7 +222,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);
         try {
-            clearAllSessions();
+            clearOtherSessions('admin');
 
             const response = await authService.login({ email, password });
 

@@ -6,7 +6,7 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
-import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const { addNotification } = useNotifications();
@@ -47,7 +47,7 @@ const ProfessorLoginPage: React.FC = () => {
         try {
             console.log('Iniciando login para profesor:', data.email);
 
-            clearAllSessions();
+            clearOtherSessions('professor');
 
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({

@@ -7,7 +7,7 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
-import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -48,7 +48,9 @@ const ProfessorLoginPage: React.FC = () => {
 
         try {
             console.log('Iniciando login para profesor:', data.email);
-            
+
+            clearOtherSessions('professor');
+
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({
                 email: data.email,
@@ -68,7 +70,6 @@ const ProfessorLoginPage: React.FC = () => {
                 // Verificar que el rol sea de profesor (ADMIN excluido: tiene su propio portal)
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
 
-                    clearAllSessions();
                     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify({
                         id: respId,
                         firstName: respFirstName,

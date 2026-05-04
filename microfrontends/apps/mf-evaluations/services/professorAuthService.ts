@@ -1,5 +1,5 @@
 import api from './api';
-import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -44,9 +44,8 @@ class ProfessorAuthService {
 
             console.log('Login exitoso para profesor:', data);
 
-            // Limpiar sesiones previas y guardar nuevo token
+            // Guardar token (sesión previa ya limpiada por el caller antes de invocar login)
             if (data.token) {
-                clearAllSessions();
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), data.token);
                 const u = data.user;
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({

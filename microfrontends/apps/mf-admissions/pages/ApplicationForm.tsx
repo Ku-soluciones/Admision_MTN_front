@@ -16,6 +16,7 @@ import api from '../services/api';
 import { applicationService } from '../services/applicationService';
 import { documentService, DOCUMENT_TYPES } from '../services/documentService';
 import profileService from '../services/profileService';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -88,7 +89,16 @@ const ApplicationForm: React.FC = () => {
     const [isVerifying, setIsVerifying] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
     const [verificationError, setVerificationError] = useState('');
-    const [showAuthForm, setShowAuthForm] = useState(true);
+    const [showAuthForm, setShowAuthForm] = useState(() => {
+        try {
+            const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed?.role === 'APODERADO') return false;
+            }
+        } catch { /* ignore */ }
+        return true;
+    });
     const [showRegister, setShowRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
@@ -109,7 +119,7 @@ const ApplicationForm: React.FC = () => {
 
     const { addApplication } = useApplications();
     const { addNotification } = useNotifications();
-    const { user, isAuthenticated, login, register } = useAuth();
+    const { user, isAuthenticated, isLoading: isAuthLoading, login, register } = useAuth();
     
     // Estado del formulario simplificado
     const [data, setData] = useState<any>({});
@@ -2344,8 +2354,25 @@ const ApplicationForm: React.FC = () => {
         }
     };
 
-    // Si no está autenticado, mostrar formulario de autenticación
-    if (showAuthForm || !isAuthenticated) {
+    // Verificar sesión APODERADO en localStorage (compartida con mf-guardian)
+    const hasApoderadoSession = (() => {
+        try {
+            const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+            return JSON.parse(cached || 'null')?.role === 'APODERADO';
+        } catch { return false; }
+    })();
+
+    // Mientras Firebase restaura sesión, mostrar spinner (si no hay cache) o el formulario (si hay cache)
+    if (isAuthLoading && !hasApoderadoSession) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-white">
+                <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-azul-monte-tabor" />
+            </div>
+        );
+    }
+
+    // Mostrar formulario de autenticación solo si: carga terminó, no hay sesión React, y no hay cache local
+    if (!isAuthenticated && !hasApoderadoSession) {
         return renderAuthForm();
     }
 

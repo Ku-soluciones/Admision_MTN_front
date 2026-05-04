@@ -166,28 +166,75 @@ export function resolveSession(storage: Pick<Storage, 'getItem'> = window.localS
   }
 }
 
-/**
- * Limpia TODAS las claves de sesión conocidas del localStorage.
- * Llamar antes de cualquier login para evitar cruce de sesiones entre roles.
- */
-export function clearAllSessions(storage: Pick<Storage, 'removeItem'> = window.localStorage): void {
-  const baseKeys = [
+/** Keys that belong exclusively to each session role. */
+const SESSION_KEYS_BY_ROLE = {
+  admin: [
     BASE_STORAGE_KEYS.AUTH_TOKEN,
-    BASE_STORAGE_KEYS.PROFESSOR_TOKEN,
-    BASE_STORAGE_KEYS.APODERADO_TOKEN,
     BASE_STORAGE_KEYS.AUTHENTICATED_USER,
+  ],
+  professor: [
+    BASE_STORAGE_KEYS.PROFESSOR_TOKEN,
     BASE_STORAGE_KEYS.PROFESSOR_USER,
     BASE_STORAGE_KEYS.CURRENT_PROFESSOR,
+  ],
+  apoderado: [
+    BASE_STORAGE_KEYS.APODERADO_TOKEN,
     BASE_STORAGE_KEYS.APODERADO_USER,
-  ];
-  const envs = ['development', 'staging', 'sta', 'production', 'dev', 'qa', 'uat', 'test'];
-  for (const key of baseKeys) {
-    storage.removeItem(key);
-    for (const env of envs) {
-      storage.removeItem(`${key}__${env}`);
+  ],
+} as const;
+
+type SessionRole = keyof typeof SESSION_KEYS_BY_ROLE;
+
+const ALL_ENVS = ['development', 'staging', 'sta', 'production', 'dev', 'qa', 'uat', 'test'];
+
+function removeKeyAllEnvs(key: string, storage: Pick<Storage, 'removeItem'>): void {
+  storage.removeItem(key);
+  for (const env of ALL_ENVS) {
+    storage.removeItem(`${key}__${env}`);
+  }
+}
+
+/**
+ * Clears session keys for OTHER roles before logging in as `loginRole`.
+ * Never touches the keys belonging to `loginRole` itself.
+ * Call this immediately before storing new credentials.
+ *
+ * @param loginRole - The role you are about to log in as.
+ * @param storage   - Storage instance (defaults to window.localStorage).
+ */
+export function clearOtherSessions(
+  loginRole: SessionRole,
+  storage: Pick<Storage, 'removeItem'> = window.localStorage,
+): void {
+  for (const [role, keys] of Object.entries(SESSION_KEYS_BY_ROLE)) {
+    if (role === loginRole) continue;
+    for (const key of keys) {
+      removeKeyAllEnvs(key, storage);
     }
   }
-  // Legacy plain keys
+  // Legacy plain keys (not role-namespaced)
+  if (loginRole !== 'professor') {
+    storage.removeItem('currentProfessor');
+    storage.removeItem('mtn_auth_state');
+  }
+  if (loginRole !== 'apoderado') {
+    storage.removeItem('currentApoderado');
+  }
+  if (loginRole !== 'admin') {
+    storage.removeItem('currentUser');
+  }
+}
+
+/**
+ * Clears ALL known session keys unconditionally.
+ * Use only for explicit logout actions, never during login flows.
+ */
+export function clearAllSessions(storage: Pick<Storage, 'removeItem'> = window.localStorage): void {
+  for (const keys of Object.values(SESSION_KEYS_BY_ROLE)) {
+    for (const key of keys) {
+      removeKeyAllEnvs(key, storage);
+    }
+  }
   storage.removeItem('currentProfessor');
   storage.removeItem('currentUser');
   storage.removeItem('currentApoderado');
