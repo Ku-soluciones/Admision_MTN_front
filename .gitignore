@@ -154,6 +154,9 @@ docker-compose.override.yml
 .stylelintcache
 .parcel-cache/
 
+# Claude Code
+CLAUDE.md
+
 # Security scanning results
 .snyk
 security-report.*

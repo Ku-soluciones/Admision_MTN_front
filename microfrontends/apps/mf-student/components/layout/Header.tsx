@@ -125,9 +125,6 @@ const Header: React.FC = () => {
                 <div className="flex items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
                         <div className="hidden sm:flex items-center gap-3">
-                            <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">
-                                Iniciar sesión
-                            </a>
                             <a href={microfrontendUrls.admissions}>
                                 <Button variant="primary" size="sm" className="!text-blanco-pureza">
                                     Postular
@@ -200,11 +197,6 @@ const Header: React.FC = () => {
                         )}
                         {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={microfrontendUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="outline" className="w-full">
-                                        Iniciar sesión
-                                    </Button>
-                                </a>
                                 <a href={microfrontendUrls.admissions} onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full !text-blanco-pureza">
                                         Postular
