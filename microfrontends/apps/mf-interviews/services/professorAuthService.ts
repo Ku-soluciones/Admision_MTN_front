@@ -1,4 +1,5 @@
 import api from './api';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -45,9 +46,9 @@ class ProfessorAuthService {
 
             // Guardar token en localStorage
             if (data.token) {
-                localStorage.setItem('professor_token', data.token);
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), data.token);
                 const u = data.user;
-                localStorage.setItem('professor_user', JSON.stringify({
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
                     email: u?.email || data.email,
                     firstName: u?.firstName || data.firstName,
                     lastName: u?.lastName || data.lastName,
@@ -75,7 +76,7 @@ class ProfessorAuthService {
     
     async getCurrentProfessor(): Promise<ProfessorUser | null> {
         try {
-            const token = localStorage.getItem('professor_token');
+            const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
             if (!token) {
                 return null;
             }
@@ -100,19 +101,19 @@ class ProfessorAuthService {
     }
     
     isAuthenticated(): boolean {
-        const token = localStorage.getItem('professor_token');
+        const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         return !!token;
     }
     
     getStoredProfessor() {
-        const stored = localStorage.getItem('professor_user');
+        const stored = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
         return stored ? JSON.parse(stored) : null;
     }
     
     logout() {
-        localStorage.removeItem('professor_token');
-        localStorage.removeItem('professor_user');
-        localStorage.removeItem('currentProfessor');
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
     }
     
     // Método para verificar si el usuario es un profesor válido

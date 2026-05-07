@@ -100,8 +100,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: 2025`);
-      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
+      const currentYear = new Date().getFullYear();
+      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: ${currentYear}`);
+      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, currentYear);
       console.log(`[WeeklyCalendar] Horarios recibidos del backend:`, schedules);
       console.log(`[WeeklyCalendar] Total de horarios: ${schedules.length}`);
 
@@ -222,7 +223,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       console.log('Iniciando guardado incremental de horarios...');
 
       // 1. Cargar horarios actuales de la BD
-      const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
+      const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, new Date().getFullYear());
       console.log(`Horarios existentes en BD: ${existingSchedules.length}`);
 
       // 2. Construir conjunto de slots seleccionados en pantalla
@@ -316,7 +317,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
             startTime: slot,
             endTime: endTime,  // Siempre +30 minutos
             scheduleType: 'RECURRING' as const,
-            year: 2025,
+            year: new Date().getFullYear(),
             isActive: true,
             notes: 'Bloque de 30 minutos - Sistema de horarios'
           };

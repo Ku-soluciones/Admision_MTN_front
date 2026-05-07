@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
+import { microfrontendUrls } from '../../utils/microfrontendUrls';
 
 const Footer: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
@@ -63,8 +64,9 @@ const Footer: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div className="border-t border-blue-800 mt-10 pt-6 text-center text-sm text-gray-400">
+                <div className="border-t border-blue-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-400">
                     <p>&copy; {new Date().getFullYear()} Colegio Monte Tabor y Nazaret. Todos los derechos reservados.</p>
+                    <a href={microfrontendUrls.adminLogin} className="text-gray-400 hover:text-dorado-nazaret transition-colors text-xs underline underline-offset-2">Acceso personal MTN</a>
                 </div>
             </div>
             {/* Modal de contacto */}

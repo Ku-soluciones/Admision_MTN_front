@@ -8,7 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardClient } from '../../api/dashboard.client';
 import type { TemporalTrend, DetailedAdminStats } from '../../api/dashboard.types';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 import { format } from 'date-fns';
 
 export const TemporalTrendsView: React.FC = () => {
@@ -114,6 +115,52 @@ export const TemporalTrendsView: React.FC = () => {
     };
   }).filter(Boolean);
 
+  const monthlyTrendsOption: EChartsOption = {
+    color: ['#3B82F6', '#10B981', '#EF4444', '#F59E0B'],
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 48, top: 24, bottom: 80, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: monthlyTrendsData.map(item => item.month),
+      axisLabel: { rotate: 45 }
+    },
+    yAxis: [
+      { type: 'value', name: 'Postulaciones' },
+      { type: 'value', name: '%' }
+    ],
+    series: [
+      { name: 'Total Postulaciones', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.total) },
+      { name: 'Aprobadas', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.approved) },
+      { name: 'Rechazadas', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.rejected) },
+      { name: 'Tasa de Crecimiento (%)', type: 'line', smooth: true, yAxisIndex: 1, lineStyle: { type: 'dashed' }, data: monthlyTrendsData.map(item => item.growthRate) }
+    ]
+  };
+
+  const comparisonOption: EChartsOption = {
+    color: ['#3B82F6', '#10B981', '#EF4444'],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+    xAxis: { type: 'category', data: comparisonData.map((item: any) => item.year) },
+    yAxis: { type: 'value' },
+    series: [
+      { name: 'Total', type: 'bar', data: comparisonData.map((item: any) => item.total) },
+      { name: 'Aprobadas', type: 'bar', data: comparisonData.map((item: any) => item.approved) },
+      { name: 'Rechazadas', type: 'bar', data: comparisonData.map((item: any) => item.rejected) }
+    ]
+  };
+
+  const acceptanceRateOption: EChartsOption = {
+    color: ['#10B981'],
+    tooltip: { trigger: 'axis', valueFormatter: value => `${Number(value).toFixed(1)}%` },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+    xAxis: { type: 'category', data: comparisonData.map((item: any) => item.year) },
+    yAxis: { type: 'value', min: 0, max: 100 },
+    series: [{ name: 'Tasa de Aceptación (%)', type: 'bar', data: comparisonData.map((item: any) => item.acceptanceRate), barMaxWidth: 48 }]
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -147,50 +194,7 @@ export const TemporalTrendsView: React.FC = () => {
       {/* Monthly Trends Chart */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Tendencia Mensual (Últimos 12 meses)</h2>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={monthlyTrendsData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <Tooltip />
-            <Legend />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="total"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              name="Total Postulaciones"
-              dot={{ r: 4 }}
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="approved"
-              stroke="#10B981"
-              strokeWidth={2}
-              name="Aprobadas"
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="rejected"
-              stroke="#EF4444"
-              strokeWidth={2}
-              name="Rechazadas"
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="growthRate"
-              stroke="#F59E0B"
-              strokeWidth={2}
-              name="Tasa de Crecimiento (%)"
-              strokeDasharray="5 5"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <EChart option={monthlyTrendsOption} height={400} />
       </div>
 
       {/* Year Comparison */}
@@ -199,33 +203,13 @@ export const TemporalTrendsView: React.FC = () => {
           {/* Total Applications Comparison */}
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Comparativa de Postulaciones</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={comparisonData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="total" fill="#3B82F6" name="Total" />
-                <Bar dataKey="approved" fill="#10B981" name="Aprobadas" />
-                <Bar dataKey="rejected" fill="#EF4444" name="Rechazadas" />
-              </BarChart>
-            </ResponsiveContainer>
+            <EChart option={comparisonOption} height={300} />
           </div>
 
           {/* Acceptance Rate Comparison */}
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Tasa de Aceptación por Año</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={comparisonData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
-                <Legend />
-                <Bar dataKey="acceptanceRate" fill="#10B981" name="Tasa de Aceptación (%)" />
-              </BarChart>
-            </ResponsiveContainer>
+            <EChart option={acceptanceRateOption} height={300} />
           </div>
         </div>
       )}

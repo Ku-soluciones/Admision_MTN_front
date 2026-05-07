@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import { ApplicationStatus, Document } from '../types';
 import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
 import { applicationService } from '../services/applicationService';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 import { applicationWorkflowService } from '../services/applicationWorkflowService';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
@@ -255,6 +256,7 @@ const FamilyDashboard: React.FC = () => {
                     onClick={() => {
                       if (window.confirm('¿Está seguro que desea cerrar sesión?')) {
                         logout();
+                        window.location.href = microfrontendUrls.home;
                       }
                     }}
                   >

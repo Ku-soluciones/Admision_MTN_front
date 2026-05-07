@@ -1,4 +1,5 @@
 import api from './api';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -38,16 +39,16 @@ class ProfessorAuthService {
 
             // Send credentials directly over HTTPS (no RSA encryption)
             console.log('[Professor Auth] Sending credentials over HTTPS');
-            const response = await api.post('/v1/auth/login', request);
+            const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
             const data = response.data;
 
             console.log('Login exitoso para profesor:', data);
 
-            // Guardar token en localStorage
+            // Guardar token (sesión previa ya limpiada por el caller antes de invocar login)
             if (data.token) {
-                localStorage.setItem('professor_token', data.token);
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), data.token);
                 const u = data.user;
-                localStorage.setItem('professor_user', JSON.stringify({
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
                     email: u?.email || data.email,
                     firstName: u?.firstName || data.firstName,
                     lastName: u?.lastName || data.lastName,
@@ -63,8 +64,10 @@ class ProfessorAuthService {
             
             if (error.response?.status === 401) {
                 throw new Error('Credenciales inválidas');
+            } else if (error.response?.status === 403) {
+                throw new Error(error.response?.data?.error?.message || 'Su cuenta no tiene acceso al portal de profesores. Use el portal correspondiente a su rol.');
             } else if (error.response?.status === 400) {
-                throw new Error('Datos de login inválidos');
+                throw new Error(error.response?.data?.error?.message || 'Datos de login inválidos');
             } else if (error.response?.status === 500) {
                 throw new Error('Error del servidor');
             }
@@ -75,7 +78,7 @@ class ProfessorAuthService {
     
     async getCurrentProfessor(): Promise<ProfessorUser | null> {
         try {
-            const token = localStorage.getItem('professor_token');
+            const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
             if (!token) {
                 return null;
             }
@@ -100,27 +103,24 @@ class ProfessorAuthService {
     }
     
     isAuthenticated(): boolean {
-        const token = localStorage.getItem('professor_token');
+        const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         return !!token;
     }
     
     getStoredProfessor() {
-        const stored = localStorage.getItem('professor_user');
+        const stored = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
         return stored ? JSON.parse(stored) : null;
     }
     
     logout() {
-        localStorage.removeItem('professor_token');
-        localStorage.removeItem('professor_user');
-        localStorage.removeItem('currentProfessor');
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
     }
     
     // Método para verificar si el usuario es un profesor válido
     isProfessorRole(role: string): boolean {
         const professorRoles = [
-            // Administración
-            'ADMIN',
-
             // Roles del backend (actuales)
             'TEACHER',
             'COORDINATOR',

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ReportsDashboard from './pages/ReportsDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
@@ -20,13 +20,15 @@ const LoadingFallback = () => (
 
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
+  const location = useLocation();
+  const isPortalPage = location.pathname !== '/login';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            <Header />
+            {!isPortalPage && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>

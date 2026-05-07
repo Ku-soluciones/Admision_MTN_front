@@ -1,5 +1,6 @@
 import api from './api';
 import { applicationService } from './applicationService';
+import { extractBffList } from '../src/api/bffResponse';
 
 // Interfaces centralizadas
 export interface DataServiceResponse<T> {
@@ -109,9 +110,14 @@ class DataService {
             const response = await api.get(`/v1/evaluations`, {
                 params: { page, size }
             });
-            
-            // Transformar datos del backend
-            const evaluations = response.data.map(this.transformBackendToEvaluation);
+
+            const rawList = extractBffList(response.data);
+            const evaluations = rawList.map((row) =>
+                this.transformBackendToEvaluation({
+                    ...row,
+                    evaluationType: (row as any).evaluationType || (row as any).type
+                })
+            );
             console.log(`Evaluaciones cargadas: ${evaluations.length}`);
             
             return evaluations;
@@ -131,7 +137,7 @@ class DataService {
             studentRut: backendEval.application?.student?.rut || 'N/A',
             gradeApplied: backendEval.grade || backendEval.application?.student?.gradeApplied || 'N/A',
             applicationStatus: backendEval.application?.status || 'PENDING',
-            evaluationType: backendEval.evaluationType,
+            evaluationType: backendEval.evaluationType || backendEval.type,
             status: backendEval.status,
             score: backendEval.score,
             evaluationDate: backendEval.evaluationDate,

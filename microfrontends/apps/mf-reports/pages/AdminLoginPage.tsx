@@ -65,31 +65,9 @@ const LoginPage: React.FC = () => {
                         setLoginError(null);
                         
                         try {
-                            await login(email, password, userType);
+                            const portalRole = userType === 'admin' ? 'ADMIN' : 'APODERADO';
+                            await login(email, password, portalRole);
 
-                            // Verificar que el rol coincida con el tipo de portal seleccionado
-                            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
-                            const role = storedUser?.role || '';
-
-                            if (userType === 'admin' && role === 'APODERADO') {
-                                const msg = 'Esta cuenta no tiene acceso al panel administrativo.';
-                                setLoginError(msg);
-                                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                                localStorage.removeItem('auth_token');
-                                localStorage.removeItem('authenticated_user');
-                                return;
-                            }
-
-                            if (userType === 'familia' && role !== 'APODERADO') {
-                                const msg = 'Esta cuenta es de personal del colegio. Use el portal de profesores.';
-                                setLoginError(msg);
-                                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                                localStorage.removeItem('auth_token');
-                                localStorage.removeItem('authenticated_user');
-                                return;
-                            }
-
-                            // Redirigir según el tipo de usuario
                             if (userType === 'familia') {
                                 navigate('/familia');
                             } else {

@@ -142,13 +142,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             if (app?.documents) {
                 const approvalStatus: Record<number, boolean> = {};
                 app.documents.forEach((doc: any, index: number) => {
-                    // approval_status from DB: 'PENDING', 'APPROVED', 'REJECTED'
-                    if (doc.approval_status === 'APPROVED') {
+                    const st = doc.approvalStatus ?? doc.approval_status;
+                    if (st === 'APPROVED') {
                         approvalStatus[index] = true;
-                    } else if (doc.approval_status === 'REJECTED') {
+                    } else if (st === 'REJECTED') {
                         approvalStatus[index] = false;
                     }
-                    // PENDING documents are not set (undefined) so checkbox is unchecked
                 });
                 console.log('Estado de aprobación inicializado:', approvalStatus);
                 setDocumentApprovalStatus(approvalStatus);
@@ -372,7 +371,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         console.log('Document:', document);
 
         // LOCK: Prevent toggling if document is already approved in database (permanent lock)
-        if (document.approval_status === 'APPROVED') {
+        if ((document.approvalStatus ?? document.approval_status) === 'APPROVED') {
             console.log('Document already approved, showing notification');
             addNotification({
                 type: 'info',
@@ -507,7 +506,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         // - rejectedDocsNow: Documentos marcados como rechazados EN ESTA SESIÓN
         const approvedDocsNow = fullApplication.documents.filter((doc, index) => {
             const currentStatus = documentApprovalStatus[index];
-            const dbStatus = doc.approvalStatus;
+            const dbStatus = doc.approvalStatus ?? doc.approval_status;
             // Solo incluir si fue marcado como aprobado AHORA (no si ya estaba aprobado en BD)
             return currentStatus === true && dbStatus !== 'APPROVED';
         });
@@ -520,7 +519,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         // Contar todos los documentos actualmente aprobados (en BD + en sesión)
         const allApprovedDocs = fullApplication.documents.filter((doc, index) => {
-            return documentApprovalStatus[index] === true || doc.approvalStatus === 'APPROVED';
+            return (
+                documentApprovalStatus[index] === true ||
+                (doc.approvalStatus ?? doc.approval_status) === 'APPROVED'
+            );
         });
 
         console.log('DEBUG - documentApprovalStatus:', documentApprovalStatus);
@@ -910,8 +912,39 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center">
                             <span className="text-gray-600">Documentos:</span>
-                            <Badge variant={postulante.documentosCompletos ? 'green' : 'red'} size="sm">
-                                {postulante.documentosCompletos ? 'Completos' : 'Incompletos'} ({postulante.cantidadDocumentos})
+                            <Badge
+                                variant={
+                                    (() => {
+                                        const docs = fullApplication?.documents;
+                                        if (docs && docs.length > 0) {
+                                            const allApproved = docs.every(
+                                                (d: any) => (d.approvalStatus ?? d.approval_status) === 'APPROVED'
+                                            );
+                                            return allApproved ? 'green' : 'red';
+                                        }
+                                        return postulante.documentosCompletos ? 'green' : 'red';
+                                    })()
+                                }
+                                size="sm"
+                            >
+                                {(() => {
+                                    const docs = fullApplication?.documents;
+                                    if (loading) return 'Cargando…';
+                                    if (docs && docs.length > 0) {
+                                        const n = docs.length;
+                                        const pending = docs.filter(
+                                            (d: any) =>
+                                                !(d.approvalStatus ?? d.approval_status) ||
+                                                (d.approvalStatus ?? d.approval_status) === 'PENDING'
+                                        ).length;
+                                        if (pending > 0) return `En revisión (${n})`;
+                                        const allOk = docs.every(
+                                            (d: any) => (d.approvalStatus ?? d.approval_status) === 'APPROVED'
+                                        );
+                                        return allOk ? `Completos (${n})` : `Incompletos (${n})`;
+                                    }
+                                    return `${postulante.documentosCompletos ? 'Completos' : 'Incompletos'} (${postulante.cantidadDocumentos})`;
+                                })()}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center">
@@ -1481,7 +1514,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         const isApproved = documentApprovalStatus[originalIndex];
                                         const isRejected = documentApprovalStatus[originalIndex] === false;
                                         // Show if document was previously approved in database (visual indicator only)
-                                        const wasPreviouslyApproved = doc.approvalStatus === 'APPROVED';
+                                        const wasPreviouslyApproved =
+                                            (doc.approvalStatus ?? doc.approval_status) === 'APPROVED';
 
                                         return (
                                             <div

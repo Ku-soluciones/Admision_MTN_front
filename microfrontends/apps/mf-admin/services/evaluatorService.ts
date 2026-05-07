@@ -156,7 +156,12 @@ export const evaluatorService = {
   async getEvaluationsByApplication(applicationId: number): Promise<Evaluation[]> {
     try {
       const response = await api.get(`/v1/evaluations/application/${applicationId}`);
-      return response.data;
+      const raw = response.data?.data ?? response.data;
+      const list = Array.isArray(raw) ? raw : [];
+      return list.map((e: Record<string, unknown>) => ({
+        ...e,
+        evaluationType: (e.evaluationType || e.type) as string
+      })) as Evaluation[];
     } catch (error) {
       console.error('Error getting evaluations by application:', error);
       throw error;

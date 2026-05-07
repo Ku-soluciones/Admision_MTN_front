@@ -21,6 +21,7 @@ const LoadingFallback = () => (
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
+  const isDashboard = location.pathname.startsWith('/familia') || location.pathname.startsWith('/dashboard-apoderado');
   const isLoginPage = location.pathname === '/apoderado/login';
 
   return (
@@ -28,7 +29,7 @@ function App() {
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            {!isLoginPage && <Header />}
+            {!isLoginPage && !isDashboard && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>

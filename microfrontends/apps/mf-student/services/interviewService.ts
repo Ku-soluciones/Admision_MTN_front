@@ -796,14 +796,14 @@ class InterviewService {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
         console.error(`getAvailableTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
-        return this.getDefaultTimeSlots();
+        return [];
       }
 
       // Verificar que el año sea razonable
       const year = parseInt(date.split('-')[0]);
       if (year < 2020 || year > 2100) {
         console.error(`getAvailableTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
-        return this.getDefaultTimeSlots();
+        return [];
       }
 
       // Validar y usar duración por defecto si es inválida
@@ -825,8 +825,8 @@ class InterviewService {
 
       // Verificar si la respuesta es del placeholder (microservicio no implementado)
       if (response.data && typeof response.data === 'object' && 'error' in response.data) {
-        console.log('Available slots service no implementado, usando horarios por defecto');
-        return this.getDefaultTimeSlots();
+        console.log('Available slots service no implementado, devolviendo horarios vacíos');
+        return [];
       }
 
       // CASO 1: Backend devuelve estructura { success: true, data: { availableSlots: [...] } }
@@ -878,13 +878,12 @@ class InterviewService {
         }
       }
 
-      console.log('Estructura de respuesta inesperada para available slots, usando horarios por defecto');
+      console.log('Estructura de respuesta inesperada para available slots, devolviendo horarios vacíos');
       console.log('Data recibida:', response.data);
-      return this.getDefaultTimeSlots();
+      return [];
     } catch (error) {
       console.error('Error fetching available slots:', error);
-      // Fallback: horarios estándar si el backend no los tiene configurados
-      return this.getDefaultTimeSlots();
+      return [];
     }
   }
 
@@ -979,14 +978,14 @@ class InterviewService {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
         console.error(`getCommonTimeSlots: Formato de fecha inválido "${date}". Se esperaba YYYY-MM-DD`);
-        return this.getDefaultTimeSlots();
+        return [];
       }
 
       // Verificar que el año sea razonable
       const year = parseInt(date.split('-')[0]);
       if (year < 2020 || year > 2100) {
         console.error(`getCommonTimeSlots: Año inválido ${year}. Debe estar entre 2020 y 2100`);
-        return this.getDefaultTimeSlots();
+        return [];
       }
 
       // Obtener los horarios disponibles de ambos entrevistadores
@@ -1006,8 +1005,7 @@ class InterviewService {
       return commonSlots;
     } catch (error) {
       console.error('Error obteniendo horarios comunes:', error);
-      // Fallback: horarios por defecto
-      return this.getDefaultTimeSlots();
+      return [];
     }
   }
 

@@ -159,3 +159,4 @@ docker-compose.override.yml
 security-report.*
 vulnerability-report.*
 .vercel
+.gstack/

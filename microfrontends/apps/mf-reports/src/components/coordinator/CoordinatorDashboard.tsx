@@ -9,7 +9,8 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardClient } from '../../api/dashboard.client';
 import type { DetailedAdminStats, Alert } from '../../api/dashboard.types';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { EChartsOption } from 'echarts';
+import EChart from '../charts/EChart';
 import { ApplicantMetricsModal } from '../../../components/modals/ApplicantMetricsModal';
 
 export const CoordinatorDashboard: React.FC = () => {
@@ -143,6 +144,32 @@ export const CoordinatorDashboard: React.FC = () => {
   const acceptanceRate = stats.totalApplications > 0
     ? ((stats.statusBreakdown.approved / stats.totalApplications) * 100).toFixed(1)
     : '0.0';
+
+  const statusChartOption: EChartsOption = {
+    color: statusData.map(item => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['42%', '70%'],
+        center: ['50%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+        label: { formatter: '{b}: {d}%' },
+        data: statusData.map(item => ({ name: item.name, value: item.value }))
+      }
+    ]
+  };
+
+  const gradeChartOption: EChartsOption = {
+    color: ['#3B82F6'],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { bottom: 0 },
+    grid: { left: 8, right: 8, top: 16, bottom: 48, containLabel: true },
+    xAxis: { type: 'category', data: gradeData.map(item => item.grade), axisTick: { alignWithLabel: true } },
+    yAxis: { type: 'value' },
+    series: [{ name: 'Postulaciones', type: 'bar', data: gradeData.map(item => item.count), barMaxWidth: 42 }]
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -336,25 +363,7 @@ export const CoordinatorDashboard: React.FC = () => {
         {/* Status Distribution Pie Chart */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Distribución por Estado</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {statusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          <EChart option={statusChartOption} height={300} />
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             {statusData.map((item, index) => (
               <div key={index} className="flex items-center">
@@ -371,16 +380,7 @@ export const CoordinatorDashboard: React.FC = () => {
         {/* Grade Distribution Bar Chart */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Distribución por Nivel</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={gradeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="grade" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#3B82F6" name="Postulaciones" />
-            </BarChart>
-          </ResponsiveContainer>
+          <EChart option={gradeChartOption} height={300} />
         </div>
       </div>
 

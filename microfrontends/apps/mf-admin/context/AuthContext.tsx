@@ -3,6 +3,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 
 interface User {
     id: string;
@@ -57,7 +59,7 @@ const buildUserFromBff = (u: any): User => ({
 
 const setAdminCompat = (user: User, token: string, subject?: string) => {
     if (user.role === 'ADMIN') {
-        localStorage.setItem('currentProfessor', JSON.stringify({
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify({
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -67,8 +69,8 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
             assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
             isAdmin: true,
         }));
-        localStorage.setItem('professor_token', token);
-        localStorage.setItem('professor_user', JSON.stringify({
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), token);
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -81,10 +83,87 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Fallback: Restore session from localStorage if available (for non-Firebase auth methods)
+    useEffect(() => {
+        if (user !== null) {
+            // User already loaded, skip
+            return;
+        }
+
+        const tryRestoreFromStorage = () => {
+            try {
+                console.log('[AuthContext] Attempting to restore from storage');
+                console.log('[AuthContext] Available cookies:', document.cookie);
+
+                // Try localStorage first (environment-aware key)
+                let cached =
+                    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
+                    localStorage.getItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+
+                // If not found in localStorage, try cookies (for cross-origin redirects)
+                if (!cached) {
+                    console.log('[AuthContext] Not in localStorage, checking cookies...');
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('auth_user='))
+                        ?.split('=')[1];
+
+                    if (cookieValue) {
+                        cached = decodeURIComponent(cookieValue);
+                        console.log('[AuthContext] Found user in cookies');
+                    } else {
+                        console.log('[AuthContext] No auth_user cookie found. Available:', document.cookie);
+                    }
+                }
+
+                console.log('[AuthContext] Cached user data:', cached ? 'found' : 'not found');
+                if (cached) {
+                    const userData = JSON.parse(cached);
+                    if (userData?.role !== 'ADMIN') {
+                        console.log('[AuthContext] Cached user is not ADMIN, clearing session');
+                        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                        localStorage.removeItem(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+                        document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                        return false;
+                    }
+                    console.log('[AuthContext] Restoring user from storage:', userData);
+                    setUser(userData);
+                    setIsLoading(false);
+                    return true;
+                }
+            } catch (error) {
+                console.log('[AuthContext] Fallback restoration failed:', error);
+                // Fallback failed, continue to Firebase check
+            }
+            return false;
+        };
+
+        // Try storage restore FIRST, regardless of Firebase config
+        // This ensures non-Firebase sessions (like from professorAuthService) work immediately
+        const restored = tryRestoreFromStorage();
+
+        if (restored) {
+            console.log('[AuthContext] Successfully restored from storage');
+            return;
+        }
+
+        // Only continue to Firebase check if storage restore failed
+        if (!auth || !hasFirebaseConfig) {
+            console.log('[AuthContext] No Firebase config, not waiting for Firebase auth');
+            setIsLoading(false);
+            return;
+        }
+    }, []);
+
     // Listen to Firebase auth state changes for automatic session restore
     useEffect(() => {
+        // Skip Firebase entirely if user already authenticated from storage
+        if (user !== null) {
+            console.log('[AuthContext] User already authenticated, skipping Firebase listener');
+            return;
+        }
+
         if (!auth || !hasFirebaseConfig) {
-            setIsLoading(false);
             return;
         }
 
@@ -93,17 +172,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 // Firebase user is signed in — get fresh idToken and fetch profile from BFF
                 try {
                     const idToken = await firebaseUser.getIdToken();
-                    localStorage.setItem('auth_token', idToken);
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
 
                     // Check if we already have cached user data
-                    const cached = localStorage.getItem('authenticated_user');
+                    const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     if (cached) {
                         try {
-                            setUser(JSON.parse(cached));
-                            setIsLoading(false);
-                            return;
+                            const cachedUser = JSON.parse(cached);
+                            if (cachedUser?.role !== 'ADMIN') {
+                                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+                            } else {
+                                setUser(cachedUser);
+                                setIsLoading(false);
+                                return;
+                            }
                         } catch {
-                            localStorage.removeItem('authenticated_user');
+                            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                         }
                     }
 
@@ -111,37 +195,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
-                        localStorage.setItem('authenticated_user', JSON.stringify(userData));
-                        setAdminCompat(userData, idToken, response.data.user?.subject);
-                        setUser(userData);
+                        if (userData.role === 'ADMIN') {
+                            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
+                            setAdminCompat(userData, idToken, response.data.user?.subject);
+                            setUser(userData);
+                        } else {
+                            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                        }
                     }
                 } catch {
                     // BFF call failed — clear state
-                    localStorage.removeItem('auth_token');
-                    localStorage.removeItem('authenticated_user');
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     setUser(null);
                 }
             } else {
-                // No Firebase user — clear everything
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 setUser(null);
             }
             setIsLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [user]);
 
     const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);
         try {
+            clearOtherSessions('admin');
+
             const response = await authService.login({ email, password });
 
             const u = response.user;
             if (response.success && u) {
                 const userData = buildUserFromBff(u);
+
+                if (userData.role !== 'ADMIN') {
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    throw new Error('Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.');
+                }
+
                 setAdminCompat(userData, response.token ?? '', u?.subject);
-                localStorage.setItem('authenticated_user', JSON.stringify(userData));
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                 setUser(userData);
             } else {
                 throw new Error(response.message || 'Error en la autenticación');
@@ -170,7 +265,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const newUser = buildUserFromBff(u);
                 newUser.phone = userData.phone;
                 newUser.rut = userData.rut;
-                localStorage.setItem('authenticated_user', JSON.stringify(newUser));
+                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(newUser));
                 setUser(newUser);
             } else {
                 throw new Error(response.message || 'Error al crear la cuenta');
@@ -184,15 +279,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         authService.logout();
-        localStorage.removeItem('currentProfessor');
-        localStorage.removeItem('professor_token');
-        localStorage.removeItem('professor_user');
-        localStorage.removeItem('apoderado_token');
-        localStorage.removeItem('apoderado_user');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('authenticated_user');
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_USER));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+        // Also clear cookies for cross-port sessions
+        document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
         setUser(null);
-        window.location.href = '/#/login';
+        window.location.href = microfrontendUrls.home;
     };
 
     const value: AuthContextType = {

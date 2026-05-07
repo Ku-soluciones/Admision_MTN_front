@@ -2,6 +2,7 @@ import axios from 'axios';
 import { csrfService } from './csrfService';
 import { getApiBaseUrl } from '../config/api.config';
 import { auth } from '../src/lib/firebase';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 // Configuración base de axios - Using nginx gateway for microservices
 // NO baseURL here - will be set in request interceptor for runtime detection
@@ -61,11 +62,11 @@ api.interceptors.request.use(
                     const idToken = await currentUser.getIdToken();
                     config.headers.Authorization = `Bearer ${idToken}`;
                 } catch {
-                    const token = localStorage.getItem('auth_token');
+                    const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                     if (token) config.headers.Authorization = `Bearer ${token}`;
                 }
             } else {
-                const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
+                const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) || localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
                 if (token) config.headers.Authorization = `Bearer ${token}`;
             }
         }
@@ -126,13 +127,13 @@ api.interceptors.response.use(
                 console.warn('JWT token expired or invalid - cleaning session');
 
                 // Limpiar token de usuario regular
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
 
                 // Limpiar token de profesor
-                localStorage.removeItem('professor_token');
-                localStorage.removeItem('professor_user');
-                localStorage.removeItem('currentProfessor');
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
 
                 // Solo redirigir si no estamos ya en una página de login o si no es una ruta pública
                 const currentPath = window.location.pathname;

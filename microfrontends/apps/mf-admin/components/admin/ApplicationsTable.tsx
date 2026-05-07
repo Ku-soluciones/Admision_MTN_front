@@ -3,6 +3,7 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { Application } from '../../services/applicationService';
+import { buildGradeDisplay, buildStudentDisplayName } from '../../services/applicationTableMapper';
 import {
   FileTextIcon,
   EyeIcon,
@@ -170,7 +171,15 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {pagedApplications.map((application) => (
+            {pagedApplications.map((application) => {
+              const st = application.student as Record<string, unknown> | undefined;
+              const studentLine = buildStudentDisplayName(st);
+              const parts = studentLine.split(/\s+/).filter(Boolean);
+              const initials =
+                parts.length > 1
+                  ? `${parts[0]?.charAt(0) || 'N'}${parts[parts.length - 1]?.charAt(0) || ''}`
+                  : parts[0]?.slice(0, 2) || 'NN';
+              return (
               <tr key={application.id} className="hover:bg-gray-50">
                 {/* Estudiante */}
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -178,13 +187,13 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                     <div className="flex-shrink-0 h-10 w-10">
                       <div className="h-10 w-10 rounded-full bg-azul-monte-tabor bg-opacity-10 flex items-center justify-center">
                         <span className="text-sm font-medium text-azul-monte-tabor">
-                          {application.student?.firstName?.charAt(0) || 'N'}{(application.student?.paternalLastName || application.student?.lastName)?.charAt(0) || 'N'}
+                          {(initials || 'NN').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {application.student?.firstName || 'N/A'} {application.student?.paternalLastName || application.student?.lastName || 'N/A'} {application.student?.maternalLastName || ''}
+                        {studentLine}
                       </div>
                       <div className="text-sm text-gray-500">
                         RUT: {application.student?.rut || 'N/A'}
@@ -195,7 +204,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
 
                 {/* Grado */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{application.student?.gradeApplied || 'N/A'}</div>
+                  <div className="text-sm text-gray-900">{buildGradeDisplay(st)}</div>
                 </td>
 
                 {/* Apoderado */}
@@ -270,7 +279,8 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

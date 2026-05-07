@@ -6,6 +6,12 @@ import Modal from '../ui/Modal';
 import { FiEdit, FiEye, FiDownload, FiCalendar, FiFileText, FiUser } from 'react-icons/fi';
 import { useNotifications } from '../../context/AppContext';
 import { applicationService } from '../../services/applicationService';
+import {
+    buildGradeDisplay,
+    buildGuardianContact,
+    buildStudentDisplayName,
+    mapBffApplicationStatusToTable
+} from '../../services/applicationTableMapper';
 
 interface Application {
     id: number;
@@ -65,7 +71,10 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
                     <span className="font-medium text-gray-900">{record.studentName}</span>
                     <span className="text-sm text-gray-500">{record.studentRut}</span>
                     <span className="text-xs text-gray-400">
-                        Edad: {calculateAge(record.studentBirthDate)} años
+                        Edad: {(() => {
+                            const a = calculateAge(record.studentBirthDate);
+                            return typeof a === 'number' ? `${a} años` : a;
+                        })()}
                     </span>
                 </div>
             )
@@ -285,7 +294,8 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
     ];
 
     // Función auxiliar para calcular edad
-    const calculateAge = (birthDate: string): number => {
+    const calculateAge = (birthDate: string): number | string => {
+        if (!birthDate) return '—';
         const today = new Date();
         const birth = new Date(birthDate);
         let age = today.getFullYear() - birth.getFullYear();
@@ -303,36 +313,37 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
         setLoading(true);
         try {
             // Obtener aplicaciones reales del backend
-            const response = await applicationService.getAllApplications({
-                page: page - 1, // Backend usa 0-based indexing
-                size: size
+            const response = await applicationService.fetchApplicationsPage({
+                page: page - 1,
+                size
             });
-            
-            // Mapear datos del backend al formato esperado por el componente
-            const mappedApplications: Application[] = response.applications.map((app: any) => ({
-                id: app.id,
-                studentName: `${app.student.firstName} ${app.student.lastName}`,
-                studentRut: app.student.rut,
-                studentBirthDate: app.student.birthDate,
-                gradeApplied: app.student.grade,
-                status: app.status,
-                submissionDate: app.submissionDate || app.createdAt,
-                parentName: `${app.father?.firstName || ''} ${app.father?.lastName || ''}`.trim() || 
-                           `${app.mother?.firstName || ''} ${app.mother?.lastName || ''}`.trim() || 
-                           'No especificado',
-                parentEmail: app.father?.email || app.mother?.email || 'No especificado',
-                parentPhone: app.father?.phone || app.mother?.phone || 'No especificado',
-                previousSchool: app.student.currentSchool || 'No especificado',
-                hasSpecialNeeds: app.student.hasSpecialNeeds || false,
-                specialNeedsDescription: app.student.specialNeedsDescription || '',
-                academicYear: new Date().getFullYear().toString(),
-                evaluationStatus: app.evaluationStatus || 'PENDING',
-                interviewDate: app.interviewDate,
-                documentsComplete: app.documentsComplete || false,
-                admissionScore: app.admissionScore,
-                createdAt: app.createdAt,
-                updatedAt: app.updatedAt
-            }));
+
+            const mappedApplications: Application[] = response.applications.map((app: Record<string, any>) => {
+                const student = (app.student || {}) as Record<string, unknown>;
+                const contact = buildGuardianContact(app);
+                return {
+                    id: app.id,
+                    studentName: buildStudentDisplayName(student),
+                    studentRut: String(student.rut || '—'),
+                    studentBirthDate: String(student.birthDate || ''),
+                    gradeApplied: buildGradeDisplay(student),
+                    status: mapBffApplicationStatusToTable(app.status),
+                    submissionDate: app.submissionDate || app.createdAt || '',
+                    parentName: contact.parentName,
+                    parentEmail: contact.parentEmail,
+                    parentPhone: contact.parentPhone,
+                    previousSchool: String(student.currentSchool || 'No especificado'),
+                    hasSpecialNeeds: Boolean(student.specialNeeds),
+                    specialNeedsDescription: String(student.specialNeedsDescription || ''),
+                    academicYear: new Date().getFullYear().toString(),
+                    evaluationStatus: app.evaluationStatus || 'PENDING',
+                    interviewDate: app.interviewDate,
+                    documentsComplete: app.documentsComplete || false,
+                    admissionScore: app.admissionScore,
+                    createdAt: app.createdAt,
+                    updatedAt: app.updatedAt
+                };
+            });
 
             setApplications(mappedApplications);
             setPagination({

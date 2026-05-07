@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -35,11 +35,13 @@ import {
   FiLogOut
 } from 'react-icons/fi';
 import { useApplications } from '../context/AppContext';
+import { auth } from '../src/lib/firebase';
+import { microfrontendUrls } from '../utils/microfrontendUrls';
 import { applicationService, Application } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
 import useUserProfile from '../hooks/useUserProfile';
 import applicationWorkflowService, { type ApplicationDraft } from '../services/applicationWorkflowService';
-import documentGatewayService from '../services/documentGatewayService';
+import { documentService } from '../services/documentService';
 import FamilyInterviews from '../components/family/FamilyInterviews';
 import FamilyCalendar from '../components/family/FamilyCalendar';
 import ComplementaryApplicationForm from './ComplementaryApplicationForm';
@@ -85,23 +87,24 @@ const FamilyDashboard: React.FC = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   // Function to download/view document
-  const handleViewDocument = (documentId: number, documentName: string) => {
-    // Try to get token from different possible storage keys
-    const token = localStorage.getItem('apoderado_token') ||
-                  localStorage.getItem('auth_token') ||
-                  localStorage.getItem('professor_token');
+  const handleViewDocument = async (documentId: number, documentName: string) => {
+    const viewer = window.open('', '_blank');
 
-    if (!token) {
-      alert('No se encontró el token de autenticación. Por favor, inicia sesión nuevamente.');
-      return;
+    try {
+      const blob = await documentService.viewDocument(documentId);
+      const url = window.URL.createObjectURL(blob);
+
+      if (viewer) {
+        viewer.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
+
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch (error: any) {
+      viewer?.close();
+      alert(error.message || `No se pudo abrir el documento ${documentName || ''}`.trim());
     }
-
-    // Use environment variable for API URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const downloadUrl = `${baseUrl}/v1/documents/${documentId}/download?token=${encodeURIComponent(token)}`;
-
-    // Open in new tab for viewing (browser will handle display based on content type)
-    window.open(downloadUrl, '_blank');
   };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,24 +192,21 @@ const FamilyDashboard: React.FC = () => {
     ? realApplications[selectedApplicationIndex]
     : (applications.length > 0 ? applications[0] : null);
 
+  // Navega a mf-admissions pasando el idToken para evitar re-login cross-origin
+  const navigateToAdmissions = async (path = '/postulacion') => {
+    try {
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
+      const base = path === '/postulacion' ? microfrontendUrls.admissions : microfrontendUrls.admissionsComplementary;
+      const url = token ? `${base}${base.includes('?') ? '&' : '?'}mf_token=${encodeURIComponent(token)}` : base;
+      window.location.href = url;
+    } catch {
+      window.location.href = microfrontendUrls.admissions;
+    }
+  };
+
   // Handler for adding another child (navigate to form with family data pre-filled)
   const handleAddAnotherChild = () => {
-    if (hasRealApplication && realApplications.length > 0) {
-      // Pass the first application's family data to pre-fill the form
-      navigate('/postulacion', {
-        state: {
-          prefillFamilyData: true,
-          familyData: {
-            father: realApplications[0].father,
-            mother: realApplications[0].mother,
-            guardian: realApplications[0].guardian,
-            supporter: realApplications[0].supporter
-          }
-        }
-      });
-    } else {
-      navigate('/postulacion');
-    }
+    navigateToAdmissions('/postulacion');
   };
 
   const renderSection = () => {
@@ -281,11 +281,9 @@ const FamilyDashboard: React.FC = () => {
                     }
                   </p>
                   {!isLoading && (
-                    <Link to="/postulacion">
-                      <Button variant="primary" size="lg" className="w-full">
-                        Crear Nueva Postulación
-                      </Button>
-                    </Link>
+                    <Button variant="primary" size="lg" className="w-full" onClick={() => navigateToAdmissions()}>
+                      Crear Nueva Postulación
+                    </Button>
                   )}
                   {isLoading && (
                     <div className="flex items-center justify-center gap-2">
@@ -615,11 +613,9 @@ const FamilyDashboard: React.FC = () => {
                 <p className="text-gris-piedra mb-4">
                   No hay información de postulación disponible
                 </p>
-                <Link to="/postulacion">
-                  <Button variant="primary">
-                    Crear Nueva Postulación
-                  </Button>
-                </Link>
+                <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                  Crear Nueva Postulación
+                </Button>
               </div>
             )}
           </Card>
@@ -636,11 +632,9 @@ const FamilyDashboard: React.FC = () => {
                   <p className="text-gris-piedra mb-4">
                     Debe completar su postulación primero antes de llenar el formulario complementario
                   </p>
-                  <Link to="/postulacion">
-                    <Button variant="primary">
-                      Crear Nueva Postulación
-                    </Button>
-                  </Link>
+                  <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                    Crear Nueva Postulación
+                  </Button>
                 </div>
               </Card>
             )}

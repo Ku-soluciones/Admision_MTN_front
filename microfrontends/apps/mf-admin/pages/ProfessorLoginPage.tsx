@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
-import { useAuth } from '../context/AuthContext';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
-    const navigate = useNavigate();
     const { addNotification } = useNotifications();
-    const { login: loginWithAuth } = useAuth();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -49,7 +46,9 @@ const ProfessorLoginPage: React.FC = () => {
 
         try {
             console.log('Iniciando login para profesor:', data.email);
-            
+
+            clearOtherSessions('professor');
+
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({
                 email: data.email,
@@ -66,25 +65,19 @@ const ProfessorLoginPage: React.FC = () => {
             const respSubject   = u?.subject   || (response as any).subject   || null;
 
             if (response.success && response.token) {
-                // Verificar que el rol sea de profesor
+                // Verificar que el rol sea de profesor (ADMIN excluido: tiene su propio portal)
                 if (respRole && professorAuthService.isProfessorRole(respRole)) {
-                    
-                    // Si es admin, registrar en AuthContext principal
-                    if (respRole === 'ADMIN') {
-                        console.log('Usuario admin detectado, registrando en AuthContext principal...');
-                        await loginWithAuth(data.email, data.password, 'ADMIN');
-                    }
-                    
-                    // Guardar información del profesor en localStorage para compatibilidad
-                    localStorage.setItem('currentProfessor', JSON.stringify({
+
+                    // Guardar información del profesor en localStorage con clave con prefijo de entorno
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify({
                         id: respId,
                         firstName: respFirstName,
                         lastName: respLastName,
                         email: respEmail,
+                        role: respRole,
                         subject: respSubject,
                         subjects: getSubjectsByRole(respRole),
                         assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
-                        isAdmin: respRole === 'ADMIN'
                     }));
 
                     addNotification({
@@ -93,16 +86,7 @@ const ProfessorLoginPage: React.FC = () => {
                         message: `Hola ${respFirstName} ${respLastName}`
                     });
 
-                    console.log('Login exitoso, redirigiendo al dashboard...');
-                    
-                    // Redirigir según el rol del usuario
-                    if (respRole === 'ADMIN') {
-                        console.log('Usuario admin detectado, redirigiendo al panel de administración...');
-                        navigate('/admin', { replace: true });
-                    } else {
-                        console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
-                        window.location.href = microfrontendUrls.professorDashboard;
-                    }
+                    window.location.href = microfrontendUrls.professorDashboard;
                     
                 } else {
                     const msg = 'Su cuenta no tiene acceso a este portal. Contacte al administrador.';
@@ -124,19 +108,9 @@ const ProfessorLoginPage: React.FC = () => {
         }
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleLogin();
-        }
-    };
-
     // Función para obtener las asignaturas según el rol
     const getSubjectsByRole = (role: string): string[] => {
         switch (role) {
-            // Administración
-            case 'ADMIN':
-                return ['MATH', 'SPANISH', 'ENGLISH', 'SCIENCE', 'HISTORY', 'PSYCHOLOGY'];
-            
             // Profesores ciclo inicial (pueden evaluar todo en su ciclo)
             case 'TEACHER_EARLY_CYCLE':
                 return ['MATH', 'SPANISH'];

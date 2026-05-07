@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ApplicationForm from './pages/ApplicationForm';
 import ComplementaryApplicationForm from './pages/ComplementaryApplicationForm';
+import ApoderadoLogin from './pages/ApoderadoLogin';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
@@ -32,10 +33,11 @@ function App() {
                 <Routes>
 
         <Route path="/" element={<HomePage />} />
+        <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/postulacion" element={<ApplicationForm />} />
         <Route path="/postulacion/complementaria" element={<ComplementaryApplicationForm />} />
         {legacyRedirects}
-        <Route path="*" element={<Navigate to="/postulacion" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
     
                 </Routes>
               </Suspense>

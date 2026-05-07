@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../../packages/backend-sdk/src/index';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
     const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
     const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
     const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -15,10 +17,10 @@ const Header: React.FC = () => {
     useEffect(() => {
         const checkAuthStatus = () => {
             // Verificar múltiples fuentes de autenticación
-            const currentProfessor = localStorage.getItem('currentProfessor');
-            const authToken = localStorage.getItem('auth_token');
-            const professorToken = localStorage.getItem('professor_token');
-            const apoderadoToken = localStorage.getItem('apoderado_token');
+            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
 
             // Verificar si hay profesor autenticado
             const hasProfessorAuth = !!(professorToken && currentProfessor);
@@ -29,16 +31,17 @@ const Header: React.FC = () => {
             setIsAnyUserLoggedIn(hasAnyAuth);
 
             // Solo mostrar admin si hay un token válido Y datos de profesor admin
+            let adminActive = false;
             if ((authToken || professorToken) && currentProfessor) {
                 try {
                     const professorData = JSON.parse(currentProfessor);
-                    setIsAdmin(professorData.isAdmin === true);
+                    adminActive = professorData.isAdmin === true;
                 } catch (error) {
-                    setIsAdmin(false);
+                    adminActive = false;
                 }
-            } else {
-                setIsAdmin(false);
             }
+            setIsAdmin(adminActive);
+            setIsAdminLoggedIn(adminActive);
         };
 
         checkAuthStatus();
@@ -65,13 +68,7 @@ const Header: React.FC = () => {
         if (isAnyUserLoggedIn) {
             e.preventDefault(); // Prevenir navegación predeterminada
 
-            // Limpiar TODOS los tokens y datos de autenticación
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('professor_token');
-            localStorage.removeItem('apoderado_token');
-            localStorage.removeItem('currentProfessor');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('currentApoderado');
+            clearAllSessions();
 
             // Actualizar estados locales
             setIsAdmin(false);
@@ -87,8 +84,14 @@ const Header: React.FC = () => {
         // Si no hay usuario autenticado, dejar que el link funcione normalmente
     };
 
-    const navigateTo = (url: string) => {
-        window.location.href = url;
+    const clearAndGoAdmin = (e: React.MouseEvent) => {
+        e.preventDefault();
+        clearAllSessions();
+        setIsAdmin(false);
+        setIsAdminLoggedIn(false);
+        setIsProfessorLoggedIn(false);
+        setIsAnyUserLoggedIn(false);
+        window.location.href = microfrontendUrls.adminLogin;
     };
 
     return (
@@ -108,8 +111,11 @@ const Header: React.FC = () => {
                     </a>
                     <a href={microfrontendUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
                     <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Portal Familia</a>
-                    {!isProfessorLoggedIn && (
+                    {!isProfessorLoggedIn && !isAdminLoggedIn && (
                         <a href={microfrontendUrls.professorLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Profesores</a>
+                    )}
+                    {isAnyUserLoggedIn && !isAdminLoggedIn && (
+                        <a href={microfrontendUrls.adminLogin} onClick={clearAndGoAdmin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Administradores</a>
                     )}
                     {isAdmin && (
                         <a
@@ -174,13 +180,22 @@ const Header: React.FC = () => {
                         >
                             Portal Familia
                         </a>
-                        {!isProfessorLoggedIn && (
+                        {!isProfessorLoggedIn && !isAdminLoggedIn && (
                             <a
                                 href={microfrontendUrls.professorLogin}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
                             >
                                 Profesores
+                            </a>
+                        )}
+                        {isAnyUserLoggedIn && !isAdminLoggedIn && (
+                            <a
+                                href={microfrontendUrls.adminLogin}
+                                onClick={(e) => { clearAndGoAdmin(e); setIsMobileMenuOpen(false); }}
+                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                            >
+                                Administradores
                             </a>
                         )}
                         {isAdmin && (

@@ -1,5 +1,6 @@
 import api from './api';
 import { DataAdapter } from './dataAdapter';
+import { extractBffList } from '../src/api/bffResponse';
 
 export interface ApplicationRequest {
     // Datos del estudiante
@@ -71,6 +72,9 @@ export interface Application {
         email?: string;
         address?: string;
         gradeApplied?: string;
+        /** Alias BFF / columna grade_applied */
+        gradeApplying?: string;
+        grade?: string;
         currentSchool?: string;
         additionalNotes?: string;
         // Campos de categorías especiales
@@ -123,6 +127,28 @@ export interface Application {
     documents?: any[];
 }
 
+/** Filtros alineados a GET /v1/applications del BFF (page, size, status, gradeApplying, search). */
+export interface GetApplicationsFilters {
+    page?: number;
+    size?: number;
+    limit?: number;
+    status?: string;
+    gradeApplying?: string;
+    search?: string;
+    /** Reservado: el BFF actual no filtra por año en este endpoint. */
+    applicationYear?: number;
+    /** Reservado: el BFF actual no filtra por RUT apoderado en este endpoint. */
+    guardianRUT?: string;
+}
+
+export interface ApplicationsPageResponse {
+    applications: Application[];
+    totalElements: number;
+    totalPages: number;
+    page: number;
+    size: number;
+}
+
 class ApplicationService {
 
     // Helper function to transform frontend grade format to backend format
@@ -149,63 +175,64 @@ class ApplicationService {
         return gradeMap[grade] || grade.toUpperCase().replace('BASICO', '_BASICO').replace('MEDIO', '_MEDIO');
     }
 
-    // Método mejorado para administradores: obtener todas las postulaciones desde microservicio
-    async getAllApplications(): Promise<Application[]> {
+    /**
+     * Página de postulaciones (misma semántica que el ex–Node: lista + total + filtros).
+     * BFF: GET /v1/applications → Spring Page (`content`, `totalElements`, `totalPages`, …).
+     */
+    async fetchApplicationsPage(filters: GetApplicationsFilters = {}): Promise<ApplicationsPageResponse> {
+        const page = filters.page ?? 0;
+        const size = filters.size ?? filters.limit ?? 15;
+        const params: Record<string, string | number> = { page, size };
+        if (filters.status) params.status = filters.status;
+        if (filters.gradeApplying) params.gradeApplying = filters.gradeApplying;
+        if (filters.search) params.search = filters.search;
+
         try {
-            console.log('Admin: Obteniendo postulaciones desde microservicio');
+            const response = await api.get('/v1/applications', { params });
+            const body = response.data as Record<string, unknown>;
+            const applications = extractBffList<Application>(body);
+            const totalElements =
+                typeof body.totalElements === 'number' ? (body.totalElements as number) : applications.length;
+            const totalPages =
+                typeof body.totalPages === 'number'
+                    ? (body.totalPages as number)
+                    : Math.max(1, Math.ceil(totalElements / Math.max(1, size)));
+            return {
+                applications,
+                totalElements,
+                totalPages,
+                page: typeof body.number === 'number' ? (body.number as number) : page,
+                size: typeof body.size === 'number' ? (body.size as number) : size
+            };
+        } catch (mainError) {
+            console.warn('fetchApplicationsPage: falló /v1/applications, intentando público…', mainError);
+            const response = await api.get('/v1/applications/public/all', {
+                params: { page, limit: size }
+            });
+            const adapted = DataAdapter.adaptApplicationApiResponse(response) as Application[];
+            return {
+                applications: adapted,
+                totalElements: adapted.length,
+                totalPages: 1,
+                page: 0,
+                size: adapted.length
+            };
+        }
+    }
 
-            // Primero intentar el endpoint principal que devuelve la estructura completa
-            try {
-                console.log('Probando endpoint principal: /v1/applications');
-                // BFF espera parámetro 'size' (no 'limit') para el tamaño de página
-                const response = await api.get('/v1/applications?size=1000');
-                console.log('Respuesta del endpoint principal:', response.data);
-
-                // El backend devuelve {success: true, data: [...]}
-                const applications = response.data?.data || response.data || [];
-                console.log('Aplicaciones recibidas:', applications.length);
-
-                // El endpoint /v1/applications ya devuelve la estructura correcta
-                // No necesitamos adaptador, solo filtrar las aplicaciones válidas
-                const validApplications = applications.filter((app: any) =>
-                    app &&
-                    app.id &&
-                    app.student &&
-                    app.student.firstName &&
-                    app.student.lastName &&
-                    app.student.firstName !== null &&
-                    app.student.lastName !== null
-                );
-
-                console.log('Aplicaciones válidas filtradas:', validApplications.length);
-                if (validApplications.length > 0) {
-                    console.log('Primera aplicación completa:', validApplications[0]);
-                    console.log('Student object:', validApplications[0]?.student);
-                    console.log('firstName:', validApplications[0]?.student?.firstName);
-                    console.log('lastName:', validApplications[0]?.student?.lastName);
-                    console.log('paternalLastName:', validApplications[0]?.student?.paternalLastName);
-                    console.log('maternalLastName:', validApplications[0]?.student?.maternalLastName);
-                }
-                return validApplications;
-
-            } catch (mainError) {
-                console.log('Falló endpoint principal, intentando público...');
-
-                // Como fallback, usar el endpoint público con adaptador si es necesario
-                const response = await api.get('/v1/applications/public/all');
-                console.log('Éxito con endpoint público:', response.data);
-
-                // Este endpoint devuelve formato diferente, usar adaptador
-                const adaptedApplications = DataAdapter.adaptApplicationApiResponse(response);
-                console.log('Aplicaciones adaptadas desde público:', adaptedApplications.length);
-                return adaptedApplications;
-            }
-
+    /** Lista plana (compatibilidad). Por defecto pide hasta 2000 filas en página 0. */
+    async getAllApplications(filters?: GetApplicationsFilters): Promise<Application[]> {
+        try {
+            const { applications } = await this.fetchApplicationsPage({
+                page: filters?.page ?? 0,
+                size: filters?.size ?? filters?.limit ?? 2000,
+                status: filters?.status,
+                gradeApplying: filters?.gradeApplying,
+                search: filters?.search
+            });
+            return applications.filter((app) => app?.id && app?.student);
         } catch (error: any) {
             console.error('Error obteniendo postulaciones desde microservicio:', error);
-
-            // Como fallback, devolver un array vacío
-            console.log('Devolviendo array vacío como fallback');
             return [];
         }
     }
@@ -231,7 +258,9 @@ class ApplicationService {
             }, {} as Record<string, number>);
             
             const applicationsByGrade = applications.reduce((acc, app) => {
-                const grade = app.student?.gradeApplied || 'Sin especificar';
+                const st = app.student as Record<string, string | undefined> | undefined;
+                const grade =
+                    st?.gradeApplied || st?.gradeApplying || (st as { grade?: string })?.grade || 'Sin especificar';
                 acc[grade] = (acc[grade] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);

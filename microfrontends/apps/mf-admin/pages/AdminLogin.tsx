@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
-import { microfrontendUrls } from '../utils/microfrontendUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const AdminLogin: React.FC = () => {
     const navigate = useNavigate();
@@ -34,17 +34,15 @@ const AdminLogin: React.FC = () => {
         try {
             await login(email, password, 'ADMIN');
 
-            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
+            const storedKey = getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
+            const storedUser = JSON.parse(localStorage.getItem(storedKey) || 'null');
+
             if (!storedUser || storedUser.role !== 'ADMIN') {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
-
-                if (storedUser?.role === 'APODERADO') {
-                    window.location.href = microfrontendUrls.guardianDashboard;
-                    return;
-                }
-
-                window.location.href = microfrontendUrls.professorDashboard;
+                localStorage.removeItem(storedKey);
+                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                const msg = 'Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.';
+                setError(msg);
+                addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
                 return;
             }
 

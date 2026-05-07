@@ -1,9 +1,8 @@
-import React from 'react';
 import { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import HomePage from './pages/HomePage';
 import AdminLogin from './pages/AdminLogin';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
+import ApoderadoLogin from './pages/ApoderadoLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
 import { AppProvider } from './context/AppContext';
@@ -12,7 +11,8 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
+import { createLegacyRedirectRoutes, ExternalRedirect } from './routing/legacyRedirects';
+import { microfrontendUrls } from './utils/microfrontendUrls';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -23,22 +23,29 @@ const LoadingFallback = () => (
 function App() {
   const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname === '/profesor';
+  const hideHeader = location.pathname === '/login'
+    || location.pathname === '/admin/login'
+    || location.pathname === '/profesor'
+    || location.pathname === '/apoderado/login'
+    || location.pathname === '/admin'
+    || location.pathname.startsWith('/admin/')
+    || location.pathname === '/familia';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800 font-sans">
-            {!isLoginPage && <Header />}
+            {!hideHeader && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
 
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<ExternalRedirect to={microfrontendUrls.home} />} />
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/profesor" element={<ProfessorLoginPage />} />
+        <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
         {legacyRedirects}
         <Route path="*" element={<Navigate to="/login" replace />} />
