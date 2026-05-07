@@ -1,7 +1,5 @@
-import React from 'react';
 import { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import HomePage from './pages/HomePage';
 import AdminLogin from './pages/AdminLogin';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
 import ApoderadoLogin from './pages/ApoderadoLogin';
@@ -13,7 +11,8 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
+import { createLegacyRedirectRoutes, ExternalRedirect } from './routing/legacyRedirects';
+import { microfrontendUrls } from './utils/microfrontendUrls';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -42,7 +41,7 @@ function App() {
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
 
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<ExternalRedirect to={microfrontendUrls.home} />} />
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/profesor" element={<ProfessorLoginPage />} />

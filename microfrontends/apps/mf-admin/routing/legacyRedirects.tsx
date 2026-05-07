@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Route } from 'react-router-dom';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
 
-function ExternalRedirect({ to }: { to: string }) {
+export function ExternalRedirect({ to }: { to: string }) {
   useEffect(() => {
     window.location.replace(to);
   }, [to]);

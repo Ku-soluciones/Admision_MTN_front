@@ -84,10 +84,6 @@ const Header: React.FC = () => {
         // Si no hay usuario autenticado, dejar que el link funcione normalmente
     };
 
-    const navigateTo = (url: string) => {
-        window.location.href = url;
-    };
-
     const clearAndGoAdmin = (e: React.MouseEvent) => {
         e.preventDefault();
         clearAllSessions();
@@ -115,10 +111,10 @@ const Header: React.FC = () => {
                     </a>
                     <a href={microfrontendUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
                     <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Portal Familia</a>
-                    {!isProfessorLoggedIn && (
+                    {!isProfessorLoggedIn && !isAdminLoggedIn && (
                         <a href={microfrontendUrls.professorLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Profesores</a>
                     )}
-                    {!isAdminLoggedIn && (
+                    {isAnyUserLoggedIn && !isAdminLoggedIn && (
                         <a href={microfrontendUrls.adminLogin} onClick={clearAndGoAdmin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Administradores</a>
                     )}
                     {isAdmin && (
@@ -184,7 +180,7 @@ const Header: React.FC = () => {
                         >
                             Portal Familia
                         </a>
-                        {!isProfessorLoggedIn && (
+                        {!isProfessorLoggedIn && !isAdminLoggedIn && (
                             <a
                                 href={microfrontendUrls.professorLogin}
                                 onClick={() => setIsMobileMenuOpen(false)}
@@ -193,7 +189,7 @@ const Header: React.FC = () => {
                                 Profesores
                             </a>
                         )}
-                        {!isAdminLoggedIn && (
+                        {isAnyUserLoggedIn && !isAdminLoggedIn && (
                             <a
                                 href={microfrontendUrls.adminLogin}
                                 onClick={(e) => { clearAndGoAdmin(e); setIsMobileMenuOpen(false); }}
