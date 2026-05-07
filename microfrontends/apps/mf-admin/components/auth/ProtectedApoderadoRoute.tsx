@@ -1,27 +1,42 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 interface ProtectedApoderadoRouteProps {
     children: React.ReactNode;
 }
 
 const ProtectedApoderadoRoute: React.FC<ProtectedApoderadoRouteProps> = ({ children }) => {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, isLoading } = useAuth();
 
-    console.log('ProtectedApoderadoRoute: Check access -', { isAuthenticated, user: user ? { role: user.role, email: user.email } : null });
+    if (isLoading) {
+        const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (parsed?.role === 'APODERADO') {
+                    return <>{children}</>;
+                }
+            } catch {
+                // cache malformado — mostrar spinner
+            }
+        }
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-white">
+                <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-azul-monte-tabor" />
+            </div>
+        );
+    }
 
     if (!isAuthenticated || !user) {
-        console.log('ProtectedApoderadoRoute: Not authenticated, redirecting to login');
         return <Navigate to="/apoderado/login" replace />;
     }
 
     if (user.role !== 'APODERADO') {
-        console.log('ProtectedApoderadoRoute: Wrong role', user.role, '!== APODERADO, redirecting');
         return <Navigate to="/apoderado/login" replace />;
     }
 
-    console.log('ProtectedApoderadoRoute: Access granted');
     return <>{children}</>;
 };
 
