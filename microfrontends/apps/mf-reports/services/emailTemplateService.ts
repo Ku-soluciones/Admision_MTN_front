@@ -1,4 +1,6 @@
 import api from './api';
+import { EmailTemplate as EmailTemplateEnum } from '../types/email';
+import { emailService } from './emailService';
 
 export interface EmailTemplate {
   id: number;
@@ -185,25 +187,46 @@ export class EmailTemplateService {
     }
   }
 
-  async sendTemplatedEmail(templateKey: string, applicationId: number, variables?: Record<string, any>): Promise<{ success: boolean; message?: string; queueId?: string }> {
-    try {
-      const response = await api.post(`${this.baseUrl}/send`, {
-        templateKey,
-        applicationId,
-        variables: variables || {}
-      });
-      return {
-        success: true,
-        message: 'Email enviado exitosamente',
-        queueId: response.data.queueId
-      };
-    } catch (error: any) {
-      console.error('Error sending templated email:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Error al enviar email con template'
-      };
-    }
+  /**
+   * Send templated email using the new composer service
+   * Maps templateKey to EmailTemplate enum and delegates to emailService
+   */
+  async sendTemplatedEmail(
+    templateKey: string,
+    to: string,
+    variables?: Record<string, any>
+  ): Promise<{ success: boolean; message?: string; queueId?: string }> {
+    // Map templateKey to EmailTemplate enum
+    const templateMap: Record<string, EmailTemplateEnum> = {
+      'INTERVIEW_ASSIGNMENT': EmailTemplateEnum.INTERVIEW_INVITATION,
+      'INTERVIEW_COMPLETE_SET': EmailTemplateEnum.INTERVIEW_INVITATION,
+      'INTERVIEW_REMINDER': EmailTemplateEnum.INTERVIEW_INVITATION,
+      'STUDENT_SELECTION': EmailTemplateEnum.ADMISSION_RESULT,
+      'STUDENT_REJECTION': EmailTemplateEnum.ADMISSION_RESULT,
+      'APPLICATION_RECEIVED': EmailTemplateEnum.APPLICATION_RECEIVED,
+      'STATUS_UPDATE': EmailTemplateEnum.STATUS_UPDATE,
+      'DOCUMENT_REVIEW': EmailTemplateEnum.DOCUMENT_REVIEW,
+      'DOCUMENT_REMINDER': EmailTemplateEnum.DOCUMENT_REMINDER,
+      'WELCOME': EmailTemplateEnum.WELCOME,
+      'EMAIL_VERIFICATION': EmailTemplateEnum.EMAIL_VERIFICATION,
+      'PASSWORD_RESET': EmailTemplateEnum.PASSWORD_RESET,
+      'PASSWORD_CHANGED': EmailTemplateEnum.PASSWORD_CHANGED,
+      'USER_INVITATION': EmailTemplateEnum.USER_INVITATION,
+    };
+
+    const template = templateMap[templateKey] || EmailTemplateEnum.GENERIC;
+
+    const result = await emailService.sendTemplatedEmail({
+      template,
+      to,
+      data: variables || {}
+    }, { silent: true });
+
+    return {
+      success: result.success,
+      message: result.message,
+      queueId: result.queueId
+    };
   }
 
   // Obtener variables disponibles para un template

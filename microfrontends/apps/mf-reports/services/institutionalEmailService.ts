@@ -1,4 +1,5 @@
 import api from './api';
+import { EmailTemplate, InstitutionalEmailPayload, EmailResponse as EmailResponseType } from '../types/email';
 
 export interface QueueStatistics {
   pendingEmails: number;
@@ -11,11 +12,8 @@ export interface QueueStatistics {
   queueByType: Record<string, number>;
 }
 
-export interface EmailResponse {
-  success: boolean;
-  message: string;
-  queueId?: string;
-}
+// Re-export para backward compatibility
+export type { EmailResponseType as EmailResponse };
 
 export interface StatisticsResponse {
   success: boolean;
@@ -28,10 +26,16 @@ class InstitutionalEmailService {
 
   /**
    * Enviar email de aplicación recibida
+   * POST /api/institutional-emails/application-received/{applicationId}
+   * Template: APPLICATION_RECEIVED
    */
-  async sendApplicationReceivedEmail(applicationId: number): Promise<EmailResponse> {
+  async sendApplicationReceivedEmail(applicationId: number, data?: { studentName?: string; applicationId?: number }): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/application-received/${applicationId}`);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.APPLICATION_RECEIVED,
+        data: data || { applicationId }
+      };
+      const response = await api.post(`${this.baseUrl}/application-received/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending application received email:', error);
@@ -44,10 +48,22 @@ class InstitutionalEmailService {
 
   /**
    * Enviar invitación a entrevista
+   * POST /api/institutional-emails/interview-invitation/{interviewId}
+   * Template: INTERVIEW_INVITATION
    */
-  async sendInterviewInvitationEmail(interviewId: number): Promise<EmailResponse> {
+  async sendInterviewInvitationEmail(interviewId: number, data?: {
+    studentName?: string;
+    interviewDate?: string;
+    interviewTime?: string;
+    interviewLocation?: string;
+    parentNames?: string;
+  }): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/interview-invitation/${interviewId}`);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.INTERVIEW_INVITATION,
+        data
+      };
+      const response = await api.post(`${this.baseUrl}/interview-invitation/${interviewId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending interview invitation email:', error);
@@ -60,10 +76,16 @@ class InstitutionalEmailService {
 
   /**
    * Enviar actualización de estado
+   * POST /api/institutional-emails/status-update/{applicationId}
+   * Template: STATUS_UPDATE
    */
-  async sendStatusUpdateEmail(applicationId: number, data: { newStatus: string }): Promise<EmailResponse> {
+  async sendStatusUpdateEmail(applicationId: number, data: { newStatus: string; studentName?: string }): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/status-update/${applicationId}`, data);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.STATUS_UPDATE,
+        data
+      };
+      const response = await api.post(`${this.baseUrl}/status-update/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending status update email:', error);
@@ -76,10 +98,16 @@ class InstitutionalEmailService {
 
   /**
    * Enviar recordatorio de documentos
+   * POST /api/institutional-emails/document-reminder/{applicationId}
+   * Template: DOCUMENT_REMINDER
    */
-  async sendDocumentReminderEmail(applicationId: number, data: { pendingDocuments: string }): Promise<EmailResponse> {
+  async sendDocumentReminderEmail(applicationId: number, data: { pendingDocuments: string; studentName?: string }): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/document-reminder/${applicationId}`, data);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.DOCUMENT_REMINDER,
+        data
+      };
+      const response = await api.post(`${this.baseUrl}/document-reminder/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending document reminder email:', error);
@@ -92,10 +120,16 @@ class InstitutionalEmailService {
 
   /**
    * Enviar resultado de admisión
+   * POST /api/institutional-emails/admission-result/{applicationId}
+   * Template: ADMISSION_RESULT
    */
-  async sendAdmissionResultEmail(applicationId: number, data: { result: string; message?: string }): Promise<EmailResponse> {
+  async sendAdmissionResultEmail(applicationId: number, data: { result: string; message?: string; studentName?: string }): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/admission-result/${applicationId}`, data);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.ADMISSION_RESULT,
+        data
+      };
+      const response = await api.post(`${this.baseUrl}/admission-result/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending admission result email:', error);
@@ -108,6 +142,8 @@ class InstitutionalEmailService {
 
   /**
    * Enviar notificación sobre revisión de documentos
+   * POST /api/institutional-emails/document-review/{applicationId}
+   * Template: DOCUMENT_REVIEW
    */
   async sendDocumentReviewEmail(
     applicationId: number,
@@ -115,10 +151,15 @@ class InstitutionalEmailService {
       approvedDocuments: string[];
       rejectedDocuments: string[];
       allApproved: boolean;
+      studentName?: string;
     }
-  ): Promise<EmailResponse> {
+  ): Promise<EmailResponseType> {
     try {
-      const response = await api.post(`${this.baseUrl}/document-review/${applicationId}`, data);
+      const payload: InstitutionalEmailPayload = {
+        template: EmailTemplate.DOCUMENT_REVIEW,
+        data
+      };
+      const response = await api.post(`${this.baseUrl}/document-review/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
       console.error('Error sending document review email:', error);
@@ -157,7 +198,7 @@ class InstitutionalEmailService {
   /**
    * Forzar procesamiento de cola
    */
-  async forceProcessQueue(): Promise<EmailResponse> {
+  async forceProcessQueue(): Promise<EmailResponseType> {
     try {
       const response = await api.post(`${this.baseUrl}/queue/process`);
       return response.data;
@@ -173,7 +214,7 @@ class InstitutionalEmailService {
   /**
    * Limpiar cola
    */
-  async clearQueue(): Promise<EmailResponse> {
+  async clearQueue(): Promise<EmailResponseType> {
     try {
       const response = await api.delete(`${this.baseUrl}/queue/clear`);
       return response.data;
@@ -205,7 +246,7 @@ class InstitutionalEmailService {
   /**
    * Enviar email de prueba
    */
-  async sendTestEmail(email: string): Promise<EmailResponse> {
+  async sendTestEmail(email: string): Promise<EmailResponseType> {
     try {
       const response = await api.post(`${this.adminBaseUrl}/test?email=${email}`);
       return response.data;
