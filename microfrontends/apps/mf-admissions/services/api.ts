@@ -67,6 +67,23 @@ const isAuthEndpoint = (url: string): boolean =>
     url.includes('/auth/refresh') || url.includes('/auth/logout') || url.includes('/auth/login');
 
 /**
+ * Endpoints "sonda" que se llaman para descubrir si hay sesión activa. Si
+ * fallan con 400/401/403 NO debemos redirigir al login — el caller decidirá
+ * qué hacer (típicamente `null` y mostrar pantalla de login).
+ */
+const isProbeEndpoint = (url: string): boolean =>
+    url.includes('/auth/check') || url.endsWith('/users/me') || url.includes('/users/me?');
+
+/** El BFF responde 400 con `code: BAD_REQUEST` y `message: "No autenticado"`
+ *  cuando se llama a un endpoint protegido sin Bearer válido. Lo tratamos
+ *  como "no hay sesión" (silencioso) en lugar de error real. */
+const isUnauthenticatedBadRequest = (status: number | undefined, code: string | undefined, msg: string): boolean => {
+    if (status !== 400) return false;
+    if (code !== 'BAD_REQUEST') return false;
+    return /no\s*autenticad/i.test(msg);
+};
+
+/**
  * Resuelve el access token siguiendo este orden:
  *   1. authStore (memoria) — fuente de verdad post-login.
  *   2. Firebase idToken — para flujos que aún dependen del SDK.
@@ -184,6 +201,20 @@ api.interceptors.response.use(
         const status: number | undefined = error.response?.status;
         const code = extractAuthErrorCode(error.response?.data);
         const url = String(original.url || '');
+        const message = String(
+            error.response?.data?.error?.message
+            || error.response?.data?.message
+            || '',
+        );
+        const probe = isProbeEndpoint(url);
+
+        // 400 "No autenticado" en endpoints sonda: no es un error real,
+        // es la forma del BFF de decir "no hay sesión". Devolvemos el error
+        // tal cual (sin redirigir, sin limpiar) para que el caller maneje
+        // el null silenciosamente.
+        if (isUnauthenticatedBadRequest(status, code as any, message)) {
+            return Promise.reject(error);
+        }
 
         // Códigos terminales: nunca reintentar, limpiar y redirigir.
         if (status === 401 && isSessionTerminal(code)) {
@@ -191,7 +222,7 @@ api.interceptors.response.use(
             clearLegacyStorage();
             csrfService.clearToken();
             broadcastLogout(reasonFromCode(code));
-            redirectToLoginWithReason(reasonFromCode(code));
+            if (!probe) redirectToLoginWithReason(reasonFromCode(code));
             return Promise.reject(error);
         }
 
@@ -207,7 +238,7 @@ api.interceptors.response.use(
             if (!newToken) {
                 authStore.clear();
                 clearLegacyStorage();
-                redirectToLoginWithReason('expired');
+                if (!probe) redirectToLoginWithReason('expired');
                 return Promise.reject(error);
             }
             original.headers = original.headers ?? {};
@@ -218,13 +249,11 @@ api.interceptors.response.use(
         if (status === 401) {
             authStore.clear();
             clearLegacyStorage();
-            redirectToLoginWithReason('expired');
+            if (!probe) redirectToLoginWithReason('expired');
         }
 
         if (status === 403) {
-            const errorMessage = String(
-                error.response?.data?.error?.message || error.response?.data?.error || error.response?.data?.message || '',
-            ).toLowerCase();
+            const errorMessage = message.toLowerCase();
             if (errorMessage.includes('csrf') || errorMessage.includes('invalid token')) {
                 csrfService.clearToken();
             }

@@ -189,11 +189,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     }
 
                     // Pedimos perfil al BFF en /v1/auth/check (NGINX).
+                    // El interceptor de api ya añade el Bearer; si no hay
+                    // sesión válida, el BFF responde 400/401 silencioso.
                     const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
-                        setAdminCompat(userData, idToken, response.data.user?.subject);
+                        // Para PROFESSOR_TOKEN preferimos el access JWT del BFF
+                        // (authStore). Si todavía no llegó, caemos al idToken
+                        // Firebase como compatibilidad.
+                        const tokenForCompat = authStore.getValidAccessToken() || idToken;
+                        setAdminCompat(userData, tokenForCompat, response.data.user?.subject);
                         if (typeof response.data.firebaseLinked === 'boolean') {
                             authStore.setFirebaseLinked(response.data.firebaseLinked);
                         }
@@ -212,6 +218,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setIsLoading(false);
                     return;
                 }
+                // Existe un token legacy en localStorage (handoff mf_token o
+                // sesión previa antes del refactor). Intentamos validarlo de
+                // forma silenciosa: el interceptor ya tolera 400 "No
+                // autenticado" sin hacer ruido.
                 const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                 if (existingToken) {
                     try {
@@ -219,13 +229,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         if (response.data?.success && response.data?.user) {
                             const userData = buildUserFromBff(response.data.user);
                             localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
-                            setAdminCompat(userData, existingToken, response.data.user?.subject);
+                            const tokenForCompat = authStore.getValidAccessToken() || existingToken;
+                            setAdminCompat(userData, tokenForCompat, response.data.user?.subject);
                             setUser(userData);
                             setIsLoading(false);
                             return;
                         }
                     } catch {
-                        // token inválido — caemos al branch de limpieza
+                        // token inválido o sin sesión — limpiamos en silencio
                     }
                 }
                 localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
