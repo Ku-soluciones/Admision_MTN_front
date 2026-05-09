@@ -45,6 +45,8 @@ const buildUrl = (app: keyof typeof localPorts, hashPath: string) => {
 export const microfrontendUrls = {
   home: buildUrl('admissions', '/'),
   admissions: buildUrl('admissions', '/postulacion'),
+  /** URL para iniciar postulacion garantizando una sesion nueva (no reusa la identidad de un usuario anterior). */
+  freshAdmissions: buildUrl('admissions', '/postulacion').replace('/#', '/?fresh=1#'),
   admissionsComplementary: buildUrl('admissions', '/postulacion/complementaria'),
   guardianLogin: buildUrl('guardian', '/apoderado/login'),
   guardianDashboard: buildUrl('guardian', '/familia'),

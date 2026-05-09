@@ -129,7 +129,7 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
-                        <a href={microfrontendUrls.admissions} className="hidden sm:block">
+                        <a href={microfrontendUrls.freshAdmissions} className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Iniciar Postulación
                             </Button>
@@ -209,7 +209,7 @@ const Header: React.FC = () => {
                         )}
                         {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1">
-                                <a href={microfrontendUrls.admissions} onClick={() => setIsMobileMenuOpen(false)}>
+                                <a href={microfrontendUrls.freshAdmissions} onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full">
                                         Iniciar Postulación
                                     </Button>
