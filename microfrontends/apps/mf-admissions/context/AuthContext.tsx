@@ -92,9 +92,64 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
     }
 };
 
+// Detecta si la navegación pidió explícitamente una sesión "fresca". Esto
+// ocurre cuando el usuario presiona "Iniciar Postulación" desde el home
+// estando deslogueado y queremos garantizar que NO se reutilice ninguna
+// sesión Firebase / BFF persistente (IndexedDB de Firebase, localStorage de
+// otra pestaña, mf_token vencido, etc.) del origen de admisiones.
+//
+// Bandera soportada: `fresh=1` tanto en la query string como dentro del hash
+// (`#/postulacion?fresh=1`). Se limpia de la URL tras procesarla.
+let __freshSessionRequested = false;
+(function detectFreshSessionRequest() {
+    try {
+        if (typeof window === 'undefined') return;
+        const search = window.location.search;
+        const hash = window.location.hash;
+        const stripFrom = (str: string): { stripped: string; isFresh: boolean } => {
+            const qIdx = str.indexOf('?');
+            if (qIdx === -1) return { stripped: str, isFresh: false };
+            const params = new URLSearchParams(str.slice(qIdx + 1));
+            const isFresh = params.get('fresh') === '1';
+            if (!isFresh) return { stripped: str, isFresh: false };
+            params.delete('fresh');
+            const remaining = params.toString();
+            return { stripped: str.slice(0, qIdx) + (remaining ? '?' + remaining : ''), isFresh: true };
+        };
+        const { stripped: newSearch, isFresh: freshInSearch } = stripFrom(search);
+        const { stripped: newHash, isFresh: freshInHash } = stripFrom(hash);
+        if (freshInSearch || freshInHash) {
+            __freshSessionRequested = true;
+            window.history.replaceState(null, '', window.location.pathname + newSearch + newHash);
+        }
+    } catch { /* no-op */ }
+})();
+
+// Limpieza síncrona de toda persistencia local (auth tokens, claves legacy,
+// store en memoria). NO toca IndexedDB de Firebase — eso se hace de forma
+// asíncrona dentro del Provider porque requiere `signOut(auth)`.
+const wipeLocalAuthArtifacts = () => {
+    try {
+        Object.values(BASE_STORAGE_KEYS).forEach((key) => {
+            try { localStorage.removeItem(getStorageKey(key)); } catch { /* no-op */ }
+        });
+        // Limpiar también claves sin prefijo por compatibilidad histórica
+        ['authToken', 'auth_token', 'currentUser', 'professor_token', 'professor_user', 'currentProfessor']
+            .forEach((k) => { try { localStorage.removeItem(k); } catch { /* no-op */ } });
+        try { sessionStorage.clear(); } catch { /* no-op */ }
+    } catch { /* no-op */ }
+};
+
 // Limpieza de claves legacy y extracción de `mf_token` de la URL para handoff
 // cross-origin. Se ejecuta una sola vez al cargar el módulo.
 (function bootstrapStorageOnce() {
+    if (__freshSessionRequested) {
+        // El usuario pidió explícitamente comenzar limpio: descartar toda
+        // sesión previa (token, mf_token, store) ANTES de cualquier hidratación.
+        wipeLocalAuthArtifacts();
+        try { authStore.clear(); } catch { /* no-op */ }
+        return; // No procesar mf_token entrante en modo fresh.
+    }
     purgeLegacyAuthStorage();
     try {
         const hash = window.location.hash; // "#/postulacion?mf_token=eyJ..."
@@ -116,6 +171,9 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
     } catch { /* no-op en SSR o entornos sin window */ }
 })();
 
+/** Indica si el módulo se cargó con la bandera `?fresh=1` en la URL. */
+export const wasFreshSessionRequested = () => __freshSessionRequested;
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -126,6 +184,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     //    exponga /api/auth/refresh, basta con ajustar el orden.
     useEffect(() => {
         let cancelled = false;
+        // Si la URL pidió sesión fresca, NO rehidratamos desde el refresh
+        // cookie del BFF. Forzamos al usuario a loguearse explícitamente.
+        if (wasFreshSessionRequested()) {
+            try { authStore.clear(); } catch { /* no-op */ }
+            setUser(null);
+            return () => { cancelled = true; };
+        }
         bootstrapAuth({
             refresh: async () => {
                 try {
@@ -163,6 +228,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // Sesión Firebase persistente en este origen. Si la navegación
+                // pidió sesión fresca (botón "Iniciar Postulación" desde el
+                // home estando deslogueado), debemos descartar esa sesión y
+                // obligar al usuario a loguearse de nuevo. Sin esto, el
+                // listener intercambiaría el idToken por un JWT del BFF y
+                // restauraría una identidad vieja sin que el usuario lo pida.
+                if (wasFreshSessionRequested()) {
+                    try { await firebaseAuthSignOut(auth!); } catch { /* no-op */ }
+                    try { authStore.clear(); } catch { /* no-op */ }
+                    setUser(null);
+                    setIsLoading(false);
+                    return;
+                }
                 try {
                     // Si ya tenemos sesión BFF en memoria, no hace falta tocar
                     // localStorage ni re-autenticar contra el BFF.
