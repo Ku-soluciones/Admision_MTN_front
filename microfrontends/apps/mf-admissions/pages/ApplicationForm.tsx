@@ -100,6 +100,7 @@ const ApplicationForm: React.FC = () => {
         return true;
     });
     const [showRegister, setShowRegister] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
     const [submittedApplicationId, setSubmittedApplicationId] = useState<number | null>(null);
@@ -169,7 +170,7 @@ const ApplicationForm: React.FC = () => {
             ? toUpperCase(value)
             : value;
 
-        setData(prev => {
+        setData((prev: any) => {
             const newData = { ...prev, [name]: processedValue };
             return newData;
         });
@@ -929,8 +930,13 @@ const ApplicationForm: React.FC = () => {
                     // Agregar a la lista local (opcional, para compatibilidad con el contexto existente)
                     addApplication({
                         id: applicationId?.toString() || Date.now().toString(),
-                        studentName: response.studentName || `${data.firstName} ${data.paternalLastName} ${data.maternalLastName}`,
-                        grade: response.grade || data.grade,
+                        applicant: {
+                            id: applicationId?.toString() || Date.now().toString(),
+                            firstName: data.firstName,
+                            lastName: `${data.paternalLastName} ${data.maternalLastName}`,
+                            birthDate: data.birthDate,
+                            grade: data.grade
+                        },
                         status: response.status || 'pending',
                         submissionDate: response.submissionDate || new Date().toISOString(),
                         documents: []
