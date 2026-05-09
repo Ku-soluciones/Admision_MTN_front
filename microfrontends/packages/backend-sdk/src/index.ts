@@ -1,5 +1,9 @@
 import type { AuthSession, BackendEndpointMap, UserRole } from '../../contracts/src/index';
 
+// Reexport del subpaquete `auth`: store en memoria, refresh, broadcast,
+// bootstrap, hard-cap, manejo de errores. Ver `./auth/index.ts`.
+export * from './auth';
+
 const DEFAULT_ENDPOINTS: BackendEndpointMap = {
   bff: 'http://localhost:8081',
   auth: 'http://localhost:8081',
