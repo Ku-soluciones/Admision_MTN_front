@@ -1,20 +1,4 @@
-
-import React from 'react';
-
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-    children: React.ReactNode;
-    className?: string;
-}
-
-const Card: React.FC<CardProps> = ({ children, className = '', ...rest }) => {
-    return (
-        <div
-            className={`bg-blanco-pureza rounded-xl shadow-lg overflow-hidden transition-shadow hover:shadow-2xl ${className}`}
-            {...rest}
-        >
-            {children}
-        </div>
-    );
-};
-
-export default Card;
+// Re-export desde paquete compartido (single source of truth)
+// Fuente: microfrontends/packages/shared-ui/src/components/ui/Card.tsx
+export * from '../../../../packages/shared-ui/src/components/ui/Card';
+export { default } from '../../../../packages/shared-ui/src/components/ui/Card';
