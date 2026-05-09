@@ -35,14 +35,11 @@ class ProfessorAuthService {
 
     async login(request: ProfessorLoginRequest): Promise<ProfessorAuthResponse> {
         try {
-            console.log('Intentando login de profesor:', request.email);
 
             // Send credentials directly over HTTPS (no RSA encryption)
-            console.log('[Professor Auth] Sending credentials over HTTPS');
             const response = await api.post('/v1/auth/login', request);
             const data = response.data;
 
-            console.log('Login exitoso para profesor:', data);
 
             // Guardar token en localStorage
             if (data.token) {
@@ -87,7 +84,6 @@ class ProfessorAuthService {
             return data;
             
         } catch (error: any) {
-            console.error('Error en login de profesor:', error);
             
             if (error.response?.status === 401) {
                 throw new Error('Credenciales inválidas');
@@ -128,7 +124,6 @@ class ProfessorAuthService {
             if (status === 401 || status === 403 || status === 400) {
                 return null;
             }
-            console.error('Error obteniendo profesor actual:', error);
             return null;
         }
     }

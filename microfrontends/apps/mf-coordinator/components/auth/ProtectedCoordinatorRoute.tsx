@@ -33,7 +33,6 @@ const ProtectedCoordinatorRoute: React.FC<ProtectedCoordinatorRouteProps> = ({ c
       const allowedRoles = ['ADMIN', 'COORDINATOR', 'CYCLE_DIRECTOR'];
       hasPermission = allowedRoles.includes(user.role?.toUpperCase());
     } catch (e) {
-      console.error('Error parsing user from localStorage:', e);
     }
   }
 

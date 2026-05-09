@@ -98,7 +98,6 @@ const InterviewOverview: React.FC<InterviewOverviewProps> = ({
 
       setPostulantInterviews(combined);
     } catch (error) {
-      console.error('Error loading postulant interviews:', error);
       setError('Error al cargar las entrevistas');
     } finally {
       setIsLoading(false);

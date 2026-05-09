@@ -208,10 +208,6 @@ const UserForm: React.FC<UserFormProps> = ({
                        formData.role === UserRole.COORDINATOR ||
                        formData.role === UserRole.INTERVIEWER;
   
-  console.log(`UserForm - Usuario: ${formData.firstName} ${formData.lastName}`);
-  console.log(`🏷️ UserForm - Role: ${formData.role}`);
-  console.log(`UserForm - canInterview: ${canInterview}`);
-  console.log(`🆔 UserForm - userForSchedule.id: ${user?.id || 0}`);
   
   // Para el InterviewerScheduleManager necesitamos un objeto User
   const userForSchedule = user || {
@@ -525,7 +521,6 @@ const UserForm: React.FC<UserFormProps> = ({
                   userRole={formData.role}
                   onScheduleChange={() => {
                     // Opcional: callback cuando se actualicen horarios
-                    console.log('Horarios actualizados');
                   }}
                 />
               </div>

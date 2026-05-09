@@ -65,7 +65,6 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
       const interviewService = (await import('../../../../../apps/mf-admissions/services/interviewService')).default;
       await interviewService.cancelInterview(interview.id, 'Cancelada por administrador');
 
-      console.log('Interview cancelled successfully, triggering dashboard refresh');
 
       // Use callback to refresh parent dashboard instead of full page reload
       if (onRefreshDashboard) {
@@ -75,7 +74,6 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
         window.location.reload();
       }
     } catch (error) {
-      console.error('Error cancelling interview:', error);
       alert(`Error al cancelar la entrevista: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setDeletingId(null);

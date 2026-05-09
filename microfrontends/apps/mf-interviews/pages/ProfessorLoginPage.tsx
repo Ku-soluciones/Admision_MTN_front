@@ -48,7 +48,6 @@ const ProfessorLoginPage: React.FC = () => {
         setIsLoggingIn(true);
 
         try {
-            console.log('Iniciando login para profesor:', data.email);
             
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({
@@ -71,7 +70,6 @@ const ProfessorLoginPage: React.FC = () => {
                     
                     // Si es admin, registrar en AuthContext principal
                     if (respRole === 'ADMIN') {
-                        console.log('Usuario admin detectado, registrando en AuthContext principal...');
                         await loginWithAuth(data.email, data.password, 'ADMIN');
                     }
                     
@@ -93,14 +91,11 @@ const ProfessorLoginPage: React.FC = () => {
                         message: `Hola ${respFirstName} ${respLastName}`
                     });
 
-                    console.log('Login exitoso, redirigiendo al dashboard...');
                     
                     // Redirigir según el rol del usuario
                     if (respRole === 'ADMIN') {
-                        console.log('Usuario admin detectado, redirigiendo al panel de administración...');
                         navigate('/admin');
                     } else {
-                        console.log('Usuario profesor detectado, redirigiendo al dashboard de profesor...');
                         navigate('/profesor');
                     }
                     
@@ -115,7 +110,6 @@ const ProfessorLoginPage: React.FC = () => {
                 addNotification({ type: 'error', title: 'Error de autenticación', message: msg });
             }
         } catch (error: any) {
-            console.error('Error en login:', error);
             const msg = error.message || 'No se pudo iniciar sesión. Intente nuevamente.';
             setLoginError(msg);
             addNotification({ type: 'error', title: 'Error al iniciar sesión', message: msg });

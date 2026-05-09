@@ -119,7 +119,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
         if (postulante && isOpen) {
-            console.log('StudentDetailModal - postulante recibido:', postulante);
             loadFullApplication();
             loadInterviews();
             loadEvaluations();
@@ -131,11 +130,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         setLoading(true);
         try {
-            console.log('Cargando aplicación completa para postulante ID:', postulante.id);
             const app = await applicationService.getApplicationById(postulante.id);
-            console.log('Aplicación cargada:', app);
-            console.log('Documentos recibidos:', app?.documents);
-            console.log('Cantidad de documentos:', app?.documents?.length);
             setFullApplication(app);
 
             // Initialize document approval status from database
@@ -149,11 +144,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         approvalStatus[index] = false;
                     }
                 });
-                console.log('Estado de aprobación inicializado:', approvalStatus);
                 setDocumentApprovalStatus(approvalStatus);
             }
         } catch (error) {
-            console.error('Error loading full application:', error);
             addNotification({
                 type: 'warning',
                 title: 'Información limitada',
@@ -172,7 +165,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             const response = await interviewService.getInterviewsByApplication(postulante.id);
             setInterviews(response.interviews || []);
         } catch (error) {
-            console.error('Error loading interviews:', error);
             setInterviews([]);
         } finally {
             setInterviewsLoading(false);
@@ -187,7 +179,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             const evaluationsData = await evaluationService.getEvaluationsByApplicationId(postulante.id);
             setEvaluations(evaluationsData || []);
         } catch (error) {
-            console.error('Error loading evaluations:', error);
             setEvaluations([]);
         } finally {
             setEvaluationsLoading(false);
@@ -249,7 +240,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             setAvailableEvaluators(filteredEvaluators);
             setShowAssignEvaluatorModal(true);
         } catch (error) {
-            console.error('Error loading evaluators:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',
@@ -289,7 +279,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 setIsAssigning(false);
             }, 2000);
         } catch (error: any) {
-            console.error('Error assigning evaluator:', error);
             setAssignMessage({
                 type: 'error',
                 text: `Error: ${error.message || 'No se pudo asignar el evaluador'}`
@@ -343,7 +332,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 message: `Se enviaron ${pendingEvaluations.length} recordatorio(s) por email a los evaluadores`
             });
         } catch (error: any) {
-            console.error('Error sending reminders:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',
@@ -355,24 +343,19 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const toggleDocumentApproval = async (docIndex: number) => {
-        console.log('🔘 toggleDocumentApproval called with docIndex:', docIndex);
 
         if (!fullApplication?.documents) {
-            console.log('No documents in fullApplication');
             return;
         }
 
         const document = fullApplication.documents[docIndex];
         if (!document) {
-            console.log('No document at index', docIndex);
             return;
         }
 
-        console.log('Document:', document);
 
         // LOCK: Prevent toggling if document is already approved in database (permanent lock)
         if ((document.approvalStatus ?? document.approval_status) === 'APPROVED') {
-            console.log('Document already approved, showing notification');
             addNotification({
                 type: 'info',
                 title: 'Documento Bloqueado',
@@ -383,7 +366,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         // Get current approval status
         const currentStatus = documentApprovalStatus[docIndex];
-        console.log('Current status at index', docIndex, ':', currentStatus);
 
         // Determine new status:
         // undefined/null -> true (APPROVED)
@@ -406,12 +388,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             [docIndex]: newLocalStatus
         }));
 
-        console.log(`Documento ${document.id} marcado localmente como:`,
-            newLocalStatus === true ? 'APPROVED' : newLocalStatus === false ? 'REJECTED' : 'PENDING');
     };
 
     const handleViewDocument = (doc: any) => {
-        console.log('Abriendo visor para documento:', doc);
         setViewingDocument(doc);
         setShowDocumentViewer(true);
     };
@@ -471,7 +450,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     });
                 }
             } catch (error) {
-                console.error('Error sending reminder:', error);
                 addNotification({
                     type: 'error',
                     title: 'Error',
@@ -487,7 +465,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         // CRÍTICO: Refrescar datos de la aplicación desde el backend ANTES de calcular
         // Esto previene race conditions cuando múltiples administradores trabajan simultáneamente
-        console.log('Refrescando datos de la aplicación desde el backend...');
         await loadFullApplication();
 
         if (!fullApplication || !fullApplication.documents) {
@@ -525,14 +502,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             );
         });
 
-        console.log('DEBUG - documentApprovalStatus:', documentApprovalStatus);
-        console.log('DEBUG - approvedDocsNow (new):', approvedDocsNow.length, approvedDocsNow);
-        console.log('DEBUG - rejectedDocsNow (new/changed):', rejectedDocsNow.length, rejectedDocsNow);
-        console.log('DEBUG - allApprovedDocs (total):', allApprovedDocs.length);
 
         // Validar que haya ALGO que notificar
         if (approvedDocsNow.length === 0 && rejectedDocsNow.length === 0) {
-            console.log('BLOCKED: No new documents reviewed in current session');
             addNotification({
                 type: 'warning',
                 title: 'Sin cambios',
@@ -546,23 +518,14 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             // Todos aprobados = TODOS los documentos están aprobados (ninguno rechazado, ninguno pendiente)
             const allApproved = allApprovedDocs.length === totalDocuments && rejectedDocsNow.length === 0;
 
-            console.log('Preparando notificación de revisión de documentos:', {
-                applicationId: postulante.id,
-                totalDocuments,
-                approvedDocsNow: approvedDocsNow.length,
-                rejectedDocsNow: rejectedDocsNow.length,
-                allApproved
-            });
 
             // STEP 1: Save all document approval statuses to database FIRST
-            console.log('Guardando estados de aprobación en la base de datos...');
             const savePromises = fullApplication.documents.map(async (doc, index) => {
                 const isApproved = documentApprovalStatus[index] === true;
                 const isRejected = documentApprovalStatus[index] === false;
 
                 if (isApproved || isRejected) {
                     const approvalStatus = isApproved ? 'APPROVED' : 'REJECTED';
-                    console.log(`  - Documento ${doc.id}: ${approvalStatus}`);
 
                     await documentService.updateDocumentApproval(
                         doc.id,
@@ -573,11 +536,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             });
 
             await Promise.all(savePromises);
-            console.log('Todos los estados de aprobación guardados en la base de datos');
 
             // STEP 2: Now send the email notification
             // IMPORTANTE: Solo enviar al backend los documentos REVISADOS en esta sesión
-            console.log('Enviando notificación de revisión de documentos...');
             const response = await institutionalEmailService.sendDocumentReviewEmail(
                 postulante.id,
                 {
@@ -587,16 +548,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 }
             );
 
-            console.log('Respuesta del servicio de email:', response);
 
             if (response.success) {
                 // STEP 3: Mark that notification was sent in database
-                console.log('Marking document notification as sent in database...');
                 try {
                     const markResponse = await applicationService.markDocumentNotificationSent(postulante.id);
-                    console.log('Document notification marked:', markResponse);
                 } catch (markError: any) {
-                    console.error('Error marking notification (non-critical):', markError);
                     // Don't block the user flow if this fails
                 }
 
@@ -621,7 +578,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 // STEP 4: Refresh application data to show updated approval status with locked state
                 await loadFullApplication();
             } else {
-                console.error('Error en respuesta del servicio:', response);
                 addNotification({
                     type: 'error',
                     title: 'Error al enviar notificación',
@@ -629,12 +585,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 });
             }
         } catch (error: any) {
-            console.error('Error enviando notificación de documentos:', error);
-            console.error('Error details:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status
-            });
 
             // Provide more detailed error messages based on the error type
             let errorMessage = 'No se pudo enviar la notificación';
@@ -764,15 +714,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const renderInfoTab = () => {
-        console.log('renderInfoTab called');
-        console.log('fullApplication:', fullApplication);
-        console.log('postulante:', postulante);
 
         // Use fullApplication data when available, fallback to postulante
         const studentData = fullApplication?.student || {};
-        console.log('studentData:', studentData);
-        console.log('birthDate from studentData:', studentData.birthDate);
-        console.log('birthDate from postulante:', postulante.fechaNacimiento);
 
         const birthDate = studentData.birthDate || postulante.fechaNacimiento;
         const email = studentData.email || postulante.email;
@@ -780,11 +724,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const currentSchool = studentData.currentSchool || postulante.colegioActual;
         const submissionDate = fullApplication?.submissionDate || postulante.fechaPostulacion;
 
-        console.log('Final values:');
-        console.log('  birthDate:', birthDate);
-        console.log('  email:', email);
-        console.log('  address:', address);
-        console.log('  currentSchool:', currentSchool);
 
         // Helper function to format dates safely
         const formatDate = (dateString: string | undefined) => {
@@ -1208,16 +1147,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         // VALIDATION: Verify sum of interview categories matches required types
         const totalInterviewsAssigned = completedInterviews + scheduledInterviews + missingInterviews;
         if (totalInterviewsAssigned !== requiredTypes.length) {
-            console.warn(
-                `Interview counter mismatch detected!`,
-                `\n  Required types: ${requiredTypes.length}`,
-                `\n  Completed: ${completedInterviews}`,
-                `\n  Scheduled: ${scheduledInterviews}`,
-                `\n  Missing: ${missingInterviews}`,
-                `\n  Sum: ${totalInterviewsAssigned}`,
-                `\n  Difference: ${requiredTypes.length - totalInterviewsAssigned}`,
-                `\n  This indicates an interview may be counted in multiple categories or filter logic error`
-            );
         }
 
         return (
@@ -1392,11 +1321,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const renderDocumentosTab = () => {
-        console.log('renderDocumentosTab - fullApplication:', fullApplication);
-        console.log('renderDocumentosTab - fullApplication?.documents:', fullApplication?.documents);
 
         const hasDocuments = fullApplication?.documents && fullApplication.documents.length > 0;
-        console.log('hasDocuments:', hasDocuments);
 
         // Filter documents based on active sub-tab
         const filteredDocuments = hasDocuments
@@ -1405,8 +1331,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               )
             : [];
 
-        console.log('filteredDocuments:', filteredDocuments);
-        console.log('documentSubTab:', documentSubTab);
 
         const approvedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index]).length : 0;
         const rejectedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index] === false).length : 0;
@@ -1415,21 +1339,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const academicDocsCount = hasDocuments ? fullApplication.documents.filter(isAcademicDocument).length : 0;
         const otherDocsCount = hasDocuments ? fullApplication.documents.filter(isOtherDocument).length : 0;
 
-        console.log('academicDocsCount:', academicDocsCount, 'otherDocsCount:', otherDocsCount);
 
         // VALIDATION: Verify sum of categories matches total
         const totalDocuments = fullApplication?.documents?.length || 0;
         const sumCategories = academicDocsCount + otherDocsCount;
         if (sumCategories !== totalDocuments) {
-            console.warn(
-                `Document counter mismatch detected!`,
-                `\n  Total documents: ${totalDocuments}`,
-                `\n  Academic: ${academicDocsCount}`,
-                `\n  Other: ${otherDocsCount}`,
-                `\n  Sum: ${sumCategories}`,
-                `\n  Difference: ${totalDocuments - sumCategories}`,
-                `\n  This indicates a classification error in isAcademicDocument() or isOtherDocument()`
-            );
         }
 
         return (
@@ -1593,7 +1507,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                                                     window.open(downloadUrl, '_blank');
                                                                 }
                                                             } catch (error) {
-                                                                console.error('Error downloading document:', error);
                                                                 addNotification({
                                                                     type: 'error',
                                                                     title: 'Error',
@@ -2084,7 +1997,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     title="Detalles de la Evaluación"
                     size="lg"
                 >
-                    {console.log('Selected Evaluation:', selectedEvaluation)}
+                    {}
                     <div className="space-y-6">
                         {/* Header */}
                         <div className="bg-blue-50 p-4 rounded-lg">

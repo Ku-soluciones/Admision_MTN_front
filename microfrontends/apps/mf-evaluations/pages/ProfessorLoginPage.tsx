@@ -47,7 +47,6 @@ const ProfessorLoginPage: React.FC = () => {
         setIsLoggingIn(true);
 
         try {
-            console.log('Iniciando login para profesor:', data.email);
 
             clearOtherSessions('professor');
 
@@ -100,7 +99,6 @@ const ProfessorLoginPage: React.FC = () => {
                 addNotification({ type: 'error', title: 'Error de autenticación', message: msg });
             }
         } catch (error: any) {
-            console.error('Error en login:', error);
             const msg = error.message || 'No se pudo iniciar sesión. Intente nuevamente.';
             setLoginError(msg);
             addNotification({ type: 'error', title: 'Error al iniciar sesión', message: msg });

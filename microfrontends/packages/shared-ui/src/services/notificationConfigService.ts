@@ -52,7 +52,6 @@ export class NotificationConfigService {
       const response = await api.get<NotificationConfigResponse>(this.baseUrl);
       return response.data.data;
     } catch (error: any) {
-      console.error('Error fetching notification configs:', error);
       throw new Error(error.response?.data?.error || 'Error al obtener configuraciones de notificaciones');
     }
   }
@@ -65,7 +64,6 @@ export class NotificationConfigService {
       const response = await api.get<SingleNotificationConfigResponse>(`${this.baseUrl}/${eventType}`);
       return response.data.data;
     } catch (error: any) {
-      console.error(`Error fetching config for ${eventType}:`, error);
       throw new Error(error.response?.data?.error || 'Error al obtener configuración de notificación');
     }
   }
@@ -78,7 +76,6 @@ export class NotificationConfigService {
       const response = await api.put<SingleNotificationConfigResponse>(`${this.baseUrl}/${id}`, updates);
       return response.data.data;
     } catch (error: any) {
-      console.error(`Error updating config ${id}:`, error);
       throw new Error(error.response?.data?.error || 'Error al actualizar configuración de notificación');
     }
   }
@@ -91,7 +88,6 @@ export class NotificationConfigService {
       const response = await api.post<SingleNotificationConfigResponse>(this.baseUrl, config);
       return response.data.data;
     } catch (error: any) {
-      console.error('Error creating config:', error);
       throw new Error(error.response?.data?.error || 'Error al crear configuración de notificación');
     }
   }
@@ -103,7 +99,6 @@ export class NotificationConfigService {
     try {
       await api.delete(`${this.baseUrl}/${id}`);
     } catch (error: any) {
-      console.error(`Error deleting config ${id}:`, error);
       throw new Error(error.response?.data?.error || 'Error al eliminar configuración de notificación');
     }
   }
@@ -116,7 +111,6 @@ export class NotificationConfigService {
       const response = await api.patch<SingleNotificationConfigResponse>(`${this.baseUrl}/${id}/toggle`);
       return response.data.data;
     } catch (error: any) {
-      console.error(`Error toggling config ${id}:`, error);
       throw new Error(error.response?.data?.error || 'Error al cambiar estado de configuración');
     }
   }

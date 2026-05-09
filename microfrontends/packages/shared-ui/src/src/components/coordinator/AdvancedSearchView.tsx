@@ -46,7 +46,6 @@ export const AdvancedSearchView: React.FC = () => {
       const response = await searchClient.advancedSearch(searchParams);
       setResults(response);
     } catch (err: any) {
-      console.error('Search error:', err);
       setError(err.message || 'Error al realizar la búsqueda');
     } finally {
       setLoading(false);

@@ -41,7 +41,6 @@ const schoolOptions = [
     { value: 'NAZARET', label: 'Nazaret' }
 ];
 
-console.log('School options loaded:', schoolOptions);
 
 const validationConfig = {
     firstName: { required: true, minLength: 2 },
@@ -169,10 +168,8 @@ const ApplicationForm: React.FC = () => {
             ? toUpperCase(value)
             : value;
 
-        console.log(`updateField called - ${name}:`, value, '→', processedValue);
         setData(prev => {
             const newData = { ...prev, [name]: processedValue };
-            console.log('New data state:', newData);
             return newData;
         });
     }, []);
@@ -195,21 +192,16 @@ const ApplicationForm: React.FC = () => {
     // Función para manejar login
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('ApplicationForm - handleLogin: Starting login process');
         setAuthLoading(true);
         setAuthError('');
 
         try {
-            console.log('ApplicationForm - handleLogin: Calling login with:', authData.email);
             await login(authData.email, authData.password, 'APODERADO');
-            console.log('ApplicationForm - handleLogin: Login successful, hiding auth form');
             setShowAuthForm(false);
 
             // Pre-llenar el formulario con datos del usuario autenticado
             await loadUserProfileAndPopulate();
-            console.log('ApplicationForm - handleLogin: Profile loaded and populated');
         } catch (err) {
-            console.error('ApplicationForm - handleLogin: Login failed:', err);
             setAuthError('Credenciales inválidas. Verifique su email y contraseña.');
         } finally {
             setAuthLoading(false);
@@ -219,13 +211,11 @@ const ApplicationForm: React.FC = () => {
     // Función para manejar registro
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('ApplicationForm - handleRegister: Starting registration process');
         setAuthLoading(true);
         setAuthError('');
 
         // Validar verificación de email
         if (!isEmailVerified) {
-            console.warn('ApplicationForm - handleRegister: Email not verified');
             setAuthError('Debe verificar su dirección de correo electrónico antes de continuar');
             setAuthLoading(false);
             return;
@@ -252,9 +242,7 @@ const ApplicationForm: React.FC = () => {
 
         try {
             // Registrar usuario con información básica
-            console.log('ApplicationForm - handleRegister: Calling register with:', authData.email);
             await register(authData, 'APODERADO');
-            console.log('ApplicationForm - handleRegister: Registration successful, hiding auth form');
             setShowAuthForm(false);
 
             // Intentar actualizar el perfil con información adicional
@@ -265,7 +253,6 @@ const ApplicationForm: React.FC = () => {
                         profession: authData.profession
                     });
                 } catch (profileError) {
-                    console.warn('No se pudo actualizar el perfil con información adicional:', profileError);
                 }
             }
 
@@ -280,7 +267,6 @@ const ApplicationForm: React.FC = () => {
                 profession: authData.profession
             });
         } catch (err: any) {
-            console.error('Error en registro:', err);
 
             // Determinar el mensaje de error específico
             let errorMessage = 'No se pudo crear la cuenta. Por favor, intente nuevamente.';
@@ -348,7 +334,6 @@ const ApplicationForm: React.FC = () => {
                 profession: profile.profession || ''
             });
         } catch (error) {
-            console.warn('No se pudo cargar el perfil completo, usando datos básicos:', error);
             // Fallback: usar datos básicos del usuario autenticado
             populateParentFields({
                 email: user.email,
@@ -384,14 +369,11 @@ const ApplicationForm: React.FC = () => {
 
     // Verificar si el usuario ya está autenticado
     useEffect(() => {
-        console.log('ApplicationForm - Auth Status Changed:', { isAuthenticated, user: user ? { email: user.email, role: user.role } : null, showAuthForm });
         if (isAuthenticated && user) {
-            console.log('ApplicationForm - User authenticated, hiding auth form');
             setShowAuthForm(false);
             // Cargar perfil completo y popular campos
             loadUserProfileAndPopulate();
         } else {
-            console.log('ApplicationForm - User not authenticated, should show auth form');
         }
     }, [isAuthenticated, user, loadUserProfileAndPopulate]);
     
@@ -447,17 +429,10 @@ const ApplicationForm: React.FC = () => {
     // Pre-fill form when in edit mode (from dashboard) OR when adding another child (prefill family data)
     useEffect(() => {
         const loadEditModeData = async () => {
-            console.log('ApplicationForm useEffect - Checking location.state:', location.state);
 
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
             if (location.state?.prefillFamilyData && location.state?.familyData) {
                 const familyData = location.state.familyData;
-                console.log('Prefill family data detected!');
-                console.log('Family data received:', familyData);
-                console.log('Father data:', familyData.father);
-                console.log('Mother data:', familyData.mother);
-                console.log('Guardian data:', familyData.guardian);
-                console.log('Supporter data:', familyData.supporter);
 
                 // Hide auth form since user is already authenticated
                 setShowAuthForm(false);
@@ -512,14 +487,12 @@ const ApplicationForm: React.FC = () => {
                     guardianRelation: familyData.guardian?.relationship || ''
                 });
 
-                console.log('Family data pre-filled successfully - student fields remain empty for new application');
                 return; // Exit early - no need to check edit mode
             }
 
             // CASO 2: Modo edición - pre-llenar toda la postulación existente
             if (location.state?.editMode && location.state?.applicationData) {
                 const appData = location.state.applicationData;
-                console.log('Edit mode detected, pre-filling form with:', appData);
 
                 // Hide auth form when in edit mode
                 setShowAuthForm(false);
@@ -585,19 +558,15 @@ const ApplicationForm: React.FC = () => {
                     guardianRelation: appData.guardian?.relationship || ''
                 });
 
-                console.log('Form pre-filled successfully');
 
                 // Load existing documents
                 if (location.state.applicationId) {
                     try {
-                        console.log('Loading existing documents for application:', location.state.applicationId);
                         const response = await applicationService.getApplicationDocuments(location.state.applicationId);
                         // El endpoint devuelve { success: true, documents: [...] }
                         const documents = response.documents || response || [];
                         setExistingDocuments(documents);
-                        console.log('Existing documents loaded:', documents);
                     } catch (error) {
-                        console.error('Error loading documents:', error);
                         setExistingDocuments([]);
                     }
                 }
@@ -611,9 +580,7 @@ const ApplicationForm: React.FC = () => {
     useEffect(() => {
         if (data.studentAddress && !data.studentAddressStreet) {
             // Only parse if we have the combined address but not the separate fields
-            console.log('Parsing address from backend:', data.studentAddress);
             const parsed = parseAddress(data.studentAddress);
-            console.log('Parsed address:', parsed);
 
             // Update separate fields without triggering re-combination
             setData((prev: any) => ({
@@ -875,7 +842,6 @@ const ApplicationForm: React.FC = () => {
                         };
 
                         // Actualizar aplicación existente
-                        console.log('Actualizando postulación:', location.state.applicationId, applicationRequest);
                         response = await applicationService.updateApplication(location.state.applicationId, applicationRequest);
                     } else {
                         // Formato plano para POST (creación)
@@ -931,7 +897,6 @@ const ApplicationForm: React.FC = () => {
                         };
 
                         // Crear nueva aplicación
-                        console.log('Enviando postulación:', applicationRequest);
                         response = await applicationService.submitApplication(applicationRequest);
                     }
 
@@ -942,7 +907,6 @@ const ApplicationForm: React.FC = () => {
                     // Subir documentos si hay alguno seleccionado
                     let documentsUploaded = 0;
                     if (uploadedDocuments.size > 0) {
-                        console.log(`Subiendo ${uploadedDocuments.size} documentos para la aplicación ${applicationId}`);
 
                         const uploadPromises = Array.from(uploadedDocuments.entries()).map(([docType, file]) => {
                             return applicationService.uploadDocument(applicationId, file, docType);
@@ -990,7 +954,6 @@ const ApplicationForm: React.FC = () => {
                     setData({});
                     setCurrentStep(nextStepIndex);
                 } catch (error: any) {
-                    console.error('Error al enviar postulación:', error);
 
                     // Determinar el mensaje de error específico
                     let errorMessage = 'No se pudo enviar la postulación. Por favor, intente nuevamente.';

@@ -66,7 +66,6 @@ const AdminScheduleManager: React.FC<AdminScheduleManagerProps> = ({
       const pending = await evaluationService.getPendingConfirmations();
       setSchedules(pending);
     } catch (err: any) {
-      console.warn('Error loading pending confirmations, using mock data');
       // Usar datos mock para desarrollo
       const mockSchedules = evaluationService.createLocalMockSchedules(1);
       setSchedules(mockSchedules.filter(s => 

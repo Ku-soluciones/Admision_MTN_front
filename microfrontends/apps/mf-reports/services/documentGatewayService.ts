@@ -210,9 +210,7 @@ class DocumentGatewayService {
       // If gateway removal succeeded but monolith deletion failed,
       // log for manual cleanup but don't fail the operation
       if (error.status === 404) {
-        console.warn(`Document ${documentId} not found in monolith, may have been already deleted`);
       } else {
-        console.error(`Failed to delete document ${documentId} from monolith:`, error);
         // Re-add to gateway metadata since deletion failed
         // This would require a restore/rollback mechanism
         throw new Error('Document deletion partially failed, please contact support');

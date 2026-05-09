@@ -52,7 +52,6 @@ class EncryptionService {
 
             // Check if encryption is available
             if (!response.data || response.data.encryptionAvailable === false) {
-                console.log('[Encryption] Backend encryption not available, using plaintext');
                 this.rsaPublicKey = null;
                 this.keyId = null;
                 return;
@@ -87,9 +86,7 @@ class EncryptionService {
             this.keyId = response.data.keyId;
             this.keyFetchTime = now;
 
-            console.log('[Encryption] RSA public key fetched and imported successfully');
         } catch (error) {
-            console.error('[Encryption] Failed to fetch public key:', error);
             throw new Error('Encryption service unavailable. Please try again.');
         }
     }
@@ -106,7 +103,6 @@ class EncryptionService {
             await this.fetchPublicKey();
 
             if (!this.rsaPublicKey) {
-                console.log('[Encryption] No RSA key available, returning null (plaintext mode)');
                 return null; // Return null to signal plaintext mode
             }
 
@@ -162,12 +158,10 @@ class EncryptionService {
                 authTag: this.arrayBufferToBase64(authTag)
             };
 
-            console.log('[Encryption] Credentials encrypted successfully');
 
             return payload;
 
         } catch (error) {
-            console.error('[Encryption] Failed to encrypt credentials:', error);
             throw new Error('Failed to encrypt credentials. Please try again.');
         }
     }
@@ -201,7 +195,6 @@ class EncryptionService {
         this.rsaPublicKey = null;
         this.keyId = null;
         this.keyFetchTime = 0;
-        console.log('[Encryption] Cache cleared');
     }
 }
 

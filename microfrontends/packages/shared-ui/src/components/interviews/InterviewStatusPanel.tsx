@@ -89,7 +89,6 @@ const InterviewStatusPanel: React.FC<InterviewStatusPanelProps> = ({
 
         setRequiredInterviews(mappedInterviews);
       } catch (error) {
-        console.error('Error cargando entrevistas requeridas:', error);
         // En caso de error, mantener array vacío
         setRequiredInterviews([]);
       } finally {

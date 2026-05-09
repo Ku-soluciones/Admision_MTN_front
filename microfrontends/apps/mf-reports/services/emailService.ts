@@ -87,7 +87,6 @@ class EmailService {
 
       return response.data;
     } catch (error: any) {
-      console.error('Error sending templated email:', error);
       
       const errorResponse: EmailResponse = {
         success: false,
@@ -127,7 +126,6 @@ class EmailService {
 
       return response.data;
     } catch (error: any) {
-      console.error('Error sending direct email:', error);
       
       const errorResponse: EmailResponse = {
         success: false,
@@ -170,7 +168,6 @@ class EmailService {
 
       return response.data;
     } catch (error: any) {
-      console.error('Error sending bulk emails:', error);
       
       const errorResponse: EmailResponse = {
         success: false,
@@ -199,7 +196,6 @@ class EmailService {
       const response = await api.post(`${this.emailBaseUrl}/send-test`, { to });
       return response.data;
     } catch (error: any) {
-      console.error('Error sending test email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando email de prueba'
@@ -219,7 +215,6 @@ class EmailService {
       const response = await api.post(`${this.emailBaseUrl}/send-verification`, { email });
       return response.data;
     } catch (error: any) {
-      console.error('Error sending verification code:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando código de verificación'
@@ -238,7 +233,6 @@ class EmailService {
       const response = await api.post(`${this.emailBaseUrl}/verify-code`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error verifying code:', error);
       return {
         success: false,
         valid: false,
@@ -258,7 +252,6 @@ class EmailService {
       });
       return response.data;
     } catch (error: any) {
-      console.error('Error checking email:', error);
       return { exists: false };
     }
   }
@@ -274,7 +267,6 @@ class EmailService {
       const response = await api.get(`${this.emailBaseUrl}/config-status`);
       return response.data;
     } catch (error: any) {
-      console.error('Error getting email config:', error);
       return {
         success: false,
         config: {
@@ -309,7 +301,6 @@ class EmailService {
       });
       return response.data;
     } catch (error: any) {
-      console.error('Error getting notifications:', error);
       return {
         content: [],
         totalElements: 0,
@@ -329,7 +320,6 @@ class EmailService {
       const response = await api.get(`${this.baseUrl}/${id}`);
       return response.data;
     } catch (error: any) {
-      console.error('Error getting notification:', error);
       return null;
     }
   }
@@ -343,7 +333,6 @@ class EmailService {
       await api.delete(`${this.baseUrl}/${id}`);
       return true;
     } catch (error: any) {
-      console.error('Error deleting notification:', error);
       return false;
     }
   }

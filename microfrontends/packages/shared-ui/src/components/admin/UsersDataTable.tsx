@@ -238,7 +238,6 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
                 total: response.totalElements || 0
             });
         } catch (error: any) {
-            console.error('Error cargando usuarios:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',
@@ -342,7 +341,6 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
 
     // Cargar datos al montar el componente y cuando cambie la key (prop externa)
     useEffect(() => {
-        console.log('UsersDataTable montado/remontado - cargando usuarios...');
         loadUsers();
     }, []); // Se recarga automáticamente cuando el componente se desmonta y remonta por el key
 

@@ -40,7 +40,6 @@ export const ApplicantMetricsModal: React.FC<ApplicantMetricsModalProps> = ({
       const response = await dashboardClient.getApplicantMetrics(filters);
       setApplicants(response.data || []);
     } catch (err: any) {
-      console.error('Error loading applicant metrics:', err);
       setError(err.message || 'Error al cargar métricas de postulantes');
     } finally {
       setLoading(false);

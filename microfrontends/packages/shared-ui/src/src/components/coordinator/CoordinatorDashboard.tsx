@@ -68,7 +68,6 @@ export const CoordinatorDashboard: React.FC = () => {
       setStats(normalizedData);
       setAlerts(alertsData);
     } catch (err: any) {
-      console.error('Error loading dashboard:', err);
       setError(err.message || 'Error al cargar el dashboard');
     } finally {
       setLoading(false);

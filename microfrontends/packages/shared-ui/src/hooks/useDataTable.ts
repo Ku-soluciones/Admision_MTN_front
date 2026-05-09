@@ -68,7 +68,6 @@ export const useDataTable = <T>(
         }));
 
         try {
-            console.log(`Loading data: page ${page}, size ${size}`);
             
             const rawData = await dataLoaderRef.current(page, size);
             
@@ -87,10 +86,8 @@ export const useDataTable = <T>(
                 }
             }));
 
-            console.log(`Data loaded successfully: ${finalData.length} items`);
 
         } catch (error: any) {
-            console.error('Error loading data:', error);
             
             const errorMessage = error.response?.data?.message || 
                                error.message || 

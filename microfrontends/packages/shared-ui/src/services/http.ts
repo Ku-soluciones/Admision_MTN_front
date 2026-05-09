@@ -76,8 +76,6 @@ class HttpClient {
           config.url = runtimeBaseURL + config.url;
         }
 
-        console.log('http.ts - Runtime baseURL:', runtimeBaseURL);
-        console.log('http.ts - Full URL:', config.url);
 
         const correlationId = crypto.randomUUID();
 
@@ -88,9 +86,7 @@ class HttpClient {
             ...config.headers,
             'Authorization': `Bearer ${token}`,
           };
-          console.log('http.ts - Authorization header added');
         } else {
-          console.warn('http.ts - No token available, request will be sent without auth');
         }
         (config as any).correlationId = correlationId;
 
@@ -107,9 +103,8 @@ class HttpClient {
               ...config.headers,
               'X-CSRF-Token': csrfToken,
             };
-            // console.log(`http.ts - Added CSRF token to ${method} request:`, csrfToken.substring(0, 20) + '...');
+            // 
           } catch (error) {
-            console.error('http.ts - Failed to get CSRF token:', error);
             // Continue without CSRF - backend will reject if required
           }
         }
@@ -156,24 +151,19 @@ class HttpClient {
     try {
       // Primero intentar obtener el token de usuario regular (apoderado)
       let token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-      console.log('http.ts - auth_token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
 
       // Si no hay token de usuario regular, intentar con token de profesor
       if (!token) {
         token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-        console.log('http.ts - professor_token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
       }
 
       // Si aún no hay token, intentar OIDC como fallback
       if (!token) {
         token = oidcService.getAccessToken();
-        console.log('http.ts - oidc token:', token ? `${token.substring(0, 20)}...` : 'NOT FOUND');
       }
 
-      console.log('http.ts - Final token to use:', token ? 'FOUND' : 'NULL');
       return token;
     } catch (error) {
-      console.error('http.ts - Error getting token:', error);
       return null;
     }
   }
@@ -255,7 +245,6 @@ class HttpClient {
     // Check if this is a session invalidation (user logged in from another device/tab)
     const errorData = error.response?.data as any;
     if (errorData?.code === 'SESSION_INVALIDATED') {
-      console.warn('Session invalidated - User logged in from another device');
 
       // Clear ALL tokens
       localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
@@ -313,8 +302,6 @@ class HttpClient {
 
     // DEFENSIVE: Validate response exists before accessing data
     if (!response || !response.data) {
-      console.error('http.ts - GET response or response.data is undefined');
-      console.error('http.ts - URL:', url);
       throw new Error('No se recibió respuesta válida del servidor');
     }
 
@@ -326,8 +313,6 @@ class HttpClient {
 
     // DEFENSIVE: Validate response exists before accessing data
     if (!response || !response.data) {
-      console.error('http.ts - POST response or response.data is undefined');
-      console.error('http.ts - URL:', url);
       throw new Error('No se recibió respuesta válida del servidor');
     }
 
@@ -339,8 +324,6 @@ class HttpClient {
 
     // DEFENSIVE: Validate response exists before accessing data
     if (!response || !response.data) {
-      console.error('http.ts - PUT response or response.data is undefined');
-      console.error('http.ts - URL:', url);
       throw new Error('No se recibió respuesta válida del servidor');
     }
 
@@ -352,8 +335,6 @@ class HttpClient {
 
     // DEFENSIVE: Validate response exists before accessing data
     if (!response || !response.data) {
-      console.error('http.ts - PATCH response or response.data is undefined');
-      console.error('http.ts - URL:', url);
       throw new Error('No se recibió respuesta válida del servidor');
     }
 
@@ -365,8 +346,6 @@ class HttpClient {
 
     // DEFENSIVE: Validate response exists before accessing data
     if (!response || !response.data) {
-      console.error('http.ts - DELETE response or response.data is undefined');
-      console.error('http.ts - URL:', url);
       throw new Error('No se recibió respuesta válida del servidor');
     }
 

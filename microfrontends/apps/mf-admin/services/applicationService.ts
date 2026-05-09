@@ -205,7 +205,6 @@ class ApplicationService {
                 size: typeof body.size === 'number' ? (body.size as number) : size
             };
         } catch (mainError) {
-            console.warn('fetchApplicationsPage: falló /v1/applications, intentando público…', mainError);
             const response = await api.get('/v1/applications/public/all', {
                 params: { page, limit: size }
             });
@@ -232,7 +231,6 @@ class ApplicationService {
             });
             return applications.filter((app) => app?.id && app?.student);
         } catch (error: any) {
-            console.error('Error obteniendo postulaciones desde microservicio:', error);
             return [];
         }
     }
@@ -245,7 +243,6 @@ class ApplicationService {
         recentApplications: Application[];
     }> {
         try {
-            console.log('Admin: Obteniendo estadísticas del dashboard');
             
             const applications = await this.getAllApplications();
             
@@ -278,7 +275,6 @@ class ApplicationService {
             };
             
         } catch (error: any) {
-            console.error('Error obteniendo estadísticas admin:', error);
             return {
                 totalApplications: 0,
                 applicationsByStatus: {},
@@ -290,15 +286,12 @@ class ApplicationService {
     
     async createApplication(request: ApplicationRequest): Promise<ApplicationResponse> {
         try {
-            console.log('Enviando postulación:', request);
             
             const response = await api.post('/v1/applications', request);
             
-            console.log('Postulación enviada exitosamente');
             return response.data;
             
         } catch (error: any) {
-            console.error('Error enviando postulación:', error);
             
             if (error.response?.status === 400) {
                 const message = error.response?.data?.message || 'Datos de postulación inválidos';
@@ -315,42 +308,32 @@ class ApplicationService {
     
     async getMyApplications(): Promise<Application[]> {
         try {
-            console.log('Obteniendo mis postulaciones');
 
             const response = await api.get('/v1/applications/my-applications');
-            console.log('Respuesta del servidor:', response);
-            console.log('response.data:', response.data);
 
             // Backend devuelve {success: true, data: [...], count: X}
             const applications = response.data.data || response.data;
-            console.log('Applications extraídas:', applications);
-            console.log('Es array?', Array.isArray(applications));
 
             if (!Array.isArray(applications)) {
-                console.error('Error: applications no es un array:', applications);
                 return [];
             }
 
             return applications;
 
         } catch (error: any) {
-            console.error('Error obteniendo postulaciones:', error);
             throw new Error('Error al obtener las postulaciones');
         }
     }
     
     async getApplicationById(id: number): Promise<Application> {
         try {
-            console.log('Obteniendo postulación:', id);
 
             const response = await api.get(`/v1/applications/${id}`);
-            console.log('Respuesta completa del backend:', response.data);
 
             // Desempaquetar el wrapper {success, data, timestamp} si existe
             return response.data.data || response.data;
 
         } catch (error: any) {
-            console.error('Error obteniendo postulación:', error);
             throw new Error('Error al obtener la postulación');
         }
     }
@@ -361,42 +344,32 @@ class ApplicationService {
         primaryApplication?: Application;
     }> {
         try {
-            console.log('Obteniendo datos del dashboard');
             
             // Primero intentar obtener las aplicaciones del usuario autenticado
             let applications: Application[] = [];
             
             try {
                 applications = await this.getMyApplications();
-                console.log('Aplicaciones del usuario obtenidas:', applications);
             } catch (authError) {
-                console.log('Usuario no autenticado, intentando obtener datos públicos...');
                 
                 // Si falla la autenticación, intentar obtener datos públicos (solo para desarrollo)
                 try {
                     const publicResponse = await api.get('/v1/applications/public/all');
                     // Backend devuelve {success: true, data: [...], pagination: {...}}
                     applications = publicResponse.data.data || publicResponse.data || [];
-                    console.log('Datos públicos obtenidos:', applications);
                 } catch (publicError) {
-                    console.log('No se pudieron obtener datos públicos, intentando datos mock...');
                     
                     // Si falla, intentar obtener datos mock
                     try {
                         const mockResponse = await api.get('/v1/applications/public/mock-applications');
                         applications = mockResponse.data || [];
-                        console.log('Datos mock obtenidos:', applications);
                     } catch (mockError) {
-                        console.log('No se pudieron obtener datos mock:', mockError);
                     }
                 }
             }
             
-            console.log('Tipo de applications:', typeof applications);
-            console.log('Es array?', Array.isArray(applications));
             
             if (!Array.isArray(applications)) {
-                console.error('Error: applications no es un array:', applications);
                 return {
                     applications: [],
                     hasApplications: false
@@ -410,7 +383,6 @@ class ApplicationService {
             };
             
         } catch (error: any) {
-            console.error('Error obteniendo datos del dashboard:', error);
             return {
                 applications: [],
                 hasApplications: false
@@ -421,14 +393,11 @@ class ApplicationService {
     // Método para administradores: archivar postulación
     async archiveApplication(id: number): Promise<void> {
         try {
-            console.log('📂 Admin: Archivando postulación:', id);
 
             await api.put(`/v1/applications/${id}/archive`);
 
-            console.log('Admin: Postulación archivada exitosamente');
 
         } catch (error: any) {
-            console.error('Error archivando postulación:', error);
 
             if (error.response?.status === 404) {
                 throw new Error('Postulación no encontrada');
@@ -447,19 +416,16 @@ class ApplicationService {
         changeNote?: string
     ): Promise<{ success: boolean; message: string; data: any }> {
         try {
-            console.log('Admin: Cambiando estado de postulación:', { id, newStatus, changeNote });
 
             const response = await api.patch(`/v1/applications/${id}/status`, {
                 status: newStatus,  // Backend expects 'status', not 'newStatus'
                 notes: changeNote   // Backend expects 'notes', not 'changeNote'
             });
 
-            console.log('Admin: Estado actualizado exitosamente:', response.data);
 
             return response.data;
 
         } catch (error: any) {
-            console.error('Error actualizando estado:', error);
 
             if (error.response?.status === 404) {
                 throw new Error('Postulación no encontrada');
@@ -476,16 +442,13 @@ class ApplicationService {
     // US-9: Get status change history for an application
     async getApplicationStatusHistory(id: number): Promise<any[]> {
         try {
-            console.log('📜 Admin: Obteniendo historial de estados:', id);
 
             const response = await api.get(`/v1/applications/${id}/status-history`);
 
-            console.log('Admin: Historial obtenido:', response.data);
 
             return response.data.data || [];
 
         } catch (error: any) {
-            console.error('Error obteniendo historial:', error);
 
             if (error.response?.status === 404) {
                 throw new Error('Postulación no encontrada');
@@ -498,7 +461,6 @@ class ApplicationService {
     // Función principal para enviar aplicaciones
     async submitApplication(data: ApplicationRequest): Promise<ApplicationResponse> {
         try {
-            console.log('Enviando postulación:', data);
 
             // Validar datos antes de enviar
             if (!data.firstName || !data.paternalLastName || !data.maternalLastName) {
@@ -562,12 +524,10 @@ class ApplicationService {
                 additionalNotes: data.additionalNotes || ''
             };
 
-            console.log('Datos transformados para el backend:', transformedData);
 
             // Enviar al backend
             const response = await api.post('/v1/applications', transformedData);
 
-            console.log('Postulación enviada exitosamente:', response.data);
 
             // Backend devuelve {success: true, data: {id, status, ...}}
             const applicationData = response.data.data || response.data;
@@ -581,7 +541,6 @@ class ApplicationService {
             };
 
         } catch (error: any) {
-            console.error('Error enviando postulación:', error);
 
             // Manejo específico de errores HTTP
             if (error.response) {
@@ -619,7 +578,6 @@ class ApplicationService {
     // Función para actualizar una postulación existente
     async updateApplication(applicationId: number, applicationData: any): Promise<any> {
         try {
-            console.log('Actualizando postulación:', applicationId, applicationData);
 
             // Convertir gradeApplied al formato esperado por el backend
             if (applicationData.student?.gradeApplied) {
@@ -628,10 +586,8 @@ class ApplicationService {
 
             const response = await api.put(`/v1/applications/${applicationId}`, applicationData);
 
-            console.log('Postulación actualizada exitosamente:', response.data);
             return response.data;
         } catch (error: any) {
-            console.error('Error actualizando postulación:', error);
 
             if (error.response) {
                 const { status, data } = error.response;
@@ -659,7 +615,6 @@ class ApplicationService {
     // Función para subir documentos
     async uploadDocument(applicationId: number, file: File, documentType: string): Promise<any> {
         try {
-            console.log(` Subiendo documento ${documentType} para aplicación ${applicationId}`);
 
             const formData = new FormData();
             formData.append('files', file); // Backend expects 'files' (plural) not 'file'
@@ -672,11 +627,9 @@ class ApplicationService {
                 },
             });
 
-            console.log('Documento subido exitosamente:', response.data);
             return response.data;
 
         } catch (error: any) {
-            console.error('Error subiendo documento:', error);
 
             if (error.response) {
                 const status = error.response.status;
@@ -721,18 +674,15 @@ class ApplicationService {
         approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED'
     ): Promise<any> {
         try {
-            console.log(`Actualizando estado de aprobación del documento ${documentId} a ${approvalStatus}`);
 
             const response = await api.put(
                 `/v1/applications/documents/${documentId}/approval`,
                 { approvalStatus }
             );
 
-            console.log('Estado de aprobación actualizado:', response.data);
             return response.data;
 
         } catch (error: any) {
-            console.error('Error actualizando estado de aprobación:', error);
 
             if (error.response) {
                 const { status, data } = error.response;
@@ -755,11 +705,9 @@ class ApplicationService {
     // Get complementary form data for an application
     async getComplementaryForm(applicationId: number): Promise<any> {
         try {
-            console.log(`Obteniendo formulario complementario para aplicación ${applicationId}`);
 
             const response = await api.get(`/v1/applications/${applicationId}/complementary-form`);
 
-            console.log('Formulario complementario obtenido:', response.data);
             const backendData = response.data.data || response.data;
 
             // Transform snake_case backend fields to camelCase frontend fields
@@ -781,14 +729,12 @@ class ApplicationService {
                     // Also include camelCase versions if backend provides them (for compatibility)
                     ...backendData
                 };
-                console.log('Datos transformados a camelCase:', transformedData);
                 return transformedData;
             }
 
             return backendData;
 
         } catch (error: any) {
-            console.error('Error obteniendo formulario complementario:', error);
 
             if (error.response?.status === 404) {
                 // Formulario no existe todavía, eso es válido
@@ -802,15 +748,12 @@ class ApplicationService {
     // Save complementary form data for an application
     async saveComplementaryForm(applicationId: number, formData: any): Promise<any> {
         try {
-            console.log(`Guardando formulario complementario para aplicación ${applicationId}`);
 
             const response = await api.post(`/v1/applications/${applicationId}/complementary-form`, formData);
 
-            console.log('Formulario complementario guardado:', response.data);
             return response.data;
 
         } catch (error: any) {
-            console.error('Error guardando formulario complementario:', error);
 
             if (error.response) {
                 const { status, data } = error.response;
@@ -836,17 +779,14 @@ class ApplicationService {
      */
     async markDocumentNotificationSent(applicationId: number): Promise<any> {
         try {
-            console.log(`Marking document notification as sent for application ${applicationId}`);
 
             const response = await api.patch(
                 `/v1/applications/${applicationId}/document-notification-sent`
             );
 
-            console.log('Document notification marked successfully:', response.data);
             return response.data;
 
         } catch (error: any) {
-            console.error('Error marking document notification:', error);
 
             if (error.response) {
                 const { status, data } = error.response;

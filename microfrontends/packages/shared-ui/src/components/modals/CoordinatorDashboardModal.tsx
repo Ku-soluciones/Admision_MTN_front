@@ -74,7 +74,6 @@ export const CoordinatorDashboardModal: React.FC<CoordinatorDashboardModalProps>
       setStats(normalizedData);
       setAlerts(alertsData);
     } catch (err: any) {
-      console.error('Error loading dashboard:', err);
       setError(err.message || 'Error al cargar el dashboard');
     } finally {
       setLoading(false);

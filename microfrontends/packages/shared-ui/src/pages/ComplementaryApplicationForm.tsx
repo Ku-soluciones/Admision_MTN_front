@@ -120,11 +120,9 @@ const ComplementaryApplicationForm: React.FC = () => {
           }
         } catch (error) {
           // Complementary form doesn't exist yet, that's okay
-          console.log('No existing complementary form found');
         }
       }
     } catch (error) {
-      console.error('Error loading application data:', error);
     } finally {
       setLoading(false);
     }
@@ -229,7 +227,6 @@ const ComplementaryApplicationForm: React.FC = () => {
         setSaving(false);
       }
     } catch (error: any) {
-      console.error('Error saving complementary form:', error);
       if (error.response?.status === 403) {
         alert('Este formulario ya fue enviado y no puede ser modificado');
         setIsReadOnly(true);

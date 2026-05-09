@@ -23,7 +23,6 @@ class CsrfService {
      */
     async fetchCsrfToken(): Promise<string> {
         try {
-            console.log('[CSRF] Fetching new CSRF token...');
 
             // Use axios directly to avoid interceptor loop
             const baseUrl = getApiBaseUrl();
@@ -38,15 +37,12 @@ class CsrfService {
                 this.csrfToken = response.data.csrfToken;
                 this.tokenExpiry = Date.now() + this.TOKEN_LIFETIME;
 
-                console.log('[CSRF] Token fetched successfully');
-                console.log('[CSRF] Token expires at:', new Date(this.tokenExpiry).toLocaleTimeString());
 
                 return this.csrfToken;
             } else {
                 throw new Error('Invalid CSRF token response');
             }
         } catch (error: any) {
-            console.error('[CSRF] Error fetching CSRF token:', error);
             throw new Error('Failed to fetch CSRF token: ' + error.message);
         }
     }
@@ -57,12 +53,10 @@ class CsrfService {
     async getCsrfToken(): Promise<string> {
         // Check if token exists and is still valid
         if (this.csrfToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-            console.log('[CSRF] Using cached token');
             return this.csrfToken;
         }
 
         // Token is missing or expired, fetch a new one
-        console.log('[CSRF] Token expired or missing, fetching new token');
         return await this.fetchCsrfToken();
     }
 
@@ -82,7 +76,6 @@ class CsrfService {
      * Should be called on logout or when token becomes invalid
      */
     clearToken(): void {
-        console.log('[CSRF] Clearing cached token');
         this.csrfToken = null;
         this.tokenExpiry = null;
     }

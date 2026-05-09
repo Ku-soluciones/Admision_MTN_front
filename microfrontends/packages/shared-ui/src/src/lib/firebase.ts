@@ -17,7 +17,6 @@ const app: FirebaseApp | null = hasFirebaseConfig ? initializeApp(firebaseConfig
 const auth: Auth | null = app ? getAuth(app) : null;
 
 if (!hasFirebaseConfig) {
-    console.warn('Firebase config is missing for this environment. Auth features depending on Firebase are disabled.');
 }
 
 export { app, auth };

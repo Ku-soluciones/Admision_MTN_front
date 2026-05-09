@@ -60,7 +60,6 @@ const EvaluationsDataTable: React.FC<EvaluationsDataTableProps> = ({
                     });
                 }
             } catch (error) {
-                console.error('Error fetching evaluation stats:', error);
             }
         };
         fetchStats();

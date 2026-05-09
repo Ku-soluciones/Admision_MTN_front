@@ -90,7 +90,6 @@ const EvaluationForm: React.FC = () => {
         setInterviewData(data.interview);
       }
     } catch (error) {
-      console.error('Error loading interview data:', error);
     }
   };
 
@@ -122,7 +121,6 @@ const EvaluationForm: React.FC = () => {
 
       setError(null);
     } catch (err: any) {
-      console.error('Error loading evaluation:', err);
       setError(err.message || 'Error al cargar la evaluación');
     } finally {
       setLoading(false);
@@ -167,7 +165,6 @@ const EvaluationForm: React.FC = () => {
       // Navigate back to dashboard
       navigate('/profesor/dashboard');
     } catch (err: any) {
-      console.error('Error saving evaluation:', err);
       setError(err.message || 'Error al guardar la evaluación');
     } finally {
       setSaving(false);
@@ -203,7 +200,6 @@ const EvaluationForm: React.FC = () => {
 
       navigate('/profesor/dashboard');
     } catch (err: any) {
-      console.error('Error saving draft:', err);
       setError(err.message || 'Error al guardar el borrador');
     } finally {
       setSaving(false);
@@ -227,7 +223,6 @@ const EvaluationForm: React.FC = () => {
         setAttachments(data.attachments || []);
       }
     } catch (error) {
-      console.error('Error loading attachments:', error);
     } finally {
       setLoadingAttachments(false);
     }
@@ -262,7 +257,6 @@ const EvaluationForm: React.FC = () => {
         setError(errorData.error || 'Error al subir el archivo');
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
       setError('Error al subir el archivo');
     } finally {
       setUploadingFile(false);
@@ -287,7 +281,6 @@ const EvaluationForm: React.FC = () => {
         setError('Error al eliminar el archivo');
       }
     } catch (error) {
-      console.error('Error deleting attachment:', error);
       setError('Error al eliminar el archivo');
     }
   };
@@ -323,7 +316,6 @@ const EvaluationForm: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error loading student history:', error);
     } finally {
       setLoadingHistory(false);
     }

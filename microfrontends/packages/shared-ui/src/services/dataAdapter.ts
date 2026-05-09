@@ -195,7 +195,6 @@ export class DataAdapter {
       .filter(app => {
         // Filtrar aplicaciones con datos mínimos requeridos
         if (!app || typeof app !== 'object') {
-          console.warn('Aplicación inválida filtrada:', app);
           return false;
         }
         return true;
@@ -204,7 +203,6 @@ export class DataAdapter {
         try {
           return this.adaptApplication(app);
         } catch (error) {
-          console.error('Error adaptando aplicación:', app, error);
           // Retornar una aplicación por defecto en caso de error
           return {
             id: 0,
@@ -259,7 +257,6 @@ export class DataAdapter {
   } {
     // DEFENSIVE: Handle undefined or null response
     if (!response) {
-      console.error('DataAdapter: response is undefined or null');
       return {
         content: [],
         totalElements: 0,
@@ -287,7 +284,6 @@ export class DataAdapter {
       // Direct content array
       users = response.content;
     } else {
-      console.error('DataAdapter: Unexpected response structure', response);
     }
 
     const adaptedUsers = this.adaptUsers(users);

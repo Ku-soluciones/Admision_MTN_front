@@ -94,7 +94,6 @@ const ProfessorDashboard: React.FC = () => {
 
     // Callback para refrescar dashboard desde componentes hijos
     const handleRefreshDashboard = useCallback(() => {
-        console.log('Dashboard refresh triggered by child component');
         setRefreshKey(prev => prev + 1);
     }, []);
 
@@ -157,11 +156,9 @@ const ProfessorDashboard: React.FC = () => {
                     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(updatedProfessor));
                     setCurrentProfessor(updatedProfessor);
                 } else if (!professorData) {
-                    console.warn('getCurrentProfessor() retornó null');
                 }
             } catch (error) {
                 if (!abortController.signal.aborted) {
-                    console.error('Error actualizando datos del profesor:', error);
                 }
             }
         };
@@ -186,7 +183,6 @@ const ProfessorDashboard: React.FC = () => {
                 // Fetch fresh professor data to guarantee correct ID regardless of localStorage state
                 const freshProfessor = await professorAuthService.getCurrentProfessor();
                 if (!freshProfessor) {
-                    console.warn('No se pudo obtener el profesor actual');
                     if (isMounted) setIsLoading(false);
                     return;
                 }
@@ -207,12 +203,10 @@ const ProfessorDashboard: React.FC = () => {
                     setEvaluations(evaluationsData);
                     setEvaluationStats(statsData);
                     setInterviews(interviewsData);
-                    console.log('Loaded interviews for professor:', interviewsData.length, 'id:', freshProfessor.id);
                 }
 
             } catch (error: any) {
                 if (!abortController.signal.aborted) {
-                    console.error('Error cargando evaluaciones:', error);
 
                     // Si no hay evaluaciones asignadas, mostrar estado vacío
                     if (error.message.includes('No se encontraron evaluaciones') && isMounted) {
@@ -226,7 +220,6 @@ const ProfessorDashboard: React.FC = () => {
                         });
                     } else {
                         // Para otros errores, mostrar notificación
-                        console.error('Error específico:', error.message);
                     }
                 }
             } finally {
@@ -626,11 +619,6 @@ const ProfessorDashboard: React.FC = () => {
         });
 
         // DEBUG: Log interview counts
-        console.log('DEBUG - Interview counts:');
-        console.log(`  Total interviews loaded: ${interviews.length}`);
-        console.log(`  Completed interviews (with COMPLETED evaluation): ${completedInterviews.length}`);
-        console.log(`  Family interviews in completedInterviews: ${completedInterviews.filter(i => i.type === 'FAMILY').length}`);
-        console.log(`  CYCLE_DIRECTOR interviews in completedInterviews: ${completedInterviews.filter(i => i.type === 'CYCLE_DIRECTOR').length}`);
 
         const getStatusColor = (status: InterviewStatus): 'success' | 'warning' | 'info' | 'error' => {
             switch (status) {
@@ -661,7 +649,6 @@ const ProfessorDashboard: React.FC = () => {
                         {/* Botón de recarga manual */}
                         <Button
                             onClick={() => {
-                                console.log('Manual refresh triggered - incrementing refreshKey');
                                 setRefreshKey(prev => prev + 1);
                             }}
                             variant="outline"
@@ -849,15 +836,10 @@ const ProfessorDashboard: React.FC = () => {
                                                                 variant="primary"
                                                                 size="sm"
                                                                 onClick={async () => {
-                                                                    console.log('Realizar entrevista:', interview.id);
-                                                                    console.log('Application ID:', interview.applicationId);
 
                                                                     // Buscar evaluación existente
                                                                     try {
                                                                         const evals = await professorEvaluationService.getMyEvaluations();
-                                                                        console.log('Total evaluaciones cargadas:', evals.length);
-                                                                        console.log('Buscando evaluación para application_id:', interview.applicationId);
-                                                                        console.log('Tipo de entrevista:', interview.type);
 
                                                                         // Determinar qué tipo de evaluación buscar según el tipo de entrevista
                                                                         const expectedEvalType =
@@ -865,44 +847,34 @@ const ProfessorDashboard: React.FC = () => {
                                                                             interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
                                                                             'PSYCHOLOGICAL_INTERVIEW';
 
-                                                                        console.log('Buscando evaluación de tipo:', expectedEvalType);
 
                                                                         // Buscar evaluación que coincida con applicationId y tipo
                                                                         const matchingEval = evals.find(e => {
                                                                             const matches = e.applicationId === interview.applicationId && e.evaluationType === expectedEvalType;
                                                                             if (e.applicationId === interview.applicationId) {
-                                                                                console.log(`  - Evaluación ${e.id}: applicationId=${e.applicationId}, type=${e.evaluationType}, matches=${matches}`);
                                                                             }
                                                                             return matches;
                                                                         });
 
                                                                         if (matchingEval) {
-                                                                            console.log('Evaluación encontrada:', matchingEval.id);
-                                                                            console.log('Tipo de evaluación encontrada:', matchingEval.evaluationType);
 
                                                                             // Navegar al formulario correspondiente según el tipo de evaluación
                                                                             if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
-                                                                                console.log('Navegando a formulario de Director de Ciclo');
                                                                                 navigate(`/cycle-director-interview/${matchingEval.id}`);
                                                                             } else if (matchingEval.evaluationType === 'PSYCHOLOGICAL_INTERVIEW') {
-                                                                                console.log('Navegando a formulario Psicológico');
                                                                                 navigate(`/psychological-interview/${matchingEval.id}`);
                                                                             } else if (matchingEval.evaluationType === 'FAMILY_INTERVIEW') {
-                                                                                console.log('Navegando a formulario de Entrevista Familiar');
                                                                                 navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                             } else {
-                                                                                console.warn('Tipo de evaluación no reconocido:', matchingEval.evaluationType);
                                                                                 alert(`Tipo de evaluación no soportado: ${matchingEval.evaluationType}`);
                                                                             }
                                                                         } else {
-                                                                            console.warn('No se encontró evaluación existente para esta entrevista');
                                                                             alert(
                                                                                 `Esta entrevista aún no tiene una evaluación asignada.\n\n` +
                                                                                 `Por favor, contacta al administrador para que te asigne esta evaluación.`
                                                                             );
                                                                         }
                                                                     } catch (error) {
-                                                                        console.error('Error buscando evaluación:', error);
                                                                         alert('Error al buscar la evaluación asociada');
                                                                     }
                                                                 }}
@@ -914,7 +886,6 @@ const ProfessorDashboard: React.FC = () => {
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     // TODO: Navigate to interview details modal
-                                                                    console.log('Ver detalles:', interview.id);
                                                                     alert(`Detalles de entrevista:\n\nEstudiante: ${interview.studentName}\nFecha: ${interview.scheduledDate}\nHora: ${interview.scheduledTime}\nTipo: ${INTERVIEW_TYPE_LABELS[interview.type as InterviewType]}`);
                                                                 }}
                                                             >
@@ -966,8 +937,6 @@ const ProfessorDashboard: React.FC = () => {
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={async () => {
-                                                                console.log('Ver resultados:', interview.id);
-                                                                console.log('Application ID:', interview.applicationId);
 
                                                                 try {
                                                                     const evals = await professorEvaluationService.getMyEvaluations();
@@ -984,8 +953,6 @@ const ProfessorDashboard: React.FC = () => {
                                                                     );
 
                                                                     if (matchingEval) {
-                                                                        console.log('Evaluación encontrada para ver resultados:', matchingEval.id);
-                                                                        console.log('Tipo:', matchingEval.evaluationType);
 
                                                                         // Navegar al formulario correspondiente según el tipo de evaluación
                                                                         if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
@@ -996,11 +963,9 @@ const ProfessorDashboard: React.FC = () => {
                                                                             navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                         }
                                                                     } else {
-                                                                        console.error('No se encontró evaluación para ver resultados');
                                                                         alert(`No se encontró la evaluación de tipo "${expectedEvalType}" asociada a esta entrevista.`);
                                                                     }
                                                                 } catch (error) {
-                                                                    console.error('Error buscando evaluación:', error);
                                                                     alert('Error al cargar los resultados');
                                                                 }
                                                             }}
@@ -1492,7 +1457,6 @@ const ProfessorDashboard: React.FC = () => {
                         userId={currentProfessor.id}
                         userRole={currentProfessor.role}
                         onScheduleChange={() => {
-                            console.log('Horarios actualizados en ProfessorDashboard - Usando WeeklyCalendar');
                         }}
                     />
                 ) : (

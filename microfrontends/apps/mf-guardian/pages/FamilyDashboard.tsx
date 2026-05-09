@@ -133,12 +133,10 @@ const FamilyDashboard: React.FC = () => {
           setRealApplications(dashboardData.applications);
           setError(null);
         } else {
-          console.warn('Dashboard data no contiene un array de applications:', dashboardData);
           setRealApplications([]);
           setError('Formato de datos inválido del servidor');
         }
       } catch (error: any) {
-        console.error('Error loading dashboard data:', error);
         if (isMounted) {
           setError('Error al cargar los datos del dashboard');
           setRealApplications([]);
@@ -171,7 +169,6 @@ const FamilyDashboard: React.FC = () => {
           setDocuments(response.data || []);
         }
       } catch (error) {
-        console.error('Error loading documents:', error);
         if (isMounted) setDocuments([]);
       } finally {
         if (isMounted) setLoadingDocuments(false);

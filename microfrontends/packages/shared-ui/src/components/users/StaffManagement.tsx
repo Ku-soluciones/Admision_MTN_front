@@ -145,7 +145,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
       const stats = await staffService.getStaffStats();
       setState(prev => ({ ...prev, stats }));
     } catch (error: any) {
-      console.error('Error cargando estadísticas:', error);
       // Si es 401, no mostrar error ya que la redirección se maneja en api.ts
       if (error.response?.status !== 401) {
         showToast('Error al cargar estadísticas de usuarios', 'error');

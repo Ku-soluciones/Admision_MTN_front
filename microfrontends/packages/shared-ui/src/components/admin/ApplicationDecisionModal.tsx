@@ -42,7 +42,6 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
         onClose();
       }, 2000);
     } catch (error) {
-      console.error('Error al enviar decisión:', error);
       alert('Error al procesar la decisión. Por favor intenta nuevamente.');
     } finally {
       setLoading(false);

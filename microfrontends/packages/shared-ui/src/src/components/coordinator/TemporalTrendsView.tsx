@@ -54,7 +54,6 @@ export const TemporalTrendsView: React.FC = () => {
 
       setYearlyStats(statsMap);
     } catch (err: any) {
-      console.error('Error loading trends:', err);
       setError(err.message || 'Error al cargar tendencias');
     } finally {
       setLoading(false);

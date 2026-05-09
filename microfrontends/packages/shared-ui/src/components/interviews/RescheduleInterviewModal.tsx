@@ -62,11 +62,9 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
       setIsSubmitting(true);
       setError(null);
 
-      console.log(`Reagendando entrevista ${interview.id} a ${newDate} ${newTime} con razón: "${reason}"`);
 
       await interviewService.rescheduleInterview(interview.id, newDate, newTime, reason.trim());
 
-      console.log('Entrevista reagendada exitosamente');
 
       // Limpiar formulario y cerrar modal
       setNewDate('');
@@ -75,7 +73,6 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error al reagendar entrevista:', error);
       setError(error.response?.data?.message || error.message || 'Error al reagendar la entrevista');
     } finally {
       setIsSubmitting(false);

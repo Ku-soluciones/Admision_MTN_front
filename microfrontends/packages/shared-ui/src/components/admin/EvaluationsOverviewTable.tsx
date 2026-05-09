@@ -89,7 +89,6 @@ const EvaluationsOverviewTable: React.FC = () => {
             setStudents(studentsData);
             setFilteredStudents(studentsData);
         } catch (err: any) {
-            console.error('Error loading evaluations overview:', err);
             setError(err.message || 'Error al cargar datos');
         } finally {
             setLoading(false);

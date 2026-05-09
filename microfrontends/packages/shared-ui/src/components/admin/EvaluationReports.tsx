@@ -156,7 +156,6 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
       
       setEvaluations(mockEvaluations);
     } catch (error) {
-      console.error('Error loading evaluations:', error);
       addNotification({
         type: 'error',
         title: 'Error',

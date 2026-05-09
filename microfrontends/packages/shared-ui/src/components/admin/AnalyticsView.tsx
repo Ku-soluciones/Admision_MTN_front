@@ -38,7 +38,6 @@ export const AnalyticsView: React.FC = () => {
             setPerformanceData(performanceMetrics);
             setInsights(analyticsInsights);
         } catch (error) {
-            console.error('Error loading analytics:', error);
         } finally {
             setLoading(false);
         }

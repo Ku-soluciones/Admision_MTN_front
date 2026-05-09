@@ -55,7 +55,6 @@ export const ReportsView: React.FC = () => {
             setTemporalData(temporalTrends);
             setMetrics(dashboardMetrics);
         } catch (error) {
-            console.error('Error loading report data:', error);
         } finally {
             setLoading(false);
         }

@@ -30,17 +30,14 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
       setIsSubmitting(true);
       setError(null);
 
-      console.log(`🗑️ Eliminando entrevista ${interview.id} permanentemente...`);
 
       await interviewService.deleteInterview(interview.id);
 
-      console.log('Entrevista eliminada exitosamente');
 
       // Cerrar modal y notificar éxito
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error al eliminar entrevista:', error);
       setError(error.response?.data?.message || error.message || 'Error al eliminar la entrevista');
     } finally {
       setIsSubmitting(false);

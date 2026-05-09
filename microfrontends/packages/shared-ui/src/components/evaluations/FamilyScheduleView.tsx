@@ -54,7 +54,6 @@ const FamilyScheduleView: React.FC<FamilyScheduleViewProps> = ({
       try {
         familySchedules = await evaluationService.getFamilySchedules(applicationId);
       } catch (apiError) {
-        console.warn('API no disponible, usando datos mock:', apiError);
         // Usar datos mock locales
         familySchedules = evaluationService.createLocalMockSchedules(applicationId);
       }

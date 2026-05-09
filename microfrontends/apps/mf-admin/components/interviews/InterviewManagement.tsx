@@ -114,13 +114,11 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
 
   const loadInterviews = async () => {
     try {
-      console.log('InterviewManagement: Iniciando carga de entrevistas...');
       setIsLoading(true);
       setError(null);
 
       // Usar servicio real con filtros
       if (filters.status || filters.type || filters.mode || filters.dateFrom || filters.dateTo) {
-        console.log('InterviewManagement: Cargando con filtros:', filters);
         const response = await interviewService.getInterviewsWithFilters(
           {
             status: filters.status,
@@ -135,10 +133,8 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           'scheduledDate',
           'desc'
         );
-        console.log('InterviewManagement: Entrevistas con filtros cargadas:', response.interviews.length);
         setInterviews(response.interviews);
       } else {
-        console.log('InterviewManagement: Cargando todas las entrevistas sin filtros');
         // Cargar todas las entrevistas sin filtros
         const response = await interviewService.getAllInterviews(
           filters.page || 0,
@@ -146,13 +142,10 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           'scheduledDate',
           'desc'
         );
-        console.log('InterviewManagement: Todas las entrevistas cargadas:', response.interviews.length);
-        console.log('InterviewManagement: Primeras 3 entrevistas:', response.interviews.slice(0, 3));
         setInterviews(response.interviews);
       }
 
     } catch (err: any) {
-      console.error('InterviewManagement: Error al cargar las entrevistas:', err);
       setError(err.message || 'Error al cargar las entrevistas');
       showToast('Error al cargar las entrevistas', 'error');
     } finally {
@@ -169,7 +162,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
       setStats(statsData);
       
     } catch (err: any) {
-      console.error('Error loading stats:', err);
       // Si hay error, no mostrar estadísticas pero no fallar la carga
       setStats(null);
     } finally {
@@ -275,7 +267,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
       setRefreshKey(prev => prev + 1);
       
     } catch (err: any) {
-      console.error('Error procesando entrevista:', err);
 
       // Extraer mensaje específico del backend si existe
       let errorMessage = 'Error al procesar la entrevista';
@@ -365,7 +356,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   };
 
   const handleScheduleInterviewForStudent = (applicationId: number, interviewType?: string) => {
-    console.log('handleScheduleInterviewForStudent llamado con:', { applicationId, interviewType, selectedStudentName });
 
     const interviewData = {
       applicationId: applicationId.toString(),
@@ -373,13 +363,11 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
       type: interviewType as any,
     } as any;
 
-    console.log('Datos de entrevista preparados:', interviewData);
 
     setSelectedInterview(interviewData);
     setFormMode(InterviewFormMode.CREATE);
     setShowForm(true);
 
-    console.log('Modal debería abrirse ahora - showForm=true');
   };
 
   // Removed unused getViewModeIcon function
@@ -711,11 +699,9 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
   const loadApplications = async () => {
     try {
       setIsLoading(true);
-      console.log('Cargando aplicaciones para vista de estudiantes...');
 
       // Usar el servicio de aplicaciones real
       const response = await applicationService.getAllApplications();
-      console.log('Aplicaciones obtenidas:', response);
 
       // Filtrar solo aplicaciones con datos de estudiante válidos
       const validApplications = response.filter(app =>
@@ -738,11 +724,9 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
         status: app.status || 'PENDING'
       }));
 
-      console.log('Aplicaciones mapeadas:', mappedApplications);
       setApplications(mappedApplications);
 
     } catch (error) {
-      console.error('Error cargando aplicaciones:', error);
       // Solo usar mock si realmente falla todo (mezclando IDs con y sin entrevistas)
       setApplications([
         // Estudiantes CON entrevistas (según DB)
@@ -848,15 +832,12 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
 
   const loadStudentInterviews = async () => {
     try {
-      console.log(`StudentDetailView: Cargando entrevistas para aplicación ${applicationId}...`);
       setIsLoading(true);
 
       const response = await interviewService.getInterviewsByApplication(applicationId);
-      console.log(`StudentDetailView: Entrevistas obtenidas para aplicación ${applicationId}:`, response);
 
       setStudentInterviews(response.interviews || []);
     } catch (error) {
-      console.error(`StudentDetailView: Error loading student interviews for ${applicationId}:`, error);
       setStudentInterviews([]);
     } finally {
       setIsLoading(false);
@@ -867,7 +848,6 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   const handleSendInterviewSummary = async () => {
     try {
       setIsSendingSummary(true);
-      console.log(`Iniciando envío de resumen para aplicación ${applicationId}`);
 
       const result = await interviewService.sendInterviewSummary(applicationId);
 
@@ -888,7 +868,6 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
         });
       }
     } catch (error) {
-      console.error('Error enviando resumen:', error);
       setSummaryToast({
         message: 'Error inesperado al enviar resumen de entrevistas',
         type: 'error'
@@ -911,7 +890,6 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
 
     // Log solo para debugging - es normal no tener todas las entrevistas agendadas
     if (found) {
-      console.log(`Entrevista ${type} encontrada (ID: ${found.id}, Estado: ${found.status})`);
     }
 
     return found;

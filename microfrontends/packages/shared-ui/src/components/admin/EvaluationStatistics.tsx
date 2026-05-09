@@ -46,7 +46,6 @@ const EvaluationStatistics: React.FC = () => {
       const data = await evaluationService.getEvaluationStatistics();
       setStats(data);
     } catch (error) {
-      console.error('Error loading evaluation statistics:', error);
       addNotification({
         type: 'error',
         title: 'Error',

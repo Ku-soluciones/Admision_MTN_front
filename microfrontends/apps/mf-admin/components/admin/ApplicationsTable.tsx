@@ -32,8 +32,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   const [currentPage, setCurrentPage] = React.useState(1);
   const PAGE_SIZE = 5;
   React.useEffect(() => { setCurrentPage(1); }, [applications]);
-  console.log('ApplicationsTable render - applications:', applications.length, 'onView:', !!onView);
-  console.log('First application data:', applications[0]);
 
   if (isLoading) {
     return (
@@ -241,8 +239,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          console.log('Ver detalles clicked for application:', application);
-                          console.log('onView callback exists:', !!onView);
                           onView(application);
                         }}
                         title="Ver detalles"

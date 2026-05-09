@@ -100,10 +100,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      console.log(`[WeeklyCalendar] Cargando horarios para userId: ${userId}, año: 2025`);
       const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
-      console.log(`[WeeklyCalendar] Horarios recibidos del backend:`, schedules);
-      console.log(`[WeeklyCalendar] Total de horarios: ${schedules.length}`);
 
       // Inicializar calendario vacío
       const newSchedule = initializeEmptySchedule();
@@ -111,18 +108,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       // Marcar horarios existentes
       let markedCount = 0;
       schedules.forEach((schedule: InterviewerSchedule) => {
-        console.log(`[WeeklyCalendar] Procesando schedule:`, {
-          id: schedule.id,
-          dayOfWeek: schedule.dayOfWeek,
-          startTime: schedule.startTime,
-          endTime: schedule.endTime,
-          scheduleType: schedule.scheduleType
-        });
 
         // Validar que el día existe en nuestro calendario (solo Lunes-Viernes)
         const validDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
         if (!schedule.dayOfWeek || !validDays.includes(schedule.dayOfWeek)) {
-          console.log(`[WeeklyCalendar] Día no soportado o inválido: ${schedule.dayOfWeek} (solo Lun-Vie)`);
           return; // Skip este horario
         }
 
@@ -131,7 +120,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           // Esto previene problemas de comparación con tiempos como "8:00"
           const startTime = schedule.startTime.padStart(5, '0'); // "8:00" → "08:00"
           const endTime = schedule.endTime.padStart(5, '0');     // "8:30" → "08:30"
-          console.log(`[WeeklyCalendar] Tiempos normalizados - Start: ${startTime}, End: ${endTime}`);
 
           // Marcar todos los slots en el rango como ocupados
           timeSlots.forEach(slot => {
@@ -144,20 +132,15 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                   scheduleId: schedule.id
                 };
                 markedCount++;
-                console.log(`[WeeklyCalendar] Marcado slot ${schedule.dayOfWeek} ${slot} con schedule ID ${schedule.id}`);
               }
             }
           });
         } else {
-          console.log(`[WeeklyCalendar] Schedule omitido - dayOfWeek: ${schedule.dayOfWeek}, tipo: ${schedule.scheduleType}`);
         }
       });
 
-      console.log(`[WeeklyCalendar] Total de slots marcados: ${markedCount}`);
       setSchedule(newSchedule);
     } catch (error) {
-      console.error('[WeeklyCalendar] Error loading schedules:', error);
-      console.error('[WeeklyCalendar] Error details:', error);
     } finally {
       setLoading(false);
     }
@@ -181,7 +164,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
       // DEFENSIVE CHECK: Verify slot exists before trying to access it
       if (!currentSlot) {
-        console.error(`Slot ${timeSlot} no existe para ${day}`);
         return prev; // Return previous state unchanged
       }
 
@@ -219,11 +201,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     try {
       setSaving(true);
 
-      console.log('Iniciando guardado incremental de horarios...');
 
       // 1. Cargar horarios actuales de la BD
       const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
-      console.log(`Horarios existentes en BD: ${existingSchedules.length}`);
 
       // 2. Construir conjunto de slots seleccionados en pantalla
       // IMPORTANTE: Incluir tanto los nuevos (isSelected) como los existentes (hasSchedule)
@@ -237,7 +217,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           }
         });
       }
-      console.log(`Slots activos en pantalla (nuevos + existentes): ${selectedSlots.size}`);
 
       // 3. Construir mapa de slots existentes en BD
       const existingSlotsMap = new Map<string, number>(); // key: "MONDAY-09:00", value: scheduleId
@@ -255,7 +234,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           });
         }
       });
-      console.log(`Slots existentes mapeados: ${existingSlotsMap.size}`);
 
       // 4. Calcular diferencias
       const slotsToDelete = new Set<number>(); // scheduleIds a eliminar
@@ -276,14 +254,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         }
       });
 
-      console.log(`Horarios a eliminar: ${slotsToDelete.size}`);
-      console.log(`Horarios a crear: ${slotsToCreate.length}`);
 
       // 5. Ejecutar solo los cambios necesarios
 
       // Eliminar horarios desmarcados
       for (const scheduleId of slotsToDelete) {
-        console.log(`🗑️ Eliminando horario ID: ${scheduleId}`);
         await interviewerScheduleService.deleteSchedule(scheduleId);
       }
 
@@ -308,7 +283,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           const nextHour = minute === 30 ? hour + 1 : hour;
           const endTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
 
-          console.log(`Creando bloque de 30 min: ${day} ${slot}-${endTime}`);
 
           const scheduleData = {
             interviewer: { id: userId },
@@ -325,7 +299,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         }
       }
 
-      console.log('Guardado incremental completado');
 
       // 6. Recargar horarios
       await loadSchedules();
@@ -336,7 +309,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       }
 
     } catch (error) {
-      console.error('Error saving schedules:', error);
       alert('Error al guardar los horarios. Por favor, inténtalo nuevamente.');
     } finally {
       setSaving(false);

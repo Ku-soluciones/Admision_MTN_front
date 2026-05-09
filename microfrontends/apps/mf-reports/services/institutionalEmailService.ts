@@ -38,7 +38,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/application-received/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending application received email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando email de aplicación recibida'
@@ -66,7 +65,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/interview-invitation/${interviewId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending interview invitation email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando invitación a entrevista'
@@ -88,7 +86,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/status-update/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending status update email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando actualización de estado'
@@ -110,7 +107,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/document-reminder/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending document reminder email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando recordatorio de documentos'
@@ -132,7 +128,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/admission-result/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending admission result email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando resultado de admisión'
@@ -162,7 +157,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/document-review/${applicationId}`, payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending document review email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando notificación de revisión de documentos'
@@ -178,7 +172,6 @@ class InstitutionalEmailService {
       const response = await api.get(`${this.baseUrl}/queue/statistics`);
       return response.data;
     } catch (error: any) {
-      console.error('Error getting queue statistics:', error);
       return {
         success: false,
         data: {
@@ -203,7 +196,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.baseUrl}/queue/process`);
       return response.data;
     } catch (error: any) {
-      console.error('Error forcing queue process:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error procesando cola'
@@ -219,7 +211,6 @@ class InstitutionalEmailService {
       const response = await api.delete(`${this.baseUrl}/queue/clear`);
       return response.data;
     } catch (error: any) {
-      console.error('Error clearing queue:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error limpiando cola'
@@ -235,7 +226,6 @@ class InstitutionalEmailService {
       const response = await api.get(`${this.adminBaseUrl}/status`);
       return response.data;
     } catch (error: any) {
-      console.error('Error getting system status:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error obteniendo estado del sistema'
@@ -251,7 +241,6 @@ class InstitutionalEmailService {
       const response = await api.post(`${this.adminBaseUrl}/test?email=${email}`);
       return response.data;
     } catch (error: any) {
-      console.error('Error sending test email:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Error enviando email de prueba'

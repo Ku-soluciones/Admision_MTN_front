@@ -23,7 +23,6 @@ const children = apps.map(([name, relPath]) => {
 
   child.on('exit', (code) => {
     if (code && code !== 0) {
-      console.error(`[${name}] exited with code ${code}`);
     }
   });
 
@@ -42,13 +41,3 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-console.log('Microfrontends levantados:');
-console.log('Shell: http://localhost:5200/#/');
-console.log('Admissions: http://localhost:5201/#/postulacion');
-console.log('Guardian: http://localhost:5202/#/apoderado/login');
-console.log('Student: http://localhost:5203/#/examenes');
-console.log('Evaluations: http://localhost:5204/#/profesor/login');
-console.log('Interviews: http://localhost:5205/#/entrevistas');
-console.log('Admin: http://localhost:5206/#/login');
-console.log('Reports: http://localhost:5207/#/reportes');
-console.log('Coordinator: http://localhost:5208/#/coordinador');

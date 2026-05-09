@@ -97,7 +97,6 @@ class OidcService {
         this.notifyAuthStateChange();
       }
     } catch (error) {
-      console.error('Error inicializando usuario OIDC:', error);
     }
   }
 
@@ -126,7 +125,6 @@ class OidcService {
         }
       });
     } catch (error) {
-      console.error('Error en login OIDC:', error);
       this.notifyAuthStateChange();
       throw error;
     }
@@ -142,7 +140,6 @@ class OidcService {
       this.notifyAuthStateChange();
       return this.user;
     } catch (error) {
-      console.error('Error en callback OIDC:', error);
       this.notifyAuthStateChange();
       throw error;
     }
@@ -159,7 +156,6 @@ class OidcService {
         }
       });
     } catch (error) {
-      console.error('Error en logout OIDC:', error);
       // Limpiar usuario local even if remote logout fails
       this.user = null;
       this.notifyAuthStateChange();
@@ -177,7 +173,6 @@ class OidcService {
       this.notifyAuthStateChange();
       return this.user;
     } catch (error) {
-      console.error('Error renovando token:', error);
       return null;
     }
   }
@@ -310,35 +305,29 @@ class OidcService {
    * Event handlers
    */
   private handleUserLoaded(user: User): void {
-    console.log('Usuario OIDC cargado:', this.maskUserInfo(user));
     this.user = user as MTNUser;
     this.notifyAuthStateChange();
   }
 
   private handleUserUnloaded(): void {
-    console.log('Usuario OIDC descargado');
     this.user = null;
     this.notifyAuthStateChange();
   }
 
   private handleTokenExpiring(): void {
-    console.log('Token OIDC próximo a expirar, renovando...');
     this.renewToken();
   }
 
   private handleTokenExpired(): void {
-    console.log('Token OIDC expirado');
     this.user = null;
     this.notifyAuthStateChange();
   }
 
   private handleSilentRenewError(error: Error): void {
-    console.error('Error en renovación silenciosa:', error);
     this.notifyAuthStateChange();
   }
 
   private handleUserSignedOut(): void {
-    console.log('👋 Usuario desconectado');
     this.user = null;
     this.notifyAuthStateChange();
   }
@@ -396,7 +385,6 @@ class OidcService {
       try {
         listener(state);
       } catch (error) {
-        console.error('Error notificando cambio de estado auth:', error);
       }
     });
   }

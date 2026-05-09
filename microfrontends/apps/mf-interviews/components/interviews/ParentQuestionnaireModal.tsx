@@ -64,7 +64,6 @@ const ParentQuestionnaireModal: React.FC<ParentQuestionnaireModalProps> = ({
         setFormData(null);
       }
     } catch (err: any) {
-      console.error('Error loading questionnaire:', err);
       if (err.response?.status === 404) {
         setError('Los padres aún no han completado el cuestionario complementario.');
       } else {

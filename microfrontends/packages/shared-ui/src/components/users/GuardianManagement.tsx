@@ -129,7 +129,6 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack }) => {
       const stats = await guardianService.getGuardianStats();
       setState(prev => ({ ...prev, stats }));
     } catch (error: any) {
-      console.error('Error cargando estadísticas:', error);
       // Si es 401, no mostrar error ya que la redirección se maneja en api.ts
       if (error.response?.status !== 401) {
         showToast('Error al cargar estadísticas de usuarios', 'error');

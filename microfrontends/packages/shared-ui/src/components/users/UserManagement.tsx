@@ -79,7 +79,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
       // DEFENSIVE CHECK: Verify response exists before accessing properties
       if (!response) {
-        console.error('No se recibió respuesta del servicio de usuarios');
         setState(prev => ({
           ...prev,
           error: 'No se pudo conectar con el servidor',
@@ -102,7 +101,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
           // DEFENSIVE CHECK: Verify reload response exists
           if (!reloadResponse) {
-            console.error('No se recibió respuesta en la recarga de usuarios');
             setState(prev => ({
               ...prev,
               error: 'No se pudo conectar con el servidor',
@@ -156,7 +154,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
       const stats = await userService.getUserStats();
       setState(prev => ({ ...prev, stats }));
     } catch (error: any) {
-      console.error('Error cargando estadísticas:', error);
       // Si es 401, no mostrar error ya que la redirección se maneja en api.ts
       if (error.response?.status !== 401) {
         showToast('Error al cargar estadísticas de usuarios', 'error');

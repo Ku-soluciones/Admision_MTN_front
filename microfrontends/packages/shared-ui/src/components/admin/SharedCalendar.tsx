@@ -125,7 +125,6 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
       setInterviews(calendarInterviews);
     } catch (error) {
-      console.error('Error cargando calendario:', error);
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +140,6 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       );
       setUsers(interviewers);
     } catch (error) {
-      console.error('Error cargando usuarios:', error);
     }
   };
 

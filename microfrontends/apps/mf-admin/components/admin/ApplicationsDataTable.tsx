@@ -352,7 +352,6 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
                 total: response.totalElements
             });
         } catch (error: any) {
-            console.error('Error cargando aplicaciones:', error);
             addNotification({
                 type: 'error',
                 title: 'Error',

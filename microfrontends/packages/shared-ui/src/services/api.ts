@@ -156,7 +156,6 @@ api.interceptors.request.use(
                 config.headers = config.headers ?? ({} as any);
                 (config.headers as any)['X-CSRF-Token'] = csrfHeaders['X-CSRF-Token'];
             } catch (error) {
-                console.error('Failed to get CSRF token:', error);
             }
         }
 

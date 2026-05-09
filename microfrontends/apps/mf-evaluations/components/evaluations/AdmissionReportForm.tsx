@@ -79,11 +79,9 @@ const AdmissionReportForm: React.FC = () => {
 
             try {
                 setIsLoading(true);
-                console.log('Cargando evaluación para informe:', examId);
 
                 // Cargar usando el servicio (que maneja la URL correctamente)
                 const evaluationData = await professorEvaluationService.getEvaluationById(parseInt(examId));
-                console.log('Evaluación cargada:', evaluationData);
 
                 if (evaluationData) {
                     setEvaluation(evaluationData);
@@ -126,13 +124,7 @@ const AdmissionReportForm: React.FC = () => {
                         areasToWork: evaluationData.areasForImprovement || '' // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
                     }));
 
-                    console.log('Informe cargado con datos:', evaluationData);
-                    console.log('DEBUG - Campo recommendations de BD:', evaluationData.recommendations);
-                    console.log('DEBUG - Campo areasForImprovement de BD:', evaluationData.areasForImprovement);
-                    console.log('DEBUG - Mapeado a comments (COMENTARIOS):', evaluationData.recommendations);
-                    console.log('DEBUG - Mapeado a areasToWork (ÁREAS A TRABAJAR):', evaluationData.areasForImprovement);
                 } else {
-                    console.error('Evaluación no encontrada');
                     addNotification({
                         type: 'error',
                         title: 'Error',
@@ -141,7 +133,6 @@ const AdmissionReportForm: React.FC = () => {
                 }
                 
             } catch (error: any) {
-                console.error('Error cargando evaluación:', error);
                 addNotification({
                     type: 'error',
                     title: 'Error',
@@ -243,7 +234,6 @@ const AdmissionReportForm: React.FC = () => {
             }, 1500);
 
         } catch (error) {
-            console.error('Error al guardar informe:', error);
             addNotification({
                 type: 'error',
                 title: 'Error al guardar',

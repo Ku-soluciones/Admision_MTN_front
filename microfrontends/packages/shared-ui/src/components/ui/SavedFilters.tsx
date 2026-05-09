@@ -225,7 +225,6 @@ const SavedFilters: React.FC<SavedFiltersProps> = ({
           setSavedFilters(defaultPresets);
         }
       } catch (error) {
-        console.error('Error loading saved filters:', error);
         setSavedFilters(defaultPresets);
       }
     };
@@ -240,7 +239,6 @@ const SavedFilters: React.FC<SavedFiltersProps> = ({
       const customFilters = filters.filter(f => !f.isDefault);
       localStorage.setItem(storageKey, JSON.stringify(customFilters));
     } catch (error) {
-      console.error('Error saving filters to localStorage:', error);
     }
   };
 

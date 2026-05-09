@@ -78,7 +78,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
       const status = await documentService.getDocumentStatus(applicationId);
       setProgress(status);
     } catch (err) {
-      console.error('Error updating document progress:', err);
     }
   };
 

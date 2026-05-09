@@ -118,10 +118,8 @@ const ReportsDashboard: React.FC = () => {
           try {
             // Usar getMyEvaluations ya que getAllEvaluations no existe
             const myEvaluations = await professorEvaluationService.getMyEvaluations();
-            console.log('Evaluaciones obtenidas:', myEvaluations);
             evaluationsData = myEvaluations;
           } catch (error) {
-            console.log('No se pudieron cargar las evaluaciones desde la API:', error);
           }
 
           // Agregar algunos datos simulados para demostrar los enlaces (siempre)
