@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { FiSave, FiArrowLeft, FiCheckCircle, FiPaperclip, FiDownload, FiTrash2, FiUpload, FiClock } from 'react-icons/fi';
 import { professorEvaluationService } from '../services/professorEvaluationService';
 
