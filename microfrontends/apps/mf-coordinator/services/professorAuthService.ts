@@ -1,5 +1,5 @@
 import api from './api';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, authStore } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -76,31 +76,36 @@ class ProfessorAuthService {
     
     async getCurrentProfessor(): Promise<ProfessorUser | null> {
         try {
-            const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            // Preferimos el access token del authStore (memoria, BFF). El
+            // PROFESSOR_TOKEN legacy se mantiene como fallback durante la
+            // transición; NO usamos el idToken Firebase aquí porque
+            // /v1/users/me espera el JWT del BFF.
+            const accessToken = authStore.getValidAccessToken();
+            const legacyToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            const token = accessToken || legacyToken;
             if (!token) {
                 return null;
             }
 
-            // Configurar el token en el header
-            const config = {
-                headers: { Authorization: `Bearer ${token}` }
-            };
-
-            const response = await api.get('/v1/users/me', config);
-            // El backend retorna { success: true, user: {...} }
+            // El interceptor de `api` ya agrega el Authorization header
+            // automáticamente y maneja el refresh reactivo en 401.
+            const response = await api.get('/v1/users/me');
             return response.data.user || response.data;
 
         } catch (error: any) {
-            console.error('Error obteniendo profesor actual:', error);
-            // Si hay error de autenticación, limpiar datos
-            if (error.response?.status === 401) {
-                this.logout();
+            const status = error?.response?.status;
+            // 400/401/403 sin sesión válida es esperable durante la primera
+            // carga o cuando la sesión venció. Devolvemos null en silencio.
+            if (status === 400 || status === 401 || status === 403) {
+                return null;
             }
+            console.error('Error obteniendo profesor actual:', error);
             return null;
         }
     }
     
     isAuthenticated(): boolean {
+        if (authStore.getValidAccessToken()) return true;
         const token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         return !!token;
     }
