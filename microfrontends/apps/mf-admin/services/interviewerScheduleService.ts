@@ -2,4 +2,3 @@
 // Fuente: microfrontends/packages/shared-ui/src/services/interviewerScheduleService.ts
 // Variante local conservada en: mf-evaluations, mf-reports
 export * from '../../../packages/shared-ui/src/services/interviewerScheduleService';
-export { default } from '../../../packages/shared-ui/src/services/interviewerScheduleService';

@@ -4,7 +4,7 @@ packages/shared-ui, dejando stub en los MFs que comparten esa version
 y conservando la variante local en los MFs outliers (mf-evaluations,
 mf-reports).
 """
-import os, shutil
+import os, re, shutil
 
 ROOT = "microfrontends/apps"
 PKG_SRC = "microfrontends/packages/shared-ui/src"
@@ -38,13 +38,22 @@ CONSOLIDATIONS = [
     },
 ]
 
-STUB_TEMPLATE = (
+STUB_TEMPLATE_WITH_DEFAULT = (
     "// Re-export desde paquete compartido (version mayoritaria del servicio)\n"
     "// Fuente: microfrontends/packages/shared-ui/src/{rel}\n"
     "// Variante local conservada en: {outliers}\n"
     "export * from '../../../packages/shared-ui/src/{rel_no_ext}';\n"
     "export {{ default }} from '../../../packages/shared-ui/src/{rel_no_ext}';\n"
 )
+STUB_TEMPLATE_NO_DEFAULT = (
+    "// Re-export desde paquete compartido (version mayoritaria del servicio)\n"
+    "// Fuente: microfrontends/packages/shared-ui/src/{rel}\n"
+    "// Variante local conservada en: {outliers}\n"
+    "export * from '../../../packages/shared-ui/src/{rel_no_ext}';\n"
+)
+
+def has_default_export(text: str) -> bool:
+    return bool(re.search(r"^\s*export\s+default\b", text, re.MULTILINE))
 
 for c in CONSOLIDATIONS:
     rel = c["filename"]
@@ -69,7 +78,10 @@ for c in CONSOLIDATIONS:
     shutil.copy2(src, dst)
     print(f"Copied {src} -> {dst}")
 
-    stub = STUB_TEMPLATE.format(
+    # Elegir el template segun el origen tenga export default o no
+    template = (STUB_TEMPLATE_WITH_DEFAULT if has_default_export(src_text)
+                else STUB_TEMPLATE_NO_DEFAULT)
+    stub = template.format(
         rel=rel,
         rel_no_ext=rel_no_ext,
         outliers=", ".join(c["outliers"]),
