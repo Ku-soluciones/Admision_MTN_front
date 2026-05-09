@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { interviewerScheduleService, InterviewerSchedule } from '../../../../../apps/mf-admissions/services/interviewerScheduleService';
+import { notify } from '../../utils/notify';
 
 interface WeeklyCalendarProps {
   userId: number;
@@ -309,7 +310,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       }
 
     } catch (error) {
-      alert('Error al guardar los horarios. Por favor, inténtalo nuevamente.');
+      notify.error('Error al guardar los horarios. Por favor, inténtalo nuevamente.');
     } finally {
       setSaving(false);
     }

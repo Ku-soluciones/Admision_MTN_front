@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { searchClient } from '../../api/search.client';
+import { notify } from '../../../utils/notify';
 import type {
   AdvancedSearchParams,
   SearchResult,
@@ -72,7 +73,7 @@ export const AdvancedSearchView: React.FC = () => {
 
   const handleSaveSearch = () => {
     if (!saveSearchName.trim()) {
-      alert('Por favor ingrese un nombre para la búsqueda');
+      notify.error('Por favor ingrese un nombre para la búsqueda');
       return;
     }
     searchClient.saveSearch(saveSearchName, searchParams);
@@ -103,7 +104,7 @@ export const AdvancedSearchView: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err: any) {
-      alert('Error al exportar: ' + err.message);
+      notify.error('Error al exportar: ' + err.message);
     }
   };
 

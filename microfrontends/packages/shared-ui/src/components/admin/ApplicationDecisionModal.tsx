@@ -19,12 +19,13 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   if (!application) return null;
 
   const handleSubmitDecision = async () => {
     if (!decision) {
-      alert('Por favor selecciona una decisión');
+      setToast({ message: 'Por favor selecciona una decisión', type: 'error' });
       return;
     }
 
@@ -42,7 +43,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
         onClose();
       }, 2000);
     } catch (error) {
-      alert('Error al procesar la decisión. Por favor intenta nuevamente.');
+      setToast({ message: 'Error al procesar la decisión. Por favor intenta nuevamente.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,15 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
+    <>
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <Modal isOpen={isOpen} onClose={handleClose}>
       {showConfirmation ? (
         <div className="p-8 text-center">
           <div className="mb-4">
@@ -263,6 +272,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
         </div>
       )}
     </Modal>
+    </>
   );
 };
 

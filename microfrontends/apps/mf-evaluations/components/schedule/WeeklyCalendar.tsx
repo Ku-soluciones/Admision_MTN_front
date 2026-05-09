@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { interviewerScheduleService, InterviewerSchedule } from '../../services/interviewerScheduleService';
+import { useNotifications } from '../../context/AppContext';
 
 interface WeeklyCalendarProps {
   userId: number;
@@ -47,6 +48,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const { addNotification } = useNotifications();
 
   // Generar slots de 30 minutos desde 8:00 AM hasta 4:30 PM
   const generateTimeSlots = (): string[] => {
@@ -310,7 +312,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       }
 
     } catch (error) {
-      alert('Error al guardar los horarios. Por favor, inténtalo nuevamente.');
+      addNotification({
+        type: 'error',
+        title: 'Error al guardar horarios',
+        message: 'No se pudieron guardar los horarios. Por favor, inténtalo nuevamente.',
+      });
     } finally {
       setSaving(false);
     }

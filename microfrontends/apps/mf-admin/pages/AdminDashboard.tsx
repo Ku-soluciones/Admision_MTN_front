@@ -82,6 +82,7 @@ const sections = [
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -1057,6 +1058,20 @@ Esta acción:
       <CoordinatorDashboardModal
         isOpen={showCoordinatorDashboard}
         onClose={() => setShowCoordinatorDashboard(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesión"
+        message="¿Está seguro que desea cerrar sesión?"
+        confirmText="Sí, cerrar sesión"
+        cancelText="Cancelar"
+        variant="danger"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
       />
     </div>
   );

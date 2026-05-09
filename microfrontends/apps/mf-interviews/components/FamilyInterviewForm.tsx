@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiSave, FiCheck, FiLoader, FiAlertCircle } from 'react-icons/fi';
 import { familyInterviewService } from '../services/familyInterviewService';
 import { fullTemplateData } from '@/src/data/minified_template';
+import { notify } from '../utils/notify';
 
 interface FamilyInterviewFormProps {
   evaluation: any; // Evaluation data with gradeApplied
@@ -37,7 +38,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         const templateData = fullTemplateData as any;
 
         if (!templateData) {
-          alert('Error: El template no se pudo cargar. Ver consola para detalles.');
+          notify.error('Error: El template no se pudo cargar. Ver consola para detalles.');
           return;
         }
 
@@ -62,7 +63,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
           setInterviewData(initializeEmptyData(templateData));
         }
       } catch (error: any) {
-        alert(error.message || 'Error al cargar el template de entrevista');
+        notify.error(error.message || 'Error al cargar el template de entrevista');
       } finally {
         setLoading(false);
       }
@@ -155,7 +156,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
     e.preventDefault();
 
     if (!evaluation.id) {
-      alert('ID de evaluación no encontrado');
+      notify.error('ID de evaluación no encontrado');
       return;
     }
 
@@ -166,7 +167,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       const validation = familyInterviewService.validateResponses(template, interviewData);
 
       if (!validation.valid) {
-        alert(`Formulario incompleto: ${validation.errors.length} campos faltantes`);
+        notify.error(`Formulario incompleto: ${validation.errors.length} campos faltantes`);
         return;
       }
 
@@ -180,7 +181,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         await onSave(result.interview_data, result.totalScore);
       }
     } catch (error: any) {
-      alert(error.message || 'Error al guardar la entrevista');
+      notify.error(error.message || 'Error al guardar la entrevista');
     } finally {
       setSaving(false);
     }

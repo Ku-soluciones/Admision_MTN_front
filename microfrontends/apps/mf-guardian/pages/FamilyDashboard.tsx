@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import SimpleToast from '../components/ui/SimpleToast';
 import { ApplicationStatus, Document } from '../types';
 import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
 import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
@@ -103,11 +105,13 @@ const FamilyDashboard: React.FC = () => {
       window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
     } catch (error: any) {
       viewer?.close();
-      alert(error.message || `No se pudo abrir el documento ${documentName || ''}`.trim());
+      setToast({ message: error.message || `No se pudo abrir el documento ${documentName || ''}`.trim(), type: 'error' });
     }
   };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { applications } = useApplications();
   const { user, isAuthenticated, logout } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
@@ -247,9 +251,7 @@ const FamilyDashboard: React.FC = () => {
                     size="sm"
                     className="ml-2 text-white border-white hover:bg-red-500 hover:text-white hover:border-red-500"
                     onClick={() => {
-                      if (window.confirm('¿Está seguro que desea cerrar sesión?')) {
-                        logout();
-                      }
+                      setShowLogoutConfirm(true);
                     }}
                   >
                     <FiLogOut className="w-4 h-4 mr-2" />
@@ -812,6 +814,28 @@ const FamilyDashboard: React.FC = () => {
           {renderSection()}
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesión"
+        message="¿Está seguro que desea cerrar sesión?"
+        confirmText="Sí, cerrar sesión"
+        cancelText="Cancelar"
+        variant="primary"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
+
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
     );
 };

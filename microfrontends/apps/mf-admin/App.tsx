@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
+import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { createLegacyRedirectRoutes, ExternalRedirect } from './routing/legacyRedirects';
 import { microfrontendUrls } from './utils/microfrontendUrls';
@@ -55,6 +56,7 @@ function App() {
             </main>
             <Footer />
             <ToastContainer />
+            <GlobalToastHost />
           </div>
         </AppProvider>
       </AuthProvider>

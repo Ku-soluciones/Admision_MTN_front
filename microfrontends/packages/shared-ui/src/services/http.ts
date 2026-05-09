@@ -8,6 +8,7 @@ import { oidcService } from './oidcService';
 import { getApiBaseUrl } from '../config/api.config';
 import { csrfService } from './csrfService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../backend-sdk/src/index';
+import { notify } from '../utils/notify';
 
 // Tipos
 interface RetryConfig {
@@ -252,7 +253,7 @@ class HttpClient {
       sessionStorage.clear();
 
       // Show alert to user
-      alert('Tu sesión ha sido cerrada porque iniciaste sesión en otro dispositivo o pestaña.');
+      notify.error('Tu sesión ha sido cerrada porque iniciaste sesión en otro dispositivo o pestaña.');
 
       // Redirect to login
       this.redirectToLogin();

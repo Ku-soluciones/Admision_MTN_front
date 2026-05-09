@@ -23,6 +23,7 @@ import { ExamStatus, StudentExam, StudentProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
+import { notify } from '../utils/notify';
 import { EvaluationStatus, EvaluationType } from '../types/evaluation';
 import { FiRefreshCw, FiBarChart2, FiCalendar, FiEye } from 'react-icons/fi';
 import WeeklyCalendar from '../components/schedule/WeeklyCalendar';
@@ -866,16 +867,13 @@ const ProfessorDashboard: React.FC = () => {
                                                                             } else if (matchingEval.evaluationType === 'FAMILY_INTERVIEW') {
                                                                                 navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                             } else {
-                                                                                alert(`Tipo de evaluación no soportado: ${matchingEval.evaluationType}`);
+                                                                                notify.error(`Tipo de evaluación no soportado: ${matchingEval.evaluationType}`);
                                                                             }
                                                                         } else {
-                                                                            alert(
-                                                                                `Esta entrevista aún no tiene una evaluación asignada.\n\n` +
-                                                                                `Por favor, contacta al administrador para que te asigne esta evaluación.`
-                                                                            );
+                                                                            notify.error('Esta entrevista aún no tiene una evaluación asignada. Por favor, contacta al administrador para que te asigne esta evaluación.');
                                                                         }
                                                                     } catch (error) {
-                                                                        alert('Error al buscar la evaluación asociada');
+                                                                        notify.error('Error al buscar la evaluación asociada');
                                                                     }
                                                                 }}
                                                             >
@@ -886,7 +884,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     // TODO: Navigate to interview details modal
-                                                                    alert(`Detalles de entrevista:\n\nEstudiante: ${interview.studentName}\nFecha: ${interview.scheduledDate}\nHora: ${interview.scheduledTime}\nTipo: ${INTERVIEW_TYPE_LABELS[interview.type as InterviewType]}`);
+                                                                    notify.info(`Detalles de entrevista — Estudiante: ${interview.studentName} | Fecha: ${interview.scheduledDate} ${interview.scheduledTime} | Tipo: ${INTERVIEW_TYPE_LABELS[interview.type as InterviewType]}`);
                                                                 }}
                                                             >
                                                                 Ver
@@ -963,10 +961,10 @@ const ProfessorDashboard: React.FC = () => {
                                                                             navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
                                                                         }
                                                                     } else {
-                                                                        alert(`No se encontró la evaluación de tipo "${expectedEvalType}" asociada a esta entrevista.`);
+                                                                        notify.error(`No se encontró la evaluación de tipo "${expectedEvalType}" asociada a esta entrevista.`);
                                                                     }
                                                                 } catch (error) {
-                                                                    alert('Error al cargar los resultados');
+                                                                    notify.error('Error al cargar los resultados');
                                                                 }
                                                             }}
                                                         >
@@ -1626,6 +1624,20 @@ const ProfessorDashboard: React.FC = () => {
                     {renderSection()}
                 </main>
             </div>
+
+            <ConfirmDialog
+                isOpen={showLogoutConfirm}
+                title="Cerrar sesión"
+                message="¿Está seguro que desea cerrar sesión?"
+                confirmText="Sí, cerrar sesión"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={() => {
+                    setShowLogoutConfirm(false);
+                    handleLogout();
+                }}
+                onClose={() => setShowLogoutConfirm(false)}
+            />
         </div>
     );
 };
