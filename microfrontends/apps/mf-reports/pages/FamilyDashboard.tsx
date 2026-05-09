@@ -3,12 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import SimpleToast from '../components/ui/SimpleToast';
 import { ApplicationStatus, Document } from '../types';
 import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
-import { applicationService } from '../services/applicationService';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
-import { applicationWorkflowService } from '../services/applicationWorkflowService';
-import { useUserProfile } from '../hooks/useUserProfile';
 import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
 import { 
   FiFileText, 
@@ -96,7 +95,7 @@ const FamilyDashboard: React.FC = () => {
                   localStorage.getItem('professor_token');
 
     if (!token) {
-      alert('No se encontró el token de autenticación. Por favor, inicia sesión nuevamente.');
+      setToast({ message: 'No se encontró el token de autenticación. Por favor, inicia sesión nuevamente.', type: 'error' });
       return;
     }
 
@@ -109,6 +108,8 @@ const FamilyDashboard: React.FC = () => {
   };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { applications } = useApplications();
   const { user, isAuthenticated, logout } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
@@ -251,10 +252,7 @@ const FamilyDashboard: React.FC = () => {
                     size="sm"
                     className="ml-2 text-white border-white hover:bg-red-500 hover:text-white hover:border-red-500"
                     onClick={() => {
-                      if (window.confirm('¿Está seguro que desea cerrar sesión?')) {
-                        logout();
-                        window.location.href = microfrontendUrls.home;
-                      }
+                      setShowLogoutConfirm(true);
                     }}
                   >
                     <FiLogOut className="w-4 h-4 mr-2" />
@@ -823,6 +821,29 @@ const FamilyDashboard: React.FC = () => {
           {renderSection()}
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesión"
+        message="¿Está seguro que desea cerrar sesión?"
+        confirmText="Sí, cerrar sesión"
+        cancelText="Cancelar"
+        variant="primary"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+          window.location.href = microfrontendUrls.home;
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
+
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
     );
 };

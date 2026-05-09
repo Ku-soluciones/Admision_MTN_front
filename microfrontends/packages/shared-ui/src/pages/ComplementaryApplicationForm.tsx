@@ -4,6 +4,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import SimpleToast from '../components/ui/SimpleToast';
 import { FiSave, FiArrowLeft, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { applicationService } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
@@ -77,6 +79,8 @@ const ComplementaryApplicationForm: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   useEffect(() => {
     loadApplicationData();
@@ -196,18 +200,21 @@ const ComplementaryApplicationForm: React.FC = () => {
     }
 
     if (!applicationId) {
-      alert('No se encontró una postulación activa');
+      setToast({ message: 'No se encontró una postulación activa', type: 'error' });
       return;
     }
 
     // Confirmation for final submission
     if (isSubmitting) {
-      const confirmed = window.confirm(
-        '¿Está seguro que desea enviar el formulario? Una vez enviado, no podrá realizar más modificaciones.'
-      );
-      if (!confirmed) return;
+      setPendingSubmit(true);
+      return;
     }
 
+    await performSave(false);
+  };
+
+  const performSave = async (isSubmitting: boolean) => {
+    if (!applicationId) return;
     try {
       setSaving(true);
       await applicationService.saveComplementaryForm(applicationId, {
@@ -223,15 +230,15 @@ const ComplementaryApplicationForm: React.FC = () => {
         }, 2000);
       } else {
         // Just saved as draft - show success message briefly
-        alert('Borrador guardado exitosamente');
+        setToast({ message: 'Borrador guardado exitosamente', type: 'success' });
         setSaving(false);
       }
     } catch (error: any) {
       if (error.response?.status === 403) {
-        alert('Este formulario ya fue enviado y no puede ser modificado');
+        setToast({ message: 'Este formulario ya fue enviado y no puede ser modificado', type: 'error' });
         setIsReadOnly(true);
       } else {
-        alert('Error al guardar el formulario. Por favor, inténtelo nuevamente.');
+        setToast({ message: 'Error al guardar el formulario. Por favor, inténtelo nuevamente.', type: 'error' });
       }
       setSaving(false);
     }
@@ -741,6 +748,29 @@ const ComplementaryApplicationForm: React.FC = () => {
           )}
         </form>
       </div>
+
+      <ConfirmDialog
+        isOpen={pendingSubmit}
+        title="Enviar formulario"
+        message="¿Está seguro que desea enviar el formulario? Una vez enviado, no podrá realizar más modificaciones."
+        confirmText="Sí, enviar"
+        cancelText="Cancelar"
+        variant="primary"
+        isLoading={saving}
+        onConfirm={async () => {
+          setPendingSubmit(false);
+          await performSave(true);
+        }}
+        onClose={() => setPendingSubmit(false)}
+      />
+
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

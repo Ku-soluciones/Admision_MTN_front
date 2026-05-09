@@ -4,6 +4,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon } from '../components/icons/Icons';
 import { 
   FiFileText, 
@@ -83,6 +84,7 @@ const sections = [
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -1058,6 +1060,21 @@ Esta acción:
       <CoordinatorDashboardModal
         isOpen={showCoordinatorDashboard}
         onClose={() => setShowCoordinatorDashboard(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesión"
+        message="¿Está seguro que desea cerrar sesión?"
+        confirmText="Sí, cerrar sesión"
+        cancelText="Cancelar"
+        variant="danger"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          logout();
+          window.location.href = microfrontendUrls.home;
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
       />
     </div>
   );

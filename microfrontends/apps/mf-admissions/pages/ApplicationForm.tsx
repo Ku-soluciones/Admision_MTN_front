@@ -1207,14 +1207,7 @@ const ApplicationForm: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                const email = prompt('Ingrese su correo electrónico:');
-                                                if (email) {
-                                                    addNotification({
-                                                        type: 'info',
-                                                        title: 'Solicitud enviada',
-                                                        message: `Se ha enviado un enlace de recuperación a ${email}. Por favor, revise su correo.`
-                                                    });
-                                                }
+                                                setShowForgotPassword(true);
                                             }}
                                             className="text-gris-piedra hover:text-azul-monte-tabor hover:underline text-sm"
                                         >
@@ -2449,6 +2442,31 @@ const ApplicationForm: React.FC = () => {
                 title={errorModalData.title}
                 message={errorModalData.message}
                 errors={errorModalData.errors}
+            />
+
+            <PromptDialog
+                isOpen={showForgotPassword}
+                title="Recuperar contraseña"
+                message="Ingrese su correo electrónico y le enviaremos un enlace de recuperación."
+                placeholder="correo@ejemplo.com"
+                inputType="email"
+                confirmText="Enviar"
+                onClose={() => setShowForgotPassword(false)}
+                onConfirm={(email) => {
+                    setShowForgotPassword(false);
+                    if (email) {
+                        addNotification({
+                            type: 'info',
+                            title: 'Solicitud enviada',
+                            message: `Se ha enviado un enlace de recuperación a ${email}. Por favor, revise su correo.`
+                        });
+                    }
+                }}
+                validate={(value) =>
+                    !value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+                        ? 'Ingrese un correo electrónico válido'
+                        : null
+                }
             />
         </div>
     );

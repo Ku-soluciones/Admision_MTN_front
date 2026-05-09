@@ -5,11 +5,13 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 export const CoordinatorLayout: React.FC = () => {
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
 
-  const handleLogout = () => {
+  const performLogout = () => {
     // Limpiar tokens de autenticación
     localStorage.removeItem('auth_token');
     localStorage.removeItem('admin_token');
@@ -17,6 +19,10 @@ export const CoordinatorLayout: React.FC = () => {
 
     // Redirigir al login
     navigate('/login');
+  };
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
   };
 
   return (
@@ -168,6 +174,20 @@ export const CoordinatorLayout: React.FC = () => {
           </p>
         </div>
       </footer>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Cerrar sesión"
+        message="¿Está seguro que desea cerrar sesión?"
+        confirmText="Sí, cerrar sesión"
+        cancelText="Cancelar"
+        variant="danger"
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          performLogout();
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 };

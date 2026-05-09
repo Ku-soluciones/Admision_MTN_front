@@ -33,6 +33,8 @@ const EvaluationForm: React.FC = () => {
   const [evaluation, setEvaluation] = useState<EvaluationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deletingAttachment, setDeletingAttachment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form fields
@@ -264,11 +266,15 @@ const EvaluationForm: React.FC = () => {
   };
 
   // HU-6: Delete attachment
-  const handleDeleteAttachment = async (attachmentId: number) => {
-    if (!confirm('¿Está seguro de eliminar este archivo?')) return;
+  const handleDeleteAttachment = (attachmentId: number) => {
+    setConfirmDeleteId(attachmentId);
+  };
 
+  const performDeleteAttachment = async () => {
+    if (confirmDeleteId == null) return;
+    setDeletingAttachment(true);
     try {
-      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/attachments/${attachmentId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/attachments/${confirmDeleteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
@@ -282,6 +288,9 @@ const EvaluationForm: React.FC = () => {
       }
     } catch (error) {
       setError('Error al eliminar el archivo');
+    } finally {
+      setDeletingAttachment(false);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -936,6 +945,18 @@ const EvaluationForm: React.FC = () => {
           </Card>
         </form>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteId !== null}
+        title="Eliminar archivo"
+        message="¿Está seguro de eliminar este archivo?"
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={deletingAttachment}
+        onConfirm={performDeleteAttachment}
+        onClose={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 };

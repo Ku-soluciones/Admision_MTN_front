@@ -52,12 +52,16 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
   className = ''
 }) => {
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState<Interview | null>(null);
+  const [toast, setToast] = React.useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const handleDelete = async (interview: Interview) => {
-    if (!confirm(`¿Está seguro que desea cancelar esta entrevista? Esta acción marcará la entrevista como cancelada.`)) {
-      return;
-    }
+  const handleDelete = (interview: Interview) => {
+    setConfirmDelete(interview);
+  };
 
+  const performDelete = async () => {
+    const interview = confirmDelete;
+    if (!interview) return;
     try {
       setDeletingId(interview.id);
 
@@ -74,9 +78,13 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
         window.location.reload();
       }
     } catch (error) {
-      alert(`Error al cancelar la entrevista: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      setToast({
+        message: `Error al cancelar la entrevista: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        type: 'error',
+      });
     } finally {
       setDeletingId(null);
+      setConfirmDelete(null);
     }
   };
 
@@ -466,6 +474,26 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
             <span className="text-gray-600">Cargando entrevistas...</span>
           </div>
         </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Cancelar entrevista"
+        message="¿Está seguro que desea cancelar esta entrevista? Esta acción marcará la entrevista como cancelada."
+        confirmText="Sí, cancelar"
+        cancelText="Volver"
+        variant="danger"
+        isLoading={deletingId !== null}
+        onConfirm={performDelete}
+        onClose={() => setConfirmDelete(null)}
+      />
+
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
