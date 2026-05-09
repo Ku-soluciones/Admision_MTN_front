@@ -1,5 +1,5 @@
 import api from './api';
-import { getStorageKey, BASE_STORAGE_KEYS, authStore } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -55,6 +55,33 @@ class ProfessorAuthService {
                     role: u?.role || data.role,
                     subject: u?.subject || data.subject
                 }));
+            // Hidratar authStore con el JWT del BFF (el mismo flujo que
+            // authService.adoptSession() para el portal apoderado). Esto
+            // evita que las requests posteriores caigan al fallback Firebase
+            // y disparen el rechazo `auth_time excedido` del filtro del BFF.
+            if (data.token && typeof data.expiresIn === 'number') {
+                authStore.setSession({
+                    token: data.token,
+                    expiresIn: data.expiresIn,
+                    absoluteSessionSeconds: data.absoluteSessionSeconds,
+                    user: data.user,
+                    firebaseLinked: data.firebaseLinked,
+                    sessionId: data.sessionId ?? null,
+                    permissions: data.permissions ?? [],
+                });
+                scheduleRefresh(data.expiresIn, {
+                    refresh: async () => {
+                        const r = await api.post('/v1/auth/refresh');
+                        const rd = r.data || {};
+                        return rd.token && typeof rd.expiresIn === 'number'
+                            ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
+                            : null;
+                    },
+                    onFailure: () => { authStore.clear(); },
+                });
+                broadcastLogin(data.token, data.expiresIn, data.user, data.firebaseLinked);
+            }
+
             }
 
             return data;
@@ -117,7 +144,9 @@ class ProfessorAuthService {
         return stored ? JSON.parse(stored) : null;
     }
     
-    logout() {
+    async logout() {
+        try { await api.post('/v1/auth/logout'); } catch { /* idempotente */ }
+        authStore.clear();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));

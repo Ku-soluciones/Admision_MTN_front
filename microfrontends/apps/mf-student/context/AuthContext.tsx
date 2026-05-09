@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseAuthSignOut } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (firebaseUser) {
                 try {
                     // Si ya tenemos sesión BFF en memoria, no hace falta tocar
-                    // localStorage ni pegarle a /v1/auth/check otra vez.
+                    // localStorage ni re-autenticar contra el BFF.
                     if (authStore.getValidAccessToken()) {
                         if (!user && authStore.getState().user) {
                             setUser(buildUserFromBff(authStore.getState().user));
@@ -174,31 +174,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         return;
                     }
 
-                    const idToken = await firebaseUser.getIdToken();
-                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
-
-                    const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
-                    if (cached) {
-                        try {
-                            setUser(JSON.parse(cached));
+                    // Firebase tiene sesión pero el BFF no — re-autenticar
+                    // intercambiando el idToken Firebase por el JWT del BFF.
+                    // NO guardamos el idToken en localStorage porque el BFF
+                    // lo rechaza si su `auth_time` supera 8h (filtro
+                    // FirebaseAuthenticationFilter). El idToken Firebase
+                    // sólo viaja en el body de /v1/auth/firebase-login.
+                    const idToken = await firebaseUser.getIdToken(/* forceRefresh */ false);
+                    let response: any = null;
+                    try {
+                        const r = await api.post('/v1/auth/firebase-login', { idToken });
+                        const data = r.data;
+                        if (data?.token && typeof data.expiresIn === 'number') {
+                            authStore.setSession({
+                                token: data.token,
+                                expiresIn: data.expiresIn,
+                                absoluteSessionSeconds: data.absoluteSessionSeconds,
+                                user: data.user,
+                                firebaseLinked: data.firebaseLinked ?? true,
+                                sessionId: data.sessionId ?? null,
+                                permissions: data.permissions ?? [],
+                            });
+                            scheduleRefresh(data.expiresIn, {
+                                refresh: async () => {
+                                    const rr = await api.post('/v1/auth/refresh');
+                                    const rd = rr.data || {};
+                                    return rd.token && typeof rd.expiresIn === 'number'
+                                        ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
+                                        : null;
+                                },
+                                onFailure: () => { authStore.clear(); },
+                            });
+                            response = { data: { success: true, user: data.user, firebaseLinked: data.firebaseLinked } };
+                        }
+                    } catch (err: any) {
+                        // Si el BFF rechaza (auth_time excedido, cuenta no
+                        // enlazada, etc.), pedimos al usuario que vuelva a
+                        // entrar con sus credenciales.
+                        const status = err?.response?.status;
+                        if (status === 400 || status === 401 || status === 403) {
+                            try { await firebaseAuthSignOut(auth!); } catch { /* no-op */ }
+                            setUser(null);
                             setIsLoading(false);
                             return;
-                        } catch {
-                            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                         }
+                        throw err;
                     }
 
-                    // Pedimos perfil al BFF en /v1/auth/check (NGINX).
-                    // El interceptor de api ya añade el Bearer; si no hay
-                    // sesión válida, el BFF responde 400/401 silencioso.
-                    const response = await api.get('/v1/auth/check');
-                    if (response.data?.success && response.data?.user) {
+                    if (response?.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
-                        // Para PROFESSOR_TOKEN preferimos el access JWT del BFF
-                        // (authStore). Si todavía no llegó, caemos al idToken
-                        // Firebase como compatibilidad.
-                        const tokenForCompat = authStore.getValidAccessToken() || idToken;
+                        const tokenForCompat = authStore.getValidAccessToken() || '';
                         setAdminCompat(userData, tokenForCompat, response.data.user?.subject);
                         if (typeof response.data.firebaseLinked === 'boolean') {
                             authStore.setFirebaseLinked(response.data.firebaseLinked);

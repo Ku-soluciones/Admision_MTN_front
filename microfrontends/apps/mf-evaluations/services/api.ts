@@ -22,7 +22,6 @@
 import axios from 'axios';
 import { csrfService } from './csrfService';
 import { getApiBaseUrl } from '../config/api.config';
-import { auth } from '../src/lib/firebase';
 import {
     getStorageKey,
     BASE_STORAGE_KEYS,
@@ -86,22 +85,19 @@ const isUnauthenticatedBadRequest = (status: number | undefined, code: string | 
 /**
  * Resuelve el access token siguiendo este orden:
  *   1. authStore (memoria) — fuente de verdad post-login.
- *   2. Firebase idToken — para flujos que aún dependen del SDK.
- *   3. localStorage (legacy) — sólo durante la transición.
+ *   2. localStorage (legacy AUTH_TOKEN / PROFESSOR_TOKEN) — para flujos en
+ *      transición que aún escriben directamente en localStorage.
+ *
+ * IMPORTANTE: NUNCA usamos `auth.currentUser.getIdToken()` aquí. El idToken
+ * Firebase tiene `auth_time` con la fecha del primer login del SDK, que el
+ * BFF rechaza si supera 8h (`FirebaseAuthenticationFilter`). El idToken
+ * Firebase sólo se manda explícitamente al body de `/auth/firebase-login`
+ * y `/auth/firebase-register`; nunca como Bearer en requests genéricas.
  */
 async function resolveAccessTokenForRequest(): Promise<string | null> {
     const inMemory = authStore.getValidAccessToken(0);
     if (inMemory) return inMemory;
 
-    try {
-        const currentUser = auth?.currentUser;
-        if (currentUser) {
-            const idToken = await currentUser.getIdToken();
-            if (idToken) return idToken;
-        }
-    } catch {
-        // ignore — caemos al legacy storage
-    }
 
     return (
         localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
