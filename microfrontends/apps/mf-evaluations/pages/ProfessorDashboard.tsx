@@ -104,6 +104,7 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para el tab activo en la sección de entrevistas
     const [activeInterviewTab, setActiveInterviewTab] = useState<'familiares' | 'director_ciclo' | 'informes'>('familiares');
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     // Determinar tab inicial basado en las evaluaciones disponibles
     useEffect(() => {
@@ -1570,7 +1571,7 @@ const ProfessorDashboard: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="w-full text-blanco-pureza border-blanco-pureza hover:bg-red-500 hover:text-blanco-pureza"
-                    onClick={handleLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                     ariaLabel="Cerrar sesión y volver al portal principal"
                 >
                     Cerrar Sesión
