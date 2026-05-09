@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import ErrorModal from '../components/ui/ErrorModal';
+import { PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { CheckCircleIcon, LogoIcon, UploadIcon } from '../components/icons/Icons';
 import { useApplications, useNotifications } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
