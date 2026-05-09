@@ -1,9 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
 import api from '../services/api';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import {
+    getStorageKey,
+    BASE_STORAGE_KEYS,
+    authStore,
+    useAuthStore,
+    onCrossTabLogout,
+    bootstrapAuth,
+    cancelScheduledRefresh,
+    scheduleRefresh,
+    purgeLegacyAuthStorage,
+} from '../../../packages/backend-sdk/src/index';
 
 interface User {
     id: string;
@@ -20,9 +30,13 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    /** Indica si la cuenta tiene `firebase_uid` enlazado en el BFF. */
+    firebaseLinked: boolean;
     login: (email: string, password: string, role: string) => Promise<void>;
     register: (userData: any, role: string) => Promise<void>;
     logout: () => void;
+    /** Re-ejecuta el linking explícito (Google/Email) para apoderados antiguos. */
+    linkFirebaseAccount: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,11 +92,69 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
     }
 };
 
+// Limpieza de claves legacy y extracción de `mf_token` de la URL para handoff
+// cross-origin. Se ejecuta una sola vez al cargar el módulo.
+(function bootstrapStorageOnce() {
+    purgeLegacyAuthStorage();
+    try {
+        const hash = window.location.hash; // "#/postulacion?mf_token=eyJ..."
+        const queryStart = hash.indexOf('?');
+        if (queryStart === -1) return;
+        const params = new URLSearchParams(hash.slice(queryStart + 1));
+        const mfToken = params.get('mf_token');
+        if (!mfToken) return;
+        // Mantenemos por ahora el token en localStorage para compatibilidad con
+        // el handoff cross-origin existente. Si llega `mf_expires_in`, también
+        // hidratamos el authStore para que el resto del flujo lo use.
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), mfToken);
+        const expiresIn = Number(params.get('mf_expires_in'));
+        if (Number.isFinite(expiresIn) && expiresIn > 0) {
+            authStore.setSession({ token: mfToken, expiresIn });
+        }
+        const cleanHash = hash.slice(0, queryStart);
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + cleanHash);
+    } catch { /* no-op en SSR o entornos sin window */ }
+})();
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const firebaseLinked = useAuthStore((s) => s.firebaseLinked);
 
-    // Listen to Firebase auth state changes for automatic session restore
+    // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
+    //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
+    //    exponga /api/auth/refresh, basta con ajustar el orden.
+    useEffect(() => {
+        let cancelled = false;
+        bootstrapAuth({
+            refresh: async () => {
+                try {
+                    const res = await api.post('/v1/auth/refresh');
+                    return res.data?.token ? res.data : null;
+                } catch {
+                    return null;
+                }
+            },
+            onRefreshFailure: () => {
+                authStore.clear();
+            },
+        }).then((ok) => {
+            if (cancelled) return;
+            if (ok) {
+                const u = authStore.getState().user;
+                if (u) {
+                    const userData = buildUserFromBff(u);
+                    setAdminCompat(userData, authStore.getState().accessToken ?? '', (u as any)?.subject);
+                    setUser(userData);
+                }
+            }
+        });
+        return () => { cancelled = true; };
+    }, []);
+
+    // 2. Listener Firebase: mantiene compatibilidad con la persistencia
+    //    por-origen del SDK y refresca el idToken si el access del BFF
+    //    todavía no se entrega (transición sprint 0 → 1).
     useEffect(() => {
         if (!auth || !hasFirebaseConfig) {
             setIsLoading(false);
@@ -91,12 +163,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // Firebase user is signed in — get fresh idToken and fetch profile from BFF
                 try {
+                    // Si ya tenemos sesión BFF en memoria, no hace falta tocar
+                    // localStorage ni pegarle a /v1/auth/check otra vez.
+                    if (authStore.getValidAccessToken()) {
+                        if (!user && authStore.getState().user) {
+                            setUser(buildUserFromBff(authStore.getState().user));
+                        }
+                        setIsLoading(false);
+                        return;
+                    }
+
                     const idToken = await firebaseUser.getIdToken();
                     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
 
-                    // Check if we already have cached user data
                     const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     if (cached) {
                         try {
@@ -108,22 +188,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         }
                     }
 
-                    // Fetch user profile from BFF
+                    // Pedimos perfil al BFF en /v1/auth/check (NGINX).
                     const response = await api.get('/v1/auth/check');
                     if (response.data?.success && response.data?.user) {
                         const userData = buildUserFromBff(response.data.user);
                         localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                         setAdminCompat(userData, idToken, response.data.user?.subject);
+                        if (typeof response.data.firebaseLinked === 'boolean') {
+                            authStore.setFirebaseLinked(response.data.firebaseLinked);
+                        }
                         setUser(userData);
                     }
                 } catch {
-                    // BFF call failed — clear state
                     localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                     localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                     setUser(null);
                 }
             } else {
-                // No Firebase user — clear everything
+                // Firebase no tiene usuario en este origen. Si tenemos session
+                // BFF activa (vía bootstrapAuth o handoff mf_token), la
+                // mantenemos.
+                if (authStore.getValidAccessToken()) {
+                    setIsLoading(false);
+                    return;
+                }
+                const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                if (existingToken) {
+                    try {
+                        const response = await api.get('/v1/auth/check');
+                        if (response.data?.success && response.data?.user) {
+                            const userData = buildUserFromBff(response.data.user);
+                            localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
+                            setAdminCompat(userData, existingToken, response.data.user?.subject);
+                            setUser(userData);
+                            setIsLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // token inválido — caemos al branch de limpieza
+                    }
+                }
                 localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
                 localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 setUser(null);
@@ -131,9 +235,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsLoading(false);
         });
         return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const login = async (email: string, password: string, portalRole: string) => {
+    // 3. Sincronización entre pestañas: si otra pestaña hace logout,
+    //    cerramos también localmente.
+    useEffect(() => {
+        const off = onCrossTabLogout((reason) => {
+            cancelScheduledRefresh();
+            setUser(null);
+            if (!window.location.pathname.includes('/login')) {
+                window.location.assign(`/apoderado-login?reason=${reason ?? 'other-tab'}`);
+            }
+        });
+        return off;
+    }, []);
+
+    // 4. Suscripción al store: mantiene `user` sincronizado con `authStore.user`.
+    useEffect(() => {
+        return authStore.subscribe(() => {
+            const stored = authStore.getState().user;
+            if (stored && (!user || String(stored.id ?? '') !== user.id)) {
+                setUser(buildUserFromBff(stored));
+            } else if (!stored && user) {
+                setUser(null);
+            }
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
+
+    const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);
         try {
             const response = await authService.login({ email, password });
@@ -141,19 +272,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const u = response.user;
             if (response.success && u) {
                 const userData = buildUserFromBff(u);
-                const expectedRole = portalRole.toUpperCase();
-
-                if (expectedRole === 'ADMIN' && userData.role !== 'ADMIN') {
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                    throw new Error('Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.');
-                }
-
-                if (expectedRole === 'APODERADO' && userData.role !== 'APODERADO') {
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                    throw new Error('Esta cuenta no corresponde a un apoderado. Use el portal de profesores o administración.');
-                }
-
-                setAdminCompat(userData, response.token ?? '', u?.subject);
+                setAdminCompat(userData, response.token ?? '', (u as any)?.subject);
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER), JSON.stringify(userData));
                 setUser(userData);
             } else {
@@ -195,8 +314,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        authService.logout();
+    const logout = useCallback(() => {
+        cancelScheduledRefresh();
+        // logout async pero no bloqueamos la UI: el server-side se limpia best-effort.
+        void authService.logout();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
@@ -206,15 +327,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
         setUser(null);
         window.location.href = '/apoderado-login';
-    };
+    }, []);
+
+    const linkFirebaseAccount = useCallback(async () => {
+        await authService.linkFirebaseAccount();
+        // Tras el linking, refrescamos el access token para reflejar el cambio.
+        try {
+            const res = await api.post('/v1/auth/refresh');
+            if (res.data?.token && res.data?.expiresIn) {
+                authStore.updateAccessToken(res.data.token, res.data.expiresIn, res.data.user);
+                scheduleRefresh(res.data.expiresIn);
+            }
+        } catch { /* el banner se ocultará igualmente porque firebaseLinked=true */ }
+    }, []);
 
     const value: AuthContextType = {
         user,
         isAuthenticated: !!user,
         isLoading,
+        firebaseLinked,
         login,
         register,
         logout,
+        linkFirebaseAccount,
     };
 
     return (
