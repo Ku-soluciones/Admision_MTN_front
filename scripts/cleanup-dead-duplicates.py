@@ -75,6 +75,32 @@ for mf in sorted(os.listdir(ROOT)):
             except Exception:
                 pass
 
+# 2b) Indexa tambien microfrontends/packages/* (codigo compartido).
+# Si un archivo del paquete compartido importa "Foo", entonces "Foo"
+# esta vivo en cualquier MF que aun lo tenga como stub.
+PKG_ROOT = "microfrontends/packages"
+shared_sources = {}
+if os.path.isdir(PKG_ROOT):
+    for dirpath, dirnames, filenames in os.walk(PKG_ROOT):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+        for f in filenames:
+            ext = os.path.splitext(f)[1]
+            if ext not in CODE_EXTS:
+                continue
+            p = os.path.join(dirpath, f)
+            try:
+                with open(p, "r", encoding="utf-8", errors="ignore") as fh:
+                    shared_sources[p] = fh.read()
+            except Exception:
+                pass
+
+def is_thin_stub(text: str) -> bool:
+    """True si el archivo es un re-export delgado generado por extract-shared.py."""
+    lines = [l for l in text.splitlines() if l.strip() and not l.strip().startswith("//")]
+    if len(lines) > 4:
+        return False
+    return all(re.match(r"^\s*export\s+", l) for l in lines)
+
 def is_referenced(mf_name, target_path):
     base = os.path.splitext(os.path.basename(target_path))[0]
     if base in ENTRY_BASENAMES:
@@ -84,9 +110,14 @@ def is_referenced(mf_name, target_path):
         r"""(?:\.tsx?|\.jsx?|\.css|\.json)?['"`]""",
         re.MULTILINE,
     )
+    # Buscar en el propio MF
     for src_path, text in mf_sources.get(mf_name, {}).items():
         if src_path == target_path:
             continue
+        if pat.search(text):
+            return True
+    # Buscar tambien en el codigo compartido (paquete shared-ui/shared-utils)
+    for src_path, text in shared_sources.items():
         if pat.search(text):
             return True
     return False
@@ -95,13 +126,22 @@ def mf_of(p):
     return p.split(os.sep)[2]
 
 def is_safe_to_delete(p):
-    """No borrar archivos del toolchain ni entrypoints."""
+    """No borrar archivos del toolchain ni entrypoints ni stubs delgados."""
     base = os.path.basename(p)
     if base in TOOLCHAIN_FILES:
         return False
     name = os.path.splitext(base)[0]
     if name in ENTRY_BASENAMES:
         return False
+    # Nunca borrar stubs delgados: son la fachada de retrocompatibilidad
+    try:
+        with open(p, "r", encoding="utf-8", errors="ignore") as fh:
+            head = fh.read()
+        if is_thin_stub(head):
+            return False
+    except Exception:
+        pass
+    return True
     return True
 
 # 3) Decide what to delete
