@@ -62,6 +62,7 @@ const ProfessorDashboard: React.FC = () => {
         return parsed;
     });
 
+
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
         if (currentProfessor?.role === 'CYCLE_DIRECTOR' || currentProfessor?.role === 'PSYCHOLOGIST') {
@@ -254,10 +255,20 @@ const ProfessorDashboard: React.FC = () => {
         window.location.href = microfrontendUrls.home;
     };
 
+    // Filtrar secciones según el rol - TEACHER no ve "Mis Entrevistas" ni "Mis Horarios"
+    const filteredSections = baseSections.filter(section => {
+        if (currentProfessor?.role === 'TEACHER') {
+            if (section.key === 'entrevistas' || section.key === 'horarios') {
+                return false;
+            }
+        }
+        return true;
+    });
+
     // Determinar si mostrar sección de administrador
-    const sections = currentProfessor?.isAdmin 
-        ? [...baseSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
-        : baseSections;
+    const sections = currentProfessor?.isAdmin
+        ? [...filteredSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
+        : filteredSections;
 
     const getSubjectName = (subjectId: string) => {
         const names: { [key: string]: string } = {

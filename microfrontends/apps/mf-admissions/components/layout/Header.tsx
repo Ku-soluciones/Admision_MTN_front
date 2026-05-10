@@ -96,13 +96,15 @@ const Header: React.FC = () => {
 
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
-            <div className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-                <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <img src="/images/logoMTN.png" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
-                    <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
-                        Colegio Monte Tabor y Nazaret
-                    </span>
-                </Link>
+            <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center">
+                <div className="flex-1">
+                    <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <img src="/images/logoMTN.png" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
+                        <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
+                            Colegio Monte Tabor y Nazaret
+                        </span>
+                    </Link>
+                </div>
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-6 lg:gap-8">
@@ -110,10 +112,6 @@ const Header: React.FC = () => {
                         Inicio
                     </a>
                     <a href={microfrontendUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
-                    <a href={microfrontendUrls.guardianLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Portal Familia</a>
-                    {!isProfessorLoggedIn && (
-                        <a href={microfrontendUrls.professorLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Profesores</a>
-                    )}
                     {isAdmin && (
                         <a
                             href={microfrontendUrls.adminDashboard}
@@ -124,14 +122,21 @@ const Header: React.FC = () => {
                     )}
                 </nav>
 
-                <div className="flex items-center gap-2 sm:gap-4">
-                    {!isAnyUserLoggedIn && isHomePage && (
-                        <div className="hidden sm:flex items-center gap-3">
-                            <a href={microfrontendUrls.freshAdmissions}>
-                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                    Postular
+                <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
+                    {!isAnyUserLoggedIn && (
+                        <div className="hidden sm:flex items-center gap-2">
+                            <a href={microfrontendUrls.guardianLogin}>
+                                <Button size="sm" className="!bg-azul-monte-tabor !text-blanco-pureza">
+                                    Iniciar sesión
                                 </Button>
                             </a>
+                            {isHomePage && (
+                                <a href={microfrontendUrls.guardianRegister}>
+                                    <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                        Postular
+                                    </Button>
+                                </a>
+                            )}
                         </div>
                     )}
                     {/* Hamburger button */}
@@ -179,15 +184,6 @@ const Header: React.FC = () => {
                         >
                             Portal Familia
                         </a>
-                        {!isProfessorLoggedIn && (
-                            <a
-                                href={microfrontendUrls.professorLogin}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                            >
-                                Profesores
-                            </a>
-                        )}
                         {isAdmin && (
                             <a
                                 href={microfrontendUrls.adminDashboard}
@@ -199,7 +195,7 @@ const Header: React.FC = () => {
                         )}
                         {!isAnyUserLoggedIn && isHomePage && (
                             <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={microfrontendUrls.freshAdmissions} onClick={() => setIsMobileMenuOpen(false)}>
+                                <a href={microfrontendUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
                                     <Button variant="primary" className="w-full !text-blanco-pureza">
                                         Postular
                                     </Button>

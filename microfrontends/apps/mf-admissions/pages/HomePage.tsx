@@ -46,7 +46,7 @@ const HomePage: React.FC = () => {
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Formando líderes con espíritu de servicio</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únanse a una comunidad educativa comprometida con la excelencia académica y formación católica</p>
                     <div className="flex justify-center">
-                        <a href={microfrontendUrls.freshAdmissions}>
+                        <a href={microfrontendUrls.guardianRegister}>
                             <Button size="lg" variant="primary" className="!text-blanco-pureza">
                                 Iniciar postulación
                             </Button>
