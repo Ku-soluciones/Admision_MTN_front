@@ -67,8 +67,33 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
+            // Mapear evaluaciones
+            let mappedEvaluations = this.mapToProfessorEvaluations(evaluations);
 
-            const mappedEvaluations = this.mapToProfessorEvaluations(evaluations);
+            // Enriquecer evaluaciones con datos faltantes en paralelo
+            mappedEvaluations = await Promise.all(
+                mappedEvaluations.map(async (evaluation) => {
+                    if (evaluation.applicationId && (!evaluation.studentName || !evaluation.studentBirthDate)) {
+                        try {
+                            const appResponse = await api.get(`/v1/applications/${evaluation.applicationId}`);
+                            const application = appResponse.data?.data || appResponse.data;
+
+                            if (application?.student) {
+                                const originalEval = evaluations.find((e: any) =>
+                                    (e.id || e.evaluationId) === evaluation.id
+                                );
+                                return this.mapToProfessorEvaluation({
+                                    ...originalEval,
+                                    application: application
+                                });
+                            }
+                        } catch (appError: any) {
+                            // Log silenciosamente y continuar con datos parciales
+                        }
+                    }
+                    return evaluation;
+                })
+            );
 
             return mappedEvaluations;
 
@@ -96,7 +121,35 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
-            return this.mapToProfessorEvaluations(evaluations);
+            // Mapear evaluaciones
+            let mappedEvaluations = this.mapToProfessorEvaluations(evaluations);
+
+            // Enriquecer evaluaciones con datos faltantes en paralelo
+            mappedEvaluations = await Promise.all(
+                mappedEvaluations.map(async (evaluation) => {
+                    if (evaluation.applicationId && (!evaluation.studentName || !evaluation.studentBirthDate)) {
+                        try {
+                            const appResponse = await api.get(`/v1/applications/${evaluation.applicationId}`);
+                            const application = appResponse.data?.data || appResponse.data;
+
+                            if (application?.student) {
+                                const originalEval = evaluations.find((e: any) =>
+                                    (e.id || e.evaluationId) === evaluation.id
+                                );
+                                return this.mapToProfessorEvaluation({
+                                    ...originalEval,
+                                    application: application
+                                });
+                            }
+                        } catch (appError: any) {
+                            // Log silenciosamente y continuar con datos parciales
+                        }
+                    }
+                    return evaluation;
+                })
+            );
+
+            return mappedEvaluations;
 
         } catch (error: any) {
 
@@ -181,7 +234,28 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluation = response.data?.data || response.data;
 
-            return this.mapToProfessorEvaluation(evaluation);
+            let enrichedEvaluation = this.mapToProfessorEvaluation(evaluation);
+
+            // Enriquecer con datos de la aplicación si faltan datos del estudiante
+            if (enrichedEvaluation.applicationId && (!enrichedEvaluation.studentName || !enrichedEvaluation.studentBirthDate)) {
+                try {
+                    const applicationResponse = await api.get(`/v1/applications/${enrichedEvaluation.applicationId}`);
+                    const application = applicationResponse.data?.data || applicationResponse.data;
+
+                    if (application?.student) {
+                        // Re-mapear con datos enriquecidos
+                        enrichedEvaluation = this.mapToProfessorEvaluation({
+                            ...evaluation,
+                            application: application
+                        });
+                    }
+                } catch (appError: any) {
+                    console.warn(`Could not enrich evaluation with application data:`, appError);
+                    // Continuar con los datos que tenemos
+                }
+            }
+
+            return enrichedEvaluation;
 
         } catch (error: any) {
 
