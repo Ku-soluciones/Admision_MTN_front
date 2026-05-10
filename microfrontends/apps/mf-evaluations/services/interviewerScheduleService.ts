@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getApiBaseUrl } from '../config/api.config';
 import httpClient from './http';
 
-const API_BASE_URL = `${getApiBaseUrl()}/api`;
+const API_BASE_URL = `${getApiBaseUrl()}/v1`;
 
 // Types for the interviewer schedule system
 export interface InterviewerSchedule {
