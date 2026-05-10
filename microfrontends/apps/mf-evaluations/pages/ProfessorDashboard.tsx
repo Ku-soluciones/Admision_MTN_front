@@ -27,7 +27,7 @@ import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../utils/notify';
 import { EvaluationStatus, EvaluationType } from '../types/evaluation';
 import { FiRefreshCw, FiBarChart2, FiCalendar, FiEye } from 'react-icons/fi';
-import WeeklyCalendar from '../components/schedule/WeeklyCalendar';
+import SimpleAvailabilityCalendar from '../components/schedule/SimpleAvailabilityCalendar';
 import ChangePasswordButton from '../src/components/common/ChangePasswordButton';
 import {
     Interview,
@@ -1453,7 +1453,7 @@ const ProfessorDashboard: React.FC = () => {
                 return renderEstudiantes();
             case 'horarios':
                 return currentProfessor ? (
-                    <WeeklyCalendar
+                    <SimpleAvailabilityCalendar
                         userId={currentProfessor.id}
                         userRole={currentProfessor.role}
                         onScheduleChange={() => {
