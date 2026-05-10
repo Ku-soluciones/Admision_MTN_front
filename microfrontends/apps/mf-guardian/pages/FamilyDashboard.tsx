@@ -14,8 +14,7 @@ import {
   FiFile, 
   FiKey, 
   FiMail, 
-  FiAlertTriangle, 
-  FiCheckCircle, 
+  FiAlertTriangle,
   FiXCircle, 
   FiRefreshCw, 
   FiEdit,
@@ -53,7 +52,6 @@ const sections = [
   { key: 'resumen', label: 'Resumen de Postulación' },
   { key: 'datos', label: 'Datos del Postulante y Apoderados' },
   { key: 'documentos', label: 'Documentos' },
-  { key: 'calendario', label: 'Calendario de Entrevistas' },
   { key: 'ayuda', label: 'Ayuda y Soporte' },
 ];
 
@@ -271,16 +269,39 @@ const FamilyDashboard: React.FC = () => {
               <div className="space-y-6">
                 {/* Lista de Hijos Postulantes */}
                 <Card className="p-6">
-                  <div className="flex justify-between items-center mb-4">
+                  {/* Estadísticas de postulaciones */}
+                  {Array.isArray(realApplications) && realApplications.length > 1 && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <p className="text-2xl font-bold text-azul-monte-tabor">{realApplications.length}</p>
+                          <p className="text-sm text-gris-piedra">Total Postulaciones</p>
+                        </div>
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                          <p className="text-2xl font-bold text-verde-esperanza">
+                            {realApplications.filter(app => app.status === 'APPROVED').length}
+                          </p>
+                          <p className="text-sm text-gris-piedra">Aprobadas</p>
+                        </div>
+                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                          <p className="text-2xl font-bold text-dorado-nazaret">
+                            {realApplications.filter(app => ['PENDING', 'UNDER_REVIEW'].includes(app.status)).length}
+                          </p>
+                          <p className="text-sm text-gris-piedra">En Proceso</p>
+                        </div>
+                      </div>
+                  )}
+                  <br/>
+                  <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
                     <Button
-                      variant="primary"
+                        variant="success"
                       size="sm"
                       onClick={handleAddAnotherChild}
                       className="flex items-center gap-2"
                     >
                       <FiPlus className="w-4 h-4" />
-                      Postular Otro Hijo
+                      Postular otro hijo
                     </Button>
                   </div>
 
@@ -334,9 +355,6 @@ const FamilyDashboard: React.FC = () => {
                              app.paymentStatus === 'FAILED' ? 'Pago fallido' :
                              app.paymentStatus === 'EXPIRED' ? 'Pago expirado' : 'No pagado'}
                           </Badge>
-                          {selectedApplicationIndex === index && (
-                            <FiCheckCircle className="w-5 h-5 text-verde-esperanza flex-shrink-0" />
-                          )}
                         </div>
                       </div>
                     ))}
@@ -348,7 +366,7 @@ const FamilyDashboard: React.FC = () => {
                       {myApplication.canFillComplementaryForm && !myApplication.hasComplementaryForm ? (
                         <Button
                           variant="primary"
-                          className="w-full"
+                          className="flex items-center gap-2 text-white"
                           onClick={() => setActiveSection('formulario-complementario')}
                         >
                           <FiFileText className="w-4 h-4 mr-2" />
@@ -357,7 +375,7 @@ const FamilyDashboard: React.FC = () => {
                       ) : myApplication.paymentStatus !== 'PAID' ? (
                         <Button
                           variant="primary"
-                          className="w-full bg-dorado-nazaret hover:bg-yellow-500 text-azul-monte-tabor"
+                          className="flex items-center gap-2"
                           onClick={() => handlePayApplication(myApplication.id)}
                           disabled={paymentLoadingId === myApplication.id}
                         >
@@ -369,27 +387,7 @@ const FamilyDashboard: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Estadísticas de postulaciones */}
-                  {Array.isArray(realApplications) && realApplications.length > 1 && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-azul-monte-tabor">{realApplications.length}</p>
-                        <p className="text-sm text-gris-piedra">Total Postulaciones</p>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-verde-esperanza">
-                          {realApplications.filter(app => app.status === 'APPROVED').length}
-                        </p>
-                        <p className="text-sm text-gris-piedra">Aprobadas</p>
-                      </div>
-                      <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                        <p className="text-2xl font-bold text-dorado-nazaret">
-                          {realApplications.filter(app => ['PENDING', 'UNDER_REVIEW'].includes(app.status)).length}
-                        </p>
-                        <p className="text-sm text-gris-piedra">En Proceso</p>
-                      </div>
-                    </div>
-                  )}
+
                 </Card>
                 
                 <Card className="p-6">
