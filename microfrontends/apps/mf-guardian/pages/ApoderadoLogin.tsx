@@ -104,8 +104,9 @@ const ApoderadoLogin: React.FC = () => {
         try {
             await register(registerData, 'apoderado');
             // Para usuarios nuevos registrados, redirigir al formulario de postulación
-            // no al dashboard directamente
-            window.location.href = microfrontendUrls.admissions;
+            // usando freshAdmissions para garantizar una sesión limpia sin conflictos
+            // con tokens de usuarios anteriores
+            window.location.href = microfrontendUrls.freshAdmissions;
         } catch (err: any) {
             const msg = err.message || 'Error al crear la cuenta. Intente nuevamente.';
             setError(msg);
