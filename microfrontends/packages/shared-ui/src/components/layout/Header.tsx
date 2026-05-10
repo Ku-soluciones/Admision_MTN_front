@@ -94,13 +94,15 @@ const Header: React.FC = () => {
 
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
-            <div className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+            <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center">
+                <div className="flex-1">
                 <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <img src="/images/logoMTN.png" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
                     <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
                         Colegio Monte Tabor y Nazaret
                     </span>
                 </Link>
+                </div>
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-6 lg:gap-8">
@@ -122,7 +124,7 @@ const Header: React.FC = () => {
                     )}
                 </nav>
 
-                <div className="flex items-center gap-2 sm:gap-4">
+                <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
                     {!isAnyUserLoggedIn && (
                         <a href={microfrontendUrls.freshAdmissions} className="hidden sm:block">
                             <Button variant="primary" size="sm">
