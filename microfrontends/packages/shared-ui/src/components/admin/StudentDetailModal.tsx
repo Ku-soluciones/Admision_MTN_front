@@ -94,7 +94,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     onAssignEvaluator
 }) => {
     const [activeTab, setActiveTab] = useState<'info' | 'familia' | 'academico' | 'entrevistas' | 'evaluaciones' | 'documentos' | 'historial'>('info');
-    const [documentSubTab, setDocumentSubTab] = useState<'academic' | 'other'>('academic');
     const [fullApplication, setFullApplication] = useState<Application | null>(null);
     const [interviews, setInterviews] = useState<Interview[]>([]);
     const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -1291,27 +1290,19 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         const hasDocuments = fullApplication?.documents && fullApplication.documents.length > 0;
 
-        // Filter documents based on active sub-tab
+        // Filter only "Otros Documentos" (non-academic)
         const filteredDocuments = hasDocuments
-            ? fullApplication.documents.filter(doc =>
-                documentSubTab === 'academic' ? isAcademicDocument(doc) : isOtherDocument(doc)
-              )
+            ? fullApplication.documents.filter(doc => isOtherDocument(doc))
             : [];
 
-
-        const approvedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index]).length : 0;
-        const rejectedCount = hasDocuments ? fullApplication.documents.filter((_, index) => documentApprovalStatus[index] === false).length : 0;
-
-        // Get counts for each category
-        const academicDocsCount = hasDocuments ? fullApplication.documents.filter(isAcademicDocument).length : 0;
-        const otherDocsCount = hasDocuments ? fullApplication.documents.filter(isOtherDocument).length : 0;
-
-
-        // VALIDATION: Verify sum of categories matches total
-        const totalDocuments = fullApplication?.documents?.length || 0;
-        const sumCategories = academicDocsCount + otherDocsCount;
-        if (sumCategories !== totalDocuments) {
-        }
+        const approvedCount = hasDocuments ? filteredDocuments.filter((_, index) => {
+            const originalIndex = fullApplication.documents.indexOf(filteredDocuments[index]);
+            return documentApprovalStatus[originalIndex];
+        }).length : 0;
+        const rejectedCount = hasDocuments ? filteredDocuments.filter((_, index) => {
+            const originalIndex = fullApplication.documents.indexOf(filteredDocuments[index]);
+            return documentApprovalStatus[originalIndex] === false;
+        }).length : 0;
 
         return (
             <div className="space-y-6">
@@ -1342,43 +1333,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                 {hasDocuments ? (
                     <>
-                        {/* Sub-tabs for document categories */}
-                        <div className="flex gap-2 border-b border-gray-200">
-                            <button
-                                onClick={() => setDocumentSubTab('academic')}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    documentSubTab === 'academic'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FiBookOpen className="w-4 h-4" />
-                                Documentos Académicos
-                                <Badge variant={documentSubTab === 'academic' ? 'blue' : 'gray'} size="xs">
-                                    {academicDocsCount}
-                                </Badge>
-                            </button>
-                            <button
-                                onClick={() => setDocumentSubTab('other')}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    documentSubTab === 'other'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FiFileText className="w-4 h-4" />
-                                Otros Documentos
-                                <Badge variant={documentSubTab === 'other' ? 'blue' : 'gray'} size="xs">
-                                    {otherDocsCount}
-                                </Badge>
-                            </button>
-                        </div>
-
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-gray-900">
-                                    {documentSubTab === 'academic' ? 'Notas y Certificados Académicos' : 'Certificados y Documentos Adicionales'}
-                                </h4>
+                                <h4 className="font-medium text-gray-900">Otros Documentos</h4>
                                 {approvedCount > 0 && (
                                     <div className="text-sm text-gray-600">
                                         <span className="text-green-600 font-medium">{approvedCount} aprobados</span>
@@ -1492,12 +1449,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             ) : (
                                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
                                     <FiFileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                    <p className="mb-2">No hay documentos en esta categoría</p>
-                                    <p className="text-sm text-gray-400">
-                                        {documentSubTab === 'academic'
-                                            ? 'No se han subido certificados de notas'
-                                            : 'No se han subido otros documentos'}
-                                    </p>
+                                    <p className="mb-2">No hay otros documentos</p>
+                                    <p className="text-sm text-gray-400">No se han subido otros documentos</p>
                                 </div>
                             )}
                         </div>

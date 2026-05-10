@@ -1324,11 +1324,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
         const hasDocuments = fullApplication?.documents && fullApplication.documents.length > 0;
 
-        // Filter documents based on active sub-tab
+        // Filter documents to show only non-academic documents
         const filteredDocuments = hasDocuments
-            ? fullApplication.documents.filter(doc =>
-                documentSubTab === 'academic' ? isAcademicDocument(doc) : isOtherDocument(doc)
-              )
+            ? fullApplication.documents.filter(isOtherDocument)
             : [];
 
 
@@ -1375,42 +1373,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                 {hasDocuments ? (
                     <>
-                        {/* Sub-tabs for document categories */}
-                        <div className="flex gap-2 border-b border-gray-200">
-                            <button
-                                onClick={() => setDocumentSubTab('academic')}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    documentSubTab === 'academic'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FiBookOpen className="w-4 h-4" />
-                                Documentos Académicos
-                                <Badge variant={documentSubTab === 'academic' ? 'blue' : 'gray'} size="xs">
-                                    {academicDocsCount}
-                                </Badge>
-                            </button>
-                            <button
-                                onClick={() => setDocumentSubTab('other')}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    documentSubTab === 'other'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <FiFileText className="w-4 h-4" />
-                                Otros Documentos
-                                <Badge variant={documentSubTab === 'other' ? 'blue' : 'gray'} size="xs">
-                                    {otherDocsCount}
-                                </Badge>
-                            </button>
-                        </div>
-
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <h4 className="font-medium text-gray-900">
-                                    {documentSubTab === 'academic' ? 'Notas y Certificados Académicos' : 'Certificados y Documentos Adicionales'}
+                                    Documentos Entregados
                                 </h4>
                                 {approvedCount > 0 && (
                                     <div className="text-sm text-gray-600">
@@ -1526,12 +1492,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             ) : (
                                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
                                     <FiFileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                                    <p className="mb-2">No hay documentos en esta categoría</p>
-                                    <p className="text-sm text-gray-400">
-                                        {documentSubTab === 'academic'
-                                            ? 'No se han subido certificados de notas'
-                                            : 'No se han subido otros documentos'}
-                                    </p>
+                                    <p className="mb-2">No hay documentos disponibles para mostrar</p>
+                                    <p className="text-sm text-gray-400">El apoderado aún no ha subido ningún documento</p>
                                 </div>
                             )}
                         </div>
