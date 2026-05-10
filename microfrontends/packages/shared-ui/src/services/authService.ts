@@ -16,7 +16,6 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
-    sendEmailVerification,
     GoogleAuthProvider,
     signInWithPopup,
     type Auth as FirebaseAuthInstance,
@@ -113,6 +112,7 @@ const ENDPOINTS = {
     logout: '/v1/auth/logout',
     check: '/v1/auth/check',
     firebaseLink: '/v1/auth/firebase/link',
+    firebaseSendVerification: '/v1/auth/firebase/send-verification-email',
     checkEmail: '/v1/auth/check-email',
 } as const;
 
@@ -125,6 +125,7 @@ const NEW_API = {
     logout: '/api/auth/logout',
     check: '/api/auth/check',
     firebaseLink: '/api/auth/firebase/link',
+    firebaseSendVerification: '/api/auth/firebase/send-verification-email',
     checkEmail: '/api/auth/check-email',
 } as const;
 
@@ -264,9 +265,11 @@ class AuthService {
 
     async register(request: RegisterRequest): Promise<AuthResponse> {
         try {
-            // 1. Crear el usuario en Firebase y enviar verificación de email.
+            // 1. Crear el usuario en Firebase. NO enviamos `sendEmailVerification` aquí
+            //    porque ese correo sale del dominio por defecto de Firebase. En su lugar,
+            //    despachamos nosotros el correo desde nuestra casilla (Resend) DESPUÉS
+            //    de crear la cuenta en el BFF para no colisionar con el alta.
             const credential = await createUserWithEmailAndPassword(auth, request.email, request.password);
-            try { await sendEmailVerification(credential.user); } catch { /* no-op */ }
             const idToken = await credential.user.getIdToken();
 
             // 2. Registrar en el BFF — `firebaseIdToken` permite que el BFF
@@ -286,6 +289,25 @@ class AuthService {
                 adoptSession(data);
             } else {
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
+            }
+
+            // 3. Recién aquí pedimos al BFF que envíe el correo de verificación
+            //    DESDE NUESTRA CASILLA institucional. Es best-effort: si falla,
+            //    no rompemos el registro (el usuario puede solicitarlo de nuevo).
+            try {
+                const verificationPath = shouldTryNewApi()
+                    ? NEW_API.firebaseSendVerification
+                    : ENDPOINTS.firebaseSendVerification;
+                await api.post(verificationPath, {
+                    idToken,
+                    email: request.email,
+                    firstName: request.firstName,
+                    lastName: request.lastName,
+                });
+            } catch (verifyErr) {
+                // No bloquear el registro si el envío del correo institucional falla.
+                // eslint-disable-next-line no-console
+                console.warn('[Auth] No se pudo enviar el correo de verificación institucional:', verifyErr);
             }
 
             return {
