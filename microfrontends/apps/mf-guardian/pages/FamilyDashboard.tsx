@@ -375,7 +375,7 @@ const FamilyDashboard: React.FC = () => {
                       ) : myApplication.paymentStatus !== 'PAID' ? (
                         <Button
                           variant="primary"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 text-white"
                           onClick={() => handlePayApplication(myApplication.id)}
                           disabled={paymentLoadingId === myApplication.id}
                         >
@@ -446,50 +446,7 @@ const FamilyDashboard: React.FC = () => {
                 )}
               </div>
             </div>
-            
-              {/* Accesos Rápidos */}
-              <Card className="p-6 mt-6">
-                <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Accesos Rápidos</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {hasComplementaryFormAccess && (
-                    <button
-                      onClick={() => setActiveSection('formulario-complementario')}
-                      className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left"
-                      aria-label="Ir al formulario complementario"
-                    >
-                      <FiFileText className="w-8 h-8 text-purple-600" aria-hidden="true" />
-                      <div>
-                        <h4 className="font-semibold text-azul-monte-tabor">Formulario Complementario</h4>
-                        <p className="text-sm text-gris-piedra">Completar información adicional</p>
-                      </div>
-                    </button>
-                  )}
 
-                  <button
-                    onClick={() => setActiveSection('calendario')}
-                    className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left"
-                    aria-label="Ir a mi calendario para ver fechas y eventos personalizados"
-                  >
-                    <CalendarIcon className="w-8 h-8 text-azul-monte-tabor" aria-hidden="true" />
-                    <div>
-                      <h4 className="font-semibold text-azul-monte-tabor">Mi Calendario</h4>
-                      <p className="text-sm text-gris-piedra">Ver mis fechas y eventos personalizados</p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveSection('calendario')}
-                    className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left"
-                    aria-label="Ir a mis entrevistas programadas"
-                  >
-                    <UsersIcon className="w-8 h-8 text-verde-esperanza" aria-hidden="true" />
-                    <div>
-                      <h4 className="font-semibold text-azul-monte-tabor">Mis Entrevistas</h4>
-                      <p className="text-sm text-gris-piedra">Ver mis entrevistas programadas</p>
-                    </div>
-                  </button>
-                </div>
-              </Card>
             </Card>
               </div>
             )}
