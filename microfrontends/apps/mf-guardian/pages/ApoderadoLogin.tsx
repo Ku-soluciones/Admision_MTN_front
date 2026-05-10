@@ -15,7 +15,9 @@ const ApoderadoLogin: React.FC = () => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [showRegister, setShowRegister] = useState(false);
+    const [showRegister, setShowRegister] = useState(
+        new URLSearchParams(window.location.search).get('register') === '1'
+    );
     const [isEmailVerified, setIsEmailVerified] = useState(false);
 
     // Campos para registro
