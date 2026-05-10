@@ -7,7 +7,7 @@ import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../icons/Ico
 import { useNotifications } from '../../context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../services/professorEvaluationService';
 import { EvaluationType } from '../../types/evaluation';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 interface AdmissionReportData {
     studentName: string;
