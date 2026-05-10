@@ -7,6 +7,7 @@ import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../icons/Ico
 import { useNotifications } from '../../context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../services/professorEvaluationService';
 import { EvaluationType } from '../../types/evaluation';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 interface AdmissionReportData {
     studentName: string;
@@ -67,9 +68,10 @@ const AdmissionReportForm: React.FC = () => {
         entranceGrade: ''
     });
 
-    // Obtener profesor actual del localStorage
+    // Obtener profesor actual del localStorage (con namespace correcto)
     const [currentProfessor] = useState(() => {
-        const storedProfessor = localStorage.getItem('currentProfessor');
+        const key = getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR);
+        const storedProfessor = localStorage.getItem(key) || localStorage.getItem('currentProfessor');
         return storedProfessor ? JSON.parse(storedProfessor) : null;
     });
 
