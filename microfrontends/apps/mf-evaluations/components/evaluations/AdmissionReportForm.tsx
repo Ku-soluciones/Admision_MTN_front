@@ -103,8 +103,8 @@ const AdmissionReportForm: React.FC = () => {
                         age: age,
                         currentSchool: evaluationData.currentSchool || '',
 
-                        // Datos del evaluador
-                        evaluatorName: evaluationData.evaluatorName || (currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : ''),
+                        // Datos del evaluador - usar profesor actual (quien completa el informe)
+                        evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || ''),
 
                         // Datos académicos - usar subject del profesor si está disponible
                         subject: evaluationData.evaluatorSubject ?
