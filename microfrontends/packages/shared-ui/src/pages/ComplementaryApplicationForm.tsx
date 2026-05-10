@@ -7,7 +7,7 @@ import Select from '../components/ui/Select';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SimpleToast from '../components/ui/SimpleToast';
 import { FiSave, FiArrowLeft, FiCheck, FiAlertCircle } from 'react-icons/fi';
-import { applicationService } from '../services/applicationService';
+import { applicationService, Application } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
 
 interface ChildDescription {
@@ -49,12 +49,17 @@ interface ComplementaryFormData {
   submittedAt?: string;
 }
 
-const ComplementaryApplicationForm: React.FC = () => {
+interface ComplementaryApplicationFormProps {
+  applications?: Application[];
+}
+
+const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> = ({ applications: providedApplications }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [applicationId, setApplicationId] = useState<number | null>(null);
+  const [eligibleApplications, setEligibleApplications] = useState<Application[]>([]);
   const [formData, setFormData] = useState<ComplementaryFormData>({
     email: '',
     studentLastNames: '',
@@ -84,51 +89,54 @@ const ComplementaryApplicationForm: React.FC = () => {
 
   useEffect(() => {
     loadApplicationData();
-  }, []);
+  }, [providedApplications]);
 
   const loadApplicationData = async () => {
     try {
       setLoading(true);
-      const dashboardData = await applicationService.getDashboardData();
+      const dashboardData = providedApplications
+        ? { applications: providedApplications }
+        : await applicationService.getDashboardData();
 
       if (dashboardData && dashboardData.applications && dashboardData.applications.length > 0) {
-        const app = dashboardData.applications[0];
-        setApplicationId(app.id);
-
-        // Pre-fill with existing data from application
-        setFormData(prev => ({
-          ...prev,
-          email: user?.email || app.applicantUser?.email || '',
-          studentLastNames: app.student?.lastName || '',
-          studentFirstNames: app.student?.firstName || '',
-          studentRut: app.student?.rut || '',
-          currentSchool: app.student?.currentSchool || '',
-          gradeApplied: app.student?.gradeApplied || '',
-          fatherName: app.father?.fullName || '',
-          motherName: app.mother?.fullName || ''
-        }));
-
-        // Try to load existing complementary form if it exists
-        try {
-          const complementaryData = await applicationService.getComplementaryForm(app.id);
-          if (complementaryData) {
-            setFormData(prev => ({
-              ...prev,
-              ...complementaryData
-            }));
-
-            // Check if form was already submitted
-            if (complementaryData.isSubmitted || complementaryData.is_submitted) {
-              setIsReadOnly(true);
-            }
-          }
-        } catch (error) {
-          // Complementary form doesn't exist yet, that's okay
+        const eligible = dashboardData.applications.filter((app: Application) => app.canFillComplementaryForm && !app.hasComplementaryForm);
+        setEligibleApplications(eligible);
+        if (eligible.length > 0) {
+          await selectApplication(eligible[0]);
         }
       }
     } catch (error) {
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectApplication = async (app: Application) => {
+    setApplicationId(app.id);
+    setIsReadOnly(false);
+    setFormData(prev => ({
+      ...prev,
+      email: user?.email || app.applicantUser?.email || '',
+      studentLastNames: app.student?.lastName || '',
+      studentFirstNames: app.student?.firstName || '',
+      studentRut: app.student?.rut || '',
+      currentSchool: app.student?.currentSchool || '',
+      gradeApplied: app.student?.gradeApplied || '',
+      fatherName: app.father?.fullName || '',
+      motherName: app.mother?.fullName || '',
+      childrenDescriptions: [{ childName: `${app.student?.firstName || ''} ${app.student?.lastName || ''}`.trim(), description: '', dream: '' }]
+    }));
+
+    try {
+      const complementaryData = await applicationService.getComplementaryForm(app.id);
+      if (complementaryData && complementaryData.id) {
+        setFormData(prev => ({ ...prev, ...complementaryData }));
+        if (complementaryData.isSubmitted || complementaryData.is_submitted) {
+          setIsReadOnly(true);
+        }
+      }
+    } catch {
+      // Formulario inexistente: flujo normal.
     }
   };
 
@@ -270,6 +278,25 @@ const ComplementaryApplicationForm: React.FC = () => {
     );
   }
 
+  if (!applicationId) {
+    return (
+      <div className="bg-gray-50 min-h-screen py-12 flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <FiAlertCircle className="w-12 h-12 text-dorado-nazaret mx-auto mb-4" />
+          <p className="text-gris-piedra">No hay postulaciones pagadas pendientes de formulario complementario.</p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/dashboard-apoderado')}
+            className="mt-4"
+          >
+            Volver
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen py-8 sm:py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -293,6 +320,32 @@ const ComplementaryApplicationForm: React.FC = () => {
         </Card>
 
         {/* Important Notice */}
+        {eligibleApplications.length > 1 && !isReadOnly && (
+          <Card className="p-4 mb-6">
+            <label className="block text-sm font-medium text-gris-piedra mb-2">Postulante</label>
+            <select
+              value={applicationId || ''}
+              onChange={(event) => {
+                const selected = eligibleApplications.find(app => app.id === Number(event.target.value));
+                if (selected) selectApplication(selected);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+            >
+              {eligibleApplications.map(app => (
+                <option key={app.id} value={app.id}>
+                  {app.student?.firstName} {app.student?.lastName} - {app.student?.gradeApplied}
+                </option>
+              ))}
+            </select>
+          </Card>
+        )}
+
+        {eligibleApplications.length === 0 && (
+          <Card className="p-6 text-center">
+            <p className="text-gris-piedra">No hay postulaciones pagadas pendientes de formulario complementario.</p>
+          </Card>
+        )}
+
         {!isReadOnly && (
           <Card className="p-4 bg-yellow-50 border border-yellow-300">
             <div className="flex items-start gap-3">

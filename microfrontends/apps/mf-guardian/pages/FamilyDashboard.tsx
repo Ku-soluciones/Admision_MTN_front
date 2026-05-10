@@ -34,7 +34,8 @@ import {
   FiInfo,
   FiCheck,
   FiX,
-  FiLogOut
+  FiLogOut,
+  FiCreditCard
 } from 'react-icons/fi';
 import { useApplications } from '../context/AppContext';
 import { auth } from '../src/lib/firebase';
@@ -87,6 +88,7 @@ const FamilyDashboard: React.FC = () => {
   const [selectedApplicationIndex, setSelectedApplicationIndex] = useState(0);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
 
   // Function to download/view document
   const handleViewDocument = async (documentId: number, documentName: string) => {
@@ -192,6 +194,17 @@ const FamilyDashboard: React.FC = () => {
   const myApplication = hasRealApplication
     ? realApplications[selectedApplicationIndex]
     : (applications.length > 0 ? applications[0] : null);
+  const payableApplications = realApplications.filter(app => app.canFillComplementaryForm && !app.hasComplementaryForm);
+  const hasComplementaryFormAccess = payableApplications.length > 0;
+  const visibleSections = hasComplementaryFormAccess
+    ? sections
+    : sections.filter(section => section.key !== 'formulario-complementario');
+
+  useEffect(() => {
+    if (activeSection === 'formulario-complementario' && !hasComplementaryFormAccess) {
+      setActiveSection('resumen');
+    }
+  }, [activeSection, hasComplementaryFormAccess]);
 
   // Navega a mf-admissions pasando el idToken para evitar re-login cross-origin
   const navigateToAdmissions = async (path = '/postulacion') => {
@@ -208,6 +221,26 @@ const FamilyDashboard: React.FC = () => {
   // Handler for adding another child (navigate to form with family data pre-filled)
   const handleAddAnotherChild = () => {
     navigateToAdmissions('/postulacion');
+  };
+
+  const handlePayApplication = async (applicationId: number) => {
+    try {
+      setPaymentLoadingId(applicationId);
+      const payment = await applicationService.startPaymentCheckout(applicationId);
+      setRealApplications(prev => prev.map(app => app.id === applicationId
+        ? { ...app, paymentStatus: payment.paymentStatus, paidAt: payment.paidAt, canFillComplementaryForm: payment.canFillComplementaryForm }
+        : app
+      ));
+      if (payment.checkoutUrl) {
+        window.location.href = payment.checkoutUrl;
+      } else if (payment.paymentStatus === 'PAID') {
+        setToast({ message: 'La postulación ya se encuentra pagada', type: 'success' });
+      }
+    } catch (error: any) {
+      setToast({ message: error.message || 'No se pudo iniciar el pago', type: 'error' });
+    } finally {
+      setPaymentLoadingId(null);
+    }
   };
 
   const renderSection = () => {
@@ -311,9 +344,14 @@ const FamilyDashboard: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {realApplications.map((app, index) => (
-                      <button
+                      <div
                         key={app.id}
                         onClick={() => setSelectedApplicationIndex(index)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') setSelectedApplicationIndex(index);
+                        }}
                         className={`p-4 rounded-lg border-2 transition-all text-left ${
                           selectedApplicationIndex === index
                             ? 'border-azul-monte-tabor bg-blue-50'
@@ -349,7 +387,32 @@ const FamilyDashboard: React.FC = () => {
                            app.status === 'WAITLIST' ? 'Lista de Espera' :
                            app.status}
                         </Badge>
-                      </button>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <Badge
+                            variant={app.paymentStatus === 'PAID' ? 'success' : app.paymentStatus === 'PAYMENT_PENDING' ? 'warning' : 'info'}
+                            size="sm"
+                          >
+                            {app.paymentStatus === 'PAID' ? 'Pagado' :
+                             app.paymentStatus === 'PAYMENT_PENDING' ? 'Pago pendiente' :
+                             app.paymentStatus === 'FAILED' ? 'Pago fallido' :
+                             app.paymentStatus === 'EXPIRED' ? 'Pago expirado' : 'No pagado'}
+                          </Badge>
+                          {app.paymentStatus !== 'PAID' && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handlePayApplication(app.id);
+                              }}
+                              disabled={paymentLoadingId === app.id}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dorado-nazaret text-azul-monte-tabor text-sm font-semibold hover:bg-yellow-500 disabled:opacity-60"
+                            >
+                              <FiCreditCard className="w-4 h-4" />
+                              {paymentLoadingId === app.id ? 'Preparando' : app.paymentStatus === 'PAYMENT_PENDING' ? 'Continuar pago' : 'Pagar'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
 
@@ -437,17 +500,19 @@ const FamilyDashboard: React.FC = () => {
               <Card className="p-6 mt-6">
                 <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Accesos Rápidos</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => setActiveSection('formulario-complementario')}
-                    className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left"
-                    aria-label="Ir al formulario complementario"
-                  >
-                    <FiFileText className="w-8 h-8 text-purple-600" aria-hidden="true" />
-                    <div>
-                      <h4 className="font-semibold text-azul-monte-tabor">Formulario Complementario</h4>
-                      <p className="text-sm text-gris-piedra">Completar información adicional</p>
-                    </div>
-                  </button>
+                  {hasComplementaryFormAccess && (
+                    <button
+                      onClick={() => setActiveSection('formulario-complementario')}
+                      className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left"
+                      aria-label="Ir al formulario complementario"
+                    >
+                      <FiFileText className="w-8 h-8 text-purple-600" aria-hidden="true" />
+                      <div>
+                        <h4 className="font-semibold text-azul-monte-tabor">Formulario Complementario</h4>
+                        <p className="text-sm text-gris-piedra">Completar información adicional</p>
+                      </div>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => setActiveSection('calendario')}
@@ -623,7 +688,21 @@ const FamilyDashboard: React.FC = () => {
         return (
           <div>
             {hasRealApplication ? (
-              <ComplementaryApplicationForm />
+              hasComplementaryFormAccess ? (
+                <ComplementaryApplicationForm applications={payableApplications} />
+              ) : (
+                <Card className="p-6">
+                  <div className="text-center py-8">
+                    <FiCreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gris-piedra mb-4">
+                      El formulario complementario se habilita cuando exista una postulación pagada pendiente de completar.
+                    </p>
+                    <Button variant="primary" onClick={() => setActiveSection('resumen')}>
+                      Volver al resumen
+                    </Button>
+                  </div>
+                </Card>
+              )
             ) : (
               <Card className="p-6">
                 <div className="text-center py-8">
@@ -779,7 +858,7 @@ const FamilyDashboard: React.FC = () => {
       <div className={`md:hidden fixed top-0 left-0 h-full w-64 bg-azul-monte-tabor z-50 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 pt-14">
           <nav className="space-y-2" aria-label="Secciones del portal de apoderados">
-            {sections.map(section => (
+            {visibleSections.map(section => (
               <button
                 key={section.key}
                 onClick={() => { setActiveSection(section.key); setIsSidebarOpen(false); }}
@@ -796,7 +875,7 @@ const FamilyDashboard: React.FC = () => {
         {/* Desktop Sidebar */}
         <aside className="w-64 bg-azul-monte-tabor p-6 flex-shrink-0 hidden md:flex md:flex-col rounded-xl mr-8 self-start sticky top-20" role="complementary" aria-label="Menú de navegación">
           <nav className="space-y-2" aria-label="Secciones del portal de apoderados">
-            {sections.map(section => (
+            {visibleSections.map(section => (
               <button
                 key={section.key}
                 onClick={() => setActiveSection(section.key)}
