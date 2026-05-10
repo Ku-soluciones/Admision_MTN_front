@@ -114,6 +114,11 @@ export interface Application {
         relationship: string;
     };
     status: string;
+    paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+    paymentRequired?: boolean;
+    paidAt?: string;
+    canFillComplementaryForm?: boolean;
+    hasComplementaryForm?: boolean;
     submissionDate: string;
     applicantUser: {
         email: string;
@@ -121,6 +126,20 @@ export interface Application {
         lastName: string;
     };
     documents?: any[];
+}
+
+export interface PaymentCheckoutResponse {
+    applicationId: number;
+    paymentRequired: boolean;
+    paymentStatus: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+    paidAt?: string;
+    canFillComplementaryForm: boolean;
+    paymentId?: number;
+    checkoutUrl?: string;
+    amount?: number;
+    currency?: string;
+    expiresAt?: string;
+    providerInvoiceId?: string;
 }
 
 class ApplicationService {
@@ -292,6 +311,26 @@ class ApplicationService {
 
         } catch (error: any) {
             throw new Error('Error al obtener la postulación');
+        }
+    }
+
+    async startPaymentCheckout(applicationId: number): Promise<PaymentCheckoutResponse> {
+        try {
+            const response = await api.post(`/v1/payments/applications/${applicationId}/checkout`);
+            return response.data.data || response.data;
+        } catch (error: any) {
+            const message = error.response?.data?.message || error.response?.data?.error || 'Error al iniciar el pago';
+            throw new Error(message);
+        }
+    }
+
+    async getPaymentStatus(applicationId: number): Promise<PaymentCheckoutResponse> {
+        try {
+            const response = await api.get(`/v1/payments/applications/${applicationId}/status`);
+            return response.data.data || response.data;
+        } catch (error: any) {
+            const message = error.response?.data?.message || error.response?.data?.error || 'Error al consultar el pago';
+            throw new Error(message);
         }
     }
     
