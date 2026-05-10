@@ -14,8 +14,7 @@ import {
   FiFile, 
   FiKey, 
   FiMail, 
-  FiAlertTriangle, 
-  FiCheckCircle, 
+  FiAlertTriangle,
   FiXCircle, 
   FiRefreshCw, 
   FiEdit,
@@ -52,9 +51,7 @@ import ComplementaryApplicationForm from './ComplementaryApplicationForm';
 const sections = [
   { key: 'resumen', label: 'Resumen de Postulación' },
   { key: 'datos', label: 'Datos del Postulante y Apoderados' },
-  { key: 'formulario-complementario', label: 'Formulario Complementario' },
   { key: 'documentos', label: 'Documentos' },
-  { key: 'calendario', label: 'Calendario de Entrevistas' },
   { key: 'ayuda', label: 'Ayuda y Soporte' },
 ];
 
@@ -196,15 +193,7 @@ const FamilyDashboard: React.FC = () => {
     : (applications.length > 0 ? applications[0] : null);
   const payableApplications = realApplications.filter(app => app.canFillComplementaryForm && !app.hasComplementaryForm);
   const hasComplementaryFormAccess = payableApplications.length > 0;
-  const visibleSections = hasComplementaryFormAccess
-    ? sections
-    : sections.filter(section => section.key !== 'formulario-complementario');
-
-  useEffect(() => {
-    if (activeSection === 'formulario-complementario' && !hasComplementaryFormAccess) {
-      setActiveSection('resumen');
-    }
-  }, [activeSection, hasComplementaryFormAccess]);
+  const visibleSections = sections;
 
   // Navega a mf-admissions pasando el idToken para evitar re-login cross-origin
   const navigateToAdmissions = async (path = '/postulacion') => {
@@ -248,55 +237,6 @@ const FamilyDashboard: React.FC = () => {
       case 'resumen':
         return (
           <div className="space-y-6">
-            {/* Header con logo del colegio */}
-            <Card className="p-6 bg-gradient-to-r from-azul-monte-tabor to-blue-700 text-blanco-pureza">
-              {/* Mostrar error si existe */}
-              {error && (
-                <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
-                  <p className="text-red-700 font-medium flex items-center gap-2">
-                    <FiAlertTriangle className="w-5 h-5" />
-                    Error al cargar datos:
-                  </p>
-                  <p className="text-red-600 text-sm">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="mt-2 text-red-600 hover:text-red-800 underline text-sm"
-                    aria-label="Reintentar carga de datos"
-                  >
-                    Reintentar
-                  </button>
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-                <div className="flex items-center gap-4">
-                  <LogoIcon className="w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
-                  <div>
-                    <h1 className="text-xl sm:text-3xl font-bold">Monte Tabor & Nazaret</h1>
-                    <p className="text-blue-100 text-sm sm:text-lg">Portal de Apoderados</p>
-                    {user && (
-                      <p className="text-blue-200 text-sm">Bienvenido, {user.firstName} {user.lastName}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="ml-2 text-white border-white hover:bg-red-500 hover:text-white hover:border-red-500"
-                    onClick={() => {
-                      setShowLogoutConfirm(true);
-                    }}
-                  >
-                    <FiLogOut className="w-4 h-4 mr-2" />
-                    Cerrar Sesión
-                  </Button>
-                </div>
-              </div>
-              <p className="text-blue-100">
-                Bienvenido al portal de seguimiento del proceso de admisión. 
-                Aquí podrá monitorear el progreso de la postulación de su hijo/a.
-              </p>
-            </Card>
 
             {/* Sección de Nueva Postulación o Resumen */}
             {!hasRealApplication ? (
@@ -329,20 +269,43 @@ const FamilyDashboard: React.FC = () => {
               <div className="space-y-6">
                 {/* Lista de Hijos Postulantes */}
                 <Card className="p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-azul-monte-tabor">Mis Hijos Postulantes</h2>
+                  {/* Estadísticas de postulaciones */}
+                  {Array.isArray(realApplications) && realApplications.length > 1 && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <p className="text-2xl font-bold text-azul-monte-tabor">{realApplications.length}</p>
+                          <p className="text-sm text-gris-piedra">Total Postulaciones</p>
+                        </div>
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                          <p className="text-2xl font-bold text-verde-esperanza">
+                            {realApplications.filter(app => app.status === 'APPROVED').length}
+                          </p>
+                          <p className="text-sm text-gris-piedra">Aprobadas</p>
+                        </div>
+                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                          <p className="text-2xl font-bold text-dorado-nazaret">
+                            {realApplications.filter(app => ['PENDING', 'UNDER_REVIEW'].includes(app.status)).length}
+                          </p>
+                          <p className="text-sm text-gris-piedra">En Proceso</p>
+                        </div>
+                      </div>
+                  )}
+                  <br/>
+                  <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
+                    <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
                     <Button
-                      variant="primary"
+                        variant="success"
                       size="sm"
                       onClick={handleAddAnotherChild}
                       className="flex items-center gap-2"
                     >
                       <FiPlus className="w-4 h-4" />
-                      Postular Otro Hijo
+                      Postular otro hijo
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 gap-4 mb-4">
                     {realApplications.map((app, index) => (
                       <div
                         key={app.id}
@@ -358,36 +321,31 @@ const FamilyDashboard: React.FC = () => {
                             : 'border-gray-200 bg-white hover:border-azul-monte-tabor hover:bg-blue-50'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <FiUser className="w-5 h-5 text-azul-monte-tabor" />
-                            <h3 className="font-semibold text-azul-monte-tabor">
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FiUser className="w-5 h-5 text-azul-monte-tabor flex-shrink-0" />
+                            <span className="font-semibold text-azul-monte-tabor truncate">
                               {app.student.firstName} {app.student.lastName}
-                            </h3>
+                            </span>
                           </div>
-                          {selectedApplicationIndex === index && (
-                            <FiCheckCircle className="w-5 h-5 text-verde-esperanza" />
-                          )}
-                        </div>
-                        <p className="text-sm text-gris-piedra mb-1">
-                          <strong>Nivel:</strong> {app.student.gradeApplied}
-                        </p>
-                        <Badge
-                          variant={
-                            app.status === 'APPROVED' ? 'success' :
-                            app.status === 'REJECTED' ? 'error' :
-                            app.status === 'WAITLIST' ? 'warning' : 'info'
-                          }
-                          size="sm"
-                        >
-                          {app.status === 'PENDING' ? 'Pendiente' :
-                           app.status === 'UNDER_REVIEW' ? 'En Revisión' :
-                           app.status === 'APPROVED' ? 'Aprobado' :
-                           app.status === 'REJECTED' ? 'Rechazado' :
-                           app.status === 'WAITLIST' ? 'Lista de Espera' :
-                           app.status}
-                        </Badge>
-                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="text-sm text-gris-piedra whitespace-nowrap">
+                            <strong>Nivel:</strong> {app.student.gradeApplied}
+                          </span>
+                          <Badge
+                            variant={
+                              app.status === 'APPROVED' ? 'success' :
+                              app.status === 'REJECTED' ? 'error' :
+                              app.status === 'WAITLIST' ? 'warning' : 'info'
+                            }
+                            size="sm"
+                          >
+                            {app.status === 'PENDING' ? 'Pendiente' :
+                             app.status === 'UNDER_REVIEW' ? 'En Revisión' :
+                             app.status === 'APPROVED' ? 'Aprobado' :
+                             app.status === 'REJECTED' ? 'Rechazado' :
+                             app.status === 'WAITLIST' ? 'Lista de Espera' :
+                             app.status}
+                          </Badge>
                           <Badge
                             variant={app.paymentStatus === 'PAID' ? 'success' : app.paymentStatus === 'PAYMENT_PENDING' ? 'warning' : 'info'}
                             size="sm"
@@ -397,46 +355,39 @@ const FamilyDashboard: React.FC = () => {
                              app.paymentStatus === 'FAILED' ? 'Pago fallido' :
                              app.paymentStatus === 'EXPIRED' ? 'Pago expirado' : 'No pagado'}
                           </Badge>
-                          {app.paymentStatus !== 'PAID' && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handlePayApplication(app.id);
-                              }}
-                              disabled={paymentLoadingId === app.id}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dorado-nazaret text-azul-monte-tabor text-sm font-semibold hover:bg-yellow-500 disabled:opacity-60"
-                            >
-                              <FiCreditCard className="w-4 h-4" />
-                              {paymentLoadingId === app.id ? 'Preparando' : app.paymentStatus === 'PAYMENT_PENDING' ? 'Continuar pago' : 'Pagar'}
-                            </button>
-                          )}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Estadísticas de postulaciones */}
-                  {Array.isArray(realApplications) && realApplications.length > 1 && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-azul-monte-tabor">{realApplications.length}</p>
-                        <p className="text-sm text-gris-piedra">Total Postulaciones</p>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-verde-esperanza">
-                          {realApplications.filter(app => app.status === 'APPROVED').length}
-                        </p>
-                        <p className="text-sm text-gris-piedra">Aprobadas</p>
-                      </div>
-                      <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                        <p className="text-2xl font-bold text-dorado-nazaret">
-                          {realApplications.filter(app => ['PENDING', 'UNDER_REVIEW'].includes(app.status)).length}
-                        </p>
-                        <p className="text-sm text-gris-piedra">En Proceso</p>
-                      </div>
+                  {/* Acción sobre el postulante seleccionado */}
+                  {myApplication && (
+                    <div className="pt-4 border-t border-gray-200">
+                      {myApplication.canFillComplementaryForm && !myApplication.hasComplementaryForm ? (
+                        <Button
+                          variant="primary"
+                          className="flex items-center gap-2 text-white"
+                          onClick={() => setActiveSection('formulario-complementario')}
+                        >
+                          <FiFileText className="w-4 h-4 mr-2" />
+                          Completar Formulario Complementario
+                        </Button>
+                      ) : myApplication.paymentStatus !== 'PAID' ? (
+                        <Button
+                          variant="primary"
+                          className="flex items-center gap-2"
+                          onClick={() => handlePayApplication(myApplication.id)}
+                          disabled={paymentLoadingId === myApplication.id}
+                        >
+                          <FiCreditCard className="w-4 h-4 mr-2" />
+                          {paymentLoadingId === myApplication.id ? 'Preparando pago...' :
+                           myApplication.paymentStatus === 'PAYMENT_PENDING' ? 'Continuar pago' : 'Pagar postulación'}
+                        </Button>
+                      ) : null}
                     </div>
                   )}
+
+
                 </Card>
                 
                 <Card className="p-6">
@@ -796,6 +747,43 @@ const FamilyDashboard: React.FC = () => {
     }
   };
 
+  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
+      <div className="p-6">
+        <LogoIcon className="mx-auto w-1/2 w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
+        <h1 className="text-xl font-bold text-azul-monte-tabor">Portal Apoderados</h1>
+        <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
+      </div>
+      <nav className="px-4" aria-label="Secciones del portal de apoderados">
+        {visibleSections.map(section => (
+          <button
+            key={section.key}
+            onClick={() => { setActiveSection(section.key); onNavigate?.(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
+              activeSection === section.key
+                ? 'bg-azul-monte-tabor text-white'
+                : 'text-gris-piedra hover:bg-gray-100'
+            }`}
+            aria-label={`Navegar a sección ${section.label}`}
+            aria-current={activeSection === section.key ? 'page' : undefined}
+          >
+            <span className="text-sm">{section.label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="px-4 mt-4">
+        <Button
+          variant="primary"
+          className="w-full bg-azul-monte-tabor hover:bg-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-md hover:shadow-lg"
+          onClick={() => setShowLogoutConfirm(true)}
+        >
+          Cerrar Sesión
+        </Button>
+      </div>
+      <div className="flex-1"></div>
+    </>
+  );
+
   // Mostrar estado de carga
   if (isLoading) {
     return (
@@ -825,13 +813,16 @@ const FamilyDashboard: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile top bar */}
-      <div className="md:hidden bg-azul-monte-tabor text-white px-4 py-3 flex items-center justify-between">
-        <span className="font-bold text-lg">Portal Apoderados</span>
+      <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <div>
+          <h1 className="text-lg font-bold text-azul-monte-tabor">Portal Apoderados</h1>
+          <p className="text-xs text-gris-piedra">{user?.firstName} {user?.lastName}</p>
+        </div>
         <button
           onClick={() => setIsSidebarOpen(prev => !prev)}
-          className="p-2 rounded-lg hover:bg-blue-800 transition-colors"
+          className="p-2 rounded-lg text-gris-piedra hover:bg-gray-100 transition-colors"
           aria-label="Abrir menú de secciones"
         >
           {isSidebarOpen ? (
@@ -846,50 +837,24 @@ const FamilyDashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile overlay */}
       {isSidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black bg-opacity-40 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="md:hidden fixed inset-0 bg-black bg-opacity-40 z-40" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* Mobile sidebar drawer */}
-      <div className={`md:hidden fixed top-0 left-0 h-full w-64 bg-azul-monte-tabor z-50 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 pt-14">
-          <nav className="space-y-2" aria-label="Secciones del portal de apoderados">
-            {visibleSections.map(section => (
-              <button
-                key={section.key}
-                onClick={() => { setActiveSection(section.key); setIsSidebarOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-colors duration-200 ${activeSection === section.key ? 'bg-dorado-nazaret/20 text-dorado-nazaret' : 'text-blanco-pureza hover:bg-blue-800'}`}
-              >
-                {section.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <div className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <SidebarContent onNavigate={() => setIsSidebarOpen(false)} />
       </div>
 
-      <div className="flex py-6 sm:py-12 px-4 sm:px-6">
+      <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="w-64 bg-azul-monte-tabor p-6 flex-shrink-0 hidden md:flex md:flex-col rounded-xl mr-8 self-start sticky top-20" role="complementary" aria-label="Menú de navegación">
-          <nav className="space-y-2" aria-label="Secciones del portal de apoderados">
-            {visibleSections.map(section => (
-              <button
-                key={section.key}
-                onClick={() => setActiveSection(section.key)}
-                className={`w-full text-left px-4 py-2 rounded-lg font-semibold transition-colors duration-200 ${activeSection === section.key ? 'bg-dorado-nazaret/20 text-dorado-nazaret' : 'text-blanco-pureza hover:bg-blue-800'}`}
-                aria-label={`Navegar a sección ${section.label}`}
-                aria-current={activeSection === section.key ? 'page' : undefined}
-              >
-                {section.label}
-              </button>
-            ))}
-          </nav>
+        <aside className="w-64 bg-white shadow-md min-h-screen flex-col hidden md:flex sticky top-0 self-start h-screen overflow-y-auto" role="complementary" aria-label="Menú de navegación">
+          <SidebarContent />
         </aside>
+
         {/* Main Content */}
-        <main className="flex-1 min-w-0 max-w-3xl mx-auto md:mx-0" role="main" aria-label="Contenido principal del portal de apoderados">
+        <main className="flex-1 p-4 sm:p-6 min-w-0" role="main" aria-label="Contenido principal del portal de apoderados">
           {renderSection()}
         </main>
       </div>
