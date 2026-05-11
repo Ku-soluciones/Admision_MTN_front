@@ -19,4 +19,20 @@ const auth: Auth | null = app ? getAuth(app) : null;
 if (!hasFirebaseConfig) {
 }
 
+/**
+ * Instancia secundaria de Firebase, usada para operaciones administrativas
+ * (ej: crear usuarios desde el portal admin) sin afectar la sesión del admin actual.
+ */
+let secondaryApp: FirebaseApp | null = null;
+let secondaryAuth: Auth | null = null;
+
+export function getSecondaryAuth(): Auth | null {
+    if (!hasFirebaseConfig) return null;
+    if (!secondaryApp) {
+        secondaryApp = initializeApp(firebaseConfig, 'admin-secondary');
+        secondaryAuth = getAuth(secondaryApp);
+    }
+    return secondaryAuth;
+}
+
 export { app, auth };

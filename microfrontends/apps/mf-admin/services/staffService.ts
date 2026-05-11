@@ -1,3 +1,4 @@
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import api from './http';
 import publicApi from './api';
 import {
@@ -11,6 +12,7 @@ import {
   EDUCATIONAL_LEVEL_LABELS,
   SUBJECT_LABELS,
 } from '../types/user';
+import { getSecondaryAuth, hasFirebaseConfig } from '../../../packages/shared-ui/src/src/lib/firebase';
 
 /**
  * Service for managing school staff (excludes guardians/apoderados)
@@ -94,7 +96,19 @@ class StaffService {
   }
 
   /**
-   * Create new staff member
+   * Create new staff member.
+   *
+   * Flujo (replicando el registro de apoderado, sin tocar el backend desplegado):
+   * 1. Crea el usuario en Firebase Auth con instancia secundaria (no afecta admin).
+   * 2. Llama a `POST /v1/auth/firebase-register` con el idToken — ese endpoint
+   *    YA enlaza `firebase_uid` y guarda `password='FIREBASE_MANAGED'` en BD,
+   *    pero SIEMPRE como APODERADO.
+   * 3. Si el role objetivo no es APODERADO, hace `PUT /v1/users/{id}` para
+   *    corregir role/subject/educationalLevel/rut/phone.
+   * 4. Cierra la sesión secundaria.
+   *
+   * Esto garantiza que el usuario quede con el mismo formato en BD que un
+   * apoderado registrado por su cuenta (firebase_uid + FIREBASE_MANAGED).
    */
   async createStaffUser(userData: CreateUserRequest): Promise<User> {
     // Ensure role is not APODERADO
@@ -102,8 +116,91 @@ class StaffService {
       throw new Error('Use guardianService to create guardians');
     }
 
-    const response = await api.post<{ success: boolean; data: User }>('/v1/users', userData);
-    return response.data.data;
+    // Validar contraseña (Firebase requiere mínimo 6 chars)
+    const password = (userData as any).password;
+    if (!password || password.length < 6) {
+      throw new Error('La contraseña debe tener al menos 6 caracteres');
+    }
+
+    if (!hasFirebaseConfig) {
+      throw new Error('Firebase no está configurado en este entorno');
+    }
+    const secondaryAuth = getSecondaryAuth();
+    if (!secondaryAuth) {
+      throw new Error('No se pudo inicializar la instancia secundaria de Firebase');
+    }
+
+    // 1. Crear en Firebase Auth (instancia secundaria) y obtener idToken
+    let idToken: string;
+    try {
+      const credential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, password);
+      idToken = await credential.user.getIdToken();
+    } catch (fbError: any) {
+      const code = fbError?.code || '';
+      if (code === 'auth/email-already-in-use') {
+        throw new Error('Ya existe un usuario con este email en Firebase');
+      } else if (code === 'auth/weak-password') {
+        throw new Error('La contraseña es muy débil (Firebase requiere al menos 6 caracteres)');
+      } else if (code === 'auth/invalid-email') {
+        throw new Error('El email tiene un formato inválido');
+      }
+      console.error('[StaffService] Error creando usuario en Firebase:', fbError);
+      throw new Error(fbError?.message || 'No se pudo crear el usuario en Firebase');
+    } finally {
+      // Aseguramos cerrar la sesión secundaria pase lo que pase
+      signOut(secondaryAuth).catch(() => {});
+    }
+
+    // 2. Registrar en BFF vía firebase-register (público, ya soporta enlace UID)
+    //    Usamos publicApi para evitar inyectar el token del admin en este request.
+    let createdUserId: number | undefined;
+    try {
+      const registerResp = await publicApi.post<any>('/v1/auth/firebase-register', {
+        idToken,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        rut: userData.rut,
+        phone: userData.phone,
+      });
+      // El endpoint devuelve { token, user: { id, ... }, ... }
+      const body = registerResp?.data ?? registerResp;
+      createdUserId = body?.user?.id ?? body?.data?.id ?? body?.id;
+      if (!createdUserId) {
+        console.error('[StaffService] firebase-register no devolvió id de usuario:', body);
+        throw new Error('El BFF no devolvió el id del usuario creado');
+      }
+    } catch (regError: any) {
+      console.error('[StaffService] firebase-register falló:', regError);
+      throw new Error(regError?.response?.data?.message || regError?.message || 'No se pudo registrar el usuario en el sistema');
+    }
+
+    // 3. Promover el rol y completar campos específicos de staff (subject, educationalLevel)
+    //    El endpoint PUT /v1/users/{id} requiere auth admin (ya la tenemos en `api`).
+    try {
+      const updatePayload: any = {
+        role: userData.role,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        rut: userData.rut,
+        phone: userData.phone,
+      };
+      if ((userData as any).subject) updatePayload.subject = (userData as any).subject;
+      if ((userData as any).educationalLevel) updatePayload.educationalLevel = (userData as any).educationalLevel;
+
+      const updated = await api.put<any>(`/v1/users/${createdUserId}`, updatePayload);
+      const body: any = (updated as any)?.data ?? updated;
+      const data: any = body?.data ?? body;
+      return this.normalizeStaffUser(data);
+    } catch (updateError: any) {
+      console.error(
+        `[StaffService] Usuario creado (id=${createdUserId}) pero falló la asignación de rol/datos:`,
+        updateError,
+      );
+      throw new Error(
+        `Usuario creado pero no se pudo asignar el rol "${userData.role}". ` +
+        `Edítalo manualmente (id=${createdUserId}). Detalle: ${updateError?.message || ''}`
+      );
+    }
   }
 
   /**

@@ -1,3 +1,4 @@
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import api from './api';
 import {
   User,
@@ -10,6 +11,7 @@ import {
   USER_ROLE_LABELS
 } from '../types/user';
 import { DataAdapter } from './dataAdapter';
+import { getSecondaryAuth, hasFirebaseConfig } from '../src/lib/firebase';
 
 class UserService {
 
@@ -64,15 +66,80 @@ class UserService {
   }
 
   /**
-   * Crear nuevo usuario
+   * Crear nuevo usuario.
+   *
+   * Flujo:
+   * 1. Crea el usuario en Firebase Auth con email + password usando una instancia
+   *    secundaria (para no afectar la sesión del admin actual).
+   * 2. Crea el usuario en el BFF (PostgreSQL).
+   *
+   * Si el email ya existe en Firebase, continúa creando solo en BFF (escenario común
+   * al re-crear un usuario previamente eliminado).
    */
   async createUser(request: CreateUserRequest): Promise<User> {
     try {
+      const password = (request as any).password;
 
-      const response = await api.post('/v1/users', request);
+      console.log('[UserService] === Creating user ===');
+      console.log('[UserService] Email:', request.email);
+      console.log('[UserService] Has password:', !!password);
+      console.log('[UserService] hasFirebaseConfig:', hasFirebaseConfig);
+
+      // 1. Crear en Firebase Auth (con instancia secundaria) - solo si hay password
+      let firebaseIdToken: string | undefined;
+      if (!password) {
+        console.warn('[UserService] No password provided, skipping Firebase creation');
+      } else if (!hasFirebaseConfig) {
+        console.error('[UserService] Firebase NOT configured. User will NOT be created in Firebase!');
+      } else {
+        if (password.length < 6) {
+          throw new Error('La contraseña debe tener al menos 6 caracteres');
+        }
+
+        const secondaryAuth = getSecondaryAuth();
+        console.log('[UserService] Secondary auth obtained:', !!secondaryAuth);
+
+        if (secondaryAuth) {
+          try {
+            console.log('[UserService] Creating user in Firebase...');
+            const credential = await createUserWithEmailAndPassword(secondaryAuth, request.email, password);
+            // idToken: el BFF lo verifica con Firebase Admin SDK y extrae firebase_uid
+            firebaseIdToken = await credential.user.getIdToken();
+            console.log('[UserService] ✅ User created in Firebase Auth');
+            // Cerrar sesión secundaria inmediatamente (no afecta al admin)
+            await signOut(secondaryAuth).catch(() => {});
+          } catch (fbError: any) {
+            const code = fbError?.code || '';
+            console.error('[UserService] Firebase error code:', code, 'message:', fbError?.message);
+            if (code === 'auth/email-already-in-use') {
+              console.warn('[UserService] Email ya existe en Firebase, continuando con BFF:', request.email);
+            } else if (code === 'auth/weak-password') {
+              throw new Error('La contraseña es muy débil (Firebase requiere al menos 6 caracteres)');
+            } else if (code === 'auth/invalid-email') {
+              throw new Error('El email tiene un formato inválido');
+            } else {
+              throw new Error(fbError?.message || 'No se pudo crear el usuario en Firebase');
+            }
+          }
+        } else {
+          console.error('[UserService] Secondary auth is null - Firebase user will NOT be created');
+        }
+      }
+
+      console.log('[UserService] Creating user in BFF...');
+      // 2. Crear en BFF enviando firebaseIdToken para enlace.
+      //    El BFF verifica el token y persiste firebase_uid + password='FIREBASE_MANAGED'.
+      const payload = {
+        ...request,
+        ...(firebaseIdToken ? { firebaseIdToken } : {}),
+      };
+      const response = await api.post('/v1/users', payload);
 
       // DEFENSIVE: Validate response exists
       if (!response || !response.data) {
+        if (firebaseIdToken) {
+          console.error('[UserService] Usuario creado en Firebase pero BFF no respondió. Email:', request.email);
+        }
         throw new Error('No se recibió respuesta válida del servidor');
       }
 

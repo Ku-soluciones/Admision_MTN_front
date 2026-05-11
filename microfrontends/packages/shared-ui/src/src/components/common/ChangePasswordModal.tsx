@@ -5,13 +5,16 @@
  * Requires current password validation
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   changePassword,
   validatePassword,
   passwordsMatch,
-  getErrorMessage
+  getErrorMessage,
+  evaluatePasswordStrength,
+  PasswordStrength
 } from '../../services/passwordService';
+import { authStore } from '../../../../../backend-sdk/src/auth/store';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -33,6 +36,59 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
+
+  // Obtener email del usuario del authStore (fuente de verdad)
+  useEffect(() => {
+    if (isOpen) {
+      // Obtener email directamente del authStore
+      const state = authStore.getState();
+      const email = state.user?.email;
+      
+      console.log('[ChangePasswordModal] Email from authStore:', email);
+      
+      if (email) {
+        setUserEmail(email);
+      } else {
+        // Fallback: buscar en localStorage si authStore no tiene email
+        console.warn('[ChangePasswordModal] No email in authStore, trying localStorage...');
+        const possibleKeys = [
+          'admitia_auth_user',
+          'admitia_current_professor',
+          'authenticated_user',
+          'currentProfessor',
+          'professor_user',
+          'authenticated_user__development',
+          'authenticated_user__staging',
+          'authenticated_user__production',
+          'currentProfessor__development',
+          'currentProfessor__staging',
+          'currentProfessor__production',
+        ];
+
+        for (const key of possibleKeys) {
+          try {
+            const userData = localStorage.getItem(key);
+            if (userData) {
+              const parsed = JSON.parse(userData);
+              if (parsed.email) {
+                console.log('[ChangePasswordModal] Found email in localStorage:', key, parsed.email);
+                setUserEmail(parsed.email);
+                return;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        
+        console.error('[ChangePasswordModal] Could not find user email anywhere');
+      }
+    }
+  }, [isOpen]);
+
+  // Evaluar fortaleza de la contraseña en tiempo real
+  const passwordStrength = useMemo(() => evaluatePasswordStrength(newPassword), [newPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +122,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     try {
       const response = await changePassword({
         currentPassword,
-        newPassword
+        newPassword,
+        email: userEmail || undefined
       });
 
       if (response.success) {
@@ -221,9 +278,35 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   )}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Debe tener al menos 6 caracteres
-              </p>
+              {/* Password Strength Meter */}
+              {newPassword && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-600">Seguridad:</span>
+                    <span className={`text-xs font-medium ${
+                      passwordStrength.level === 'weak' ? 'text-red-600' :
+                      passwordStrength.level === 'fair' ? 'text-orange-600' :
+                      passwordStrength.level === 'good' ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full transition-all duration-300 ease-out ${passwordStrength.color}`}
+                      style={{ width: `${passwordStrength.score}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                    <span className={newPassword.length >= 6 ? 'text-green-600' : ''}>• 6+ caracteres</span>
+                    <span className={/[A-Z]/.test(newPassword) ? 'text-green-600' : ''}>• Mayúscula</span>
+                    <span className={/[a-z]/.test(newPassword) ? 'text-green-600' : ''}>• Minúscula</span>
+                    <span className={/[0-9]/.test(newPassword) ? 'text-green-600' : ''}>• Número</span>
+                    <span className={/[^A-Za-z0-9]/.test(newPassword) ? 'text-green-600' : ''}>• Especial</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password */}

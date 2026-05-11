@@ -9,18 +9,15 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
-  getAuth,
   signInWithEmailAndPassword,
   AuthError
 } from 'firebase/auth';
-import { authStore } from '../../../../backend-sdk/src/auth/store';
-import { auth, hasFirebaseConfig } from '../lib/firebase';
-import apiClient from './http';
+import { auth, hasFirebaseConfig } from '../src/lib/firebase';
+import { authStore } from '../../../backend-sdk/src/auth/store';
 
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
-  email?: string;
 }
 
 export interface ChangePasswordResponse {
@@ -29,23 +26,20 @@ export interface ChangePasswordResponse {
   errorCode?: string;
 }
 
-export interface PasswordStrength {
-  score: number; // 0-100
-  level: 'weak' | 'fair' | 'good' | 'strong';
-  label: string;
-  color: string;
-}
-
 /**
  * Cambia la contraseña del usuario usando Firebase Auth.
  * Requiere reautenticación con la contraseña actual por seguridad.
  */
 export async function changePassword(
-  request: ChangePasswordRequest
+  request: ChangePasswordRequest & { email?: string }
 ): Promise<ChangePasswordResponse> {
   try {
     // Verificar que Firebase esté configurado
+    console.log('[PasswordService] Firebase config status:', hasFirebaseConfig);
+    console.log('[PasswordService] Auth instance:', auth ? 'exists' : 'null');
+
     if (!hasFirebaseConfig || !auth) {
+      console.error('[PasswordService] Firebase not configured');
       return {
         success: false,
         error: 'Firebase no está configurado correctamente. Contacte al administrador.',
@@ -55,6 +49,10 @@ export async function changePassword(
 
     let user = auth.currentUser;
     let userEmail = user?.email;
+
+    console.log('[PasswordService] Current Firebase user:', user ? 'exists' : 'null');
+    console.log('[PasswordService] User email from Firebase:', userEmail || 'null');
+    console.log('[PasswordService] Email from request:', request.email || 'null');
 
     // Si no hay usuario autenticado en Firebase, intentar obtener email
     if (!user || !userEmail) {
@@ -107,7 +105,10 @@ export async function changePassword(
         }
       }
 
+      console.log('[PasswordService] Final userEmail:', userEmail);
+
       if (!userEmail) {
+        console.error('[PasswordService] No user email found');
         return {
           success: false,
           error: 'No se pudo determinar el email del usuario. Por favor inicia sesión nuevamente.',
@@ -116,10 +117,13 @@ export async function changePassword(
       }
 
       // Intentar autenticar en Firebase con el email y contraseña actual
+      console.log('[PasswordService] Attempting Firebase signInWithEmailAndPassword...');
       try {
         const credential = await signInWithEmailAndPassword(auth, userEmail, request.currentPassword);
         user = credential.user;
+        console.log('[PasswordService] Firebase signIn successful');
       } catch (signInError: any) {
+        console.error('[PasswordService] Firebase signIn error:', signInError.code, signInError.message);
         const errorCode = signInError?.code || '';
         const errorMessage = signInError?.message || '';
         // Manejar códigos de error de Firebase Auth
@@ -168,6 +172,7 @@ export async function changePassword(
 
     // Cambiar la contraseña en Firebase Auth
     if (!user) {
+      console.error('[PasswordService] No user after authentication');
       return {
         success: false,
         error: 'Error de autenticación. Por favor inicia sesión nuevamente.',
@@ -175,14 +180,17 @@ export async function changePassword(
       };
     }
 
+    console.log('[PasswordService] Attempting to update password...');
     await updatePassword(user, request.newPassword);
+    console.log('[PasswordService] Password updated successfully');
 
     return { success: true };
   } catch (error: any) {
     const errorCode = error?.code || '';
     const errorMessage = error?.message || 'Error desconocido';
 
-    console.error('Error changing password:', errorCode, errorMessage);
+    console.error('[PasswordService] Error changing password:', errorCode, errorMessage);
+    console.error('[PasswordService] Full error:', error);
 
     // Mapear errores de Firebase a códigos internos
     if (errorCode === 'auth/requires-recent-login') {
@@ -217,45 +225,15 @@ export async function changePassword(
   }
 }
 
-/**
- * Reset Password (Admin) - Resetea la contraseña de cualquier usuario
- * Usa el endpoint del BFF (solo accesible por administradores)
- */
-export interface ResetPasswordRequest {
-  newPassword: string;
-}
-
-export async function resetUserPassword(
-  userId: number,
-  data: ResetPasswordRequest
-): Promise<ChangePasswordResponse & { message?: string }> {
-  try {
-    const response = await apiClient.put<any>(`/v1/users/${userId}/reset-password`, data);
-    return {
-      success: response.data?.success ?? true,
-      message: response.data?.message,
-      error: response.data?.error,
-      errorCode: response.data?.errorCode
-    };
-  } catch (error: any) {
-    if (error.response?.data) {
-      return {
-        success: false,
-        error: error.response.data.error || error.response.data.message || 'Error al resetear la contraseña',
-        errorCode: error.response.data.errorCode || 'RESET_FAILED'
-      };
-    }
-    return {
-      success: false,
-      error: error.message || 'Error al resetear la contraseña',
-      errorCode: 'RESET_FAILED'
-    };
-  }
+export interface PasswordStrength {
+  score: number; // 0-100
+  level: 'weak' | 'fair' | 'good' | 'strong';
+  label: string;
+  color: string;
 }
 
 /**
  * Evalúa la fortaleza de la contraseña y retorna un score detallado
- * para mostrar una barra de progreso visual
  */
 export function evaluatePasswordStrength(password: string): PasswordStrength {
   if (!password) {
@@ -311,7 +289,6 @@ export function evaluatePasswordStrength(password: string): PasswordStrength {
 
 /**
  * Valida la fortaleza de la contraseña
- * Retorna mensaje de error si es inválida, null si es válida
  */
 export function validatePassword(password: string): string | null {
   if (!password || password.length < 6) {
