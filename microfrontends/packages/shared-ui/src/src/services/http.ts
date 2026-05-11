@@ -13,7 +13,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import { getApiBaseUrl } from '../../config/api.config';
-import { auth } from '../lib/firebase';
+import { authStore, getStorageKey, BASE_STORAGE_KEYS } from '../../../../backend-sdk/src/index';
 
 class HttpClient {
   private axiosInstance: AxiosInstance;
@@ -89,25 +89,13 @@ class HttpClient {
 
         config.baseURL = runtimeBaseURL;
 
-        // Get fresh Firebase idToken (auto-refreshed by Firebase SDK)
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          try {
-            const idToken = await currentUser.getIdToken();
-            config.headers.Authorization = `Bearer ${idToken}`;
-          } catch {
-            // Fallback to localStorage if getIdToken fails
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-              config.headers.Authorization = `Bearer ${token}`;
-            }
-          }
-        } else {
-          // Fallback to localStorage (legacy JWT or initial load)
-          const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
+        // Resolve access token: authStore (memory) first, then localStorage fallback
+        const token =
+          authStore.getValidAccessToken(0) ||
+          localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+          localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
 
         this.metrics.requestCount++;
