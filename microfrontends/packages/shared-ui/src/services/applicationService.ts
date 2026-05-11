@@ -171,43 +171,28 @@ class ApplicationService {
     // Método mejorado para administradores: obtener todas las postulaciones desde microservicio
     async getAllApplications(): Promise<Application[]> {
         try {
+            // Usar el endpoint principal con parámetros page y size (el que funciona correctamente)
+            // Este es el mismo endpoint que usa "Gestión de evaluaciones"
+            const response = await api.get('/v1/applications?page=0&size=2000');
 
-            // Primero intentar el endpoint principal que devuelve la estructura completa
-            try {
-                // BFF espera parámetro 'size' (no 'limit') para el tamaño de página
-                const response = await api.get('/v1/applications?size=1000');
+            // El backend devuelve {success: true, data: [...], count: X}
+            const applications = response.data?.data || response.data || [];
 
-                // El backend devuelve {success: true, data: [...]}
-                const applications = response.data?.data || response.data || [];
+            // El endpoint /v1/applications ya devuelve la estructura correcta
+            // Filtrar las aplicaciones válidas
+            const validApplications = applications.filter((app: any) =>
+                app &&
+                app.id &&
+                app.student &&
+                app.student.firstName &&
+                app.student.lastName &&
+                app.student.firstName !== null &&
+                app.student.lastName !== null
+            );
 
-                // El endpoint /v1/applications ya devuelve la estructura correcta
-                // No necesitamos adaptador, solo filtrar las aplicaciones válidas
-                const validApplications = applications.filter((app: any) =>
-                    app &&
-                    app.id &&
-                    app.student &&
-                    app.student.firstName &&
-                    app.student.lastName &&
-                    app.student.firstName !== null &&
-                    app.student.lastName !== null
-                );
-
-                if (validApplications.length > 0) {
-                }
-                return validApplications;
-
-            } catch (mainError) {
-
-                // Como fallback, usar el endpoint público con adaptador si es necesario
-                const response = await api.get('/v1/applications/public/all');
-
-                // Este endpoint devuelve formato diferente, usar adaptador
-                const adaptedApplications = DataAdapter.adaptApplicationApiResponse(response);
-                return adaptedApplications;
-            }
+            return validApplications;
 
         } catch (error: any) {
-
             // Como fallback, devolver un array vacío
             return [];
         }
