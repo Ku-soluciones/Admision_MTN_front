@@ -76,43 +76,83 @@ export const ApplicantMetricsView: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { variant: 'success' | 'warning' | 'error' | 'info', label: string }> = {
-      'PENDING': { variant: 'warning', label: 'Pendiente' },
-      'IN_PROGRESS': { variant: 'info', label: 'En Progreso' },
-      'COMPLETED': { variant: 'success', label: 'Completado' },
-      'APPROVED': { variant: 'success', label: 'Aprobado' },
-      'REJECTED': { variant: 'error', label: 'Rechazado' },
-      'UNDER_REVIEW': { variant: 'info', label: 'En Revisión' },
-      'WAITLIST': { variant: 'warning', label: 'Lista de Espera' },
-      'SUBMITTED': { variant: 'info', label: 'Enviado' }
+    const cfg: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+      APPROVED:     { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Aprobado' },
+      REJECTED:     { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500',     label: 'Rechazado' },
+      UNDER_REVIEW: { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'En Revisión' },
+      SUBMITTED:    { bg: 'bg-sky-50',     text: 'text-sky-700',     dot: 'bg-sky-500',     label: 'Enviado' },
+      WAITLIST:     { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Lista de Espera' },
+      IN_PROGRESS:  { bg: 'bg-indigo-50',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  label: 'En Progreso' },
+      PENDING:      { bg: 'bg-gray-100',   text: 'text-gray-500',    dot: 'bg-gray-400',    label: 'Pendiente' },
     };
-
-    const config = statusMap[status] || { variant: 'info' as const, label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const c = cfg[status] || { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400', label: status };
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+        {c.label}
+      </span>
+    );
   };
 
-  const getScoreBadge = (percentage: string | null, status: string) => {
-    if (status !== 'COMPLETED' || !percentage) {
-      return <Badge variant="warning">Pendiente</Badge>;
+  const getScoreCell = (percentage: string | null, score: number | null | undefined, maxScore: number | null | undefined, examStatus: string) => {
+    // Sin datos / pendiente
+    if (!examStatus || examStatus === 'PENDING' || examStatus === 'NOT_SCHEDULED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-dashed border-gray-300 text-[11px] text-gray-400 bg-white">
+          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 12H4" />
+          </svg>
+          Sin rendir
+        </span>
+      );
     }
-
-    const score = parseFloat(percentage);
-    if (score >= 80) return <Badge variant="success">{percentage}%</Badge>;
-    if (score >= 60) return <Badge variant="warning">{percentage}%</Badge>;
-    return <Badge variant="error">{percentage}%</Badge>;
+    // Agendada o en curso sin score
+    if (examStatus !== 'COMPLETED' || !percentage) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-amber-300 text-[11px] text-amber-600 bg-amber-50">
+          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Por rendir
+        </span>
+      );
+    }
+    // Completada con score
+    const pct = parseFloat(percentage);
+    const c = pct >= 70
+      ? { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'M5 13l4 4L19 7', label: `${Math.round(pct)}%` }
+      : pct >= 50
+      ? { bar: 'bg-amber-400',   text: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200',   icon: 'M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', label: `${Math.round(pct)}%` }
+      : { bar: 'bg-red-500',     text: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200',     icon: 'M6 18L18 6M6 6l12 12', label: `${Math.round(pct)}%` };
+    return (
+      <div className="space-y-1">
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-semibold ${c.bg} ${c.text} ${c.border}`}>
+          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={c.icon} />
+          </svg>
+          {c.label}
+        </span>
+        {score != null && (
+          <div className="flex items-center gap-1">
+            <div className="w-14 h-1 rounded-full bg-gray-200">
+              <div className={`h-1 rounded-full ${c.bar}`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[10px] text-gray-400">{score}/{maxScore}</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const getInterviewResultBadge = (result: string | null) => {
-    if (!result) return <Badge variant="warning">Pendiente</Badge>;
-
-    const resultMap: Record<string, { variant: 'success' | 'warning' | 'error', label: string }> = {
-      'POSITIVE': { variant: 'success', label: 'Positivo' },
-      'NEGATIVE': { variant: 'error', label: 'Negativo' },
-      'NEUTRAL': { variant: 'warning', label: 'Neutral' }
+    if (!result) return <span className="text-xs text-gray-400">—</span>;
+    const cfg: Record<string, { bg: string; text: string; label: string }> = {
+      POSITIVE: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Positivo' },
+      NEGATIVE: { bg: 'bg-red-50',     text: 'text-red-700',     label: 'Negativo' },
+      NEUTRAL:  { bg: 'bg-gray-100',   text: 'text-gray-600',    label: 'Neutral' },
     };
-
-    const config = resultMap[result] || { variant: 'warning' as const, label: result };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const c = cfg[result] || { bg: 'bg-gray-100', text: 'text-gray-600', label: result };
+    return <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
   };
 
   const getChartData = () => {
@@ -222,6 +262,28 @@ export const ApplicantMetricsView: React.FC = () => {
 
   const uniqueGrades = [...new Set(applicants.map(a => a.gradeApplied))].sort();
   const uniqueStatuses = [...new Set(applicants.map(a => a.applicationStatus))];
+
+  // ─── Table local search + pagination ───
+  const [tableSearch, setTableSearch] = useState('');
+  const [tablePage, setTablePage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(10);
+
+  // Reset page when search changes
+  React.useEffect(() => { setTablePage(1); }, [tableSearch, applicants]);
+
+  const tableFiltered = React.useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return applicants;
+    return applicants.filter(a =>
+      a.studentName?.toLowerCase().includes(q) ||
+      String(a.applicationId).includes(q) ||
+      a.gradeApplied?.toLowerCase().includes(q) ||
+      a.applicationStatus?.toLowerCase().includes(q)
+    );
+  }, [applicants, tableSearch]);
+
+  const tableTotalPages = Math.ceil(tableFiltered.length / tablePageSize);
+  const tablePaged = tableFiltered.slice((tablePage - 1) * tablePageSize, tablePage * tablePageSize);
 
   const handleSubjectClick = (subjectName: string) => {
     // Map display name to exam key
@@ -476,186 +538,299 @@ export const ApplicantMetricsView: React.FC = () => {
       </div>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Detalle por Postulante ({applicants.length} resultados)
-        </h3>
-        <div className="overflow-x-auto">
+        {/* Header + buscador */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Detalle por Postulante
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              {tableFiltered.length} resultado{tableFiltered.length !== 1 ? 's' : ''}
+              {tableSearch && applicants.length !== tableFiltered.length && ` de ${applicants.length}`}
+            </span>
+          </h3>
+        </div>
+
+        {/* Buscador */}
+        <div className="relative mb-4">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={tableSearch}
+            onChange={e => setTableSearch(e.target.value)}
+            placeholder="Buscar por nombre, ID, curso o estado…"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {tableSearch && (
+            <button
+              onClick={() => setTableSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <FiX className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Tabla */}
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Postulante
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Curso
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Matemáticas
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Lenguaje
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Inglés
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Entrevistas Familiares
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Documentos
-                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Postulante</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Curso</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Matemáticas</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Lenguaje</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Inglés</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Entrevistas</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {applicants.map((applicant) => (
-                <tr key={applicant.applicationId} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <FiUser className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          {applicant.studentName}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          ID: {applicant.applicationId}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {applicant.gradeApplied}
-                  </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    {getStatusBadge(applicant.applicationStatus)}
-                  </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {getScoreBadge(applicant.examScores?.mathematics?.percentage || null, applicant.examScores?.mathematics?.status || 'PENDING')}
-                      {applicant.examScores?.mathematics?.score !== null && applicant.examScores?.mathematics?.score !== undefined && (
-                        <div className="text-xs text-gray-500">
-                          {applicant.examScores?.mathematics?.score}/{applicant.examScores?.mathematics?.maxScore}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {getScoreBadge(applicant.examScores?.language?.percentage || null, applicant.examScores?.language?.status || 'PENDING')}
-                      {applicant.examScores?.language?.score !== null && applicant.examScores?.language?.score !== undefined && (
-                        <div className="text-xs text-gray-500">
-                          {applicant.examScores?.language?.score}/{applicant.examScores?.language?.maxScore}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {getScoreBadge(applicant.examScores?.english?.percentage || null, applicant.examScores?.english?.status || 'PENDING')}
-                      {applicant.examScores?.english?.score !== null && applicant.examScores?.english?.score !== undefined && (
-                        <div className="text-xs text-gray-500">
-                          {applicant.examScores?.english?.score}/{applicant.examScores?.english?.maxScore}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    {applicant.familyInterviews && applicant.familyInterviews.length > 0 ? (
-                      <div className="space-y-2">
-                        {/* Calculate average percentage from COMPLETED interviews with scores */}
-                        {(() => {
-                          const interviewsWithScores = applicant.familyInterviews.filter(
-                            i => i.status === 'COMPLETED' && i.score !== null && i.score !== undefined
-                          );
-                          const totalPercentage = interviewsWithScores.reduce((sum, interview) => {
-                            const maxScore = interview.maxScore || 10; // Default to 10 if not provided
-                            return sum + ((interview.score || 0) / maxScore) * 100;
-                          }, 0);
-                          const averagePercentage = interviewsWithScores.length > 0
-                            ? (totalPercentage / interviewsWithScores.length).toFixed(1)
-                            : null;
-
-                          return (
-                            <>
-                              {/* Show average percentage badge at the top if there are completed interviews */}
-                              {averagePercentage !== null && (
-                                <div className="mb-2">
-                                  {getScoreBadge(averagePercentage, 'COMPLETED')}
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    Promedio de {interviewsWithScores.length} entrevista{interviewsWithScores.length !== 1 ? 's' : ''} completada{interviewsWithScores.length !== 1 ? 's' : ''}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Show individual interview details */}
-                              {applicant.familyInterviews.map((interview, idx) => (
-                                <div key={idx} className="text-xs border-t pt-1">
-                                  <div className="font-medium text-gray-600">{interview.interviewerName}</div>
-                                  <div className="flex items-center gap-2">
-                                    {/* Show status badge for scheduled interviews */}
-                                    {interview.status === 'SCHEDULED' && (
-                                      <Badge variant="warning">Programada</Badge>
-                                    )}
-                                    {interview.status === 'COMPLETED' && interview.result && getInterviewResultBadge(interview.result)}
-                                    {interview.status === 'COMPLETED' && interview.score !== null && (
-                                      <span className="text-xs text-gray-500">
-                                        {interview.score}/{interview.maxScore || 10} ({((interview.score / (interview.maxScore || 10)) * 100).toFixed(1)}%)
-                                        {interview.overallOpinionScore && (
-                                          <span className="ml-2 font-medium text-blue-600">
-                                            | Opinión: {interview.overallOpinionScore}/5
-                                          </span>
-                                        )}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ) : (
-                      <Badge variant="warning">Sin entrevistas</Badge>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {tablePaged.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center">
+                    <FiUser className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">
+                      {tableSearch ? 'Sin resultados para la búsqueda' : 'No se encontraron postulantes para los filtros seleccionados'}
+                    </p>
+                    {tableSearch && (
+                      <button onClick={() => setTableSearch('')} className="mt-2 text-xs text-blue-600 hover:underline">
+                        Limpiar búsqueda
+                      </button>
                     )}
                   </td>
-
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {applicant.documents?.completionRate || '0'}%
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {applicant.documents?.approved || 0}/{applicant.documents?.total || 0} aprobados
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="bg-green-500 h-1.5 rounded-full"
-                          style={{ width: `${applicant.documents?.completionRate || 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </td>
                 </tr>
-              ))}
+              ) : tablePaged.map((applicant) => {
+                const parts = (applicant.studentName || '').split(/\s+/).filter(Boolean);
+                const initials = parts.length > 1
+                  ? `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`
+                  : (parts[0] || 'N').slice(0, 2);
+
+                return (
+                  <tr key={applicant.applicationId} className="hover:bg-gray-50 transition-colors">
+                    {/* Postulante */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="shrink-0 h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-semibold uppercase">
+                          {initials.toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate max-w-[160px]">{applicant.studentName}</div>
+                          <div className="text-xs text-gray-400">ID: {applicant.applicationId}</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Curso */}
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 hidden sm:table-cell">
+                      {applicant.gradeApplied}
+                    </td>
+
+                    {/* Estado */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {getStatusBadge(applicant.applicationStatus)}
+                    </td>
+
+                    {/* Matemáticas */}
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {getScoreCell(
+                        applicant.examScores?.mathematics?.percentage || null,
+                        applicant.examScores?.mathematics?.score,
+                        applicant.examScores?.mathematics?.maxScore,
+                        applicant.examScores?.mathematics?.status || 'PENDING'
+                      )}
+                    </td>
+
+                    {/* Lenguaje */}
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {getScoreCell(
+                        applicant.examScores?.language?.percentage || null,
+                        applicant.examScores?.language?.score,
+                        applicant.examScores?.language?.maxScore,
+                        applicant.examScores?.language?.status || 'PENDING'
+                      )}
+                    </td>
+
+                    {/* Inglés */}
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {getScoreCell(
+                        applicant.examScores?.english?.percentage || null,
+                        applicant.examScores?.english?.score,
+                        applicant.examScores?.english?.maxScore,
+                        applicant.examScores?.english?.status || 'PENDING'
+                      )}
+                    </td>
+
+                    {/* Entrevistas */}
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {(() => {
+                        const ivs = applicant.familyInterviews;
+
+                        // Estado 1: sin ninguna entrevista asignada
+                        if (!ivs || ivs.length === 0) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              </svg>
+                              Sin asignar
+                            </span>
+                          );
+                        }
+
+                        const done = ivs.filter(i => i.status === 'COMPLETED' && i.score != null);
+                        const total = ivs.length;
+
+                        // Estado 2: asignadas pero ninguna completada
+                        if (done.length === 0) {
+                          return (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Pendiente
+                              </span>
+                              <div className="text-[10px] text-gray-400 pl-0.5">{total} asignada{total !== 1 ? 's' : ''}</div>
+                            </div>
+                          );
+                        }
+
+                        // Estado 3: al menos una completada
+                        const avgPct = done.reduce((s, i) => s + ((i.score || 0) / (i.maxScore || 10)) * 100, 0) / done.length;
+                        const color = avgPct >= 80
+                          ? { pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', bar: 'bg-emerald-500' }
+                          : avgPct >= 60
+                          ? { pill: 'bg-amber-50 text-amber-700 border-amber-200',   bar: 'bg-amber-400' }
+                          : { pill: 'bg-red-50 text-red-700 border-red-200',         bar: 'bg-red-400' };
+                        return (
+                          <div className="space-y-1.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${color.pill}`}>
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {avgPct.toFixed(0)}%
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-16 h-1 rounded-full bg-gray-200">
+                                <div className={`h-1 rounded-full ${color.bar}`} style={{ width: `${done.length / total * 100}%` }} />
+                              </div>
+                              <span className="text-[10px] text-gray-400">{done.length}/{total}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
+
+                    {/* Documentos */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {(() => {
+                        const approved = applicant.documents?.approved || 0;
+                        const total    = applicant.documents?.total    || 0;
+                        const pending  = total - approved;
+
+                        // Estado 1: sin documentos
+                        if (total === 0) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-dashed border-gray-300 text-[11px] text-gray-400 bg-white">
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Sin docs
+                            </span>
+                          );
+                        }
+
+                        // Estado 2: adjuntados, ninguno aprobado → en revisión
+                        if (approved === 0) {
+                          return (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-blue-300 text-[11px] text-blue-600 bg-blue-50">
+                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                En revisión
+                              </span>
+                              <div className="text-[10px] text-gray-400 pl-0.5">{total} adjunto{total !== 1 ? 's' : ''}</div>
+                            </div>
+                          );
+                        }
+
+                        // Estado 3: parcialmente aprobados
+                        if (pending > 0) {
+                          return (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-amber-300 text-[11px] font-medium text-amber-700 bg-amber-50">
+                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Parcial
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <div className="w-14 h-1 rounded-full bg-gray-200">
+                                  <div className="h-1 rounded-full bg-amber-400" style={{ width: `${(approved / total) * 100}%` }} />
+                                </div>
+                                <span className="text-[10px] text-gray-400">{approved}/{total}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Estado 4: todos aprobados
+                        return (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-200 text-[11px] font-semibold text-emerald-700 bg-emerald-50">
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Validado
+                            </span>
+                            <div className="text-[10px] text-gray-400 pl-0.5">{total}/{total} docs</div>
+                          </div>
+                        );
+                      })()}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
 
-          {applicants.length === 0 && (
-            <div className="text-center py-12">
-              <FiUser className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No se encontraron postulantes para los filtros seleccionados</p>
+        {/* Footer: contador + selector + paginación */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
+          <span className="text-xs text-gray-400">
+            {tableFiltered.length > 0
+              ? `${Math.min((tablePage - 1) * tablePageSize + 1, tableFiltered.length)}–${Math.min(tablePage * tablePageSize, tableFiltered.length)} de ${tableFiltered.length}`
+              : '0 resultados'}
+          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400">Por página:</span>
+              <select
+                value={tablePageSize}
+                onChange={e => { setTablePageSize(Number(e.target.value)); setTablePage(1); }}
+                className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
             </div>
-          )}
+            {tableTotalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => setTablePage(1)} disabled={tablePage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
+                <button onClick={() => setTablePage(p => p - 1)} disabled={tablePage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
+                <span className="px-3 py-1 rounded border text-xs bg-blue-600 text-white">{tablePage} / {tableTotalPages}</span>
+                <button onClick={() => setTablePage(p => p + 1)} disabled={tablePage === tableTotalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
+                <button onClick={() => setTablePage(tableTotalPages)} disabled={tablePage === tableTotalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

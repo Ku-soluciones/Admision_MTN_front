@@ -98,6 +98,12 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string>('');
 
+  // Modal de gestión de entrevistas del estudiante
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentModalId, setStudentModalId] = useState<number | null>(null);
+  const [studentModalName, setStudentModalName] = useState<string>('');
+  const [studentModalRefreshKey, setStudentModalRefreshKey] = useState(0);
+
   // Simplified email template state
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
 
@@ -346,8 +352,10 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
 
   // Funciones para la vista de estudiantes
   const handleStudentSelect = (applicationId: number, studentName: string) => {
-    setSelectedStudentId(applicationId);
-    setSelectedStudentName(studentName);
+    setStudentModalId(applicationId);
+    setStudentModalName(studentName);
+    setStudentModalRefreshKey(k => k + 1);
+    setShowStudentModal(true);
   };
 
   const handleBackToStudentList = () => {
@@ -669,6 +677,26 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
 
       {/* Removed complex email modal for simplification */}
 
+      {/* Modal gestión entrevistas del estudiante */}
+      {showStudentModal && studentModalId && (
+        <StudentInterviewsModal
+          applicationId={studentModalId}
+          studentName={studentModalName}
+          refreshKey={studentModalRefreshKey}
+          onClose={() => setShowStudentModal(false)}
+          onSchedule={(appId: number, type: string) => {
+            setShowStudentModal(false);
+            handleScheduleInterviewForStudent(appId, type);
+          }}
+          onView={handleViewInterview}
+          onEdit={handleEditInterview}
+          onRefresh={() => {
+            setStudentModalRefreshKey(k => k + 1);
+            setRefreshKey(k => k + 1);
+          }}
+        />
+      )}
+
       {/* Toast de notificaciones */}
       {toast && (
         <SimpleToast
@@ -681,6 +709,16 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   );
 };
 
+const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="relative group/tip inline-flex">
+    {children}
+    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
+      {label}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+    </div>
+  </div>
+);
+
 // Componente simple para lista de estudiantes
 interface StudentListViewProps {
   onStudentSelect: (applicationId: number, studentName: string) => void;
@@ -690,7 +728,9 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadApplications();
@@ -699,20 +739,10 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
   const loadApplications = async () => {
     try {
       setIsLoading(true);
-
-      // Usar el servicio de aplicaciones real
       const response = await applicationService.getAllApplications();
-
-      // Filtrar solo aplicaciones con datos de estudiante válidos
       const validApplications = response.filter(app =>
-        app &&
-        app.id &&
-        app.student &&
-        app.student.firstName &&
-        app.student.lastName
+        app && app.id && app.student && app.student.firstName && app.student.lastName
       );
-
-      // Mapear al formato esperado por la vista
       const mappedApplications = validApplications.map(app => ({
         id: app.id,
         studentName: `${app.student.firstName} ${app.student.lastName} ${app.student.maternalLastName || ''}`.trim(),
@@ -723,17 +753,12 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
         ].filter(name => name !== 'N/A').join(' y ') || 'Sin información de padres',
         status: app.status || 'PENDING'
       }));
-
       setApplications(mappedApplications);
-
     } catch (error) {
-      // Solo usar mock si realmente falla todo (mezclando IDs con y sin entrevistas)
       setApplications([
-        // Estudiantes CON entrevistas (según DB)
         { id: 1, studentName: 'Juan Pérez González', gradeApplied: 'Kinder', parentNames: 'María González y Pedro Pérez', status: 'APPROVED' },
         { id: 4, studentName: 'Ana Martínez López', gradeApplied: '1° Básico', parentNames: 'Carmen López y Roberto Martínez', status: 'APPROVED' },
         { id: 26, studentName: 'GASPAR GONZALEZ', gradeApplied: '2° Básico', parentNames: 'Padres de Gaspar', status: 'APPROVED' },
-        // Estudiantes SIN entrevistas (según DB)
         { id: 7, studentName: 'María Fernández Torres', gradeApplied: 'Kinder', parentNames: 'Carlos Torres y Ana Fernández', status: 'PENDING' },
         { id: 8, studentName: 'Pablo García Morales', gradeApplied: '1° Básico', parentNames: 'Luis Morales y Carmen García', status: 'PENDING' },
         { id: 15, studentName: 'Sofía López Ruiz', gradeApplied: '3° Básico', parentNames: 'Roberto Ruiz y Patricia López', status: 'PENDING' },
@@ -743,6 +768,39 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case 'APPROVED': return 'bg-green-100 text-green-800';
+      case 'REJECTED': return 'bg-red-100 text-red-800';
+      case 'UNDER_REVIEW': return 'bg-yellow-100 text-yellow-800';
+      case 'EXAM_SCHEDULED': return 'bg-indigo-100 text-indigo-800';
+      case 'INTERVIEW_SCHEDULED': return 'bg-purple-100 text-purple-800';
+      case 'PENDING': default: return 'bg-blue-100 text-blue-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      APPROVED: 'Aceptado', REJECTED: 'Rechazado', UNDER_REVIEW: 'En Revisión',
+      EXAM_SCHEDULED: 'Examen Agendado', INTERVIEW_SCHEDULED: 'Entrevista Programada', PENDING: 'Pendiente'
+    };
+    return labels[status?.toUpperCase()] || status;
+  };
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return applications;
+    return applications.filter(app =>
+      app.studentName?.toLowerCase().includes(q) ||
+      app.gradeApplied?.toLowerCase().includes(q) ||
+      app.parentNames?.toLowerCase().includes(q) ||
+      app.status?.toLowerCase().includes(q)
+    );
+  }, [applications, search]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -751,12 +809,6 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
     );
   }
 
-  const totalPages = Math.ceil(applications.length / PAGE_SIZE);
-  const pagedApplications = applications.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
   return (
     <Card className="p-6">
       <div className="mb-4">
@@ -764,38 +816,186 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
         <p className="text-sm text-gray-600">Selecciona un estudiante para gestionar sus entrevistas</p>
       </div>
 
-      {applications.length > PAGE_SIZE && (
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 text-sm text-gray-600">
-          <span>Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, applications.length)} de {applications.length} estudiantes</span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">«</button>
-            <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">‹</button>
-            <span className="px-3 py-1 rounded border bg-azul-monte-tabor text-white">{currentPage} / {totalPages}</span>
-            <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">›</button>
-            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">»</button>
-          </div>
+      {/* Buscador */}
+      <div className="relative mb-3">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+          placeholder="Buscar por nombre, grado, padres o estado…"
+          className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Hint instructivo */}
+      {selectedId === null && applications.length > 0 && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-blue-600 text-xs">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Selecciona un estudiante para gestionar sus entrevistas
         </div>
       )}
-      
-      <div className="grid gap-4">
-        {pagedApplications.map((app) => (
-          <div
-            key={app.id}
-            className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            onClick={() => onStudentSelect(app.id, app.studentName)}
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-medium text-gray-900">{app.studentName}</h4>
-                <p className="text-sm text-gray-600">Grado: {app.gradeApplied}</p>
-                <p className="text-sm text-gray-500">Padres: {app.parentNames}</p>
-              </div>
-              <Badge variant="success" size="sm">
-                {app.status}
-              </Badge>
-            </div>
+
+      {/* Tabla */}
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="w-6 px-3 py-2.5"></th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estudiante</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Grado</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Padres</th>
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ minWidth: 180 }}>Estado / Acción</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {paged.map((app) => {
+              const isSelected = selectedId === app.id;
+              const parts = app.studentName.split(/\s+/).filter(Boolean);
+              const initials = parts.length > 1
+                ? `${parts[0]?.charAt(0) || 'N'}${parts[parts.length - 1]?.charAt(0) || ''}`
+                : parts[0]?.slice(0, 2) || 'NN';
+
+              return (
+                <tr
+                  key={app.id}
+                  onClick={() => setSelectedId(prev => prev === app.id ? null : app.id)}
+                  className={`transition-colors cursor-pointer group ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                >
+                  {/* Indicador lateral */}
+                  <td className="px-3 py-3">
+                    <div className={`w-1.5 h-8 rounded-full transition-all duration-300 ${
+                      isSelected ? 'bg-azul-monte-tabor' : 'bg-transparent group-hover:bg-gray-200'
+                    }`} />
+                  </td>
+
+                  {/* Estudiante */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors duration-300 ${
+                        isSelected ? 'bg-azul-monte-tabor text-white' : 'bg-azul-monte-tabor bg-opacity-10 text-azul-monte-tabor'
+                      }`}>
+                        {initials.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`text-sm font-medium truncate transition-colors duration-300 ${isSelected ? 'text-azul-monte-tabor' : 'text-gray-900'}`}>
+                          {app.studentName}
+                        </div>
+                        <div className="text-xs text-gray-400 sm:hidden">{app.gradeApplied}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Grado */}
+                  <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+                    <span className="text-sm text-gray-700">{app.gradeApplied}</span>
+                  </td>
+
+                  {/* Padres */}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span className="text-sm text-gray-500 truncate max-w-[200px] block">{app.parentNames}</span>
+                  </td>
+
+                  {/* Estado / Acción — cross-fade */}
+                  <td className="px-4 py-3 relative overflow-hidden" style={{ minWidth: 180 }}>
+                    {/* Badge de estado — se va al seleccionar */}
+                    <div
+                      className="absolute inset-y-0 left-4 right-4 flex items-center transition-all duration-300"
+                      style={{
+                        opacity: isSelected ? 0 : 1,
+                        transform: isSelected ? 'translateX(-10px)' : 'translateX(0)',
+                        pointerEvents: isSelected ? 'none' : 'auto'
+                      }}
+                    >
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
+                        {getStatusLabel(app.status)}
+                      </span>
+                    </div>
+
+                    {/* Botón gestionar — aparece al seleccionar */}
+                    <div
+                      className="absolute inset-y-0 left-4 right-4 flex items-center gap-2 transition-all duration-300"
+                      style={{
+                        opacity: isSelected ? 1 : 0,
+                        transform: isSelected ? 'translateX(0)' : 'translateX(10px)',
+                        pointerEvents: isSelected ? 'auto' : 'none'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Tip label="Ver y gestionar entrevistas del estudiante">
+                        <button
+                          onClick={() => onStudentSelect(app.id, app.studentName)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                          <FiCalendar className="w-3.5 h-3.5" />
+                          Gestionar entrevistas
+                        </button>
+                      </Tip>
+                      <Tip label="Deseleccionar">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedId(null); }}
+                          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </Tip>
+                    </div>
+
+                    {/* Spacer invisible */}
+                    <div className="invisible">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs">placeholder</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer: contador + selector + paginación */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
+        <span className="text-xs text-gray-400">
+          {Math.min((currentPage - 1) * pageSize + 1, applications.length)}–{Math.min(currentPage * pageSize, applications.length)} de {applications.length} estudiantes
+        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-400">Por página:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
           </div>
-        ))}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
+              <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
+              <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{currentPage} / {totalPages}</span>
+              <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
+              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -1064,6 +1264,227 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
           })}
         </div>
       </Card>
+    </div>
+  );
+};
+
+// ─── Modal de gestión de entrevistas del estudiante ─────────────────────────
+interface StudentInterviewsModalProps {
+  applicationId: number;
+  studentName: string;
+  refreshKey: number;
+  onClose: () => void;
+  onSchedule: (applicationId: number, type: string) => void;
+  onView: (interview: Interview) => void;
+  onEdit: (interview: Interview) => void;
+  onRefresh: () => void;
+}
+
+const INTERVIEW_TYPES_CONFIG = [
+  { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', icon: '🎓' },
+  { key: 'FAMILY',         label: 'Entrevista Familiar',          icon: '👨‍👩‍👧' },
+];
+
+const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
+  applicationId,
+  studentName,
+  refreshKey,
+  onClose,
+  onSchedule,
+  onView,
+  onEdit,
+  onRefresh,
+}) => {
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    interviewService.getInterviewsByApplication(applicationId)
+      .then(res => { if (!cancelled) setInterviews(res.interviews || []); })
+      .catch(() => { if (!cancelled) setInterviews([]); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [applicationId, refreshKey]);
+
+  const getForType = (key: string) =>
+    interviews.find(i => i.type === key);
+
+  const statusLabel = (s: string) => {
+    const m: Record<string, string> = {
+      SCHEDULED: 'Agendada', CONFIRMED: 'Confirmada',
+      IN_PROGRESS: 'En curso', COMPLETED: 'Completada',
+      CANCELLED: 'Cancelada', NO_SHOW: 'No asistió'
+    };
+    return m[s] || s;
+  };
+
+  const statusColor = (s: string) => {
+    const m: Record<string, string> = {
+      SCHEDULED: 'bg-yellow-100 text-yellow-800',
+      CONFIRMED: 'bg-blue-100 text-blue-800',
+      IN_PROGRESS: 'bg-indigo-100 text-indigo-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800',
+      NO_SHOW: 'bg-gray-100 text-gray-700',
+    };
+    return m[s] || 'bg-gray-100 text-gray-700';
+  };
+
+  const formatLocalDate = (d: string) => {
+    const [y, m, day] = d.split('-');
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(day))
+      .toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* Panel */}
+      <div
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-azul-monte-tabor to-blue-600">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <FiUser className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white leading-tight">{studentName}</h2>
+              <p className="text-xs text-blue-100">Gestión de entrevistas</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              title="Recargar"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : (
+            INTERVIEW_TYPES_CONFIG.map(({ key, label, icon }) => {
+              const existing = getForType(key);
+              return (
+                <div
+                  key={key}
+                  className={`rounded-xl border-2 p-5 transition-colors ${
+                    existing ? 'border-green-200 bg-green-50/40' : 'border-gray-200 bg-gray-50/60'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Info izquierda */}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="text-2xl shrink-0 mt-0.5">{icon}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900 text-sm">{label}</h3>
+                          {existing && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(existing.status)}`}>
+                              {statusLabel(existing.status)}
+                            </span>
+                          )}
+                        </div>
+
+                        {existing ? (
+                          <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <FiCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {formatLocalDate(existing.scheduledDate)}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <FiClock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {existing.scheduledTime || '—'} · {existing.duration || 60} min
+                            </div>
+                            <div className="flex items-center gap-1.5 col-span-2">
+                              <FiUser className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {existing.interviewerName || 'Sin asignar'}
+                              {existing.secondInterviewerName && ` y ${existing.secondInterviewerName}`}
+                            </div>
+                            {existing.location && (
+                              <div className="flex items-center gap-1.5 col-span-2">
+                                <FiMapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                {existing.location}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-xs text-gray-400">No programada aún</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Acciones derecha */}
+                    <div className="flex flex-col gap-2 shrink-0">
+                      {existing ? (
+                        <>
+                          <button
+                            onClick={() => { onView(existing); onClose(); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border-2 border-azul-monte-tabor text-azul-monte-tabor hover:bg-blue-50 transition-colors whitespace-nowrap"
+                          >
+                            <FiEye className="w-3.5 h-3.5" />
+                            Ver detalles
+                          </button>
+                          <button
+                            onClick={() => { onEdit(existing); onClose(); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                          >
+                            <FiEdit className="w-3.5 h-3.5" />
+                            Editar
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => onSchedule(applicationId, key)}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                          <FiCalendar className="w-3.5 h-3.5" />
+                          Agendar entrevista
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
+          <span className="text-xs text-gray-400">
+            {interviews.filter(i => i.status !== 'CANCELLED').length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
+          </span>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
