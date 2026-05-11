@@ -1,5 +1,7 @@
 import api from './api';
 import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth as firebaseAuth } from '../src/lib/firebase';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from './encryptionService';
 
@@ -34,68 +36,100 @@ export interface ProfessorUser {
 class ProfessorAuthService {
 
     async login(request: ProfessorLoginRequest): Promise<ProfessorAuthResponse> {
+        // Estrategia híbrida:
+        //  1) Intentar primero el flujo Firebase (idéntico al portal apoderado).
+        //     Esto cubre a los usuarios creados desde el panel admin que tienen
+        //     password='FIREBASE_MANAGED' en BD (las credenciales viven solo
+        //     en Firebase Auth).
+        //  2) Si Firebase falla por usuario inexistente / no migrado, caer al
+        //     login legacy con bcrypt en BD (compatibilidad con cuentas
+        //     antiguas que aún no se migran a Firebase).
+        // Si Firebase no está configurado en este entorno, vamos directo al legacy.
+        if (!firebaseAuth) {
+            return this.legacyLogin(request);
+        }
         try {
+            const credential = await signInWithEmailAndPassword(firebaseAuth, request.email, request.password);
+            const idToken = await credential.user.getIdToken();
+            const response = await api.post('/v1/auth/firebase-login', {
+                idToken,
+                portalType: 'STAFF',
+            });
+            this.persistSession(response.data);
+            return response.data;
+        } catch (firebaseError: any) {
+            const fbCode = firebaseError?.code;
+            // Errores de credenciales reales en Firebase: no probamos legacy
+            // (evita ataques de enumeración y mensajes confusos).
+            if (fbCode === 'auth/wrong-password' || fbCode === 'auth/invalid-credential') {
+                throw new Error('Credenciales inválidas');
+            }
+            if (fbCode === 'auth/too-many-requests') {
+                throw new Error('Demasiados intentos. Intenta más tarde.');
+            }
+            // Solo caemos al legacy si el usuario no existe en Firebase
+            // (cuentas previas a la migración a Firebase Auth).
+            const shouldFallback = fbCode === 'auth/user-not-found'
+                || fbCode === 'auth/network-request-failed'
+                || !fbCode; // error no-Firebase (BFF down, etc.)
+            if (!shouldFallback) {
+                throw new Error(firebaseError?.message || 'Error al iniciar sesión');
+            }
+            return this.legacyLogin(request);
+        }
+    }
 
-            // Send credentials directly over HTTPS (no RSA encryption)
+    private async legacyLogin(request: ProfessorLoginRequest): Promise<ProfessorAuthResponse> {
+        try {
             const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
-            const data = response.data;
-
-
-            // Guardar token (sesión previa ya limpiada por el caller antes de invocar login)
-            if (data.token) {
-                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), data.token);
-                const u = data.user;
-                localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
-                    email: u?.email || data.email,
-                    firstName: u?.firstName || data.firstName,
-                    lastName: u?.lastName || data.lastName,
-                    role: u?.role || data.role,
-                    subject: u?.subject || data.subject
-                }));
-            // Hidratar authStore con el JWT del BFF (el mismo flujo que
-            // authService.adoptSession() para el portal apoderado). Esto
-            // evita que las requests posteriores caigan al fallback Firebase
-            // y disparen el rechazo `auth_time excedido` del filtro del BFF.
-            if (data.token && typeof data.expiresIn === 'number') {
-                authStore.setSession({
-                    token: data.token,
-                    expiresIn: data.expiresIn,
-                    absoluteSessionSeconds: data.absoluteSessionSeconds,
-                    user: data.user,
-                    firebaseLinked: data.firebaseLinked,
-                    sessionId: data.sessionId ?? null,
-                    permissions: data.permissions ?? [],
-                });
-                scheduleRefresh(data.expiresIn, {
-                    refresh: async () => {
-                        const r = await api.post('/v1/auth/refresh');
-                        const rd = r.data || {};
-                        return rd.token && typeof rd.expiresIn === 'number'
-                            ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
-                            : null;
-                    },
-                    onFailure: () => { authStore.clear(); },
-                });
-                broadcastLogin(data.token, data.expiresIn, data.user, data.firebaseLinked);
-            }
-
-            }
-
-            return data;
-            
+            this.persistSession(response.data);
+            return response.data;
         } catch (error: any) {
-            
             if (error.response?.status === 401) {
                 throw new Error('Credenciales inválidas');
             } else if (error.response?.status === 403) {
                 throw new Error(error.response?.data?.error?.message || 'Su cuenta no tiene acceso al portal de profesores. Use el portal correspondiente a su rol.');
             } else if (error.response?.status === 400) {
-                throw new Error(error.response?.data?.error?.message || 'Datos de login inválidos');
+                throw new Error(error.response?.data?.error?.message || 'Credenciales inválidas');
             } else if (error.response?.status === 500) {
                 throw new Error('Error del servidor');
             }
-            
             throw new Error('Error al iniciar sesión');
+        }
+    }
+
+    private persistSession(data: any): void {
+        if (!data?.token) return;
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), data.token);
+        const u = data.user;
+        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER), JSON.stringify({
+            email: u?.email || data.email,
+            firstName: u?.firstName || data.firstName,
+            lastName: u?.lastName || data.lastName,
+            role: u?.role || data.role,
+            subject: u?.subject || data.subject,
+        }));
+        if (typeof data.expiresIn === 'number') {
+            authStore.setSession({
+                token: data.token,
+                expiresIn: data.expiresIn,
+                absoluteSessionSeconds: data.absoluteSessionSeconds,
+                user: data.user,
+                firebaseLinked: data.firebaseLinked,
+                sessionId: data.sessionId ?? null,
+                permissions: data.permissions ?? [],
+            });
+            scheduleRefresh(data.expiresIn, {
+                refresh: async () => {
+                    const r = await api.post('/v1/auth/refresh');
+                    const rd = r.data || {};
+                    return rd.token && typeof rd.expiresIn === 'number'
+                        ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
+                        : null;
+                },
+                onFailure: () => { authStore.clear(); },
+            });
+            broadcastLogin(data.token, data.expiresIn, data.user, data.firebaseLinked);
         }
     }
     
