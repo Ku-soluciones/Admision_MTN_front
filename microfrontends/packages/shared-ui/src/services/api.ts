@@ -202,6 +202,13 @@ api.interceptors.response.use(
             || '',
         );
         const probe = isProbeEndpoint(url);
+        // Los endpoints de auth (refresh, logout, login) son sondas implícitas:
+        // un 401 en ellos significa "no hay sesión activa", no "tu sesión expiró".
+        // NO debemos redirigir ni limpiar storage agresivamente cuando estos
+        // fallan, porque el AuthContext (bootstrapAuth, onAuthStateChanged) ya
+        // está manejando la rehidratación y puede recuperar la sesión por otra vía
+        // (Firebase, mf_token, token legacy en localStorage).
+        const isAuthProbe = isAuthEndpoint(url);
 
         // 400 "No autenticado" en endpoints sonda: no es un error real,
         // es la forma del BFF de decir "no hay sesión". Devolvemos el error
@@ -212,12 +219,14 @@ api.interceptors.response.use(
         }
 
         // Códigos terminales: nunca reintentar, limpiar y redirigir.
+        // Excepción: si el endpoint que falló es uno de auth (refresh/logout/login),
+        // el AuthContext lo manejará — no redirigimos desde aquí.
         if (status === 401 && isSessionTerminal(code)) {
             authStore.clear();
             clearLegacyStorage();
             csrfService.clearToken();
             broadcastLogout(reasonFromCode(code));
-            if (!probe) redirectToLoginWithReason(reasonFromCode(code));
+            if (!probe && !isAuthProbe) redirectToLoginWithReason(reasonFromCode(code));
             return Promise.reject(error);
         }
 
@@ -233,7 +242,7 @@ api.interceptors.response.use(
             if (!newToken) {
                 authStore.clear();
                 clearLegacyStorage();
-                if (!probe) redirectToLoginWithReason('expired');
+                if (!probe && !isAuthProbe) redirectToLoginWithReason('expired');
                 return Promise.reject(error);
             }
             original.headers = original.headers ?? {};
@@ -242,9 +251,14 @@ api.interceptors.response.use(
         }
 
         if (status === 401) {
-            authStore.clear();
-            clearLegacyStorage();
-            if (!probe) redirectToLoginWithReason('expired');
+            // No redirigimos ni limpiamos si el 401 vino de un endpoint de auth
+            // (refresh/login/logout): es información sobre la sesión, no un error
+            // que invalide la sesión actual. El AuthContext decide qué hacer.
+            if (!isAuthProbe) {
+                authStore.clear();
+                clearLegacyStorage();
+                if (!probe) redirectToLoginWithReason('expired');
+            }
         }
 
         if (status === 403) {

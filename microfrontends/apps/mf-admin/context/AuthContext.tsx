@@ -121,7 +121,20 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    // Banderas de coordinación: marcamos isLoading=false sólo cuando AMBOS
+    // mecanismos de rehidratación han terminado (bootstrap BFF + listener Firebase).
+    // Sin esto, si el bootstrap termina primero con fallo, ProtectedAdminRoute
+    // redirige a /login antes de que Firebase pueda restaurar la sesión.
+    const [bootstrapDone, setBootstrapDone] = useState(false);
+    const [firebaseDone, setFirebaseDone] = useState(!hasFirebaseConfig);
     const firebaseLinked = useAuthStore((s) => s.firebaseLinked);
+
+    // Cuando ambos terminan, recién permitimos a las rutas protegidas evaluar el estado
+    useEffect(() => {
+        if (bootstrapDone && firebaseDone) {
+            setIsLoading(false);
+        }
+    }, [bootstrapDone, firebaseDone]);
 
     // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
     //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
@@ -130,11 +143,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     //    intercambiamos el Firebase ID token por un JWT del BFF.
     useEffect(() => {
         let cancelled = false;
-        
+
         // Verificar si llegamos con mf_token de cross-origin
         const crossOriginToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         const hasValidBffSession = authStore.getValidAccessToken();
-        
+
         // Si tenemos un token de cross-origin pero no sesión BFF válida,
         // intercambiar el Firebase ID token por JWT del BFF
         if (crossOriginToken && !hasValidBffSession) {
@@ -147,15 +160,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         setUser(userData);
                     }
                 } catch {
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    // No borramos el token aquí: Firebase puede rehidratar después.
+                    // Sólo lo descartamos si finalmente Firebase tampoco tiene sesión.
                 } finally {
-                    if (!cancelled) setIsLoading(false);
+                    if (!cancelled) setBootstrapDone(true);
                 }
             })();
             return () => { cancelled = true; };
         }
-        
-        // Flujo normal: intentar rehidratación desde refresh cookie
+
+        // Flujo normal: intentar rehidratación desde refresh cookie.
+        // OJO: si falla, NO limpiamos authStore aquí porque Firebase puede
+        // restaurar la sesión a continuación. La limpieza se hace sólo cuando
+        // ambos mecanismos fallen.
         bootstrapAuth({
             refresh: async () => {
                 try {
@@ -165,9 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     return null;
                 }
             },
-            onRefreshFailure: () => {
-                authStore.clear();
-            },
+            // No pasamos onRefreshFailure: dejamos que Firebase intente rehidratar.
         }).then((ok) => {
             if (cancelled) return;
             if (ok) {
@@ -178,7 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(userData);
                 }
             }
-            setIsLoading(false);
+            setBootstrapDone(true);
         });
         return () => { cancelled = true; };
     }, []);
@@ -188,7 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     //    todavía no se entrega (transición sprint 0 → 1).
     useEffect(() => {
         if (!auth || !hasFirebaseConfig) {
-            setIsLoading(false);
+            setFirebaseDone(true);
             return;
         }
 
@@ -201,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         if (!user && authStore.getState().user) {
                             setUser(buildUserFromBff(authStore.getState().user));
                         }
-                        setIsLoading(false);
+                        setFirebaseDone(true);
                         return;
                     }
 
@@ -246,7 +261,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         if (status === 400 || status === 401 || status === 403) {
                             try { await firebaseAuthSignOut(auth!); } catch { /* no-op */ }
                             setUser(null);
-                            setIsLoading(false);
+                            setFirebaseDone(true);
                             return;
                         }
                         throw err;
@@ -263,16 +278,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         setUser(userData);
                     }
                 } catch {
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
-                    setUser(null);
+                    // No borramos tokens aquí: si bootstrapAuth ya restauró
+                    // la sesión BFF, sigue siendo válida aunque Firebase falle.
+                    if (!authStore.getValidAccessToken()) {
+                        setUser(null);
+                    }
                 }
             } else {
                 // Firebase no tiene usuario en este origen. Si tenemos session
                 // BFF activa (vía bootstrapAuth o handoff mf_token), la
                 // mantenemos.
                 if (authStore.getValidAccessToken()) {
-                    setIsLoading(false);
+                    if (!user && authStore.getState().user) {
+                        setUser(buildUserFromBff(authStore.getState().user));
+                    }
+                    setFirebaseDone(true);
                     return;
                 }
                 // Existe un token legacy en localStorage (handoff mf_token o
@@ -289,18 +309,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                             const tokenForCompat = authStore.getValidAccessToken() || existingToken;
                             setAdminCompat(userData, tokenForCompat, response.data.user?.subject);
                             setUser(userData);
-                            setIsLoading(false);
+                            setFirebaseDone(true);
                             return;
                         }
                     } catch {
                         // token inválido o sin sesión — limpiamos en silencio
                     }
+                    // Sólo borramos si la validación del token legacy falla
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 }
-                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
                 setUser(null);
             }
-            setIsLoading(false);
+            setFirebaseDone(true);
         });
         return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
