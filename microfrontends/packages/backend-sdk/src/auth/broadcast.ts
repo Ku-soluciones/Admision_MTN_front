@@ -15,7 +15,9 @@ type AuthMessage =
   | { type: 'REFRESH'; token: string; expiresIn: number; t: number };
 
 let channel: BroadcastChannel | null = null;
-let onLogoutCb: ((reason?: string) => void) | null = null;
+
+// Usar Set para permitir múltiples callbacks (múltiples pestañas/microfrontends)
+const onLogoutCallbacks = new Set<(reason?: string) => void>();
 
 function getChannel(): BroadcastChannel | null {
   if (typeof window === 'undefined') return null;
@@ -50,7 +52,10 @@ function handleMessage(msg: AuthMessage | undefined): void {
       break;
     case 'LOGOUT':
       authStore.clear();
-      onLogoutCb?.(msg.reason);
+      // Notificar a todos los callbacks registrados
+      onLogoutCallbacks.forEach(cb => {
+        try { cb(msg.reason); } catch { /* no-op */ }
+      });
       break;
   }
 }
@@ -73,12 +78,15 @@ export function broadcastRefresh(token: string, expiresIn: number): void {
 /**
  * Registra un callback que se invoca cuando otra pestaña hizo logout.
  * Típicamente: redirigir a `/login?reason=other-tab`.
+ * 
+ * NOTA: Ahora soporta múltiples callbacks (múltiples pestañas/microfrontends)
+ * usando un Set en lugar de una variable única.
  */
 export function onCrossTabLogout(cb: (reason?: string) => void): () => void {
-  onLogoutCb = cb;
+  onLogoutCallbacks.add(cb);
   // Asegura que el canal está abierto.
   getChannel();
-  return () => { onLogoutCb = null; };
+  return () => { onLogoutCallbacks.delete(cb); };
 }
 
 export function closeAuthChannel(): void {

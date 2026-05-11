@@ -182,6 +182,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
     //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
     //    exponga /api/auth/refresh, basta con ajustar el orden.
+    //    Si llegamos con mf_token de otro origen (cross-origin handoff), 
+    //    intercambiamos el Firebase ID token por un JWT del BFF.
     useEffect(() => {
         let cancelled = false;
         // Si la URL pidió sesión fresca, NO rehidratamos desde el refresh
@@ -189,8 +191,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (wasFreshSessionRequested()) {
             try { authStore.clear(); } catch { /* no-op */ }
             setUser(null);
+            setIsLoading(false);
             return () => { cancelled = true; };
         }
+        
+        // Verificar si llegamos con mf_token de cross-origin (ej: mf-guardian)
+        // Si es así, intercambiar el Firebase ID token por un JWT del BFF
+        const crossOriginToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        const hasValidBffSession = authStore.getValidAccessToken();
+        
+        // Si tenemos un token de cross-origin pero no sesión BFF válida,
+        // intercambiar el Firebase ID token por JWT del BFF
+        if (crossOriginToken && !hasValidBffSession && !wasFreshSessionRequested()) {
+            (async () => {
+                try {
+                    const res = await api.post('/v1/auth/firebase-login', { 
+                        idToken: crossOriginToken 
+                    });
+                    const data = res.data;
+                    if (data?.token && typeof data.expiresIn === 'number') {
+                        authStore.setSession({
+                            token: data.token,
+                            expiresIn: data.expiresIn,
+                            absoluteSessionSeconds: data.absoluteSessionSeconds,
+                            user: data.user,
+                            firebaseLinked: data.firebaseLinked ?? true,
+                            sessionId: data.sessionId ?? null,
+                            permissions: data.permissions ?? [],
+                        });
+                        scheduleRefresh(data.expiresIn, {
+                            refresh: async () => {
+                                const rr = await api.post('/v1/auth/refresh');
+                                const rd = rr.data || {};
+                                return rd.token && typeof rd.expiresIn === 'number'
+                                    ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
+                                    : null;
+                            },
+                            onFailure: () => { authStore.clear(); },
+                        });
+                        if (!cancelled && data.user) {
+                            const userData = buildUserFromBff(data.user);
+                            setAdminCompat(userData, data.token, data.user?.subject);
+                            setUser(userData);
+                        }
+                    }
+                } catch {
+                    // Si falla el login con Firebase token, limpiar y continuar
+                    // con el flujo normal de bootstrap (que puede mostrar login)
+                    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                } finally {
+                    if (!cancelled) setIsLoading(false);
+                }
+            })();
+            return () => { cancelled = true; };
+        }
+        
+        // Flujo normal: intentar rehidratación desde refresh cookie
         bootstrapAuth({
             refresh: async () => {
                 try {
@@ -213,6 +269,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(userData);
                 }
             }
+            setIsLoading(false);
         });
         return () => { cancelled = true; };
     }, []);
