@@ -122,6 +122,8 @@ const ApoderadoLogin: React.FC = () => {
         rut: ''
     });
 
+    
+
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { login, register } = useAuth();
