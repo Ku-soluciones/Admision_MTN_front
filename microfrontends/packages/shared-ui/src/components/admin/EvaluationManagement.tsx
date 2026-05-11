@@ -4,6 +4,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Modal from '../ui/Modal';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import {
   evaluationService,
   UserRole,
@@ -38,7 +39,8 @@ import {
   AlertTriangle, 
   Plus, 
   Eye,
-  X
+  X,
+  Search
 } from 'lucide-react';
 
 interface EvaluationManagementProps {
@@ -70,6 +72,11 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 5;
   const { addNotification } = useNotifications();
+
+  // Filtros
+  const [filterStatus, setFilterStatus] = useState<string>('HIDE_APPROVED');
+  const [filterGrade, setFilterGrade] = useState<string>('');
+  const [filterSearch, setFilterSearch] = useState<string>('');
 
   useEffect(() => {
     loadEvaluators();
@@ -142,42 +149,12 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
     }
   };
 
-  const handleAssignEvaluations = async (applicationId: number) => {
-    try {
-      setIsLoading(true);
-      await evaluationService.assignEvaluationsToApplication(applicationId);
-      addNotification('Evaluaciones asignadas automáticamente', 'success');
-      onRefresh();
-    } catch (error) {
-      addNotification('Error al asignar evaluaciones', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCustomAssignment = async (applicationId: number, assignments: EvaluatorAssignment[]) => {
-    try {
-      setIsLoading(true);
-
-      for (const assignment of assignments) {
-        if (assignment.evaluatorId > 0) {
-          await evaluationService.assignSpecificEvaluation(
-            applicationId,
-            assignment.evaluationType,
-            assignment.evaluatorId
-          );
-        }
-      }
-
-      addNotification('Evaluadores asignados correctamente', 'success');
-      setShowAssignModal(false);
-      setSelectedApplication(null);
-      onRefresh();
-    } catch (error) {
-      addNotification('Error al asignar evaluadores', 'error');
-    } finally {
-      setIsLoading(false);
-    }
+  // El modal maneja internamente la lógica de asignación/reasignación.
+  // Esta función solo se llama al cerrar con éxito para refrescar la grilla.
+  const handleAssignmentComplete = () => {
+    setShowAssignModal(false);
+    setSelectedApplication(null);
+    onRefresh();
   };
 
   const handleOpenCustomAssignment = (application: Application) => {
@@ -236,8 +213,28 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
     };
   });
 
-  const totalPages = Math.ceil(allApplicationsWithEvaluations.length / PAGE_SIZE);
-  const applicationsWithEvaluations = allApplicationsWithEvaluations.slice(
+  // Obtener cursos únicos para el filtro
+  const uniqueGrades = Array.from(new Set(
+    applications.map(app => app.student?.gradeApplied).filter(Boolean)
+  )).sort();
+
+  // Aplicar filtros
+  const filteredApplications = allApplicationsWithEvaluations.filter(app => {
+    if (filterStatus === 'HIDE_APPROVED' && app.status === 'APPROVED') return false;
+    if (filterStatus && filterStatus !== 'HIDE_APPROVED' && filterStatus !== 'ALL' && app.status !== filterStatus) return false;
+    if (filterGrade && app.student?.gradeApplied !== filterGrade) return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      const fullName = `${app.student?.firstName ?? ''} ${app.student?.lastName ?? ''}`.toLowerCase();
+      const grade = (app.student?.gradeApplied ?? '').toLowerCase();
+      const email = (app.student?.email ?? '').toLowerCase();
+      if (!fullName.includes(q) && !grade.includes(q) && !email.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredApplications.length / PAGE_SIZE);
+  const applicationsWithEvaluations = filteredApplications.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -268,10 +265,66 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
           </div>
         </div>
 
+        {/* Filtros */}
+        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex-1 min-w-[180px] relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, curso..."
+              value={filterSearch}
+              onChange={(e) => { setFilterSearch(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-azul-monte-tabor"
+            />
+            {filterSearch && (
+              <button
+                onClick={() => { setFilterSearch(''); setCurrentPage(1); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Estado:</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+              className="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white"
+            >
+              <option value="HIDE_APPROVED">Ocultar Aprobados</option>
+              <option value="ALL">Todos</option>
+              <option value="PENDING">Pendiente</option>
+              <option value="IN_PROGRESS">En Progreso</option>
+              <option value="APPROVED">Aprobado</option>
+              <option value="REJECTED">Rechazado</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Curso:</label>
+            <select
+              value={filterGrade}
+              onChange={(e) => { setFilterGrade(e.target.value); setCurrentPage(1); }}
+              className="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white"
+            >
+              <option value="">Todos</option>
+              {uniqueGrades.map(grade => (
+                <option key={grade} value={grade}>{grade}</option>
+              ))}
+            </select>
+          </div>
+          <span className="text-sm text-gray-500 ml-auto">
+            {filteredApplications.length} registro{filteredApplications.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <div className="hidden">
+        </div>
+
         {/* Paginación superior */}
-        {allApplicationsWithEvaluations.length > PAGE_SIZE && (
+        {filteredApplications.length > PAGE_SIZE && (
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 text-sm text-gray-600">
-            <span>Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, allApplicationsWithEvaluations.length)} de {allApplicationsWithEvaluations.length} registros</span>
+            <span>Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredApplications.length)} de {filteredApplications.length} registros</span>
             <div className="flex items-center gap-1">
               <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">«</button>
               <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100">‹</button>
@@ -329,16 +382,16 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
                     {(() => {
                       // Filtrar solo exámenes académicos (Math, Language, English)
                       const academicExams = (application.evaluations || []).filter(
-                        (e: any) =>
-                          e.evaluationType === 'MATHEMATICS_EXAM' ||
-                          e.evaluationType === 'LANGUAGE_EXAM' ||
-                          e.evaluationType === 'ENGLISH_EXAM'
+                        (e: any) => {
+                          const t = e.type || e.evaluationType;
+                          return t === 'MATHEMATICS_EXAM' || t === 'LANGUAGE_EXAM' || t === 'ENGLISH_EXAM';
+                        }
                       );
                       const totalAcademicExams = 3; // Siempre 3 exámenes académicos
 
                       // Contar evaluaciones que tienen evaluador asignado (independiente del status)
                       const assignedAcademicExams = academicExams.filter(
-                        (e: any) => e.evaluatorId && e.evaluatorId > 0
+                        (e: any) => e.evaluatorId || e.evaluator?.id
                       ).length;
 
                       const pendingAcademicExams = totalAcademicExams - assignedAcademicExams;
@@ -359,43 +412,36 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
                   </td>
                   <td className="px-4 py-4">
                     {(() => {
-                      // Calcular progreso solo con exámenes académicos asignados
                       const academicExams = (application.evaluations || []).filter(
-                        (e: any) =>
-                          e.evaluationType === 'MATHEMATICS_EXAM' ||
-                          e.evaluationType === 'LANGUAGE_EXAM' ||
-                          e.evaluationType === 'ENGLISH_EXAM'
+                        (e: any) => {
+                          const t = e.type || e.evaluationType;
+                          return t === 'MATHEMATICS_EXAM' || t === 'LANGUAGE_EXAM' || t === 'ENGLISH_EXAM';
+                        }
                       );
                       const totalAcademicExams = 3;
-
-                      // Contar evaluaciones que tienen evaluador asignado (independiente del status)
-                      const assignedAcademicExams = academicExams.filter(
-                        (e: any) => e.evaluatorId && e.evaluatorId > 0
-                      ).length;
-
-                      const progressPercentage = (assignedAcademicExams / totalAcademicExams) * 100;
-
+                      const assignedAcademicExams = Math.min(
+                        academicExams.filter((e: any) => e.evaluatorId || e.evaluator?.id).length,
+                        totalAcademicExams
+                      );
+                      const progressPercentage = Math.min(
+                        (assignedAcademicExams / totalAcademicExams) * 100,
+                        100
+                      );
                       return (
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-azul-monte-tabor h-2 rounded-full"
-                            style={{ width: `${progressPercentage}%` }}
-                          ></div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-[60px]">
+                            <div
+                              className="bg-azul-monte-tabor h-2 rounded-full transition-all"
+                              style={{ width: `${progressPercentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-gray-500 whitespace-nowrap">{Math.round(progressPercentage)}%</span>
                         </div>
                       );
                     })()}
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAssignEvaluations(application.id)}
-                        disabled={isLoading}
-                      >
-                        <Bot className="w-4 h-4 mr-1" />
-                        Auto
-                      </Button>
                       <Button
                         variant="primary"
                         size="sm"
@@ -420,13 +466,11 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
           application={selectedApplication}
           evaluators={evaluators}
           isOpen={showAssignModal}
-          onClose={() => {
-            setShowAssignModal(false);
-            setSelectedApplication(null);
-          }}
-          onAssign={handleCustomAssignment}
+          onClose={handleAssignmentComplete}
+          onAssign={(_appId, _assignments) => Promise.resolve()}
           isLoading={isLoading}
           getEvaluatorsByType={getEvaluatorsByType}
+          isAdmin={true}
         />
       )}
     </div>
@@ -442,6 +486,7 @@ interface CustomAssignmentModalProps {
   onAssign: (applicationId: number, assignments: EvaluatorAssignment[]) => void;
   isLoading: boolean;
   getEvaluatorsByType: (type: EvaluationType) => any[];
+  isAdmin?: boolean;
 }
 
 const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
@@ -451,13 +496,19 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
   onClose,
   onAssign,
   isLoading,
-  getEvaluatorsByType
+  getEvaluatorsByType,
+  isAdmin = true
 }) => {
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [existingEvaluations, setExistingEvaluations] = useState<Evaluation[]>([]);
+  const [existingEvaluations, setExistingEvaluations] = useState<any[]>([]);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  // Tipos desbloqueados para edición por admin
+  const [unlockedTypes, setUnlockedTypes] = useState<Set<EvaluationType>>(new Set());
+  // Confirm dialog para reasignaciones
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingProcess, setPendingProcess] = useState<Array<{ assignment: EvaluatorAssignment; existingEval: any | null }>>([]);
 
   const requiredEvaluations = [
     EvaluationType.LANGUAGE_EXAM,
@@ -466,8 +517,10 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
   ];
 
   useEffect(() => {
-    // Load evaluations for this application when modal opens
     if (isOpen) {
+      setUnlockedTypes(new Set());
+      setShowConfirm(false);
+      setPendingProcess([]);
       loadExistingEvaluations();
     }
   }, [isOpen, application.id]);
@@ -475,40 +528,39 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
   const loadExistingEvaluations = async () => {
     try {
       setIsLoadingEvaluations(true);
+      setSubmitMessage(null);
+      setIsSubmitting(false);
 
-      // Cargar evaluaciones existentes para esta application desde evaluation-service
       const evals = await evaluationService.getEvaluationsByApplicationId(application.id);
-
       setExistingEvaluations(evals);
 
-      // Inicializar assignments con las evaluaciones existentes
-      const initialAssignments = requiredEvaluations.map(type => {
-        const existingEvaluation = evals.find(
-          (ev: any) => ev.evaluationType === type
+      // Backend retorna: { type: 'MATHEMATICS_EXAM', evaluatorId: 7 } (no evaluationType, no evaluator.id)
+      const initialAssignments = requiredEvaluations.map(evalType => {
+        const existingEval = evals.find((ev: any) =>
+          (ev.type || ev.evaluationType) === evalType
         );
-
-        if (existingEvaluation) {
-        }
-
+        const assignedEvaluatorId = existingEval?.evaluatorId
+          || existingEval?.evaluator?.id
+          || 0;
+        // Buscar nombre en la lista de evaluadores cargados
+        const matchedEvaluator = evaluators.find((e: any) => e.id === assignedEvaluatorId);
+        const assignedEvaluatorName = matchedEvaluator
+          ? `${matchedEvaluator.firstName} ${matchedEvaluator.lastName}`
+          : (existingEval?.evaluator
+              ? `${existingEval.evaluator.firstName} ${existingEval.evaluator.lastName}`
+              : '');
         return {
-          evaluationType: type,
-          evaluatorId: existingEvaluation?.evaluatorId || 0,
-          evaluatorName: existingEvaluation?.evaluator
-            ? `${existingEvaluation.evaluator.firstName} ${existingEvaluation.evaluator.lastName}`
-            : ''
+          evaluationType: evalType,
+          evaluatorId: assignedEvaluatorId,
+          evaluatorName: assignedEvaluatorName
         };
       });
       setAssignments(initialAssignments);
-      setSubmitMessage(null);
-      setIsSubmitting(false);
     } catch (error) {
-      // Si hay error al cargar, mostrar advertencia al usuario
       setSubmitMessage({
         type: 'error',
         text: 'No se pudieron cargar las evaluaciones existentes. Por favor, cierre y vuelva a abrir este modal.'
       });
-
-      // Inicializar sin evaluaciones existentes (modo seguro)
       const initialAssignments = requiredEvaluations.map(type => ({
         evaluationType: type,
         evaluatorId: 0,
@@ -523,7 +575,6 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
 
   const updateAssignment = (evaluationType: EvaluationType, evaluatorId: number) => {
     const evaluator = evaluators.find(e => e.id === evaluatorId);
-
     setAssignments(prev => prev.map(assignment =>
       assignment.evaluationType === evaluationType
         ? {
@@ -535,56 +586,65 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
     ));
   };
 
-  const handleSubmit = async () => {
+  // Paso 1: construir lista de cambios y mostrar confirm si hay reasignaciones
+  const handleSubmit = () => {
+    const toProcess: Array<{ assignment: EvaluatorAssignment; existingEval: any | null }> = [];
 
-    // Filtrar solo las asignaciones que tienen evaluador seleccionado Y no están ya asignadas
-    const validAssignments = assignments.filter(a => {
-      const isAlreadyAssigned = existingEvaluations.some(
-        (ev: any) => ev.evaluationType === a.evaluationType
+    for (const assignment of assignments) {
+      if (assignment.evaluatorId <= 0) continue;
+      const existingEval = existingEvaluations.find(
+        (ev: any) => (ev.type || ev.evaluationType) === assignment.evaluationType
       );
+      const currentEvaluatorId = existingEval?.evaluatorId || existingEval?.evaluator?.id || 0;
+      if (existingEval) {
+        if (isAdmin && unlockedTypes.has(assignment.evaluationType) && currentEvaluatorId !== assignment.evaluatorId) {
+          toProcess.push({ assignment, existingEval });
+        }
+      } else {
+        toProcess.push({ assignment, existingEval: null });
+      }
+    }
 
-
-      return a.evaluatorId > 0 && !isAlreadyAssigned;
-    });
-
-
-    if (validAssignments.length === 0) {
-      setSubmitMessage({ type: 'error', text: 'Debe asignar al menos un evaluador nuevo. Las evaluaciones ya asignadas no se pueden modificar.' });
+    if (toProcess.length === 0) {
+      setSubmitMessage({ type: 'error', text: 'No hay cambios para guardar.' });
       return;
     }
 
+    const hasReassignments = toProcess.some(p => p.existingEval !== null);
+    if (hasReassignments) {
+      setPendingProcess(toProcess);
+      setShowConfirm(true);
+      return;
+    }
+
+    executeProcess(toProcess);
+  };
+
+  // Paso 2: ejecutar tras confirmación
+  const executeProcess = async (toProcess: Array<{ assignment: EvaluatorAssignment; existingEval: any | null }>) => {
+    setShowConfirm(false);
     setIsSubmitting(true);
-    setSubmitMessage({ type: 'success', text: `Asignando ${validAssignments.length} evaluador(es)... Por favor espere.` });
+    setSubmitMessage({ type: 'success', text: `Guardando ${toProcess.length} cambio(s)...` });
 
     try {
-      await onAssign(application.id, validAssignments);
-      setSubmitMessage({
-        type: 'success',
-        text: `Se asignaron ${validAssignments.length} evaluador(es) correctamente. Se han enviado notificaciones por email.`
-      });
-
-      // Recargar evaluaciones existentes para actualizar la UI
+      for (const { assignment, existingEval } of toProcess) {
+        if (existingEval) {
+          await evaluationService.reassignEvaluation(existingEval.id, assignment.evaluatorId);
+        } else {
+          await evaluationService.assignSpecificEvaluation(
+            application.id, assignment.evaluationType, assignment.evaluatorId
+          );
+        }
+      }
+      setSubmitMessage({ type: 'success', text: `Guardado correctamente.` });
       await loadExistingEvaluations();
-
-      // Cerrar modal después de 2 segundos para que el usuario vea el mensaje
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      setTimeout(() => { onClose(); }, 1200);
     } catch (error: any) {
-
-      // Manejar error 409 (duplicado) específicamente
       if (error.response?.status === 409) {
-        setSubmitMessage({
-          type: 'error',
-          text: 'Una o más evaluaciones ya fueron asignadas. Recargando información...'
-        });
-        // Recargar evaluaciones para actualizar el estado
+        setSubmitMessage({ type: 'error', text: 'Conflicto al asignar. Recargando...' });
         await loadExistingEvaluations();
       } else {
-        setSubmitMessage({
-          type: 'error',
-          text: `Error: ${error.message || 'No se pudieron asignar los evaluadores. Por favor intente nuevamente.'}`
-        });
+        setSubmitMessage({ type: 'error', text: `Error: ${error.message || 'Intente nuevamente.'}` });
       }
       setIsSubmitting(false);
     }
@@ -594,126 +654,130 @@ const CustomAssignmentModal: React.FC<CustomAssignmentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Asignación Manual de Evaluadores"
+      title="Asignación de Evaluadores"
       size="lg"
     >
       <div className="space-y-6">
         <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-medium text-blue-800 mb-2">
-            Estudiante: {application.student?.firstName} {application.student?.lastName}
+          <h4 className="font-medium text-blue-800 mb-1">
+            {application.student?.firstName} {application.student?.lastName}
           </h4>
-          <p className="text-blue-600 text-sm">
-            Curso aplicado: {application.student?.gradeApplied}
-          </p>
+          <p className="text-blue-500 text-sm">Curso: {application.student?.gradeApplied}</p>
         </div>
 
-        <div className="space-y-4">
-          <h4 className="flex items-center font-medium text-gray-900">
-            <Users className="w-5 h-5 mr-2" />
-            Asignar Evaluadores
-          </h4>
-
+        <div className="space-y-3">
           {isLoadingEvaluations ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto mb-4"></div>
-              <p className="text-gray-600">Cargando evaluaciones existentes...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto mb-3"></div>
+              <p className="text-gray-500 text-sm">Cargando evaluaciones...</p>
             </div>
           ) : (
-            <>
-          {requiredEvaluations.map(evaluationType => {
-            const availableEvaluators = getEvaluatorsByType(evaluationType);
-            const assignment = assignments.find(a => a.evaluationType === evaluationType);
+            requiredEvaluations.map(evaluationType => {
+              const availableEvaluators = getEvaluatorsByType(evaluationType);
+              const assignment = assignments.find(a => a.evaluationType === evaluationType);
+              const existingEval = existingEvaluations.find(
+                (ev: any) => (ev.type || ev.evaluationType) === evaluationType
+              );
+              const isAssigned = !!(existingEval?.evaluatorId || existingEval?.evaluator?.id);
+              const isUnlocked = unlockedTypes.has(evaluationType);
+              const isDisabled = (isAssigned && !isUnlocked) || isSubmitting;
 
-            // Verificar si ya existe una evaluación asignada para este tipo
-            const existingEvaluation = existingEvaluations.find(
-              (ev: any) => ev.evaluationType === evaluationType
-            );
-            const isAlreadyAssigned = !!existingEvaluation;
-            const assignedEvaluatorId = existingEvaluation?.evaluatorId;
-
-            return (
-              <div key={evaluationType} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-medium text-azul-monte-tabor">
-                    {EVALUATION_TYPE_LABELS[evaluationType]}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    {isAlreadyAssigned && (
-                      <Badge variant="success" size="sm">
-                        Ya asignado
-                      </Badge>
-                    )}
-                    <Badge variant="info" size="sm">
-                      {availableEvaluators.length} evaluadores disponibles
-                    </Badge>
+              return (
+                <div key={evaluationType} className={`border rounded-lg p-4 ${
+                  isAssigned && !isUnlocked ? 'bg-gray-50' : 'bg-white'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-azul-monte-tabor text-sm">
+                      {EVALUATION_TYPE_LABELS[evaluationType]}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {isAssigned && !isUnlocked && (
+                        <span className="flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                          <CheckCircle className="w-3 h-3" />
+                          Asignado
+                        </span>
+                      )}
+                      {isAssigned && isAdmin && !isUnlocked && (
+                        <button
+                          type="button"
+                          onClick={() => setUnlockedTypes(prev => { const s = new Set(prev); s.add(evaluationType); return s; })}
+                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-azul-monte-tabor border border-gray-300 hover:border-azul-monte-tabor rounded-full px-2 py-0.5 transition-colors"
+                          title="Modificar evaluador"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Modificar
+                        </button>
+                      )}
+                      {isAssigned && isUnlocked && (
+                        <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          Editando
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  <select
+                    value={assignment?.evaluatorId || 0}
+                    onChange={(e) => updateAssignment(evaluationType, parseInt(e.target.value))}
+                    disabled={isDisabled}
+                    className={`w-full p-2 border rounded-lg text-sm ${
+                      isDisabled
+                        ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300 bg-white'
+                    }`}
+                  >
+                    <option value={0}>Seleccionar evaluador...</option>
+                    {availableEvaluators.map(evaluator => (
+                      <option key={evaluator.id} value={evaluator.id}>
+                        {evaluator.firstName} {evaluator.lastName}
+                      </option>
+                    ))}
+                  </select>
+
+                  {!isAdmin && isAssigned && (
+                    <p className="text-gray-400 text-xs mt-1">Solo el administrador puede modificar esta asignación.</p>
+                  )}
+                  {availableEvaluators.length === 0 && !isAssigned && (
+                    <p className="text-red-400 text-xs mt-1">Sin evaluadores disponibles para este examen.</p>
+                  )}
                 </div>
-
-                <select
-                  value={assignment?.evaluatorId || 0}
-                  onChange={(e) => updateAssignment(evaluationType, parseInt(e.target.value))}
-                  disabled={isAlreadyAssigned}
-                  className={`w-full p-2 border rounded-lg ${
-                    isAlreadyAssigned
-                      ? 'border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed'
-                      : 'border-gray-300'
-                  }`}
-                >
-                  <option value={0}>
-                    {isAlreadyAssigned ? 'Evaluador ya asignado' : 'Seleccionar evaluador...'}
-                  </option>
-                  {availableEvaluators.map(evaluator => (
-                    <option key={evaluator.id} value={evaluator.id}>
-                      {evaluator.firstName} {evaluator.lastName} - {SystemRoleLabels[evaluator.role]}
-                    </option>
-                  ))}
-                </select>
-
-                {isAlreadyAssigned && (
-                  <p className="text-blue-600 text-sm mt-2 flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4" />
-                    Este evaluador ya fue asignado a esta evaluación y no puede ser modificado
-                  </p>
-                )}
-
-                {availableEvaluators.length === 0 && !isAlreadyAssigned && (
-                  <p className="text-red-500 text-sm mt-2">
-                    No hay evaluadores disponibles para este tipo de evaluación
-                  </p>
-                )}
-              </div>
-            );
-          })}
-            </>
+              );
+            })
           )}
         </div>
 
-        {/* Mensaje de feedback */}
+        <ConfirmDialog
+          isOpen={showConfirm}
+          title="Confirmar cambio de evaluador"
+          message={`Se modificarán ${pendingProcess.filter(p => p.existingEval).length} asignación(es) existente(s).\nEsta acción reemplazará el evaluador asignado actualmente.`}
+          confirmText="Sí, cambiar evaluador"
+          cancelText="Cancelar"
+          variant="warning"
+          onConfirm={() => executeProcess(pendingProcess)}
+          onClose={() => { setShowConfirm(false); setPendingProcess([]); }}
+        />
+
         {submitMessage && (
-          <div className={`p-4 rounded-lg ${
+          <div className={`px-4 py-3 rounded-lg text-sm ${
             submitMessage.type === 'success'
               ? 'bg-green-50 border border-green-200 text-green-800'
               : 'bg-red-50 border border-red-200 text-red-800'
           }`}>
-            <p className="text-sm font-medium">{submitMessage.text}</p>
+            {submitMessage.text}
           </div>
         )}
 
-        <div className="flex justify-end space-x-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancelar</Button>
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingEvaluations}
             isLoading={isSubmitting}
           >
-            {isSubmitting ? 'Asignando...' : 'Asignar Evaluadores'}
+            {isSubmitting ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>
       </div>

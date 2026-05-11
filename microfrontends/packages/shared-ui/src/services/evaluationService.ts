@@ -800,6 +800,26 @@ class EvaluationService {
         }
     }
 
+    /**
+     * Reasignar evaluación a otro evaluador SIN crear nueva fila.
+     * Usa POST /v1/evaluations/:id/assign con el evaluationId existente.
+     * Esto sobrescribe el evaluador en el registro ya existente.
+     */
+    async reassignEvaluation(
+        evaluationId: number,
+        evaluatorId: number
+    ): Promise<Evaluation> {
+        try {
+            const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
+                evaluatorId,
+                evaluationDate: new Date().toISOString().split('T')[0],
+            });
+            return response.data.data;
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
     // ============= MÉTODOS AUXILIARES =============
 
     getEvaluationTypeLabel(type: EvaluationType): string {

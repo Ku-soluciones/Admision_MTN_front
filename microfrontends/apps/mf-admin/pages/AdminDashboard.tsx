@@ -143,6 +143,9 @@ const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { dispatch } = useAppContext();
 
+  // Overlay global de carga de página
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
   // Estados para gestión de postulaciones
   const [adminApplications, setAdminApplications] = useState<Application[]>([]);
   const [isLoadingAdminApplications, setIsLoadingAdminApplications] = useState(false);
@@ -180,30 +183,24 @@ const AdminDashboard: React.FC = () => {
   const [isSchedulingInterview, setIsSchedulingInterview] = useState(false);
 
 
+  // Carga inicial: solo dashboard necesita aplicaciones y usuarios
   useEffect(() => {
-    // Cleanup flag to prevent state updates after unmount
-    let isMounted = true;
+    loadApplications();
+    loadUsers();
+  }, []);
 
-    const loadData = async () => {
-      if (isMounted) {
-        await loadApplications();
-        await loadUsers(); // Cargar usuarios siempre para mostrar estadísticas correctas
-        if (activeSection === 'postulaciones') {
-          await loadAdminApplications();
-        }
-      }
-    };
-
-    loadData();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
+  // Carga por sección: cada sección carga lo que necesita al entrar
+  useEffect(() => {
+    if (activeSection === 'postulaciones') {
+      loadAdminApplications();
+    } else if (activeSection === 'evaluaciones') {
+      loadApplications();
+    }
   }, [activeSection]);
 
   const loadApplications = async () => {
     try {
+      setIsPageLoading(true);
       dispatch({ type: 'SET_LOADING', payload: true });
       // Use the applicationService which handles the API calls properly
       const applications = await applicationService.getAllApplications();
@@ -238,6 +235,7 @@ const AdminDashboard: React.FC = () => {
       dispatch({ type: 'SET_APPLICATIONS', payload: [] });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
+      setIsPageLoading(false);
     }
   };
 
@@ -868,6 +866,15 @@ Esta acción:
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Overlay global de carga */}
+      {isPageLoading && (
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4 min-w-[200px]">
+            <div className="w-12 h-12 border-4 border-azul-monte-tabor border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-azul-monte-tabor font-semibold text-base">Cargando...</p>
+          </div>
+        </div>
+      )}
       {/* Mobile top bar */}
       <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
         <div>
