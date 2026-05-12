@@ -193,13 +193,20 @@ const Header: React.FC = () => {
                                 Admin
                             </a>
                         )}
-                        {!isAnyUserLoggedIn && isHomePage && (
+                        {!isAnyUserLoggedIn && (
                             <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={microfrontendUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full !text-blanco-pureza">
-                                        Postular
+                                <a href={microfrontendUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
+                                        Iniciar sesión
                                     </Button>
                                 </a>
+                                {isHomePage && (
+                                    <a href={microfrontendUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                        <Button variant="primary" className="w-full !text-blanco-pureza">
+                                            Postular
+                                        </Button>
+                                    </a>
+                                )}
                             </div>
                         )}
                     </nav>

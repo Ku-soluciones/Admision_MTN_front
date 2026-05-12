@@ -4,14 +4,15 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Table from '../components/ui/Table';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import { 
-    DashboardIcon, 
-    FileTextIcon, 
-    UsersIcon, 
+import {
+    DashboardIcon,
+    FileTextIcon,
+    UsersIcon,
     BookOpenIcon,
     CheckCircleIcon,
     ClockIcon,
-    BarChartIcon
+    BarChartIcon,
+    LogoIcon
 } from '../components/icons/Icons';
 import { 
     mockProfessors, 
@@ -1546,7 +1547,8 @@ const ProfessorDashboard: React.FC = () => {
 
     const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => (
         <>
-            <div className="text-blanco-pureza mb-8">
+            <div className="text-blanco-pureza mb-8 text-center">
+                <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
                 <h2 className="text-xl font-bold">Portal Profesores</h2>
                 <p className="text-blue-200 text-sm">Sistema de Evaluaciones</p>
             </div>

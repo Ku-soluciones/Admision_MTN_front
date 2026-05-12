@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
-import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon } from '../components/icons/Icons';
+import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon, LogoIcon } from '../components/icons/Icons';
 import { 
   FiFileText, 
   FiBarChart2, 
@@ -813,7 +813,8 @@ Esta acción:
 
   const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
     <>
-      <div className="p-6">
+      <div className="p-6 text-center">
+        <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
         <h1 className="text-xl font-bold text-azul-monte-tabor">Panel Admin</h1>
         <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
       </div>
