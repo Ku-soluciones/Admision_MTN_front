@@ -119,8 +119,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         if (schedule.dayOfWeek && schedule.scheduleType === 'RECURRING') {
           // Normalizar tiempos para asegurar formato "08:00" (con cero adelante)
           // Esto previene problemas de comparación con tiempos como "8:00"
-          const startTime = schedule.startTime.padStart(5, '0'); // "8:00" → "08:00"
-          const endTime = schedule.endTime.padStart(5, '0');     // "8:30" → "08:30"
+          const startTime = schedule.startTime.substring(0, 5); // "08:00:00" → "08:00"
+          const endTime = schedule.endTime.substring(0, 5);     // "09:00:00" → "09:00"
 
           // Marcar todos los slots en el rango como ocupados
           timeSlots.forEach(slot => {

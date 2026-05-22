@@ -137,8 +137,8 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
         }
 
         if (schedule.dayOfWeek && schedule.scheduleType === 'RECURRING') {
-          const startTime = schedule.startTime.padStart(5, '0');
-          const endTime = schedule.endTime.padStart(5, '0');
+          const startTime = schedule.startTime.substring(0, 5);
+          const endTime = schedule.endTime.substring(0, 5);
 
           timeSlots.forEach(slot => {
             if (slot >= startTime && slot < endTime) {

@@ -246,7 +246,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
     return (
       <div
         key={interview.id}
-        onClick={() => handleInterviewClick(interview)}
+        onClick={(e) => { e.stopPropagation(); handleInterviewClick(interview); }}
         className={`
           relative p-1 mb-1 rounded text-xs cursor-pointer transition-all hover:shadow-md
           ${isUpcoming ? 'ring-1 ring-blue-400' : ''}
