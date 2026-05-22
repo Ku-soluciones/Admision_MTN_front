@@ -50,8 +50,8 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   
   // Quick config state
-  const [startTime, setStartTime] = useState('12:30');
-  const [endTime, setEndTime] = useState('15:30');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('16:00');
   const [selectedDays, setSelectedDays] = useState({
     MONDAY: false,
     TUESDAY: false,
@@ -62,14 +62,11 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
 
   const { addNotification } = useNotifications();
 
-  // Generate time slots from 8:00 AM to 4:30 PM
+  // Generate time slots from 8:00 AM to 4:00 PM (60 minute intervals)
   const generateTimeSlots = (): string[] => {
     const slots: string[] = [];
-    for (let hour = 8; hour <= 16; hour++) {
+    for (let hour = 8; hour < 16; hour++) {
       slots.push(`${hour.toString().padStart(2, '0')}:00`);
-      if (hour < 16) {
-        slots.push(`${hour.toString().padStart(2, '0')}:30`);
-      }
     }
     return slots;
   };
@@ -313,10 +310,9 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
       const newSchedules: Array<InterviewerSchedule> = [];
       selectedSlots.forEach(key => {
         const [day, time] = key.split('-');
-        const [hour, minute] = time.split(':').map(Number);
-        const nextMinute = minute === 0 ? 30 : 0;
-        const nextHour = minute === 30 ? hour + 1 : hour;
-        const endTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
+        const [hour] = time.split(':').map(Number);
+        const nextHour = hour + 1;
+        const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
 
         newSchedules.push({
           interviewer: { 
@@ -332,7 +328,7 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
           scheduleType: 'RECURRING' as const,
           year: new Date().getFullYear(),
           isActive: true,
-          notes: 'Bloque de 30 minutos - Sistema de horarios'
+          notes: 'Bloque de 60 minutos - Sistema de horarios'
         });
       });
 
