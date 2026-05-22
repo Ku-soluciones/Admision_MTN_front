@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import httpClient from '../../services/http';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
@@ -8,10 +9,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import DayScheduleSelector from '../DayScheduleSelector';
 import {
   CalendarIcon,
-  ClockIcon,
   UserIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
   MapPinIcon,
   VideoIcon
 } from '../icons/Icons';
@@ -20,16 +18,13 @@ import {
   FiClock, 
   FiUser, 
   FiMapPin, 
-  FiVideo, 
-  FiPhone,
-  FiMail,
+  FiVideo,
   FiEdit,
   FiSave,
   FiCheck,
   FiStar
 } from 'react-icons/fi';
 import {
-  Interview,
   InterviewFormProps,
   InterviewFormMode,
   InterviewStatus,
@@ -118,7 +113,17 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       try {
         const currentYear = new Date().getFullYear();
 
-        const data = await httpClient.get(`/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`);
+        // Obtener token de autenticación (admin/apoderado o profesor como fallback)
+        const authToken =
+          localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+          localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+
+        const data = await httpClient.get(
+          `/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`,
+          {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+          }
+        );
 
         // httpClient.get ya retorna response.data directamente
         // Puede ser un array directamente o {data: array}
