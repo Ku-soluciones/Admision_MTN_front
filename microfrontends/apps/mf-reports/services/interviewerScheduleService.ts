@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { getApiBaseUrl } from '../config/api.config';
 import httpClient from './http';
 
-const API_BASE_URL = `${getApiBaseUrl()}/api`;
+// httpClient handles base URL resolution and auth token injection automatically
 
 // Types for the interviewer schedule system
 export interface InterviewerSchedule {
@@ -77,19 +76,11 @@ export interface AvailabilitySummary {
 // Main service class
 export class InterviewerScheduleService {
     private static instance: InterviewerScheduleService;
-    private baseURL = `${API_BASE_URL}/interviewer-schedules`;
-    private availabilityURL = `${API_BASE_URL}/interviews/availability`;
-
     public static getInstance(): InterviewerScheduleService {
         if (!InterviewerScheduleService.instance) {
             InterviewerScheduleService.instance = new InterviewerScheduleService();
         }
         return InterviewerScheduleService.instance;
-    }
-
-    private getAuthHeaders() {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
-        return token ? { Authorization: `Bearer ${token}` } : {};
     }
 
     // CRUD operations for schedules
@@ -99,8 +90,7 @@ export class InterviewerScheduleService {
      */
     async createSchedule(schedule: Omit<InterviewerSchedule, 'id'>): Promise<InterviewerSchedule> {
         try {
-            const response = await httpClient.post(this.baseURL, schedule);
-            return response.data;
+            return await httpClient.post('/v1/interviewer-schedules', schedule);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al crear horario' :
@@ -113,8 +103,7 @@ export class InterviewerScheduleService {
      */
     async updateSchedule(scheduleId: number, schedule: Partial<InterviewerSchedule>): Promise<InterviewerSchedule> {
         try {
-            const response = await httpClient.put(`${this.baseURL}/${scheduleId}`, schedule);
-            return response.data;
+            return await httpClient.put(`/v1/interviewer-schedules/${scheduleId}`, schedule);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al actualizar horario' :
@@ -127,7 +116,7 @@ export class InterviewerScheduleService {
      */
     async deactivateSchedule(scheduleId: number): Promise<void> {
         try {
-            await httpClient.put(`${this.baseURL}/${scheduleId}/deactivate`, {});
+            await httpClient.put(`/v1/interviewer-schedules/${scheduleId}/deactivate`, {});
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al desactivar horario' :
@@ -140,7 +129,7 @@ export class InterviewerScheduleService {
      */
     async deleteSchedule(scheduleId: number): Promise<void> {
         try {
-            await httpClient.delete(`${this.baseURL}/${scheduleId}`);
+            await httpClient.delete(`/v1/interviewer-schedules/${scheduleId}`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al eliminar horario' :
@@ -153,10 +142,7 @@ export class InterviewerScheduleService {
      */
     async getScheduleById(scheduleId: number): Promise<InterviewerSchedule> {
         try {
-            const response = await axios.get(`${this.baseURL}/${scheduleId}`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/${scheduleId}`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener horario' : 
@@ -169,10 +155,7 @@ export class InterviewerScheduleService {
      */
     async getInterviewerSchedules(interviewerId: number): Promise<InterviewerSchedule[]> {
         try {
-            const response = await axios.get(`${this.baseURL}/interviewer/${interviewerId}`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/interviewer/${interviewerId}`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener horarios del entrevistador' : 
@@ -200,11 +183,9 @@ export class InterviewerScheduleService {
      */
     async getAvailableInterviewers(date: string, time: string): Promise<InterviewAvailabilityResponse> {
         try {
-            const response = await axios.get(`${this.availabilityURL}/interviewers`, {
-                params: { date, time },
-                headers: this.getAuthHeaders()
+            return await httpClient.get(`/v1/interviews/availability/interviewers`, {
+                params: { date, time }
             });
-            return response.data;
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener entrevistadores disponibles' : 
@@ -218,7 +199,7 @@ export class InterviewerScheduleService {
     async findAvailableInterviewers(date: string, time: string): Promise<User[]> {
         try {
             // Use the public endpoint with date and time parameters for real availability check
-            const response = await axios.get(`${API_BASE_URL}/interviews/public/interviewers`, {
+            const data = await httpClient.get(`/v1/interviews/public/interviewers`, {
                 params: {
                     date: date,
                     time: time
@@ -227,7 +208,7 @@ export class InterviewerScheduleService {
             
             // The backend returns interviewers with their basic info
             // Transform to match the User interface expected by the frontend
-            return response.data.map((interviewer: any) => ({
+            return data.map((interviewer: any) => ({
                 id: interviewer.id,
                 firstName: interviewer.name.split(' ')[0] || '',
                 lastName: interviewer.name.split(' ').slice(1).join(' ') || '',
@@ -248,11 +229,9 @@ export class InterviewerScheduleService {
      */
     async getAvailableInterviewersByType(interviewType: string, date: string, time: string): Promise<InterviewAvailabilityByTypeResponse> {
         try {
-            const response = await axios.get(`${this.availabilityURL}/interviewers/by-type`, {
-                params: { interviewType, date, time },
-                headers: this.getAuthHeaders()
+            return await httpClient.get(`/v1/interviews/availability/interviewers/by-type`, {
+                params: { interviewType, date, time }
             });
-            return response.data;
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener entrevistadores por tipo' : 
@@ -270,11 +249,9 @@ export class InterviewerScheduleService {
         available: boolean;
     }> {
         try {
-            const response = await axios.get(`${this.baseURL}/interviewer/${interviewerId}/availability`, {
-                params: { date, time },
-                headers: this.getAuthHeaders()
+            return await httpClient.get(`/v1/interviewer-schedules/interviewer/${interviewerId}/availability`, {
+                params: { date, time }
             });
-            return response.data;
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al verificar disponibilidad' : 
@@ -287,11 +264,9 @@ export class InterviewerScheduleService {
      */
     async getAvailabilitySummary(date: string): Promise<AvailabilitySummary> {
         try {
-            const response = await axios.get(`${this.availabilityURL}/summary`, {
-                params: { date },
-                headers: this.getAuthHeaders()
+            return await httpClient.get(`/v1/interviews/availability/summary`, {
+                params: { date }
             });
-            return response.data;
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener resumen de disponibilidad' : 
@@ -306,8 +281,7 @@ export class InterviewerScheduleService {
      */
     async createRecurringSchedules(interviewerId: number, year: number, schedules: RecurringScheduleRequest[]): Promise<InterviewerSchedule[]> {
         try {
-            const response = await httpClient.post(`${this.baseURL}/interviewer/${interviewerId}/recurring/${year}`, schedules);
-            return response.data;
+            return await httpClient.post(`/v1/interviewer-schedules/interviewer/${interviewerId}/recurring/${year}`, schedules);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al crear horarios recurrentes' :
@@ -320,9 +294,8 @@ export class InterviewerScheduleService {
      */
     async createException(interviewerId: number, date: string, notes?: string): Promise<InterviewerSchedule> {
         try {
-            const url = `${this.baseURL}/interviewer/${interviewerId}/exception?date=${date}${notes ? `&notes=${encodeURIComponent(notes)}` : ''}`;
-            const response = await httpClient.post(url, {});
-            return response.data;
+            const url = `/v1/interviewer-schedules/interviewer/${interviewerId}/exception?date=${date}${notes ? `&notes=${encodeURIComponent(notes)}` : ''}`;
+            return await httpClient.post(url, {});
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al crear excepción' :
@@ -335,9 +308,8 @@ export class InterviewerScheduleService {
      */
     async copySchedulesToYear(interviewerId: number, fromYear: number, toYear: number): Promise<InterviewerSchedule[]> {
         try {
-            const url = `${this.baseURL}/interviewer/${interviewerId}/copy-schedules?fromYear=${fromYear}&toYear=${toYear}`;
-            const response = await httpClient.post(url, {});
-            return response.data;
+            const url = `/v1/interviewer-schedules/interviewer/${interviewerId}/copy-schedules?fromYear=${fromYear}&toYear=${toYear}`;
+            return await httpClient.post(url, {});
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ?
                 error.response?.data?.message || 'Error al copiar horarios' :
@@ -352,10 +324,7 @@ export class InterviewerScheduleService {
      */
     async getWorkloadStatistics(year: number): Promise<any[]> {
         try {
-            const response = await axios.get(`${this.baseURL}/statistics/workload/${year}`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/statistics/workload/${year}`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener estadísticas' : 
@@ -368,10 +337,7 @@ export class InterviewerScheduleService {
      */
     async getInterviewersWithSchedules(year: number): Promise<User[]> {
         try {
-            const response = await axios.get(`${this.baseURL}/interviewers-with-schedules/${year}`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/interviewers-with-schedules/${year}`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al obtener entrevistadores con horarios' : 
@@ -384,8 +350,7 @@ export class InterviewerScheduleService {
      */
     async healthCheck(): Promise<{ status: string; service: string; timestamp: string; }> {
         try {
-            const response = await axios.get(`${this.baseURL}/health`);
-            return response.data;
+            return await httpClient.get(`/v1/interviewer-schedules/health`);
         } catch (error) {
             throw new Error('Service unavailable');
         }
@@ -396,10 +361,7 @@ export class InterviewerScheduleService {
      */
     async testAvailabilitySystem(): Promise<any> {
         try {
-            const response = await axios.get(`${this.availabilityURL}/test`, {
-                headers: this.getAuthHeaders()
-            });
-            return response.data;
+            return await httpClient.get(`/v1/interviews/availability/test`);
         } catch (error) {
             throw new Error(axios.isAxiosError(error) ? 
                 error.response?.data?.message || 'Error al probar sistema' : 

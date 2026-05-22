@@ -61,7 +61,7 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
   
   // Quick config state
   const [quickConfig, setQuickConfig] = useState<QuickConfig>({
-    startTime: '09:00',
+    startTime: '08:00',
     endTime: '15:00',
     selectedDays: []
   });
