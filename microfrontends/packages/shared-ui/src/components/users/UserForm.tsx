@@ -29,7 +29,7 @@ import {
   AcademicCapIcon,
   BookOpenIcon
 } from '../icons/Icons';
-import ModernAvailabilityCalendar from '../schedule/ModernAvailabilityCalendar';
+import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
 
 const UserForm: React.FC<UserFormProps> = ({
   user,
@@ -516,7 +516,7 @@ const UserForm: React.FC<UserFormProps> = ({
                   puedes marcar tus horarios disponibles haciendo click en las casillas del calendario (8 AM - 4 PM).
                 </p>
                 
-                <ModernAvailabilityCalendar
+                <SimpleAvailabilityCalendar
                   userId={userForSchedule.id || 0}
                   userRole={formData.role}
                   onScheduleChange={() => {
