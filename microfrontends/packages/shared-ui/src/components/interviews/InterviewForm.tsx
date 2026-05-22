@@ -49,6 +49,7 @@ import {
 } from '../../types/interview';
 import { applicationService } from '../../services/applicationService';
 import interviewService from '../../../../../apps/mf-admissions/services/interviewService';
+import {BASE_STORAGE_KEYS, getStorageKey} from "../../../../backend-sdk";
 
 // Interface para entrevistadores del backend
 interface BackendInterviewer {
@@ -117,9 +118,16 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
       try {
         const currentYear = new Date().getFullYear();
+        const authToken =
+            localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+            localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
 
-        const data = await httpClient.get(`/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`);
-
+        const data = await httpClient.get(
+            `/v1/interviewer-schedules/interviewers-with-schedules/${currentYear}`,
+            {
+              headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+            }
+        );
         // httpClient.get ya retorna response.data directamente
         // Puede ser un array directamente o {data: array}
         const dataArray = Array.isArray(data) ? data : (data as any).data;
