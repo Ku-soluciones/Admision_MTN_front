@@ -66,7 +66,7 @@ const Modal: React.FC<ModalProps> = ({
         >
             <div
                 className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-                onClick={(e) => {
+                onMouseDown={(e) => {
                     // Solo cerrar si el clic es directamente en el overlay, no en elementos hijos
                     if (e.target === e.currentTarget) {
                         onClose();

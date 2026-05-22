@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import Modal from '../ui/Modal';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import SimpleToast from '../ui/SimpleToast';
 import {
@@ -11,13 +10,9 @@ import {
   UserIcon,
   CheckCircleIcon,
   XCircleIcon,
-  RefreshIcon,
   PlusIcon,
-  FilterIcon,
-  ViewIcon,
-  EditIcon
 } from '../icons/Icons';
-import { FiCalendar, FiClock, FiUser, FiVideo, FiMapPin, FiPhone, FiMail, FiFilter, FiSearch, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiUser, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
 import {
   Interview,
   InterviewStatus,
@@ -64,10 +59,8 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Estados de modal
-  const [showForm, setShowForm] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [showStats, setShowStats] = useState(false);
+  // Vista activa: 'grid' muestra la tabla/calendario/estudiantes, 'form' muestra el formulario inline
+  const [activeView, setActiveView] = useState<'grid' | 'form'>('grid');
   const [formMode, setFormMode] = useState<InterviewFormMode>(InterviewFormMode.CREATE);
 
   // Estados para modales de cancelación y reagendación
@@ -203,31 +196,30 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   const handleCreateInterview = () => {
     setSelectedInterview(null);
     setFormMode(InterviewFormMode.CREATE);
-    setShowForm(true);
+    setActiveView('form');
   };
 
   const handleEditInterview = (interview: Interview) => {
     setSelectedInterview(interview);
     setFormMode(InterviewFormMode.EDIT);
-    setShowForm(true);
+    setActiveView('form');
   };
 
   const handleCompleteInterview = (interview: Interview) => {
     setSelectedInterview(interview);
     setFormMode(InterviewFormMode.COMPLETE);
-    setShowForm(true);
+    setActiveView('form');
   };
 
   const handleViewInterview = (interview: Interview) => {
     setSelectedInterview(interview);
     setFormMode(InterviewFormMode.VIEW);
-    setShowForm(true);
+    setActiveView('form');
   };
 
   const handleEditFromView = (interview: Interview) => {
     setSelectedInterview(interview);
     setFormMode(InterviewFormMode.EDIT);
-    // No cerrar el modal, solo cambiar el modo
   };
 
   // Verificar si ya existe una entrevista programada del mismo tipo para la aplicación
@@ -265,12 +257,11 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         showToast('Entrevista completada exitosamente', 'success');
       }
       
-      setShowForm(false);
       await loadInterviews();
-      await loadStats(); // Recargar estadísticas también
-      
-      // Incrementar refreshKey para sincronizar todas las vistas
+      await loadStats();
       setRefreshKey(prev => prev + 1);
+      // Volver a la grilla tras 2 segundos para que el usuario vea el toast
+      setTimeout(() => setActiveView('grid'), 2000);
       
     } catch (err: any) {
 
@@ -374,11 +365,56 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
 
     setSelectedInterview(interviewData);
     setFormMode(InterviewFormMode.CREATE);
-    setShowForm(true);
+    setActiveView('form');
 
   };
 
   // Removed unused getViewModeIcon function
+
+  // ── Vista de formulario inline ──────────────────────────────────────────
+  if (activeView === 'form') {
+    const formTitle =
+      formMode === InterviewFormMode.CREATE ? 'Nueva Entrevista' :
+      formMode === InterviewFormMode.EDIT   ? 'Editar Entrevista' :
+      formMode === InterviewFormMode.COMPLETE ? 'Completar Entrevista' :
+      'Detalles de Entrevista';
+
+    return (
+      <div className={`space-y-6 ${className}`}>
+        {/* Header de navegación */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setActiveView('grid')}
+            className="flex items-center"
+          >
+            <FiArrowLeft className="w-4 h-4 mr-2" />
+            Volver
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-900">{formTitle}</h1>
+        </div>
+
+        <Card className="p-6">
+          <InterviewForm
+            interview={selectedInterview ?? undefined}
+            mode={formMode}
+            onSubmit={handleFormSubmit}
+            onCancel={() => setActiveView('grid')}
+            onEdit={handleEditFromView}
+            isSubmitting={isSubmitting}
+          />
+        </Card>
+
+        {toast && (
+          <SimpleToast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -631,27 +667,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         </>
       )}
 
-      {/* Modal de formulario */}
-      <Modal
-        isOpen={showForm}
-        onClose={() => setShowForm(false)}
-        title={
-          formMode === InterviewFormMode.CREATE ? 'Nueva Entrevista' :
-          formMode === InterviewFormMode.EDIT ? 'Editar Entrevista' :
-          formMode === InterviewFormMode.COMPLETE ? 'Completar Entrevista' :
-          'Detalles de Entrevista'
-        }
-        size="lg"
-      >
-        <InterviewForm
-          interview={selectedInterview}
-          mode={formMode}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowForm(false)}
-          onEdit={handleEditFromView}
-          isSubmitting={isSubmitting}
-        />
-      </Modal>
 
       {/* Modal de cancelación de entrevista */}
       <CancelInterviewModal

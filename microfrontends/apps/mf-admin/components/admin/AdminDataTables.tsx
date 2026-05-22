@@ -14,6 +14,7 @@ import ReportsView from './ReportsView';
 import AnalyticsView from './AnalyticsView';
 import Modal from '../ui/Modal';
 import UserForm from '../users/UserForm';
+import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
 import { UserFormMode } from '../../types/user';
 import { userService } from '../../services/userService';
 import { applicationService } from '../../services/applicationService';
@@ -30,6 +31,7 @@ const AdminDataTables: React.FC<AdminDataTablesProps> = ({ className = '' }) => 
     const [showCreateUserModal, setShowCreateUserModal] = useState(false);
     const [showEditUserModal, setShowEditUserModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [scheduleUser, setScheduleUser] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const { addNotification } = useNotifications();
@@ -328,16 +330,83 @@ const AdminDataTables: React.FC<AdminDataTablesProps> = ({ className = '' }) => 
                 size="xl"
             >
                 {selectedUser && (
-                    <UserForm
-                        user={selectedUser}
-                        mode={UserFormMode.EDIT}
-                        onSubmit={handleUpdateUser}
-                        onCancel={() => {
-                            setShowEditUserModal(false);
-                            setSelectedUser(null);
-                        }}
-                        isSubmitting={isSubmitting}
-                    />
+                    <>
+                        {/* Banner superior con acceso directo a Gestionar Horarios */}
+                        {selectedUser.id > 0 && (
+                            <div className="mb-4 p-3 rounded-lg border-2 border-azul-monte-tabor/40 bg-azul-monte-tabor/5 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-sm text-azul-monte-tabor font-medium">
+                                    <span className="text-xl">📅</span>
+                                    <span>¿Necesitas modificar la disponibilidad horaria de este usuario?</span>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => {
+                                        setShowEditUserModal(false);
+                                        setScheduleUser(selectedUser);
+                                    }}
+                                    className="shadow-md whitespace-nowrap"
+                                >
+                                    Gestionar Horarios →
+                                </Button>
+                            </div>
+                        )}
+                        <UserForm
+                            user={selectedUser}
+                            mode={UserFormMode.EDIT}
+                            onSubmit={handleUpdateUser}
+                            onCancel={() => {
+                                setShowEditUserModal(false);
+                                setSelectedUser(null);
+                            }}
+                            isSubmitting={isSubmitting}
+                            onManageSchedule={(u: any) => {
+                                setShowEditUserModal(false);
+                                setScheduleUser(u);
+                            }}
+                        />
+                    </>
+                )}
+            </Modal>
+
+            {/* Modal de gestión de horarios (pantalla dedicada en modal grande) */}
+            <Modal
+                isOpen={!!scheduleUser}
+                onClose={() => {
+                    setScheduleUser(null);
+                    setSelectedUser(null);
+                }}
+                title={`Gestión de Horarios - ${scheduleUser?.firstName || ''} ${scheduleUser?.lastName || ''}`}
+                size="xl"
+            >
+                {scheduleUser && (
+                    <div className="space-y-4">
+                        <SimpleAvailabilityCalendar
+                            userId={scheduleUser.id}
+                            userRole={scheduleUser.role}
+                            onScheduleChange={() => {
+                                addNotification({
+                                    type: 'success',
+                                    title: 'Horarios guardados',
+                                    message: 'La disponibilidad se actualizó correctamente.'
+                                });
+                                setScheduleUser(null);
+                                setSelectedUser(null);
+                            }}
+                        />
+                        <div className="flex justify-end">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setScheduleUser(null);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Cerrar
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </Modal>
         </div>

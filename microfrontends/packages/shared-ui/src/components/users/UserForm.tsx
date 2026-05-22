@@ -29,15 +29,19 @@ import {
   AcademicCapIcon,
   BookOpenIcon
 } from '../icons/Icons';
-import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
+import AvailabilitySchedulePreview from '../schedule/AvailabilitySchedulePreview';
+interface UserFormExtraProps {
+  onManageSchedule?: (user: any) => void;
+}
 
-const UserForm: React.FC<UserFormProps> = ({
+const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
   user,
   mode,
   onSubmit,
   onCancel,
   isSubmitting = false,
-  className = ''
+  className = '',
+  onManageSchedule
 }) => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -250,17 +254,7 @@ const UserForm: React.FC<UserFormProps> = ({
                 {getFormTitle()}
               </h2>
             </div>
-            
-            {user && (
-              <div className="flex items-center gap-2">
-                <Badge variant={UserUtils.getStatusColor(user.active)}>
-                  {user.active ? 'Activo' : 'Inactivo'}
-                </Badge>
-                <Badge variant={UserUtils.getRoleColor(user.role)}>
-                  {USER_ROLE_LABELS[user.role]}
-                </Badge>
-              </div>
-            )}
+
           </div>
 
           {/* Descripción del usuario en modo vista */}
@@ -503,26 +497,32 @@ const UserForm: React.FC<UserFormProps> = ({
           {/* Gestión de Horarios (solo para entrevistadores) */}
           {canInterview && user && user.id > 0 && !isCreateMode && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-5 h-5 bg-azul-monte-tabor text-white rounded text-xs"></div>
-                <h3 className="text-lg font-medium text-gray-900">Gestión de Horarios de Entrevistas</h3>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-5 h-5 bg-azul-monte-tabor text-white rounded text-xs"></div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Horarios de Entrevistas
+                  </h3>
+                </div>
+                {onManageSchedule && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onManageSchedule(userForSchedule)}
+                    disabled={isSubmitting}
+                  >
+                    Gestionar Horarios
+                  </Button>
+                )}
               </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  Como {formData.role === UserRole.PSYCHOLOGIST ? 'psicólogo(a)' :
-                       formData.role === UserRole.CYCLE_DIRECTOR ? 'director(a) de ciclo' :
-                       formData.role === UserRole.INTERVIEWER ? 'entrevistador(a)' : 'coordinador(a)'},
-                  puedes marcar tus horarios disponibles haciendo click en las casillas del calendario (8 AM - 4 PM).
+
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <p className="text-xs text-gray-600">
+                  Vista previa de la disponibilidad actual. Para modificar los bloques usa el
+                  botón <strong>Gestionar Horarios</strong>, que abrirá la pantalla de edición.
                 </p>
-                
-                <SimpleAvailabilityCalendar
-                  userId={userForSchedule.id || 0}
-                  userRole={formData.role}
-                  onScheduleChange={() => {
-                    // Opcional: callback cuando se actualicen horarios
-                  }}
-                />
+                <AvailabilitySchedulePreview userId={userForSchedule.id || 0} />
               </div>
             </div>
           )}

@@ -8,6 +8,7 @@ import UserForm from './UserForm';
 import UserTable from './UserTable';
 import UserFilters from './UserFilters';
 import UserStats from './UserStats';
+import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
 import {
   User,
   CreateUserRequest,
@@ -56,6 +57,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
   const [formMode, setFormMode] = useState<UserFormMode>(UserFormMode.CREATE);
   const [showStats, setShowStats] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [scheduleUser, setScheduleUser] = useState<User | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     user: User | null;
@@ -416,13 +418,44 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
         title={formMode === UserFormMode.CREATE ? 'Nuevo Usuario' : 'Editar Usuario'}
         size="xl"
       >
+
         <UserForm
           user={state.selectedUser}
           mode={formMode}
           onSubmit={handleFormSubmit}
           onCancel={closeForm}
           isSubmitting={state.isSubmitting}
+          onManageSchedule={(u: any) => {
+            closeForm();
+            setScheduleUser(u as User);
+          }}
         />
+      </Modal>
+
+      {/* Modal de gestión de horarios */}
+      <Modal
+        isOpen={!!scheduleUser}
+        onClose={() => setScheduleUser(null)}
+        title={`Gestión de Horarios - ${scheduleUser?.firstName || ''} ${scheduleUser?.lastName || ''}`}
+        size="xl"
+      >
+        {scheduleUser && (
+          <div className="space-y-4">
+            <SimpleAvailabilityCalendar
+              userId={scheduleUser.id}
+              userRole={scheduleUser.role}
+              onScheduleChange={() => {
+                setToast({ message: 'Horarios guardados exitosamente', type: 'success' });
+                setScheduleUser(null);
+              }}
+            />
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setScheduleUser(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal de confirmación */}

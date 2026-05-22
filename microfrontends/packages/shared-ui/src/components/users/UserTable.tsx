@@ -5,6 +5,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import {
   User,
   UserTableProps,
+  UserRole,
   USER_ROLE_LABELS,
   UserUtils
 } from '../../types/user';
@@ -15,16 +16,29 @@ import {
   KeyIcon,
   CheckCircleIcon,
   XCircleIcon,
-  UserIcon
+  UserIcon,
+  CalendarIcon
 } from '../icons/Icons';
 
-const UserTable: React.FC<UserTableProps> = ({
+const SCHEDULE_ROLES: UserRole[] = [
+  UserRole.PSYCHOLOGIST,
+  UserRole.CYCLE_DIRECTOR,
+  UserRole.COORDINATOR,
+  UserRole.INTERVIEWER
+];
+
+interface ExtendedUserTableProps extends UserTableProps {
+  onManageSchedule?: (user: User) => void;
+}
+
+const UserTable: React.FC<ExtendedUserTableProps> = ({
   users,
   isLoading = false,
   onEdit,
   onDelete,
   onToggleStatus,
   onResetPassword,
+  onManageSchedule,
   className = ''
 }) => {
   
@@ -169,6 +183,19 @@ const UserTable: React.FC<UserTableProps> = ({
                       <KeyIcon className="w-4 h-4" />
                     </Button>
 
+                    {/* Gestionar horarios (solo roles que entrevistan) */}
+                    {onManageSchedule && SCHEDULE_ROLES.includes(user.role) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onManageSchedule(user)}
+                        title="Gestionar horarios de entrevistas"
+                        className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
+                      >
+                        <CalendarIcon className="w-4 h-4" />
+                      </Button>
+                    )}
+
                     {/* Activar/Desactivar */}
                     <Button
                       variant={user.active ? "outline" : "primary"}
@@ -212,6 +239,10 @@ const UserTable: React.FC<UserTableProps> = ({
             <div className="flex items-center space-x-1">
               <XCircleIcon className="w-3 h-3 text-red-500" />
               <span>Email no verificado</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <CalendarIcon className="w-3 h-3 text-blue-500" />
+              <span>Gestionar horarios (solo psicólogos, directores de ciclo, coordinadores y entrevistadores)</span>
             </div>
           </div>
           

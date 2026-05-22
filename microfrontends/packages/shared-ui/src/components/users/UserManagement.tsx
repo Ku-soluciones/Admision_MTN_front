@@ -7,6 +7,7 @@ import UserForm from './UserForm';
 import UserTable from './UserTable';
 import UserFilters from './UserFilters';
 import UserStats from './UserStats';
+import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
 import AdminResetPasswordModal from '@/src/components/admin/AdminResetPasswordModal';
 import {
   User,
@@ -58,6 +59,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
+  // Vista de gestión de horarios (no es modal)
+  const [scheduleUser, setScheduleUser] = useState<User | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     user: User | null;
@@ -301,6 +304,63 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     await loadStats();
   };
 
+  // Abrir vista de gestión de horarios (no modal)
+  const openScheduleView = (u: User) => {
+    setShowForm(false);
+    setScheduleUser(u);
+  };
+
+  // Volver a la grilla desde la vista de horarios
+  const closeScheduleView = (savedSuccessfully: boolean = false) => {
+    setScheduleUser(null);
+    if (savedSuccessfully) {
+      showToast('Horarios guardados exitosamente', 'success');
+    }
+  };
+
+  // Vista de gestión de horarios como funcionalidad aparte (no modal)
+  if (scheduleUser) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={() => closeScheduleView(false)}
+              variant="outline"
+              className="flex items-center"
+            >
+              <ArrowLeftIcon className="w-4 h-4 mr-2" />
+              Volver a Usuarios
+            </Button>
+            <UsersIcon className="w-8 h-8 text-azul-monte-tabor" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Horarios de {scheduleUser.firstName} {scheduleUser.lastName}
+              </h1>
+              <p className="text-sm text-gray-600">
+                Configura los bloques de disponibilidad del usuario para entrevistas
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <SimpleAvailabilityCalendar
+          userId={scheduleUser.id}
+          userRole={scheduleUser.role}
+          onScheduleChange={() => closeScheduleView(true)}
+        />
+
+        {toast && (
+          <SimpleToast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
 
@@ -374,6 +434,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
         onDelete={(user) => confirmAction(user, 'delete')}
         onToggleStatus={(user) => confirmAction(user, 'toggle')}
         onResetPassword={(user) => confirmAction(user, 'reset')}
+        onManageSchedule={(user) => openScheduleView(user)}
       />
 
       {/* Paginación */}
@@ -394,12 +455,38 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
         title={formMode === UserFormMode.CREATE ? 'Nuevo Usuario' : 'Editar Usuario'}
         size="lg"
       >
+        {/* Banner superior con acceso directo a Gestionar Horarios */}
+        {formMode !== UserFormMode.CREATE && state.selectedUser && state.selectedUser.id > 0 && (
+          <div className="mb-4 p-3 rounded-lg border-2 border-azul-monte-tabor/40 bg-azul-monte-tabor/5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-azul-monte-tabor font-medium">
+              <span className="text-xl">📅</span>
+              <span>¿Necesitas modificar la disponibilidad horaria de este usuario?</span>
+            </div>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                closeForm();
+                openScheduleView(state.selectedUser as User);
+              }}
+              className="shadow-md whitespace-nowrap"
+            >
+              Gestionar Horarios →
+            </Button>
+          </div>
+        )}
+
         <UserForm
           user={state.selectedUser}
           mode={formMode}
           onSubmit={handleFormSubmit}
           onCancel={closeForm}
           isSubmitting={state.isSubmitting}
+          onManageSchedule={(u) => {
+            closeForm();
+            openScheduleView(u as User);
+          }}
         />
       </Modal>
 
