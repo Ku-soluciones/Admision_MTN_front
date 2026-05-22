@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { interviewerScheduleService, InterviewerSchedule } from '../../services/interviewerScheduleService';
-import { useNotifications } from '../../context/AppContext';
+import { notify } from '../../utils/notify';
 
 interface ModernAvailabilityCalendarProps {
   userId: number;
@@ -66,7 +66,6 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
     selectedDays: []
   });
 
-  const { addNotification } = useNotifications();
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Generate time slots from 8:00 AM to 4:00 PM (60 minute intervals)
@@ -299,11 +298,7 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
     const { startTime, endTime, selectedDays } = quickConfig;
     
     if (selectedDays.length === 0) {
-      addNotification({
-        type: 'warning',
-        title: 'Configuración rápida',
-        message: 'Por favor selecciona al menos un día de la semana.'
-      });
+      notify.warning('Por favor selecciona al menos un día de la semana.');
       return;
     }
 
@@ -329,11 +324,7 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
     });
 
     setShowQuickConfig(false);
-    addNotification({
-      type: 'success',
-      title: 'Configuración aplicada',
-      message: `Disponibilidad configurada para ${selectedDays.length} día(s).`
-    });
+    notify.success(`Disponibilidad configurada para ${selectedDays.length} día(s).`);
   };
 
   // Quick actions
@@ -499,18 +490,10 @@ const ModernAvailabilityCalendar: React.FC<ModernAvailabilityCalendarProps> = ({
         onScheduleChange();
       }
 
-      addNotification({
-        type: 'success',
-        title: 'Horarios guardados',
-        message: 'Tu disponibilidad ha sido actualizada exitosamente.'
-      });
+      notify.success('Tu disponibilidad ha sido actualizada exitosamente.');
 
     } catch (error) {
-      addNotification({
-        type: 'error',
-        title: 'Error al guardar horarios',
-        message: 'No se pudieron guardar los horarios. Por favor, inténtalo nuevamente.',
-      });
+      notify.error('No se pudieron guardar los horarios. Por favor, inténtalo nuevamente.');
     } finally {
       setSaving(false);
     }

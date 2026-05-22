@@ -414,7 +414,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack }) => {
         isOpen={showForm}
         onClose={closeForm}
         title={formMode === UserFormMode.CREATE ? 'Nuevo Usuario' : 'Editar Usuario'}
-        size="lg"
+        size="xl"
       >
         <UserForm
           user={state.selectedUser}
