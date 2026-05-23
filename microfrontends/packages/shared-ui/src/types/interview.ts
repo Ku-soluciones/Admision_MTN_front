@@ -276,6 +276,60 @@ export interface NextAvailableSlotsResponse {
   duration?: number;
 }
 
+export interface WeeklyOverviewScheduledInterview {
+  id: number;
+  time: string;
+  endTime?: string;
+  interviewer1: InterviewerInfo;
+  interviewer2?: InterviewerInfo;
+  studentName: string;
+  applicationId: number;
+  interviewType: InterviewType | string;
+  mode: InterviewMode | string;
+  status: InterviewStatus | string;
+}
+
+export interface WeeklyOverviewAvailableSlot {
+  time: string;
+  availableInterviewers: InterviewerInfo[];
+  interviewerCount: number;
+  suggestedPair?: SuggestedInterviewerPair;
+}
+
+export interface WeeklyOverviewDay {
+  date: string;
+  dayOfWeek: string;
+  dayLabel: string;
+  scheduled: WeeklyOverviewScheduledInterview[];
+  available: WeeklyOverviewAvailableSlot[];
+}
+
+export interface InterviewerLoad {
+  id: number;
+  name: string;
+  role: string;
+  scheduledCount: number;
+  capacity: number;
+  loadPercentage: number;
+}
+
+export interface WeeklyOverviewResponse {
+  range: {
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+  };
+  summary: {
+    scheduledCount: number;
+    completedCount: number;
+    cancelledCount: number;
+    availableSlotsCount: number;
+    singleInterviewerSlotsCount: number;
+  };
+  interviewerLoad: InterviewerLoad[];
+  days: WeeklyOverviewDay[];
+}
+
 // Interface para notificaciones de entrevistas
 export interface InterviewNotification {
   id: number;

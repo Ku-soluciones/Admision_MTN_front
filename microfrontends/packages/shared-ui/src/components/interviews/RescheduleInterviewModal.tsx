@@ -25,7 +25,22 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = `${today.getMonth() + 1}`.padStart(2, '0');
+    const day = `${today.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateTimeSelect = (date: string, time: string) => {
+    if (date && date < getTodayDateString()) {
+      setNewDate('');
+      setNewTime('');
+      setError('No se puede reagendar entrevistas en fechas anteriores a hoy.');
+      return;
+    }
+
     setNewDate(date);
     setNewTime(time);
     setError(null);
@@ -39,6 +54,11 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
     // Validaciones
     if (!newDate || !newTime) {
       setError('Por favor seleccione una nueva fecha y hora');
+      return;
+    }
+
+    if (newDate < getTodayDateString()) {
+      setError('No se puede reagendar entrevistas en fechas anteriores a hoy.');
       return;
     }
 

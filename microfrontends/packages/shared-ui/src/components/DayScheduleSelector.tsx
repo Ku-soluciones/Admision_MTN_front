@@ -53,6 +53,11 @@ const DayScheduleSelector: React.FC<DayScheduleSelectorProps> = ({
 
     // Solo cargar si NO se pasaron desde el padre
     if (selectedDate && evaluatorId) {
+      if (selectedDate < getMinDate()) {
+        setError('No se puede agendar entrevistas en fechas anteriores a hoy.');
+        setInternalAvailableSlots([]);
+        return;
+      }
       loadDaySlots(selectedDate);
     } else {
       setInternalAvailableSlots([]);
@@ -143,6 +148,14 @@ const DayScheduleSelector: React.FC<DayScheduleSelectorProps> = ({
       return;
     }
 
+    if (date < getMinDate()) {
+      setError('No se puede agendar entrevistas en fechas anteriores a hoy.');
+      onDateTimeSelect('', '');
+      return;
+    }
+
+    setError(null);
+
     // Verificar que el año sea razonable (entre 2020 y 2100)
     const year = parseInt(date.split('-')[0]);
     if (year < 2020 || year > 2100) {
@@ -153,7 +166,7 @@ const DayScheduleSelector: React.FC<DayScheduleSelectorProps> = ({
   };
 
   const handleTimeSelect = (time: string) => {
-    if (selectedDate) {
+    if (selectedDate && selectedDate >= getMinDate()) {
       onDateTimeSelect(selectedDate, time);
     }
   };

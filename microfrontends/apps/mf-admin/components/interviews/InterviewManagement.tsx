@@ -48,9 +48,10 @@ import { applicationService } from '../../services/applicationService';
 interface InterviewManagementProps {
   className?: string;
   onBack?: () => void;
+  initialInterviewId?: number | null;
 }
 
-const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '', onBack }) => {
+const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '', onBack, initialInterviewId }) => {
   // Estados principales
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
@@ -105,6 +106,36 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     loadStats();
     loadEmailTemplates();
   }, [filters]);
+
+  useEffect(() => {
+    if (!initialInterviewId) return;
+
+    let cancelled = false;
+    const openInitialInterview = async () => {
+      try {
+        setIsLoading(true);
+        const interview = await interviewService.getInterviewById(initialInterviewId);
+        if (cancelled) return;
+        setSelectedInterview(interview);
+        setFormMode(InterviewFormMode.VIEW);
+        setActiveView('form');
+      } catch (err: any) {
+        if (!cancelled) {
+          showToast('No se pudo abrir la entrevista seleccionada', 'error');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void openInitialInterview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialInterviewId]);
 
   // Auto-refresh cuando el componente se monta o actualiza
   useEffect(() => {
