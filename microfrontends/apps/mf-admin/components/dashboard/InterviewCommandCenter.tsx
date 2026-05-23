@@ -14,7 +14,7 @@ import { CommandCenterViewMode, QuickScheduleData, SelectedSlot } from './dashbo
 
 interface InterviewCommandCenterProps {
   initialSurface?: 'operations' | 'calendar';
-  onNavigateToInterviews?: () => void;
+  onNavigateToInterviews?: (interviewId?: number) => void;
 }
 
 const addDays = (date: Date, days: number): Date => {
@@ -268,7 +268,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             viewMode={viewMode}
             filterByInterviewer={filterByInterviewer}
             onSlotClick={(date, time, availableInterviewers) => setSelectedSlot({ date, time, availableInterviewers })}
-            onInterviewClick={() => onNavigateToInterviews?.()}
+            onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
           />
           <div className="grid gap-5 xl:grid-cols-[minmax(280px,360px)_1fr]">
             <InterviewerLoadPanel
@@ -283,7 +283,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           </div>
           <ScheduledPairsTable
             days={visibleOverview.days}
-            onInterviewClick={() => onNavigateToInterviews?.()}
+            onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
           />
         </>
       ) : (

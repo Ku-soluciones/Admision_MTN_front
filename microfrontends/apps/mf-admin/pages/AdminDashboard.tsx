@@ -180,6 +180,7 @@ const AdminDashboard: React.FC = () => {
     interviewType: undefined
   });
   const [isSchedulingInterview, setIsSchedulingInterview] = useState(false);
+  const [interviewToOpenId, setInterviewToOpenId] = useState<number | null>(null);
 
 
   // Carga inicial: solo dashboard necesita aplicaciones y usuarios
@@ -480,7 +481,10 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
-              onNavigateToInterviews={() => setActiveSection('entrevistas')}
+              onNavigateToInterviews={(interviewId) => {
+                setInterviewToOpenId(interviewId ?? null);
+                setActiveSection('entrevistas');
+              }}
             />
           </div>
         );
@@ -676,7 +680,10 @@ Esta acción:
       case 'entrevistas':
         return (
           <div className="space-y-6">
-            <InterviewManagement onBack={() => setActiveSection('dashboard')} />
+            <InterviewManagement
+              onBack={() => setActiveSection('dashboard')}
+              initialInterviewId={interviewToOpenId}
+            />
           </div>
         );
 
@@ -684,7 +691,10 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
-              onNavigateToInterviews={() => setActiveSection('entrevistas')}
+              onNavigateToInterviews={(interviewId) => {
+                setInterviewToOpenId(interviewId ?? null);
+                setActiveSection('entrevistas');
+              }}
             />
           </div>
         );
@@ -725,7 +735,11 @@ Esta acción:
         {sections.map(section => (
           <button
             key={section.key}
-            onClick={() => { setActiveSection(section.key); onNavigate?.(); }}
+            onClick={() => {
+              setInterviewToOpenId(null);
+              setActiveSection(section.key);
+              onNavigate?.();
+            }}
             className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
               activeSection === section.key
                 ? 'bg-azul-monte-tabor text-white'
