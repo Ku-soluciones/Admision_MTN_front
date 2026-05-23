@@ -19,7 +19,8 @@ import {
   InterviewStats,
   CreateInterviewRequest,
   UpdateInterviewRequest,
-  CompleteInterviewRequest
+  CompleteInterviewRequest,
+  NextAvailableSlotsResponse
 } from '../types/interview';
 
 export interface InterviewResponse {
@@ -827,6 +828,21 @@ class InterviewService {
     } catch (error) {
       return [];
     }
+  }
+
+  async getNextAvailableSlots(params?: {
+    date?: string;
+    days?: number;
+    duration?: number;
+  }): Promise<NextAvailableSlotsResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.date) queryParams.set('date', params.date);
+    if (params?.days) queryParams.set('days', params.days.toString());
+    if (params?.duration) queryParams.set('duration', params.duration.toString());
+
+    const query = queryParams.toString();
+    const response = await api.get<any>(`${this.baseUrl}/next-available-slots${query ? `?${query}` : ''}`);
+    return response.data?.data ?? response.data;
   }
 
   async getInterviewerAvailability(

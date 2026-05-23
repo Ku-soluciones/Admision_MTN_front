@@ -233,6 +233,49 @@ export interface AvailableTimeSlot {
   interviewerName: string;
 }
 
+export interface InterviewerInfo {
+  id: number;
+  name: string;
+  role: string;
+  subject?: string;
+  scheduleCount?: number;
+}
+
+export interface SuggestedInterviewerPair {
+  interviewer1: InterviewerInfo;
+  interviewer2: InterviewerInfo;
+}
+
+export interface NextAvailableSlotInfo {
+  time: string;
+  availableInterviewers: InterviewerInfo[];
+  interviewerCount: number;
+  suggestedPair: SuggestedInterviewerPair;
+}
+
+export interface DaySlotsInfo {
+  date: string;
+  dayOfWeek: string;
+  dayLabel: string;
+  slots: NextAvailableSlotInfo[];
+}
+
+export interface NextAvailableSlotsResponse {
+  searchRange: {
+    from: string;
+    to: string;
+    daysSearched: number;
+  };
+  nextAvailable: {
+    date: string;
+    time: string;
+    dayOfWeek: string;
+    interviewers: InterviewerInfo[];
+  } | null;
+  slotsByDate: DaySlotsInfo[];
+  duration?: number;
+}
+
 // Interface para notificaciones de entrevistas
 export interface InterviewNotification {
   id: number;

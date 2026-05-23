@@ -7,6 +7,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import DayScheduleSelector from '../DayScheduleSelector';
+import QuickScheduleSelector from './QuickScheduleSelector';
 import {
   CalendarIcon,
   UserIcon,
@@ -98,6 +99,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(INTERVIEW_CONFIG.DEFAULT_TIME_SLOTS);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [showManualScheduling, setShowManualScheduling] = useState(false);
 
   // useRef para rastrear llamadas en progreso y prevenir race conditions
   const loadingSlotsRef = useRef(false);
@@ -394,6 +396,46 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       await checkAvailability(date, time);
     } else {
     }
+  };
+
+  const handleQuickSlotSelect = (selection: {
+    date: string;
+    time: string;
+    interviewer1Id: number;
+    interviewer1Name: string;
+    interviewer2Id: number;
+    interviewer2Name: string;
+    interviewers: Array<{ id: number; name: string; role: string; subject?: string; scheduleCount?: number }>;
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      scheduledDate: selection.date,
+      scheduledTime: selection.time,
+      interviewerId: selection.interviewer1Id.toString(),
+      secondInterviewerId: selection.interviewer2Id.toString()
+    }));
+    setInterviewers(prev => {
+      const existingIds = new Set(prev.map(item => item.id));
+      const additions = selection.interviewers
+        .filter(item => !existingIds.has(item.id))
+        .map(item => ({
+          id: item.id,
+          name: item.name,
+          role: item.role,
+          subject: item.subject || '',
+          scheduleCount: item.scheduleCount || 0
+        }));
+      return additions.length > 0 ? [...prev, ...additions] : prev;
+    });
+    setConflictWarning(null);
+    setIsDirty(true);
+    setErrors(prev => ({
+      ...prev,
+      scheduledDate: '',
+      scheduledTime: '',
+      interviewerId: '',
+      secondInterviewerId: ''
+    }));
   };
 
   // Verificar disponibilidad de entrevistadores para fecha/hora específica
@@ -741,7 +783,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         )}
 
         {/* Formulario principal */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={isCreateMode && !showManualScheduling ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
           {/* Información básica */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Información Básica</h3>
@@ -857,96 +899,100 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
               )}
             </div>
 
-            {/* Entrevistador */}
-            <div>
-              <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700 mb-2">
-                {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer Entrevistador *' : 'Entrevistador *'}
-              </label>
-              <select
-                id="interviewer"
-                value={formData.interviewerId}
-                onChange={(e) => handleInputChange('interviewerId', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent ${
-                  errors.interviewerId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-                disabled={isViewMode || isCompleteMode}
-              >
-                <option value="">Seleccionar entrevistador</option>
-                {loadingInterviewers ? (
-                  <option disabled>Cargando entrevistadores...</option>
-                ) : interviewersError ? (
-                  <option disabled>Error al cargar entrevistadores</option>
-                ) : (
-                  interviewers.map(interviewer => (
-                    <option
-                      key={interviewer.id}
-                      value={interviewer.id}
-                    >
-                      {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
-                    </option>
-                  ))
-                )}
-              </select>
-              {errors.interviewerId && (
-                <p className="mt-1 text-sm text-red-600">{errors.interviewerId}</p>
-              )}
-            </div>
+            {(!isCreateMode || showManualScheduling) && (
+              <>
+                {/* Entrevistador */}
+                <div>
+                  <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700 mb-2">
+                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer Entrevistador *' : 'Entrevistador *'}
+                  </label>
+                  <select
+                    id="interviewer"
+                    value={formData.interviewerId}
+                    onChange={(e) => handleInputChange('interviewerId', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent ${
+                      errors.interviewerId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                    disabled={isViewMode || isCompleteMode}
+                  >
+                    <option value="">Seleccionar entrevistador</option>
+                    {loadingInterviewers ? (
+                      <option disabled>Cargando entrevistadores...</option>
+                    ) : interviewersError ? (
+                      <option disabled>Error al cargar entrevistadores</option>
+                    ) : (
+                      interviewers.map(interviewer => (
+                        <option
+                          key={interviewer.id}
+                          value={interviewer.id}
+                        >
+                          {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {errors.interviewerId && (
+                    <p className="mt-1 text-sm text-red-600">{errors.interviewerId}</p>
+                  )}
+                </div>
 
-            {/* Segundo Entrevistador */}
-            <div>
-              <label htmlFor="secondInterviewer" className="block text-sm font-medium text-gray-700 mb-2">
-                <FiUser className="inline w-4 h-4 mr-1" />
-                Segundo Entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
-              </label>
-              <select
-                id="secondInterviewer"
-                value={formData.secondInterviewerId}
-                onChange={(e) => handleInputChange('secondInterviewerId', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent ${
-                  errors.secondInterviewerId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-                disabled={isViewMode || isCompleteMode}
-              >
-                <option value="">Seleccionar segundo entrevistador</option>
-                {loadingInterviewers ? (
-                  <option disabled>Cargando entrevistadores...</option>
-                ) : interviewersError ? (
-                  <option disabled>{interviewersError}</option>
-                ) : interviewers.length === 0 ? (
-                  <option disabled>No hay entrevistadores disponibles</option>
-                ) : (
-                  (() => {
-                    const filteredInterviewers = interviewers.filter(interviewer => {
-                      // Excluir el primer entrevistador si ya está seleccionado
-                      const firstInterviewerId = formData.interviewerId ? formData.interviewerId.toString() : '';
-                      return interviewer.id.toString() !== firstInterviewerId;
-                    });
+                {/* Segundo Entrevistador */}
+                <div>
+                  <label htmlFor="secondInterviewer" className="block text-sm font-medium text-gray-700 mb-2">
+                    <FiUser className="inline w-4 h-4 mr-1" />
+                    Segundo Entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
+                  </label>
+                  <select
+                    id="secondInterviewer"
+                    value={formData.secondInterviewerId}
+                    onChange={(e) => handleInputChange('secondInterviewerId', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent ${
+                      errors.secondInterviewerId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                    disabled={isViewMode || isCompleteMode}
+                  >
+                    <option value="">Seleccionar segundo entrevistador</option>
+                    {loadingInterviewers ? (
+                      <option disabled>Cargando entrevistadores...</option>
+                    ) : interviewersError ? (
+                      <option disabled>{interviewersError}</option>
+                    ) : interviewers.length === 0 ? (
+                      <option disabled>No hay entrevistadores disponibles</option>
+                    ) : (
+                      (() => {
+                        const filteredInterviewers = interviewers.filter(interviewer => {
+                          // Excluir el primer entrevistador si ya está seleccionado
+                          const firstInterviewerId = formData.interviewerId ? formData.interviewerId.toString() : '';
+                          return interviewer.id.toString() !== firstInterviewerId;
+                        });
 
 
-                    if (filteredInterviewers.length === 0) {
-                      return <option disabled>No hay otros entrevistadores disponibles</option>;
-                    }
+                        if (filteredInterviewers.length === 0) {
+                          return <option disabled>No hay otros entrevistadores disponibles</option>;
+                        }
 
-                    return filteredInterviewers.map(interviewer => (
-                      <option
-                        key={interviewer.id}
-                        value={interviewer.id}
-                      >
-                        {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
-                      </option>
-                    ));
-                  })()
-                )}
-              </select>
-              {errors.secondInterviewerId && (
-                <p className="mt-1 text-sm text-red-600">{errors.secondInterviewerId}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR)
-                  ? 'Este tipo de entrevista requiere dos entrevistadores'
-                  : 'Se recomienda contar con dos entrevistadores disponibles simultáneamente'}
-              </p>
-            </div>
+                        return filteredInterviewers.map(interviewer => (
+                          <option
+                            key={interviewer.id}
+                            value={interviewer.id}
+                          >
+                            {interviewer.name} - {interviewer.role} {interviewer.scheduleCount > 0 ? `(${interviewer.scheduleCount} horarios)` : ''}
+                          </option>
+                        ));
+                      })()
+                    )}
+                  </select>
+                  {errors.secondInterviewerId && (
+                    <p className="mt-1 text-sm text-red-600">{errors.secondInterviewerId}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR)
+                      ? 'Este tipo de entrevista requiere dos entrevistadores'
+                      : 'Se recomienda contar con dos entrevistadores disponibles simultáneamente'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Programación */}
@@ -954,85 +1000,124 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             <h3 className="text-lg font-medium text-gray-900">Programación</h3>
             
             {/* Selección Visual de Fecha y Hora */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  <FiCalendar className="inline w-4 h-4 mr-1" />
-                  Seleccionar Fecha y Hora *
-                </label>
-                {/* Mostrar mensaje si es FAMILY o CYCLE_DIRECTOR y falta el segundo entrevistador */}
-                {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.interviewerId && !formData.secondInterviewerId ? (
-                  <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-md">
-                    <p className="text-sm text-yellow-800 text-center font-medium">
-                      Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
-                    </p>
-                    <p className="text-xs text-yellow-700 text-center mt-1">
-                      Los horarios disponibles serán solo aquellos donde ambos entrevistadores están libres
-                    </p>
-                  </div>
-                ) : formData.interviewerId && ((formData.type !== InterviewType.FAMILY && formData.type !== InterviewType.CYCLE_DIRECTOR) || formData.secondInterviewerId) ? (
-                  <div>
-                    {/* Mostrar información de ambos entrevistadores para FAMILY o CYCLE_DIRECTOR */}
-                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId && (
-                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                        <p className="text-sm font-medium text-blue-900 mb-1">
-                          Horarios comunes para:
-                        </p>
-                        <div className="text-sm text-blue-700 space-y-1">
-                          <p>• {interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
-                          <p>• {interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <DayScheduleSelector
-                      evaluatorId={parseInt(formData.interviewerId as string)}
-                      evaluatorName={
-                        interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name ||
-                        'Evaluador'
-                      }
-                      secondEvaluatorId={
-                        (formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId
-                          ? parseInt(formData.secondInterviewerId as string)
-                          : undefined
-                      }
-                      secondEvaluatorName={
-                        (formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId
-                          ? interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name
-                          : undefined
-                      }
-                      selectedDate={formData.scheduledDate}
-                      selectedTime={formData.scheduledTime}
-                      onDateTimeSelect={handleDateTimeSelect}
-                      disabled={isViewMode || isCompleteMode}
-                      availableTimeSlots={availableTimeSlots}
-                      isLoadingSlots={isLoadingSlots}
-                    />
-                    {(errors.scheduledDate || errors.scheduledTime) && (
-                      <p className="mt-2 text-sm text-red-600">
-                        {errors.scheduledDate || errors.scheduledTime}
-                      </p>
-                    )}
-
-                    {/* Advertencia de conflictos */}
-                    {conflictWarning && (
-                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                        <p className="text-sm text-red-700">
-                          <FiClock className="inline w-4 h-4 mr-1" />
-                          <strong>Conflicto de horarios:</strong> {conflictWarning}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
-                    <p className="text-sm text-gray-600 text-center">
-                      👆 Primero seleccione {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'ambos entrevistadores' : 'un entrevistador'} para ver los horarios disponibles
+            {isCreateMode && !showManualScheduling ? (
+              <div className="space-y-4">
+                <QuickScheduleSelector
+                  duration={formData.duration}
+                  onSlotSelect={handleQuickSlotSelect}
+                  onManualMode={() => setShowManualScheduling(true)}
+                  disabled={isViewMode || isCompleteMode}
+                />
+                {(errors.scheduledDate || errors.scheduledTime || errors.interviewerId || errors.secondInterviewerId) && (
+                  <p className="text-sm text-red-600">
+                    {errors.scheduledDate || errors.scheduledTime || errors.interviewerId || errors.secondInterviewerId}
+                  </p>
+                )}
+                {conflictWarning && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm text-red-700">
+                      <FiClock className="inline w-4 h-4 mr-1" />
+                      <strong>Conflicto de horarios:</strong> {conflictWarning}
                     </p>
                   </div>
                 )}
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {isCreateMode && showManualScheduling && (
+                  <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">Modo avanzado</p>
+                      <p className="text-xs text-blue-700">Selecciona entrevistadores y horario manualmente.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualScheduling(false)}
+                      className="text-sm font-semibold text-azul-monte-tabor hover:underline"
+                    >
+                      Volver a sugerencias
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <FiCalendar className="inline w-4 h-4 mr-1" />
+                    Seleccionar Fecha y Hora *
+                  </label>
+                  {/* Mostrar mensaje si es FAMILY o CYCLE_DIRECTOR y falta el segundo entrevistador */}
+                  {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.interviewerId && !formData.secondInterviewerId ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-md">
+                      <p className="text-sm text-yellow-800 text-center font-medium">
+                        Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
+                      </p>
+                      <p className="text-xs text-yellow-700 text-center mt-1">
+                        Los horarios disponibles serán solo aquellos donde ambos entrevistadores están libres
+                      </p>
+                    </div>
+                  ) : formData.interviewerId && ((formData.type !== InterviewType.FAMILY && formData.type !== InterviewType.CYCLE_DIRECTOR) || formData.secondInterviewerId) ? (
+                    <div>
+                      {/* Mostrar información de ambos entrevistadores para FAMILY o CYCLE_DIRECTOR */}
+                      {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId && (
+                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-sm font-medium text-blue-900 mb-1">
+                            Horarios comunes para:
+                          </p>
+                          <div className="text-sm text-blue-700 space-y-1">
+                            <p>• {interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
+                            <p>• {interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <DayScheduleSelector
+                        evaluatorId={parseInt(formData.interviewerId as string)}
+                        evaluatorName={
+                          interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name ||
+                          'Evaluador'
+                        }
+                        secondEvaluatorId={
+                          (formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId
+                            ? parseInt(formData.secondInterviewerId as string)
+                            : undefined
+                        }
+                        secondEvaluatorName={
+                          (formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId
+                            ? interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name
+                            : undefined
+                        }
+                        selectedDate={formData.scheduledDate}
+                        selectedTime={formData.scheduledTime}
+                        onDateTimeSelect={handleDateTimeSelect}
+                        disabled={isViewMode || isCompleteMode}
+                        availableTimeSlots={availableTimeSlots}
+                        isLoadingSlots={isLoadingSlots}
+                      />
+                      {(errors.scheduledDate || errors.scheduledTime) && (
+                        <p className="mt-2 text-sm text-red-600">
+                          {errors.scheduledDate || errors.scheduledTime}
+                        </p>
+                      )}
+
+                      {/* Advertencia de conflictos */}
+                      {conflictWarning && (
+                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm text-red-700">
+                            <FiClock className="inline w-4 h-4 mr-1" />
+                            <strong>Conflicto de horarios:</strong> {conflictWarning}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                      <p className="text-sm text-gray-600 text-center">
+                        Primero seleccione {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'ambos entrevistadores' : 'un entrevistador'} para ver los horarios disponibles
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Duración */}
             <div>
