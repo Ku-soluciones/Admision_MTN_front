@@ -20,7 +20,10 @@ import {
   CreateInterviewRequest,
   UpdateInterviewRequest,
   CompleteInterviewRequest,
-  NextAvailableSlotsResponse
+  NextAvailableSlotsResponse,
+  WeeklyOverviewResponse,
+  WeeklyOverviewDay,
+  InterviewerInfo
 } from '../types/interview';
 
 export interface InterviewResponse {
@@ -843,6 +846,173 @@ class InterviewService {
     const query = queryParams.toString();
     const response = await api.get<any>(`${this.baseUrl}/next-available-slots${query ? `?${query}` : ''}`);
     return response.data?.data ?? response.data;
+  }
+
+  async getWeeklyOverview(params: {
+    startDate: string;
+    endDate: string;
+    duration?: number;
+  }): Promise<WeeklyOverviewResponse> {
+    const queryParams = new URLSearchParams({
+      startDate: params.startDate,
+      endDate: params.endDate,
+      duration: (params.duration || 30).toString()
+    });
+
+    try {
+      const response = await api.get<any>(`${this.baseUrl}/weekly-overview?${queryParams}`);
+      const overview = response.data?.data ?? response.data;
+
+      if (overview?.range && Array.isArray(overview.days)) {
+        return overview;
+      }
+    } catch (error) {
+      // The admin dashboard can still render from existing interview APIs while
+      // the aggregate endpoint is deployed.
+    }
+
+    return this.buildWeeklyOverviewFallback(params.startDate, params.endDate, params.duration || 30);
+  }
+
+  private async buildWeeklyOverviewFallback(
+    startDate: string,
+    endDate: string,
+    duration: number
+  ): Promise<WeeklyOverviewResponse> {
+    const [interviews, nextSlots] = await Promise.all([
+      this.getCalendarInterviews(startDate, endDate).catch(() => []),
+      this.getNextAvailableSlots({ date: startDate, days: this.diffDays(startDate, endDate) + 1, duration }).catch(() => null)
+    ]);
+
+    const dates = this.getBusinessDates(startDate, endDate);
+    const days: WeeklyOverviewDay[] = dates.map(date => ({
+      date,
+      dayOfWeek: this.getDayName(date),
+      dayLabel: this.formatDayLabel(date),
+      scheduled: [],
+      available: []
+    }));
+
+    const interviewerMap = new Map<number, { info: InterviewerInfo; scheduledCount: number }>();
+
+    interviews.forEach(interview => {
+      const day = days.find(item => item.date === interview.scheduledDate);
+      if (!day) return;
+
+      const interviewer1: InterviewerInfo = {
+        id: interview.interviewerId,
+        name: interview.interviewerName || 'Entrevistador sin nombre',
+        role: 'ENTREVISTADOR'
+      };
+      const interviewer2 = interview.secondInterviewerId
+        ? {
+            id: interview.secondInterviewerId,
+            name: interview.secondInterviewerName || 'Segundo entrevistador',
+            role: 'ENTREVISTADOR'
+          }
+        : undefined;
+
+      day.scheduled.push({
+        id: interview.id,
+        time: interview.scheduledTime?.substring(0, 5) || '00:00',
+        endTime: this.addMinutes(interview.scheduledTime?.substring(0, 5) || '00:00', interview.duration || duration),
+        interviewer1,
+        interviewer2,
+        studentName: interview.studentName,
+        applicationId: interview.applicationId,
+        interviewType: interview.type,
+        mode: interview.mode,
+        status: interview.status
+      });
+
+      [interviewer1, interviewer2].forEach(interviewer => {
+        if (!interviewer) return;
+        const current = interviewerMap.get(interviewer.id) || { info: interviewer, scheduledCount: 0 };
+        current.scheduledCount += 1;
+        interviewerMap.set(interviewer.id, current);
+      });
+    });
+
+    nextSlots?.slotsByDate?.forEach(slotDay => {
+      const day = days.find(item => item.date === slotDay.date);
+      if (!day) return;
+      day.available = slotDay.slots.map(slot => ({
+        time: slot.time,
+        availableInterviewers: slot.availableInterviewers,
+        interviewerCount: slot.interviewerCount,
+        suggestedPair: slot.suggestedPair
+      }));
+    });
+
+    const availableSlotsCount = days.reduce((total, day) => total + day.available.filter(slot => slot.interviewerCount >= 2).length, 0);
+    const scheduledCount = interviews.filter(interview => interview.status === InterviewStatus.SCHEDULED || interview.status === InterviewStatus.CONFIRMED).length;
+    const completedCount = interviews.filter(interview => interview.status === InterviewStatus.COMPLETED).length;
+    const cancelledCount = interviews.filter(interview => interview.status === InterviewStatus.CANCELLED).length;
+
+    return {
+      range: {
+        startDate,
+        endDate,
+        totalDays: dates.length
+      },
+      summary: {
+        scheduledCount,
+        completedCount,
+        cancelledCount,
+        availableSlotsCount,
+        singleInterviewerSlotsCount: 0
+      },
+      interviewerLoad: Array.from(interviewerMap.values()).map(({ info, scheduledCount: count }) => {
+        const capacity = Math.max(10, availableSlotsCount + count);
+        return {
+          id: info.id,
+          name: info.name,
+          role: info.role,
+          scheduledCount: count,
+          capacity,
+          loadPercentage: Math.min(100, Math.round((count / capacity) * 100))
+        };
+      }),
+      days
+    };
+  }
+
+  private getBusinessDates(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    const cursor = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+
+    while (cursor <= end) {
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) {
+        dates.push(cursor.toISOString().split('T')[0]);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return dates;
+  }
+
+  private diffDays(startDate: string, endDate: string): number {
+    const start = new Date(`${startDate}T00:00:00`).getTime();
+    const end = new Date(`${endDate}T00:00:00`).getTime();
+    return Math.max(0, Math.round((end - start) / 86400000));
+  }
+
+  private formatDayLabel(date: string): string {
+    const formatter = new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric' });
+    return formatter.format(new Date(`${date}T00:00:00`)).replace('.', '');
+  }
+
+  private getDayName(date: string): string {
+    return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date(`${date}T00:00:00`)).toUpperCase();
+  }
+
+  private addMinutes(time: string, minutes: number): string {
+    const [hours = '0', rawMinutes = '0'] = time.split(':');
+    const date = new Date();
+    date.setHours(Number(hours), Number(rawMinutes) + minutes, 0, 0);
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   }
 
   async getInterviewerAvailability(
