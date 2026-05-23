@@ -56,6 +56,16 @@ interface BackendInterviewer {
   scheduleCount: number;
 }
 
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isPastScheduleDate = (date: string): boolean => Boolean(date) && date < getTodayDateString();
+
 const InterviewForm: React.FC<InterviewFormProps> = ({
   interview,
   mode,
@@ -253,6 +263,15 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       return;
     }
 
+    if (isPastScheduleDate(formData.scheduledDate)) {
+      setAvailableTimeSlots([]);
+      setErrors(prev => ({
+        ...prev,
+        scheduledDate: 'La fecha no puede ser anterior a hoy'
+      }));
+      return;
+    }
+
     // Verificar si ya hay una llamada en progreso
     if (loadingSlotsRef.current) {
       // Cancelar la llamada anterior si existe
@@ -359,6 +378,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   // Función para manejar selección de horario desde el calendario
   const handleTimeSlotSelect = (date: string, time: string) => {
+    if (isPastScheduleDate(date)) {
+      setErrors(prev => ({
+        ...prev,
+        scheduledDate: 'La fecha no puede ser anterior a hoy'
+      }));
+      return;
+    }
+
     setFormData(prev => ({ 
       ...prev, 
       scheduledDate: date, 
@@ -376,6 +403,18 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   // Función para manejar selección de fecha y hora desde DayScheduleSelector
   const handleDateTimeSelect = async (date: string, time: string) => {
+    if (isPastScheduleDate(date)) {
+      setFormData(prev => ({
+        ...prev,
+        scheduledDate: '',
+        scheduledTime: ''
+      }));
+      setErrors(prev => ({
+        ...prev,
+        scheduledDate: 'La fecha no puede ser anterior a hoy'
+      }));
+      return;
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -407,6 +446,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     interviewer2Name: string;
     interviewers: Array<{ id: number; name: string; role: string; subject?: string; scheduleCount?: number }>;
   }) => {
+    if (isPastScheduleDate(selection.date)) {
+      setErrors(prev => ({
+        ...prev,
+        scheduledDate: 'La fecha no puede ser anterior a hoy'
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       scheduledDate: selection.date,
@@ -513,14 +560,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       
       if (!formData.scheduledDate) {
         newErrors.scheduledDate = 'La fecha es obligatoria';
-      } else {
-        const selectedDate = new Date(formData.scheduledDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (selectedDate < today) {
-          newErrors.scheduledDate = 'La fecha no puede ser anterior a hoy';
-        }
+      } else if (isPastScheduleDate(formData.scheduledDate)) {
+        newErrors.scheduledDate = 'La fecha no puede ser anterior a hoy';
       }
 
       if (!formData.scheduledTime) {
@@ -583,6 +624,11 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   const validateTimeSlotConflicts = async (): Promise<boolean> => {
     if (!formData.scheduledDate || !formData.scheduledTime) {
       return true; // No se puede validar, pero otros validadores lo detectarán
+    }
+
+    if (isPastScheduleDate(formData.scheduledDate)) {
+      setConflictWarning('No se puede programar una entrevista en una fecha anterior a hoy.');
+      return false;
     }
 
     try {

@@ -45,6 +45,13 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
+const getDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
@@ -193,6 +200,10 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
   };
 
   const handleDateClick = (day: CalendarDay) => {
+    if (getDateString(day.date) < getDateString(new Date())) {
+      return;
+    }
+
     if (onCreateInterview && day.interviews.length === 0) {
       onCreateInterview(day.date, '09:00');
     }
@@ -297,6 +308,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
           ${day.isCurrentMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 text-gray-400'}
           ${day.isToday ? 'bg-blue-50 border-blue-200' : ''}
           ${hasConflicts ? 'bg-red-50 border-red-200' : ''}
+          ${getDateString(day.date) < getDateString(new Date()) ? 'cursor-not-allowed opacity-60 hover:bg-white' : ''}
         `}
       >
         {/* Número del día */}

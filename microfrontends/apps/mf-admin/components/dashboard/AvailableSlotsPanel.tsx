@@ -8,10 +8,18 @@ interface AvailableSlotsPanelProps {
   onSlotClick: (date: string, time: string, availableInterviewers: InterviewerInfo[]) => void;
 }
 
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const AvailableSlotsPanel: React.FC<AvailableSlotsPanelProps> = ({ days, onSlotClick }) => {
   const slots = days
     .flatMap(day => day.available.map(slot => ({ ...slot, date: day.date, dayLabel: day.dayLabel })))
-    .filter(slot => slot.interviewerCount >= 2)
+    .filter(slot => slot.interviewerCount >= 2 && slot.date >= getTodayDateString())
     .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
     .slice(0, 8);
 

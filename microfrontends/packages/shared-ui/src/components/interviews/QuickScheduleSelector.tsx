@@ -59,6 +59,16 @@ const formatDate = (date: string) => {
   });
 };
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isPastDate = (date: string) => date < getTodayDateString();
+
 const buildPairs = (interviewers: InterviewerInfo[]): SuggestedInterviewerPair[] => {
   const pairs: SuggestedInterviewerPair[] = [];
   for (let i = 0; i < interviewers.length; i += 1) {
@@ -98,11 +108,29 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
         });
 
         if (!isMounted) return;
-        setSlotsData(data);
+        const filteredSlotsByDate = (data.slotsByDate || []).filter(day => !isPastDate(day.date));
+        const firstAvailableDay = filteredSlotsByDate.find(day => day.slots.length > 0);
+        const firstAvailableSlot = firstAvailableDay?.slots[0];
+        const nextAvailable = data.nextAvailable && !isPastDate(data.nextAvailable.date)
+          ? data.nextAvailable
+          : firstAvailableDay && firstAvailableSlot
+            ? {
+                date: firstAvailableDay.date,
+                time: firstAvailableSlot.time,
+                dayOfWeek: firstAvailableDay.dayOfWeek,
+                interviewers: firstAvailableSlot.availableInterviewers
+              }
+            : null;
 
-        const nextDate = data.nextAvailable?.date;
+        setSlotsData({
+          ...data,
+          nextAvailable,
+          slotsByDate: filteredSlotsByDate
+        });
+
+        const nextDate = nextAvailable?.date;
         const nextIndex = nextDate
-          ? Math.max(0, data.slotsByDate.findIndex(day => day.date === nextDate))
+          ? Math.max(0, filteredSlotsByDate.findIndex(day => day.date === nextDate))
           : 0;
         setSelectedDayIndex(nextIndex);
       } catch (requestError: any) {
@@ -137,6 +165,11 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
   }, [slotsData]);
 
   const selectPair = (date: string, slot: NextAvailableSlotInfo, pair: SuggestedInterviewerPair) => {
+    if (isPastDate(date)) {
+      setError('No se puede agendar entrevistas en fechas anteriores a hoy.');
+      return;
+    }
+
     setSelectedDate(date);
     setSelectedSlot(slot);
     setSelectedPair(pair);

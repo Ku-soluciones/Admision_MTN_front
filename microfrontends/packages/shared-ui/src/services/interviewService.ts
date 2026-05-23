@@ -204,8 +204,24 @@ class InterviewService {
     return status === 'SCHEDULED' || status === 'CONFIRMED';
   }
 
+  private getTodayDateString(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = `${today.getMonth() + 1}`.padStart(2, '0');
+    const day = `${today.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private assertSchedulableDate(date?: string): void {
+    if (date && date < this.getTodayDateString()) {
+      throw new Error('No se puede agendar entrevistas en fechas anteriores al dia actual.');
+    }
+  }
+
   // CRUD básico
   async createInterview(request: CreateInterviewRequest): Promise<Interview> {
+    this.assertSchedulableDate(request.scheduledDate);
+
     // Asegurar que el status se establezca como SCHEDULED si no se especifica
     const requestWithStatus = {
       ...request,
@@ -384,6 +400,8 @@ class InterviewService {
   }
 
   async updateInterview(id: number, request: UpdateInterviewRequest): Promise<Interview> {
+    this.assertSchedulableDate(request.scheduledDate);
+
     const response = await api.put<InterviewResponse>(`${this.baseUrl}/${id}`, request);
     return this.mapInterviewResponse(response.data);
   }
@@ -437,6 +455,8 @@ class InterviewService {
   }
 
   async rescheduleInterview(id: number, newDate: string, newTime: string, reason: string): Promise<Interview> {
+    this.assertSchedulableDate(newDate);
+
     const response = await api.patch<any>(`${this.baseUrl}/${id}/reschedule`, {
       newDate,
       newTime,

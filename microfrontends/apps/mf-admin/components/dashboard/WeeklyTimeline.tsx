@@ -27,6 +27,14 @@ const TIME_SLOTS = [
   '15:00', '15:30', '16:00', '16:30', '17:00'
 ];
 
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const isInterviewVisible = (interview: WeeklyOverviewScheduledInterview, filterByInterviewer: number | null): boolean => (
   !filterByInterviewer ||
   interview.interviewer1.id === filterByInterviewer ||
@@ -163,7 +171,12 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                 <div className="flex h-14 items-center justify-end pr-2 text-xs font-semibold text-gray-500">{time}</div>
                 {days.map(day => {
                   const scheduled = day.scheduled.find(interview => interview.time === time && isInterviewVisible(interview, filterByInterviewer));
-                  const available = day.available.find(slot => slot.time === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)));
+                  const pastAvailable = day.date < getTodayDateString()
+                    ? day.available.find(slot => slot.time === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
+                    : undefined;
+                  const available = day.date >= getTodayDateString()
+                    ? day.available.find(slot => slot.time === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
+                    : undefined;
 
                   if (scheduled) {
                     const pair = [scheduled.interviewer1, scheduled.interviewer2].filter(Boolean) as InterviewerInfo[];
@@ -202,6 +215,18 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                         </div>
                         <p className="truncate">{available.interviewerCount} disponibles</p>
                       </button>
+                    );
+                  }
+
+                  if (pastAvailable) {
+                    return (
+                      <div
+                        key={`${day.date}-${time}`}
+                        className="flex h-14 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-100 px-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-400"
+                        title="Slot pasado no disponible para agendar"
+                      >
+                        Pasado
+                      </div>
                     );
                   }
 

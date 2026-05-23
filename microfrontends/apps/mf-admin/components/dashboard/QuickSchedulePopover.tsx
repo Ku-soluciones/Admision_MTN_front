@@ -48,6 +48,14 @@ const isPendingInterviewAssignment = (application: Application): boolean => (
   !FINAL_OR_ASSIGNED_STATUSES.has((application.status || '').toUpperCase())
 );
 
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   date,
   time,
@@ -65,9 +73,10 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   const [type, setType] = useState<InterviewType>(InterviewType.FAMILY);
   const [mode, setMode] = useState<InterviewMode>(InterviewMode.IN_PERSON);
   const [location, setLocation] = useState('');
+  const [dateError, setDateError] = useState<string | null>(date < getTodayDateString() ? 'No se puede agendar en fechas anteriores a hoy.' : null);
   const selectedPair = pairs[pairIndex];
   const selectedApplication = applications.find(application => application.id === Number(selectedApplicationId));
-  const canSubmit = Boolean(selectedPair && selectedApplication && !isSubmitting);
+  const canSubmit = Boolean(selectedPair && selectedApplication && !dateError && !isSubmitting);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +118,12 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedPair || !selectedApplication || !canSubmit) return;
+
+    if (date < getTodayDateString()) {
+      setDateError('No se puede agendar en fechas anteriores a hoy.');
+      return;
+    }
+
     onSchedule({
       date,
       time,
@@ -128,6 +143,7 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
           <div>
             <h3 className="text-lg font-bold text-gray-900">Agendar entrevista</h3>
             <p className="text-sm text-gray-500">{date} · {time}</p>
+            {dateError && <p className="mt-1 text-sm font-semibold text-red-600">{dateError}</p>}
           </div>
           <button
             type="button"

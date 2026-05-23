@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiActivity, FiCalendar, FiGrid, FiList, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
-import { InterviewStatus, WeeklyOverviewResponse } from '../../types/interview';
+import { InterviewStatus, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
@@ -30,18 +30,31 @@ const toDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const getTodayDateString = (): string => toDateString(new Date());
+
+const isPastDate = (date: string): boolean => date < getTodayDateString();
+
 const startOfWeek = (date: Date): Date => {
   const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   return addDays(date, diff);
 };
 
+const normalizeBusinessAnchor = (date: Date): Date => {
+  const day = date.getDay();
+  if (day === 6) return addDays(date, 2);
+  if (day === 0) return addDays(date, 1);
+  return date;
+};
+
 const getRangeForMode = (anchorDate: Date, viewMode: CommandCenterViewMode): { startDate: string; endDate: string } => {
+  const businessAnchor = normalizeBusinessAnchor(anchorDate);
+
   if (viewMode === 'day') {
-    return { startDate: toDateString(anchorDate), endDate: toDateString(anchorDate) };
+    return { startDate: toDateString(businessAnchor), endDate: toDateString(businessAnchor) };
   }
 
-  const start = startOfWeek(anchorDate);
+  const start = startOfWeek(businessAnchor);
   if (viewMode === 'week') {
     return { startDate: toDateString(start), endDate: toDateString(addDays(start, 4)) };
   }
@@ -153,6 +166,16 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
 
   const moveRange = (direction: number) => {
     setAnchorDate(current => addDays(current, getStepDays(viewMode) * direction));
+  };
+
+  const handleSlotClick = (date: string, time: string, availableInterviewers: InterviewerInfo[]) => {
+    if (isPastDate(date)) {
+      setError('No se puede agendar entrevistas en fechas anteriores a hoy.');
+      return;
+    }
+
+    setError(null);
+    setSelectedSlot({ date, time, availableInterviewers });
   };
 
   return (
@@ -267,7 +290,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             days={visibleOverview.days}
             viewMode={viewMode}
             filterByInterviewer={filterByInterviewer}
-            onSlotClick={(date, time, availableInterviewers) => setSelectedSlot({ date, time, availableInterviewers })}
+            onSlotClick={handleSlotClick}
             onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
           />
           <div className="grid gap-5 xl:grid-cols-[minmax(280px,360px)_1fr]">
@@ -278,7 +301,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             />
             <AvailableSlotsPanel
               days={visibleOverview.days}
-              onSlotClick={(date, time, availableInterviewers) => setSelectedSlot({ date, time, availableInterviewers })}
+              onSlotClick={handleSlotClick}
             />
           </div>
           <ScheduledPairsTable
