@@ -54,7 +54,6 @@ import EvaluationStatistics from '../components/admin/EvaluationStatistics';
 import EvaluationReports from '../components/admin/EvaluationReports';
 import { GuardianManagement, StaffManagement } from '../components/users';
 import { InterviewManagement } from '../components/interviews';
-import SharedCalendar from '../components/admin/SharedCalendar';
 import ApplicantMetricsView from '../components/admin/ApplicantMetricsView';
 import { Application, applicationService } from '../services/applicationService';
 import CoordinatorDashboardModal from '../components/modals/CoordinatorDashboardModal';
@@ -68,9 +67,9 @@ import ApplicationDecisionModal from '../components/admin/ApplicationDecisionMod
 import InterviewForm from '../components/interviews/InterviewForm';
 import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
+import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 
 const sections = [
-  { key: 'dashboard', label: 'Dashboard General' },
   { key: 'metricas', label: 'Métricas de Postulantes' },
   { key: 'tablas', label: 'Tablas de Datos' },
   { key: 'postulaciones', label: 'Gestión de Postulaciones' },
@@ -82,7 +81,7 @@ const sections = [
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState('metricas');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -480,114 +479,9 @@ Esta acción:
       case 'dashboard':
         return (
           <div className="space-y-6">
-            {/* Welcome Card */}
-            <Card className="p-6 bg-gradient-to-r from-azul-monte-tabor to-blue-600 text-white">
-              <h2 className="text-2xl font-bold mb-2">
-                Bienvenido/a, {user?.firstName} {user?.lastName}
-              </h2>
-              <p className="text-blue-100 mb-4">
-                Panel de administración del sistema de admisión
-              </p>
-              <div className="flex gap-4">
-                <Button 
-                  variant="outline" 
-                  className="text-white border-white hover:bg-white hover:text-azul-monte-tabor"
-                  onClick={() => setActiveSection('postulaciones')}
-                >
-                  Ver Postulaciones
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="text-white border-white hover:bg-white hover:text-azul-monte-tabor"
-                  onClick={() => setActiveSection('evaluaciones')}
-                >
-                  Gestionar Evaluaciones
-                </Button>
-              </div>
-            </Card>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Card
-                className="p-4 text-center cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setStatusFilter('all');
-                  setActiveSection('postulaciones');
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setStatusFilter('all');
-                    setActiveSection('postulaciones');
-                  }
-                }}
-                aria-label={`Ver todas las postulaciones. Total: ${applications.length}`}
-              >
-                <FileTextIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" aria-hidden="true" />
-                <p className="text-2xl font-bold text-blue-600">
-                  {applications.length}
-                </p>
-                <p className="text-sm text-gris-piedra">Total Postulaciones</p>
-              </Card>
-
-              <Card
-                className="p-4 text-center cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setStatusFilter('PENDING');
-                  setActiveSection('postulaciones');
-                }}
-              >
-                <ClockIcon className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-yellow-600">
-                  {applications.filter(app => app.status === 'PENDING').length}
-                </p>
-                <p className="text-sm text-gris-piedra">Pendientes</p>
-              </Card>
-
-              <Card
-                className="p-4 text-center cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setStatusFilter('UNDER_REVIEW');
-                  setActiveSection('postulaciones');
-                }}
-              >
-                <FiBookOpen className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-blue-500">
-                  {applications.filter(app => app.status === 'UNDER_REVIEW').length}
-                </p>
-                <p className="text-sm text-gris-piedra">En Revisión</p>
-              </Card>
-
-              <Card
-                className="p-4 text-center cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setStatusFilter('APPROVED');
-                  setActiveSection('postulaciones');
-                }}
-              >
-                <CheckCircleIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-600">
-                  {applications.filter(app => app.status === 'APPROVED').length}
-                </p>
-                <p className="text-sm text-gris-piedra">Aprobadas</p>
-              </Card>
-
-              <Card
-                className="p-4 text-center cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setStatusFilter('REJECTED');
-                  setActiveSection('postulaciones');
-                }}
-              >
-                <FiXCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-red-600">
-                  {applications.filter(app => app.status === 'REJECTED').length}
-                </p>
-                <p className="text-sm text-gris-piedra">Rechazadas</p>
-              </Card>
-            </div>
+            <InterviewCommandCenter
+              onNavigateToInterviews={() => setActiveSection('entrevistas')}
+            />
           </div>
         );
 
@@ -789,12 +683,8 @@ Esta acción:
       case 'calendario':
         return (
           <div className="space-y-6">
-            <SharedCalendar
-              onCreateInterview={(date, time) => {
-                // Cambiar a la sección de entrevistas y abrir formulario de creación
-                setActiveSection('entrevistas');
-                // Aquí podrías pasar los datos de fecha/hora al componente
-              }}
+            <InterviewCommandCenter
+              onNavigateToInterviews={() => setActiveSection('entrevistas')}
             />
           </div>
         );
