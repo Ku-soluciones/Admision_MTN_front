@@ -858,7 +858,7 @@ const ApplicationForm: React.FC = () => {
                             studentEmail: data.studentEmail,
                             studentAddress: data.studentAddress,
                             grade: data.grade,
-                            schoolApplied: data.schoolApplied,
+                            ...(data.schoolApplied ? { schoolApplied: data.schoolApplied } : {}),
                             currentSchool: data.currentSchool,
                             additionalNotes: data.additionalNotes,
                             admissionPreference: data.admissionPreference,
