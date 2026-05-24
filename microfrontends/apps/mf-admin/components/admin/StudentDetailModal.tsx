@@ -116,7 +116,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
     const [selectedSchool, setSelectedSchool] = useState<string>('');
     const [savingSchool, setSavingSchool] = useState(false);
-    const [isEditingSchool, setIsEditingSchool] = useState<boolean>(false);
     const { addNotification } = useNotifications();
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
@@ -126,7 +125,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             loadInterviews();
             loadEvaluations();
             setSelectedSchool(postulante.colegioDestino || '');
-            setIsEditingSchool(!postulante.colegioDestino);
         }
     }, [postulante, isOpen]);
 
@@ -1326,30 +1324,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     };
 
     const handleSaveSchool = async () => {
-        if (!postulante || !selectedSchool || !fullApplication) return;
+        if (!postulante || !selectedSchool) return;
         setSavingSchool(true);
         try {
-            const payload = {
-                student: {
-                    firstName: fullApplication.student.firstName,
-                    paternalLastName: fullApplication.student.paternalLastName || fullApplication.student.lastName || '',
-                    maternalLastName: fullApplication.student.maternalLastName || '',
-                    rut: fullApplication.student.rut,
-                    birthDate: fullApplication.student.birthDate,
-                    email: fullApplication.student.email,
-                    address: fullApplication.student.address,
-                    gradeApplied: fullApplication.student.gradeApplied || fullApplication.student.gradeApplying || fullApplication.student.grade,
-                    currentSchool: fullApplication.student.currentSchool,
-                    additionalNotes: fullApplication.student.additionalNotes,
-                },
-                father: fullApplication.father,
-                mother: fullApplication.mother,
-                supporter: fullApplication.supporter,
-                guardian: fullApplication.guardian,
-                schoolApplied: selectedSchool,
-            };
-            await applicationService.updateApplication(postulante.id, payload);
-            setIsEditingSchool(false);
+            await applicationService.updateApplication(postulante.id, { schoolApplied: selectedSchool });
             addNotification({ type: 'success', message: 'Colegio actualizado correctamente' });
         } catch (error: any) {
             addNotification({ type: 'error', message: error.message || 'Error al actualizar el colegio' });
@@ -1396,49 +1374,26 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Colegio al que postula el alumno
+                        Seleccionar colegio al que postula el alumno
                     </label>
-                    {isEditingSchool ? (
-                        <div className="flex gap-3 items-center">
-                            <select
-                                value={selectedSchool}
-                                onChange={(e) => setSelectedSchool(e.target.value)}
-                                className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Seleccione un colegio...</option>
-                                <option value="MONTE_TABOR">Monte Tabor</option>
-                                <option value="NAZARET">Nazaret</option>
-                            </select>
-                            <button
-                                onClick={handleSaveSchool}
-                                disabled={savingSchool || !selectedSchool || !fullApplication}
-                                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {savingSchool ? 'Guardando...' : 'Guardar'}
-                            </button>
-                            {selectedSchool && (
-                                <button
-                                    onClick={() => setIsEditingSchool(false)}
-                                    className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800"
-                                >
-                                    Cancelar
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <span className="flex-1 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-900 font-medium">
-                                {selectedSchool === 'MONTE_TABOR' ? 'Monte Tabor' : selectedSchool === 'NAZARET' ? 'Nazaret' : 'Pendiente'}
-                            </span>
-                            <button
-                                onClick={() => setIsEditingSchool(true)}
-                                className="p-2 text-blue-600 hover:text-blue-800"
-                                title="Editar colegio"
-                            >
-                                <FiEdit className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex gap-3 items-center">
+                        <select
+                            value={selectedSchool}
+                            onChange={(e) => setSelectedSchool(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Seleccione un colegio...</option>
+                            <option value="MONTE_TABOR">Monte Tabor</option>
+                            <option value="NAZARET">Nazaret</option>
+                        </select>
+                        <button
+                            onClick={handleSaveSchool}
+                            disabled={savingSchool || !selectedSchool}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {savingSchool ? 'Guardando...' : 'Guardar'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg">
