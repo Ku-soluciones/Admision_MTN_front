@@ -114,6 +114,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [sendingReminders, setSendingReminders] = useState(false);
     const [viewingDocument, setViewingDocument] = useState<any>(null);
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+    const [selectedSchool, setSelectedSchool] = useState<string>('');
+    const [savingSchool, setSavingSchool] = useState(false);
     const { addNotification } = useNotifications();
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
@@ -122,6 +124,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             loadFullApplication();
             loadInterviews();
             loadEvaluations();
+            setSelectedSchool(postulante.colegioDestino || '');
         }
     }, [postulante, isOpen]);
 
@@ -1320,6 +1323,19 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         return !isAcademicDocument(doc);
     };
 
+    const handleSaveSchool = async () => {
+        if (!postulante || !selectedSchool) return;
+        setSavingSchool(true);
+        try {
+            await applicationService.updateApplication(postulante.id, { schoolApplied: selectedSchool });
+            addNotification({ type: 'success', message: 'Colegio actualizado correctamente' });
+        } catch (error: any) {
+            addNotification({ type: 'error', message: error.message || 'Error al actualizar el colegio' });
+        } finally {
+            setSavingSchool(false);
+        }
+    };
+
     const renderDocumentosTab = () => {
 
         const hasDocuments = fullApplication?.documents && fullApplication.documents.length > 0;
@@ -1354,6 +1370,30 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     <Badge variant={postulante.documentosCompletos ? 'green' : 'red'} size="sm">
                         {postulante.documentosCompletos ? 'Completos' : 'Incompletos'}
                     </Badge>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Seleccionar colegio al que postula el alumno
+                    </label>
+                    <div className="flex gap-3 items-center">
+                        <select
+                            value={selectedSchool}
+                            onChange={(e) => setSelectedSchool(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Seleccione un colegio...</option>
+                            <option value="MONTE_TABOR">Monte Tabor</option>
+                            <option value="NAZARET">Nazaret</option>
+                        </select>
+                        <button
+                            onClick={handleSaveSchool}
+                            disabled={savingSchool || !selectedSchool}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {savingSchool ? 'Guardando...' : 'Guardar'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg">
