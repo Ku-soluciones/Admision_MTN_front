@@ -50,6 +50,7 @@ const validationConfig = {
     rut: { required: true, minLength: 9 },
     birthDate: { required: true },
     grade: { required: true },
+    schoolApplied: { required: true },
     admissionPreference: { required: true },
     studentEmail: { email: true },
     studentAddress: { required: true, minLength: 5 },
@@ -703,7 +704,7 @@ const ApplicationForm: React.FC = () => {
 
             // Step 2: Postulación
             case 2:
-                if (!data.grade || !data.applicationYear || !data.admissionPreference) {
+                if (!data.grade || !data.schoolApplied || !data.applicationYear || !data.admissionPreference) {
                     return false;
                 }
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
@@ -1080,6 +1081,7 @@ const ApplicationForm: React.FC = () => {
             case 2:
                 if (!data.grade) missing.push('Nivel al que postula');
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) missing.push('Colegio de Procedencia');
+                if (!data.schoolApplied) missing.push('Colegio al que postula');
                 if (!data.applicationYear) missing.push('Año al que postula');
                 if (!data.admissionPreference) missing.push('Tipo de Relación Familiar');
                 break;
@@ -1671,6 +1673,17 @@ const ApplicationForm: React.FC = () => {
                                 </p>
                             </div>
                         )}
+
+                        <Select
+                            id="schoolApplied"
+                            label="Colegio al que postula"
+                            options={schoolOptions}
+                            isRequired
+                            value={data.schoolApplied || ''}
+                            onChange={(e) => updateField('schoolApplied', e.target.value)}
+                            onBlur={() => touchField('schoolApplied')}
+                            error={errors.schoolApplied}
+                        />
 
                         <Input
                             id="applicationYear"
