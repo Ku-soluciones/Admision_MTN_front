@@ -593,9 +593,9 @@ export const InterviewUtils = {
 // Constantes para validación
 export const INTERVIEW_VALIDATION = {
   DURATION: {
-    MIN: 15,
-    MAX: 180,
-    DEFAULT: 30
+    MIN: 60,
+    MAX: 60,
+    DEFAULT: 60
   },
   NOTES: {
     MAX_LENGTH: 1000

@@ -1171,51 +1171,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 Duración (minutos) *
               </label>
               <div className="flex items-center space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newValue = Math.max(INTERVIEW_VALIDATION.DURATION.MIN, formData.duration - 15);
-                    handleInputChange('duration', newValue);
-                  }}
-                  disabled={isViewMode || isCompleteMode || formData.duration <= INTERVIEW_VALIDATION.DURATION.MIN}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors ${
-                    isViewMode || isCompleteMode || formData.duration <= INTERVIEW_VALIDATION.DURATION.MIN 
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
-                </button>
-                
-                <div className={`flex items-center justify-center min-w-0 px-4 py-2 border rounded-md font-medium ${
-                  errors.duration ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-300 bg-gray-50 text-gray-900'
-                }`}>
+                <div className="flex items-center justify-center min-w-0 px-4 py-2 border rounded-md font-medium border-gray-300 bg-gray-50 text-gray-900">
                   {formData.duration} min
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newValue = Math.min(INTERVIEW_VALIDATION.DURATION.MAX, formData.duration + 15);
-                    handleInputChange('duration', newValue);
-                  }}
-                  disabled={isViewMode || isCompleteMode || formData.duration >= INTERVIEW_VALIDATION.DURATION.MAX}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors ${
-                    isViewMode || isCompleteMode || formData.duration >= INTERVIEW_VALIDATION.DURATION.MAX 
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
+                <span className="text-sm text-gray-600">(Fijo)</span>
               </div>
-              
+
               <p className="mt-1 text-xs text-gray-500">
-                Use los botones + y - para ajustar la duración en incrementos de 15 minutos
+                La duración de las entrevistas es de 60 minutos
               </p>
               
               {errors.duration && (
