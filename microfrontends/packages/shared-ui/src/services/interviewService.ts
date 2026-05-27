@@ -234,6 +234,36 @@ class InterviewService {
     return this.mapInterviewResponse(response.data);
   }
 
+  // Enviar invitación con botones de confirmación (patrón pasarela)
+  async sendInterviewInvitation(id: number, bffBaseUrl?: string): Promise<{ success: boolean; message: string; data?: Interview }> {
+    try {
+      const headers: Record<string, string> = {};
+      if (bffBaseUrl) {
+        headers['X-Base-Url'] = bffBaseUrl;
+      }
+      
+      const response = await api.post<any>(`${this.baseUrl}/${id}/send-invitation`, {}, { headers });
+      
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: response.data.message || 'Invitación enviada',
+          data: response.data.data ? this.mapBackendResponse(response.data.data) : undefined
+        };
+      }
+      
+      return {
+        success: false,
+        message: response.data?.message || 'Error enviando invitación'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error enviando invitación con confirmación'
+      };
+    }
+  }
+
   async getInterviewById(id: number): Promise<Interview> {
     const response = await api.get<InterviewResponse>(`${this.baseUrl}/${id}`);
     return this.mapInterviewResponse(response.data);
