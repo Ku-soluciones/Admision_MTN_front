@@ -537,16 +537,72 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
             await Promise.all(savePromises);
 
-            // STEP 2: Now send the email notification
-            // IMPORTANTE: Solo enviar al backend los documentos REVISADOS en esta sesión
-            const response = await institutionalEmailService.sendDocumentReviewEmail(
-                postulante.id,
-                {
-                    approvedDocuments: approvedDocsNow.map(doc => doc.fileName || doc.name || 'Documento'),
-                    rejectedDocuments: rejectedDocsNow.map(doc => doc.fileName || doc.name || 'Documento'),
-                    allApproved
+            // STEP 2: Send email notifications
+            let response;
+            
+            if (allApproved) {
+                // Todos aprobados: enviar email resumen con botones de confirmación
+                const upcomingInterview = interviews.find(i => i.status === 'SCHEDULED' || i.status === 'PENDING');
+                
+                if (upcomingInterview) {
+                    // Generar URLs pasarela (apuntan al BFF)
+                    const bffBaseUrl = window.location.origin.replace('admin', 'api'); // Ajustar según tu dominio
+                    const confirmUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=confirm`;
+                    const rejectUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=reject`;
+                    
+                    response = await institutionalEmailService.sendDocumentAllApprovedEmail(
+                        postulante.id,
+                        {
+                            totalDocuments,
+                            studentName: fullApplication.student?.firstName,
+                            interviewDate: upcomingInterview.scheduledDate,
+                            interviewTime: upcomingInterview.scheduledTime,
+                            interviewType: upcomingInterview.interviewType,
+                            interviewLocation: upcomingInterview.location,
+                            confirmUrl,
+                            rejectUrl
+                        }
+                    );
+                } else {
+                    // No hay entrevista programada, enviar notificación simple
+                    response = await institutionalEmailService.sendDocumentReviewEmail(
+                        postulante.id,
+                        {
+                            approvedDocuments: approvedDocsNow.map(doc => doc.fileName || doc.name || 'Documento'),
+                            rejectedDocuments: [],
+                            allApproved: true
+                        }
+                    );
                 }
-            );
+            } else {
+                // Hay rechazados: enviar email individual por cada documento rechazado
+                // Primero enviar emails por rechazados
+                for (const doc of rejectedDocsNow) {
+                    await institutionalEmailService.sendDocumentRejectedEmail(
+                        postulante.id,
+                        {
+                            documentName: doc.fileName || doc.name || 'Documento',
+                            rejectionReason: doc.rejectionReason || 'Documento no cumple con los requisitos',
+                            studentName: fullApplication.student?.firstName
+                        }
+                    );
+                }
+                
+                // Luego enviar email de revisión general si hay aprobados también
+                if (approvedDocsNow.length > 0) {
+                    response = await institutionalEmailService.sendDocumentReviewEmail(
+                        postulante.id,
+                        {
+                            approvedDocuments: approvedDocsNow.map(doc => doc.fileName || doc.name || 'Documento'),
+                            rejectedDocuments: rejectedDocsNow.map(doc => doc.fileName || doc.name || 'Documento'),
+                            allApproved: false
+                        }
+                    );
+                } else {
+                    // Solo rechazados, ya enviamos emails individuales
+                    response = { success: true, message: 'Notificaciones enviadas' };
+                }
+            }
 
 
             if (response.success) {

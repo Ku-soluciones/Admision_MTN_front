@@ -87,6 +87,55 @@ class InstitutionalEmailService {
   }
 
   /**
+   * Enviar email de documento rechazado (individual por documento)
+   */
+  async sendDocumentRejectedEmail(
+    applicationId: number,
+    data: {
+      documentName: string;
+      rejectionReason: string;
+      studentName?: string;
+    }
+  ): Promise<EmailResponse> {
+    try {
+      const response = await api.post(`${this.baseUrl}/document-rejected/${applicationId}`, data);
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error enviando notificación de documento rechazado'
+      };
+    }
+  }
+
+  /**
+   * Enviar email de todos los documentos aprobados (con botones de confirmación)
+   */
+  async sendDocumentAllApprovedEmail(
+    applicationId: number,
+    data: {
+      totalDocuments: number;
+      studentName?: string;
+      interviewDate?: string;
+      interviewTime?: string;
+      interviewType?: string;
+      interviewLocation?: string;
+      confirmUrl?: string;
+      rejectUrl?: string;
+    }
+  ): Promise<EmailResponse> {
+    try {
+      const response = await api.post(`${this.baseUrl}/document-all-approved/${applicationId}`, data);
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error enviando notificación de documentos aprobados'
+      };
+    }
+  }
+
+  /**
    * Enviar resultado de admisión
    */
   async sendAdmissionResultEmail(applicationId: number, data: { result: string; message?: string }): Promise<EmailResponse> {

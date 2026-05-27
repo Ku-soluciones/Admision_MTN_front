@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ApoderadoLogin from './pages/ApoderadoLogin';
 import FamilyDashboard from './pages/FamilyDashboard';
+import InterviewConfirmationResult from './pages/InterviewConfirmationResult';
 import ProtectedApoderadoRoute from './components/auth/ProtectedApoderadoRoute';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
@@ -37,6 +38,7 @@ function App() {
 
         <Route path="/" element={<Navigate to="/apoderado/login" replace />} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
+        <Route path="/interview/confirmation-result" element={<InterviewConfirmationResult />} />
         <Route path="/dashboard-apoderado" element={<ProtectedApoderadoRoute><FamilyDashboard /></ProtectedApoderadoRoute>} />
         <Route path="/familia" element={<ProtectedApoderadoRoute><FamilyDashboard /></ProtectedApoderadoRoute>} />
         {legacyRedirects}
