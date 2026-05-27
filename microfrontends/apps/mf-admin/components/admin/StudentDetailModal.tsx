@@ -550,11 +550,17 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     const confirmUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=confirm`;
                     const rejectUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=reject`;
                     
+                    // Construir parentNames desde postulante
+                    const parentNames = [postulante.nombrePadre, postulante.nombreMadre]
+                        .filter(n => n && n.trim())
+                        .join(' y ') || postulante.nombreContactoPrincipal || 'Apoderados';
+                    
                     response = await institutionalEmailService.sendDocumentAllApprovedEmail(
                         postulante.id,
                         {
                             totalDocuments,
                             studentName: fullApplication.student?.firstName,
+                            parentNames,
                             interviewDate: upcomingInterview.scheduledDate,
                             interviewTime: upcomingInterview.scheduledTime,
                             interviewType: upcomingInterview.interviewType,
@@ -577,13 +583,19 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             } else {
                 // Hay rechazados: enviar email individual por cada documento rechazado
                 // Primero enviar emails por rechazados
+                // Construir parentNames desde postulante
+                const parentNamesRejected = [postulante.nombrePadre, postulante.nombreMadre]
+                    .filter(n => n && n.trim())
+                    .join(' y ') || postulante.nombreContactoPrincipal || 'Apoderados';
+                
                 for (const doc of rejectedDocsNow) {
                     await institutionalEmailService.sendDocumentRejectedEmail(
                         postulante.id,
                         {
                             documentName: doc.fileName || doc.name || 'Documento',
                             rejectionReason: doc.rejectionReason || 'Documento no cumple con los requisitos',
-                            studentName: fullApplication.student?.firstName
+                            studentName: fullApplication.student?.firstName,
+                            parentNames: parentNamesRejected
                         }
                     );
                 }

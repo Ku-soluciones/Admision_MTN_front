@@ -95,6 +95,7 @@ class InstitutionalEmailService {
       documentName: string;
       rejectionReason: string;
       studentName?: string;
+      parentNames?: string;
     }
   ): Promise<EmailResponse> {
     try {
@@ -116,6 +117,7 @@ class InstitutionalEmailService {
     data: {
       totalDocuments: number;
       studentName?: string;
+      parentNames?: string;
       interviewDate?: string;
       interviewTime?: string;
       interviewType?: string;
