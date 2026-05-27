@@ -231,7 +231,13 @@ class InterviewService {
     
     const response = await api.post<InterviewResponse>(this.baseUrl, requestWithStatus);
     
-    return this.mapInterviewResponse(response.data);
+    // Backend retorna { success: true, data: {...interview} } o el interview directo
+    const interviewData = response.data?.data ?? response.data;
+    if (!interviewData || typeof interviewData !== 'object') {
+      throw new Error('Respuesta inválida del servidor al crear entrevista');
+    }
+    
+    return this.mapBackendResponse(interviewData);
   }
 
   // Enviar invitación con botones de confirmación (patrón pasarela)
