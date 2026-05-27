@@ -282,9 +282,10 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         
         // Enviar invitación con botones de confirmación (patrón pasarela)
         try {
-          const bffBaseUrl = window.location.hostname.includes('railway')
+          // Usar nginx como pasarela (no BFF directo) para consistencia de CORS y rutas
+          const bffBaseUrl = window.location.hostname.includes('staging') || window.location.hostname.includes('dev')
             ? 'https://admitia-nginx-staging.up.railway.app'
-            : 'https://admitia-bff-production.up.railway.app';
+            : 'https://admitia-nginx-production.up.railway.app';
           
           await interviewService.sendInterviewInvitation(interview.id, bffBaseUrl);
           showToast('Entrevista programada e invitación enviada al apoderado', 'success');
