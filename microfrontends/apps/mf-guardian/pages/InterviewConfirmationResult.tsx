@@ -21,6 +21,9 @@ export default function InterviewConfirmationResult() {
     const interviewId = searchParams.get('interviewId');
     const message = searchParams.get('message') || '';
 
+    // Debug logging
+    console.log('InterviewConfirmationResult loaded:', { status, interviewId, message, allParams: Object.fromEntries(searchParams) });
+
     setState({
       status,
       interviewId,
@@ -124,10 +127,10 @@ export default function InterviewConfirmationResult() {
               <AlertTriangle className="w-10 h-10 text-gray-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Estado Desconocido
+              Estado: {state.status ?? 'null'}
             </h1>
             <p className="text-gray-600">
-              No se pudo determinar el resultado de la operación.
+              Estado no reconocido. Debug: status={state.status}, interviewId={state.interviewId}
             </p>
           </div>
         );
