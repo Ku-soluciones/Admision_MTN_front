@@ -278,8 +278,20 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           return;
         }
         
-        await interviewService.createInterview(createData);
-        showToast('Entrevista programada exitosamente con estado AGENDADA', 'success');
+        const interview = await interviewService.createInterview(createData);
+        
+        // Enviar invitación con botones de confirmación (patrón pasarela)
+        try {
+          const bffBaseUrl = window.location.hostname.includes('railway')
+            ? 'https://admitia-nginx-staging.up.railway.app'
+            : 'https://admitia-bff-production.up.railway.app';
+          
+          await interviewService.sendInterviewInvitation(interview.id, bffBaseUrl);
+          showToast('Entrevista programada e invitación enviada al apoderado', 'success');
+        } catch (emailError: any) {
+          // Si falla el email, la entrevista ya está creada - mostrar warning
+          showToast(`Entrevista creada pero error enviando invitación: ${emailError.message || 'Error desconocido'}`, 'warning');
+        }
       } else if (formMode === InterviewFormMode.EDIT && selectedInterview) {
         await interviewService.updateInterview(selectedInterview.id, data as UpdateInterviewRequest);
         showToast('Entrevista actualizada exitosamente', 'success');
