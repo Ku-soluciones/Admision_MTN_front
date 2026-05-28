@@ -62,6 +62,7 @@ import { useAuth } from '../context/AuthContext';
 import ApplicationsTable from '../components/admin/ApplicationsTable';
 import SimpleToast from '../components/ui/SimpleToast';
 import AdminDataTables from '../components/admin/AdminDataTables';
+import EmailTemplateManager from '../components/admin/EmailTemplateManager';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
 import InterviewForm from '../components/interviews/InterviewForm';
@@ -71,12 +72,12 @@ import InterviewCommandCenter from '../components/dashboard/InterviewCommandCent
 
 const sections = [
   { key: 'metricas', label: 'Métricas de Postulantes' },
-  { key: 'tablas', label: 'Tablas de Datos' },
   { key: 'postulaciones', label: 'Gestión de Postulaciones' },
   { key: 'evaluaciones', label: 'Gestión de Evaluaciones' },
   { key: 'entrevistas', label: 'Gestión de Entrevistas' },
   { key: 'calendario', label: 'Calendario Global' },
   { key: 'usuarios', label: 'Gestión de Usuarios' },
+  { key: 'configuracion', label: 'Configuración' },
 ];
 
 const AdminDashboard: React.FC = () => {
@@ -469,10 +470,10 @@ Esta acción:
           </div>
         );
 
-      case 'tablas':
+      case 'configuracion':
         return (
           <div className="space-y-6">
-            <AdminDataTables />
+            <EmailTemplateManager />
           </div>
         );
 
