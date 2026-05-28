@@ -294,7 +294,7 @@ const AdminDashboard: React.FC = () => {
       // Datos académicos
       cursoPostulado: app.student.gradeApplied,
       colegioActual: app.student.currentSchool,
-      colegioDestino: (app.student.targetSchool || 'MONTE_TABOR'),
+      colegioDestino: app.student.targetSchool || null,
       añoAcademico: '2025',
       
       // Estado de postulación

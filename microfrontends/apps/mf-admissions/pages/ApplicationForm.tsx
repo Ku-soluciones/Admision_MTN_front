@@ -1081,7 +1081,6 @@ const ApplicationForm: React.FC = () => {
             case 2:
                 if (!data.grade) missing.push('Nivel al que postula');
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) missing.push('Colegio de Procedencia');
-                if (!data.schoolApplied) missing.push('Colegio al que postula');
                 if (!data.applicationYear) missing.push('Año al que postula');
                 if (!data.admissionPreference) missing.push('Tipo de Relación Familiar');
                 break;
@@ -1673,17 +1672,6 @@ const ApplicationForm: React.FC = () => {
                                 </p>
                             </div>
                         )}
-
-                        <Select
-                            id="schoolApplied"
-                            label="Colegio al que postula"
-                            options={schoolOptions}
-                            isRequired
-                            value={data.schoolApplied || ''}
-                            onChange={(e) => updateField('schoolApplied', e.target.value)}
-                            onBlur={() => touchField('schoolApplied')}
-                            error={errors.schoolApplied}
-                        />
 
                         <Input
                             id="applicationYear"

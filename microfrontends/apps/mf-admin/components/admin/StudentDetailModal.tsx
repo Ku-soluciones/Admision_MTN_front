@@ -39,7 +39,7 @@ interface Postulante {
     direccion: string;
     cursoPostulado: string;
     colegioActual?: string;
-    colegioDestino: 'MONTE_TABOR' | 'NAZARET';
+    colegioDestino: 'MONTE_TABOR' | 'NAZARET' | null;
     añoAcademico: string;
     estadoPostulacion: string;
     fechaPostulacion: string;
@@ -114,11 +114,16 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [sendingReminders, setSendingReminders] = useState(false);
     const [viewingDocument, setViewingDocument] = useState<any>(null);
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+    const [selectedSchool, setSelectedSchool] = useState<string>('');
+    const [isEditingSchool, setIsEditingSchool] = useState(false);
+    const [savingSchool, setSavingSchool] = useState(false);
     const { addNotification } = useNotifications();
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
         if (postulante && isOpen) {
+            setSelectedSchool(postulante.colegioDestino || '');
+            setIsEditingSchool(false);
             loadFullApplication();
             loadInterviews();
             loadEvaluations();
@@ -410,6 +415,31 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         }
 
         return null;
+    };
+
+    const handleSaveSchool = async (school: string) => {
+        if (!postulante || !school) return;
+        setSavingSchool(true);
+        try {
+            await applicationService.updateApplication(postulante.id, {
+                student: { targetSchool: school }
+            });
+            setSelectedSchool(school);
+            setIsEditingSchool(false);
+            addNotification({
+                type: 'success',
+                title: 'Colegio asignado',
+                message: `Colegio destino actualizado correctamente`
+            });
+        } catch (error) {
+            addNotification({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo guardar el colegio destino'
+            });
+        } finally {
+            setSavingSchool(false);
+        }
     };
 
     const handleSendDocumentNotification = async () => {
@@ -865,9 +895,13 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Colegio Destino:</span>
-                            <Badge variant="green" size="sm">
-                                {postulante.colegioDestino === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
-                            </Badge>
+                            {selectedSchool ? (
+                                <Badge variant="green" size="sm">
+                                    {selectedSchool === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
+                                </Badge>
+                            ) : (
+                                <Badge variant="warning" size="sm">Pendiente</Badge>
+                            )}
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Colegio Actual:</span>
@@ -1424,6 +1458,38 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </Badge>
                 </div>
 
+                {/* Selector de colegio destino */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-900">Colegio destino del estudiante</span>
+                        {selectedSchool && !isEditingSchool && (
+                            <button
+                                onClick={() => setIsEditingSchool(true)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Editar colegio destino"
+                            >
+                                <FiEdit className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                    {selectedSchool && !isEditingSchool ? (
+                        <div className="bg-gray-100 text-gray-500 px-3 py-2 rounded-md text-sm font-medium">
+                            {selectedSchool === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
+                        </div>
+                    ) : (
+                        <select
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={isEditingSchool ? selectedSchool : ''}
+                            onChange={(e) => { if (e.target.value) handleSaveSchool(e.target.value); }}
+                            disabled={savingSchool}
+                        >
+                            <option value="">Seleccione el colegio al que postula...</option>
+                            <option value="MONTE_TABOR">Monte Tabor</option>
+                            <option value="NAZARET">Nazaret</option>
+                        </select>
+                    )}
+                </div>
+
                 <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-3">
                         <FiInfo className="w-5 h-5 text-blue-500" />
@@ -1610,11 +1676,17 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                 </div>
                             )}
 
+                            {!selectedSchool && (
+                                <p className="text-sm text-amber-600 mb-2 flex items-center gap-1">
+                                    <FiAlertCircle className="w-4 h-4" />
+                                    Debes seleccionar el colegio destino antes de enviar la notificación.
+                                </p>
+                            )}
                             <Button
                                 variant="primary"
                                 size="lg"
                                 onClick={handleSendDocumentNotification}
-                                disabled={sendingNotification}
+                                disabled={sendingNotification || !selectedSchool}
                                 isLoading={sendingNotification}
                                 loadingText="Enviando notificación..."
                                 className="w-full"
@@ -1644,11 +1716,17 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             </div>
                         </div>
 
+                        {!selectedSchool && (
+                            <p className="text-sm text-amber-600 mb-2 flex items-center gap-1">
+                                <FiAlertCircle className="w-4 h-4" />
+                                Debes seleccionar el colegio destino antes de enviar la notificación.
+                            </p>
+                        )}
                         <Button
                             variant="primary"
                             size="lg"
                             onClick={handleSendDocumentNotification}
-                            disabled={sendingNotification}
+                            disabled={sendingNotification || !selectedSchool}
                             isLoading={sendingNotification}
                             loadingText="Enviando recordatorio..."
                             className="w-full"
