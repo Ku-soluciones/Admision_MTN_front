@@ -73,7 +73,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   onCancel,
   onEdit,
   isSubmitting = false,
-  className = ''
+  className = '',
+  refreshKey = 0
 }) => {
   
   // Estado para entrevistadores del backend
@@ -375,6 +376,13 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       }
     };
   }, [formData.interviewerId, formData.secondInterviewerId, formData.scheduledDate, formData.duration, formData.type, mode]);
+
+  // Efecto para refrescar slots cuando cambia refreshKey (después de crear/editar entrevista)
+  useEffect(() => {
+    if (refreshKey > 0 && (mode === InterviewFormMode.CREATE || mode === InterviewFormMode.EDIT)) {
+      loadAvailableTimeSlots();
+    }
+  }, [refreshKey]);
 
   // Función para manejar selección de horario desde el calendario
   const handleTimeSlotSelect = (date: string, time: string) => {

@@ -446,6 +446,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             onCancel={() => setActiveView('grid')}
             onEdit={handleEditFromView}
             isSubmitting={isSubmitting}
+            refreshKey={refreshKey}
           />
         </Card>
 

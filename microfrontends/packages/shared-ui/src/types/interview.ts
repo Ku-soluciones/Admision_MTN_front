@@ -374,6 +374,7 @@ export interface InterviewFormProps {
   onEdit?: (interview: Interview) => void;
   isSubmitting?: boolean;
   className?: string;
+  refreshKey?: number; // Para refrescar slots disponibles
 }
 
 export interface InterviewCalendarProps {
