@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiCheck, FiSearch, FiX } from 'react-icons/fi';
 import { Application, applicationService } from '../../services/applicationService';
-import { InterviewMode, InterviewType, InterviewerInfo } from '../../types/interview';
+import interviewService from '../../services/interviewService';
+import { InterviewMode, InterviewStatus, InterviewType, InterviewerInfo } from '../../types/interview';
 import { QuickScheduleData } from './dashboardTypes';
 
 interface QuickSchedulePopoverProps {
@@ -81,10 +82,43 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   useEffect(() => {
     let cancelled = false;
     setApplicationsLoading(true);
-    applicationService.getAllApplications({ size: 2000 })
-      .then(response => {
+
+    // Cargar postulaciones y entrevistas en paralelo
+    Promise.all([
+      applicationService.getAllApplications({ size: 2000 }),
+      interviewService.getAllInterviews(0, 1000)
+    ])
+      .then(([applicationsResponse, interviewsResponse]) => {
         if (cancelled) return;
-        setApplications(response.filter(isPendingInterviewAssignment));
+
+        // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR activas
+        const activeStatuses = [
+          InterviewStatus.SCHEDULED,
+          InterviewStatus.CONFIRMED,
+          InterviewStatus.IN_PROGRESS,
+          InterviewStatus.RESCHEDULED,
+          InterviewStatus.PENDING
+        ];
+        const appIdsWithFamily = new Set<number>();
+        const appIdsWithCycleDirector = new Set<number>();
+
+        interviewsResponse.interviews.forEach(interview => {
+          if (activeStatuses.includes(interview.status as InterviewStatus)) {
+            if (interview.type === InterviewType.FAMILY) {
+              appIdsWithFamily.add(interview.applicationId);
+            } else if (interview.type === InterviewType.CYCLE_DIRECTOR) {
+              appIdsWithCycleDirector.add(interview.applicationId);
+            }
+          }
+        });
+
+        // Filtrar: solo postulaciones pendientes Y que NO tengan ambas entrevistas
+        const validApplications = applicationsResponse.filter(app =>
+          isPendingInterviewAssignment(app) &&
+          !(appIdsWithFamily.has(app.id) && appIdsWithCycleDirector.has(app.id))
+        );
+
+        setApplications(validApplications);
       })
       .catch(() => {
         if (!cancelled) setApplications([]);
