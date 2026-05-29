@@ -939,7 +939,15 @@ Esta acción:
                 try {
                   setIsSchedulingInterview(true);
 
-                  await interviewService.createInterview(data as any);
+                  const interview = await interviewService.createInterview(data as any);
+
+                  // Enviar invitación por email automáticamente
+                  try {
+                    await interviewService.sendInterviewInvitation(interview.id);
+                  } catch (emailError) {
+                    // No fallar si el email no se envía, solo loggear el error
+                    console.warn('No se pudo enviar la invitación por email:', emailError);
+                  }
 
                   setApplicationToast({
                     message: `Entrevista programada exitosamente para ${scheduleInterviewModal.postulante?.nombreCompleto}`,

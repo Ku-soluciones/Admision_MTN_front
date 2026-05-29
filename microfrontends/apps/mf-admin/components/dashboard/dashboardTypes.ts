@@ -39,11 +39,11 @@ export const VIEW_LABELS: Record<CommandCenterViewMode, string> = {
 };
 
 export const STATUS_STYLES: Record<string, string> = {
-  [InterviewStatus.SCHEDULED]: 'bg-blue-50 border-blue-400 text-blue-800',
-  [InterviewStatus.CONFIRMED]: 'bg-cyan-50 border-cyan-400 text-cyan-800',
-  [InterviewStatus.COMPLETED]: 'bg-emerald-50 border-emerald-400 text-emerald-800',
-  [InterviewStatus.CANCELLED]: 'bg-red-50 border-red-400 text-red-800',
-  [InterviewStatus.NO_SHOW]: 'bg-amber-50 border-amber-400 text-amber-800'
+  [InterviewStatus.SCHEDULED]: 'bg-blue-100 border-blue-500 text-blue-900 shadow-sm',
+  [InterviewStatus.CONFIRMED]: 'bg-cyan-100 border-cyan-500 text-cyan-900 shadow-sm',
+  [InterviewStatus.COMPLETED]: 'bg-emerald-100 border-emerald-500 text-emerald-900 shadow-sm',
+  [InterviewStatus.CANCELLED]: 'bg-red-100 border-red-500 text-red-900 opacity-60 line-through',
+  [InterviewStatus.NO_SHOW]: 'bg-amber-100 border-amber-500 text-amber-900'
 };
 
 export const formatRole = (role: string): string => {

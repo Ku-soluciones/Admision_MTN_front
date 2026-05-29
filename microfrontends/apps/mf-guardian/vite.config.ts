@@ -31,11 +31,13 @@ export default defineConfig(({ mode }) => {
       port: 5202,
       host: true,
       strictPort: true,
+      historyApiFallback: true,
     },
     preview: {
       port: 5302,
       host: true,
       strictPort: true,
+      historyApiFallback: true,
     },
     build: {
       minify: mode === 'production' ? 'esbuild' : false,
