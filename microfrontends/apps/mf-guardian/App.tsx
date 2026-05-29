@@ -25,13 +25,14 @@ function App() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/familia') || location.pathname.startsWith('/dashboard-apoderado');
   const isLoginPage = location.pathname === '/apoderado/login';
+  const isConfirmationResult = location.pathname === '/interview/confirmation-result';
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            {!isLoginPage && !isDashboard && <Header />}
+            {!isLoginPage && !isDashboard && !isConfirmationResult && <Header />}
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
@@ -47,7 +48,7 @@ function App() {
                 </Routes>
               </Suspense>
             </main>
-            <Footer />
+            {!isConfirmationResult && <Footer />}
             <ToastContainer />
             <GlobalToastHost />
           </div>
