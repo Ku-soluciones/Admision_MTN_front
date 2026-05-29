@@ -9,7 +9,8 @@ export enum InterviewStatus {
   COMPLETED = 'COMPLETED',       // Realizada/Completada
   CANCELLED = 'CANCELLED',       // Cancelada
   NO_SHOW = 'NO_SHOW',          // No se presentaron
-  RESCHEDULED = 'RESCHEDULED'    // Reprogramada
+  RESCHEDULED = 'RESCHEDULED',    // Reprogramada
+  REJECTED_BY_FAMILY = 'REJECTED_BY_FAMILY'  // Rechazada por la familia (no puede asistir)
 }
 
 // Enum de tipos de entrevista
@@ -43,7 +44,8 @@ export const INTERVIEW_STATUS_LABELS: Record<InterviewStatus, string> = {
   [InterviewStatus.COMPLETED]: 'Realizada',
   [InterviewStatus.CANCELLED]: 'Cancelada',
   [InterviewStatus.NO_SHOW]: 'No Asistió',
-  [InterviewStatus.RESCHEDULED]: 'Reprogramada'
+  [InterviewStatus.RESCHEDULED]: 'Reprogramada',
+  [InterviewStatus.REJECTED_BY_FAMILY]: 'Rechazada por Familia'
 };
 
 export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
@@ -421,15 +423,15 @@ export const InterviewUtils = {
     const validTransitions: Record<InterviewStatus, InterviewStatus[]> = {
       [InterviewStatus.PENDING]: [InterviewStatus.SCHEDULED, InterviewStatus.CANCELLED],
       [InterviewStatus.SCHEDULED]: [
-        InterviewStatus.CONFIRMED, 
-        InterviewStatus.CANCELLED, 
+        InterviewStatus.CONFIRMED,
+        InterviewStatus.CANCELLED,
         InterviewStatus.RESCHEDULED,
         InterviewStatus.NO_SHOW,
         InterviewStatus.IN_PROGRESS
       ],
       [InterviewStatus.CONFIRMED]: [
-        InterviewStatus.IN_PROGRESS, 
-        InterviewStatus.CANCELLED, 
+        InterviewStatus.IN_PROGRESS,
+        InterviewStatus.CANCELLED,
         InterviewStatus.RESCHEDULED,
         InterviewStatus.NO_SHOW
       ],
@@ -437,7 +439,8 @@ export const InterviewUtils = {
       [InterviewStatus.COMPLETED]: [], // Estado final
       [InterviewStatus.CANCELLED]: [InterviewStatus.SCHEDULED], // Puede reagendarse
       [InterviewStatus.NO_SHOW]: [InterviewStatus.RESCHEDULED], // Puede reprogramarse
-      [InterviewStatus.RESCHEDULED]: [InterviewStatus.SCHEDULED] // Vuelve a programada
+      [InterviewStatus.RESCHEDULED]: [InterviewStatus.SCHEDULED], // Vuelve a programada
+      [InterviewStatus.REJECTED_BY_FAMILY]: [InterviewStatus.SCHEDULED] // Puede reagendarse
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) || false;
@@ -453,7 +456,8 @@ export const InterviewUtils = {
       [InterviewStatus.COMPLETED]: [],
       [InterviewStatus.CANCELLED]: [InterviewStatus.SCHEDULED],
       [InterviewStatus.NO_SHOW]: [InterviewStatus.RESCHEDULED],
-      [InterviewStatus.RESCHEDULED]: [InterviewStatus.SCHEDULED]
+      [InterviewStatus.RESCHEDULED]: [InterviewStatus.SCHEDULED],
+      [InterviewStatus.REJECTED_BY_FAMILY]: [InterviewStatus.SCHEDULED]
     };
 
     return validTransitions[currentStatus] || [];

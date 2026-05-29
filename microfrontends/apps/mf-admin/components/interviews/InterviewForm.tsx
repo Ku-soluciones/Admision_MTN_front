@@ -248,7 +248,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       // Obtener IDs de postulaciones que ya tienen entrevistas activas (no canceladas ni rechazadas)
       const scheduledApplicationIds = new Set(
         interviewsResponse.interviews
-          .filter(i => i.status !== 'CANCELLED' && i.status !== 'REJECTED_BY_FAMILY')
+          .filter(i => i.status !== InterviewStatus.CANCELLED && i.status !== InterviewStatus.REJECTED_BY_FAMILY)
           .map(i => i.applicationId)
       );
 
