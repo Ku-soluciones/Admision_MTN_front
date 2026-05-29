@@ -245,21 +245,29 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         interviewService.getAllInterviews(0, 1000) // Cargar todas las entrevistas activas
       ]);
 
-      // Obtener IDs de postulaciones que ya tienen entrevistas activas (no canceladas ni rechazadas)
-      const scheduledApplicationIds = new Set(
-        interviewsResponse.interviews
-          .filter(i => i.status !== InterviewStatus.CANCELLED && i.status !== InterviewStatus.REJECTED_BY_FAMILY)
-          .map(i => i.applicationId)
-      );
+      // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR activas
+      const activeStatuses = [InterviewStatus.SCHEDULED, InterviewStatus.CONFIRMED, InterviewStatus.IN_PROGRESS];
+      const appIdsWithFamily = new Set<number>();
+      const appIdsWithCycleDirector = new Set<number>();
 
-      // Filtrar solo aplicaciones con datos válidos y que NO tengan entrevistas activas
+      interviewsResponse.interviews.forEach(interview => {
+        if (activeStatuses.includes(interview.status as InterviewStatus)) {
+          if (interview.type === InterviewType.FAMILY) {
+            appIdsWithFamily.add(interview.applicationId);
+          } else if (interview.type === InterviewType.CYCLE_DIRECTOR) {
+            appIdsWithCycleDirector.add(interview.applicationId);
+          }
+        }
+      });
+
+      // Filtrar aplicaciones que YA TENGAN AMBOS tipos de entrevista (no pueden agendar más)
       const validApplications = applicationsResponse.filter(app =>
         app &&
         app.id &&
         app.student &&
         app.student.firstName &&
         app.student.lastName &&
-        !scheduledApplicationIds.has(app.id)
+        !(appIdsWithFamily.has(app.id) && appIdsWithCycleDirector.has(app.id))
       );
 
       setApplications(validApplications);
