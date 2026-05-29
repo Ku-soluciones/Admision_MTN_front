@@ -239,15 +239,27 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   const loadApplications = async () => {
     try {
-      const response = await applicationService.getAllApplications();
+      // Cargar todas las postulaciones y entrevistas existentes
+      const [applicationsResponse, interviewsResponse] = await Promise.all([
+        applicationService.getAllApplications(),
+        interviewService.getAllInterviews(0, 1000) // Cargar todas las entrevistas activas
+      ]);
 
-      // Filtrar solo aplicaciones con datos válidos
-      const validApplications = response.filter(app =>
+      // Obtener IDs de postulaciones que ya tienen entrevistas activas (no canceladas ni rechazadas)
+      const scheduledApplicationIds = new Set(
+        interviewsResponse.interviews
+          .filter(i => i.status !== 'CANCELLED' && i.status !== 'REJECTED_BY_FAMILY')
+          .map(i => i.applicationId)
+      );
+
+      // Filtrar solo aplicaciones con datos válidos y que NO tengan entrevistas activas
+      const validApplications = applicationsResponse.filter(app =>
         app &&
         app.id &&
         app.student &&
         app.student.firstName &&
-        app.student.lastName
+        app.student.lastName &&
+        !scheduledApplicationIds.has(app.id)
       );
 
       setApplications(validApplications);
