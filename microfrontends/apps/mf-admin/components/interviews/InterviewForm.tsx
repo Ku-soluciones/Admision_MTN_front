@@ -1225,60 +1225,27 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
             {/* Duración */}
             <div>
-              <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
-                Duración (minutos) *
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Duración de la Entrevista
               </label>
-              <div className="flex items-center space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newValue = Math.max(INTERVIEW_VALIDATION.DURATION.MIN, formData.duration - 15);
-                    handleInputChange('duration', newValue);
-                  }}
-                  disabled={isViewMode || isCompleteMode || formData.duration <= INTERVIEW_VALIDATION.DURATION.MIN}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors ${
-                    isViewMode || isCompleteMode || formData.duration <= INTERVIEW_VALIDATION.DURATION.MIN 
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
-                </button>
-                
-                <div className={`flex items-center justify-center min-w-0 px-4 py-2 border rounded-md font-medium ${
-                  errors.duration ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-300 bg-gray-50 text-gray-900'
-                }`}>
-                  {formData.duration} min
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-azul-monte-tabor/5 to-indigo-50 border border-azul-monte-tabor/20 rounded-lg">
+                <div className="flex items-center justify-center w-10 h-10 bg-azul-monte-tabor/10 rounded-full">
+                  <FiClock className="w-5 h-5 text-azul-monte-tabor" />
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newValue = Math.min(INTERVIEW_VALIDATION.DURATION.MAX, formData.duration + 15);
-                    handleInputChange('duration', newValue);
-                  }}
-                  disabled={isViewMode || isCompleteMode || formData.duration >= INTERVIEW_VALIDATION.DURATION.MAX}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors ${
-                    isViewMode || isCompleteMode || formData.duration >= INTERVIEW_VALIDATION.DURATION.MAX 
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold text-azul-monte-tabor">
+60 minutos
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-azul-monte-tabor/10 text-azul-monte-tabor border border-azul-monte-tabor/20">
+                      Fijo
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    Duración estándar para todas las entrevistas
+                  </span>
+                </div>
               </div>
-              
-              <p className="mt-1 text-xs text-gray-500">
-                Use los botones + y - para ajustar la duración en incrementos de 15 minutos
-              </p>
-              
-              {errors.duration && (
-                <p className="mt-1 text-sm text-red-600">{errors.duration}</p>
-              )}
             </div>
           </div>
         </div>
