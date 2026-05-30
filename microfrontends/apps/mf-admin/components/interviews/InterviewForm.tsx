@@ -1225,23 +1225,27 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
             {/* Duración */}
             <div>
-              <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
-                Duración (minutos) *
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Duración de la Entrevista
               </label>
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center min-w-0 px-4 py-2 border rounded-md font-medium border-gray-300 bg-gray-50 text-gray-900">
-                  {formData.duration} min
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-azul-monte-tabor/5 to-indigo-50 border border-azul-monte-tabor/20 rounded-lg">
+                <div className="flex items-center justify-center w-10 h-10 bg-azul-monte-tabor/10 rounded-full">
+                  <FiClock className="w-5 h-5 text-azul-monte-tabor" />
                 </div>
-                <span className="text-sm text-gray-600">(Fijo)</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold text-azul-monte-tabor">
+60 minutos
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-azul-monte-tabor/10 text-azul-monte-tabor border border-azul-monte-tabor/20">
+                      Fijo
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    Duración estándar para todas las entrevistas
+                  </span>
+                </div>
               </div>
-
-              <p className="mt-1 text-xs text-gray-500">
-                La duración de las entrevistas es de 60 minutos
-              </p>
-              
-              {errors.duration && (
-                <p className="mt-1 text-sm text-red-600">{errors.duration}</p>
-              )}
             </div>
           </div>
         </div>
