@@ -142,7 +142,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     setIsScheduling(true);
     setSuccessMessage(null);
     try {
-      await interviewService.createInterview({
+      const interview = await interviewService.createInterview({
         applicationId: data.applicationId,
         interviewerId: data.interviewer1Id,
         secondInterviewerId: data.interviewer2Id,
@@ -154,8 +154,17 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         location: data.location,
         status: InterviewStatus.SCHEDULED
       });
+
+      // Enviar invitación por email automáticamente
+      try {
+        await interviewService.sendInterviewInvitation(interview.id);
+      } catch (emailError) {
+        // No fallar si el email no se envía, solo loggear el error
+        console.warn('No se pudo enviar la invitación por email:', emailError);
+      }
+
       setSelectedSlot(null);
-      setSuccessMessage('Entrevista programada y dashboard actualizado.');
+      setSuccessMessage('Entrevista programada, invitación enviada y dashboard actualizado.');
       await loadOverview();
     } catch (scheduleError) {
       setError('No se pudo programar la entrevista desde el dashboard.');

@@ -231,7 +231,43 @@ class InterviewService {
     
     const response = await api.post<InterviewResponse>(this.baseUrl, requestWithStatus);
     
-    return this.mapInterviewResponse(response.data);
+    // Backend retorna { success: true, data: {...interview} } o el interview directo
+    const interviewData = response.data?.data ?? response.data;
+    if (!interviewData || typeof interviewData !== 'object') {
+      throw new Error('Respuesta inválida del servidor al crear entrevista');
+    }
+    
+    return this.mapBackendResponse(interviewData);
+  }
+
+  // Enviar invitación con botones de confirmación (patrón pasarela)
+  async sendInterviewInvitation(id: number, bffBaseUrl?: string): Promise<{ success: boolean; message: string; data?: Interview }> {
+    try {
+      const headers: Record<string, string> = {};
+      if (bffBaseUrl) {
+        headers['X-Base-Url'] = bffBaseUrl;
+      }
+      
+      const response = await api.post<any>(`${this.baseUrl}/${id}/send-invitation`, {}, { headers });
+      
+      if (response.data?.success) {
+        return {
+          success: true,
+          message: response.data.message || 'Invitación enviada',
+          data: response.data.data ? this.mapBackendResponse(response.data.data) : undefined
+        };
+      }
+      
+      return {
+        success: false,
+        message: response.data?.message || 'Error enviando invitación'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error enviando invitación con confirmación'
+      };
+    }
   }
 
   async getInterviewById(id: number): Promise<Interview> {

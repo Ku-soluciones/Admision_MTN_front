@@ -62,6 +62,7 @@ import { useAuth } from '../context/AuthContext';
 import ApplicationsTable from '../components/admin/ApplicationsTable';
 import SimpleToast from '../components/ui/SimpleToast';
 import AdminDataTables from '../components/admin/AdminDataTables';
+import EmailTemplateManager from '../components/admin/EmailTemplateManager';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
 import InterviewForm from '../components/interviews/InterviewForm';
@@ -71,12 +72,12 @@ import InterviewCommandCenter from '../components/dashboard/InterviewCommandCent
 
 const sections = [
   { key: 'metricas', label: 'Métricas de Postulantes' },
-  { key: 'tablas', label: 'Tablas de Datos' },
   { key: 'postulaciones', label: 'Gestión de Postulaciones' },
   { key: 'evaluaciones', label: 'Gestión de Evaluaciones' },
   { key: 'entrevistas', label: 'Gestión de Entrevistas' },
   { key: 'calendario', label: 'Calendario Global' },
   { key: 'usuarios', label: 'Gestión de Usuarios' },
+  { key: 'configuracion', label: 'Configuración' },
 ];
 
 const AdminDashboard: React.FC = () => {
@@ -293,7 +294,7 @@ const AdminDashboard: React.FC = () => {
       // Datos académicos
       cursoPostulado: app.student.gradeApplied,
       colegioActual: app.student.currentSchool,
-      colegioDestino: (app.student.targetSchool || 'MONTE_TABOR'),
+      colegioDestino: app.student.targetSchool || null,
       añoAcademico: '2025',
       
       // Estado de postulación
@@ -469,10 +470,10 @@ Esta acción:
           </div>
         );
 
-      case 'tablas':
+      case 'configuracion':
         return (
           <div className="space-y-6">
-            <AdminDataTables />
+            <EmailTemplateManager />
           </div>
         );
 
@@ -938,7 +939,15 @@ Esta acción:
                 try {
                   setIsSchedulingInterview(true);
 
-                  await interviewService.createInterview(data as any);
+                  const interview = await interviewService.createInterview(data as any);
+
+                  // Enviar invitación por email automáticamente
+                  try {
+                    await interviewService.sendInterviewInvitation(interview.id);
+                  } catch (emailError) {
+                    // No fallar si el email no se envía, solo loggear el error
+                    console.warn('No se pudo enviar la invitación por email:', emailError);
+                  }
 
                   setApplicationToast({
                     message: `Entrevista programada exitosamente para ${scheduleInterviewModal.postulante?.nombreCompleto}`,

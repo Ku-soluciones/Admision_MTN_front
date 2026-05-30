@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: envRoot,
-    base: './',
+    base: '/',
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
@@ -31,11 +31,13 @@ export default defineConfig(({ mode }) => {
       port: 5202,
       host: true,
       strictPort: true,
+      historyApiFallback: true,
     },
     preview: {
       port: 5302,
       host: true,
       strictPort: true,
+      historyApiFallback: true,
     },
     build: {
       minify: mode === 'production' ? 'esbuild' : false,

@@ -73,7 +73,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   onCancel,
   onEdit,
   isSubmitting = false,
-  className = ''
+  className = '',
+  refreshKey = 0
 }) => {
   
   // Estado para entrevistadores del backend
@@ -238,19 +239,69 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
   const loadApplications = async () => {
     try {
-      const response = await applicationService.getAllApplications();
+      // Cargar todas las postulaciones y entrevistas existentes
+      const [applicationsResponse, interviewsResponse] = await Promise.all([
+        applicationService.getAllApplications(),
+        interviewService.getAllInterviews(0, 1000) // Cargar todas las entrevistas activas
+      ]);
 
-      // Filtrar solo aplicaciones con datos válidos
-      const validApplications = response.filter(app =>
-        app &&
-        app.id &&
-        app.student &&
-        app.student.firstName &&
-        app.student.lastName
-      );
+      console.log('[InterviewForm] Total interviews loaded:', interviewsResponse.interviews.length);
+      console.log('[InterviewForm] All interviews:', interviewsResponse.interviews.map(i => ({
+        appId: i.applicationId,
+        type: i.type,
+        status: i.status
+      })));
 
+      // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR activas
+      // Estados activos: SCHEDULED, CONFIRMED, IN_PROGRESS, RESCHEDULED, PENDING
+      const activeStatuses = [
+        InterviewStatus.SCHEDULED,
+        InterviewStatus.CONFIRMED,
+        InterviewStatus.IN_PROGRESS,
+        InterviewStatus.RESCHEDULED,
+        InterviewStatus.PENDING
+      ];
+      const appIdsWithFamily = new Set<number>();
+      const appIdsWithCycleDirector = new Set<number>();
+
+      interviewsResponse.interviews.forEach(interview => {
+        console.log('[InterviewForm] Processing interview:', {
+          appId: interview.applicationId,
+          type: interview.type,
+          status: interview.status,
+          isActive: activeStatuses.includes(interview.status as InterviewStatus)
+        });
+
+        if (activeStatuses.includes(interview.status as InterviewStatus)) {
+          if (interview.type === InterviewType.FAMILY || interview.type === 'FAMILY') {
+            appIdsWithFamily.add(interview.applicationId);
+            console.log('[InterviewForm] Added to Family:', interview.applicationId);
+          } else if (interview.type === InterviewType.CYCLE_DIRECTOR || interview.type === 'CYCLE_DIRECTOR') {
+            appIdsWithCycleDirector.add(interview.applicationId);
+            console.log('[InterviewForm] Added to CycleDirector:', interview.applicationId);
+          }
+        }
+      });
+
+      console.log('[InterviewForm] Apps with Family:', Array.from(appIdsWithFamily));
+      console.log('[InterviewForm] Apps with CycleDirector:', Array.from(appIdsWithCycleDirector));
+
+      // Filtrar aplicaciones que YA TENGAN AMBOS tipos de entrevista (no pueden agendar más)
+      const validApplications = applicationsResponse.filter(app => {
+        const hasBoth = appIdsWithFamily.has(app.id) && appIdsWithCycleDirector.has(app.id);
+        console.log(`[InterviewForm] App ${app.id} (${app.student?.firstName}): hasFamily=${appIdsWithFamily.has(app.id)}, hasCycleDirector=${appIdsWithCycleDirector.has(app.id)}, excluded=${hasBoth}`);
+        return app &&
+          app.id &&
+          app.student &&
+          app.student.firstName &&
+          app.student.lastName &&
+          !hasBoth;
+      });
+
+      console.log('[InterviewForm] Valid applications count:', validApplications.length);
       setApplications(validApplications);
     } catch (error) {
+      console.error('[InterviewForm] Error loading applications:', error);
       setApplications([]);
     }
   };
@@ -375,6 +426,13 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       }
     };
   }, [formData.interviewerId, formData.secondInterviewerId, formData.scheduledDate, formData.duration, formData.type, mode]);
+
+  // Efecto para refrescar slots cuando cambia refreshKey (después de crear/editar entrevista)
+  useEffect(() => {
+    if (refreshKey > 0 && (mode === InterviewFormMode.CREATE || mode === InterviewFormMode.EDIT)) {
+      loadAvailableTimeSlots();
+    }
+  }, [refreshKey]);
 
   // Función para manejar selección de horario desde el calendario
   const handleTimeSlotSelect = (date: string, time: string) => {
