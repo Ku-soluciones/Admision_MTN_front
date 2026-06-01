@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, signOut as firebaseAuthSignOut } from 'firebase/auth';
 import { auth, hasFirebaseConfig } from '../src/lib/firebase';
 import { authService } from '../services/authService';
@@ -178,6 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const firebaseLinked = useAuthStore((s) => s.firebaseLinked);
+    const userRef = useRef<User | null>(null);
+    userRef.current = user;
 
     // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
     //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
@@ -427,14 +429,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     useEffect(() => {
         return authStore.subscribe(() => {
             const stored = authStore.getState().user;
-            if (stored && (!user || String(stored.id ?? '') !== user.id)) {
+            const current = userRef.current;
+            if (stored && (!current || String(stored.id ?? '') !== current.id)) {
                 setUser(buildUserFromBff(stored));
-            } else if (!stored && user) {
+            } else if (!stored && current) {
                 setUser(null);
             }
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
+    }, []);
 
     const login = async (email: string, password: string, _role: string) => {
         setIsLoading(true);

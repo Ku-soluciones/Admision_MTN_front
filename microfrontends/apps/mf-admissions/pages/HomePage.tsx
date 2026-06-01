@@ -62,7 +62,16 @@ const HomePage: React.FC = () => {
                     <p className="text-gris-piedra mb-12 max-w-2xl mx-auto text-center">Un camino claro y guiado para formar parte de nuestra comunidad educativa.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                         {admissionSteps.map((step, index) => (
-                            <div key={index} className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200 text-center">
+                            <div
+                                key={index}
+                                className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200 text-center"
+                                style={{
+                                    transition: 'transform 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1)',
+                                    animation: `mtn-fade-in 280ms ease-out ${index * 60}ms both`,
+                                }}
+                                onMouseEnter={(e) => { if (window.matchMedia('(hover:hover)').matches) { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.09)'; } }}
+                                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
+                            >
                                 <div className="flex justify-center mb-4">{step.icon}</div>
                                 <h3 className="text-lg font-bold text-azul-monte-tabor mb-3">{step.title}</h3>
                                 <p className="text-gris-piedra text-sm">{step.description}</p>
@@ -81,27 +90,23 @@ const HomePage: React.FC = () => {
                         y rendir las evaluaciones de Matemática, Lenguaje e Inglés.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 text-center">
-                        <div className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200">
-                            <div className="flex justify-center mb-4">
-                                <Calculator className="w-10 h-10 text-dorado-nazaret" />
+                        {[
+                            { icon: <Calculator className="w-10 h-10 text-dorado-nazaret" />, title: 'Matemática', desc: 'Evaluación adaptada según tu nivel educativo' },
+                            { icon: <BookOpen className="w-10 h-10 text-dorado-nazaret" />, title: 'Lenguaje', desc: 'Comprensión lectora y expresión escrita' },
+                            { icon: <Globe className="w-10 h-10 text-dorado-nazaret" />, title: 'Inglés', desc: 'Gramática, vocabulario y comprensión' },
+                        ].map((item, i) => (
+                            <div
+                                key={i}
+                                className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200"
+                                style={{ transition: 'transform 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1)' }}
+                                onMouseEnter={(e) => { if (window.matchMedia('(hover:hover)').matches) { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.09)'; } }}
+                                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
+                            >
+                                <div className="flex justify-center mb-4">{item.icon}</div>
+                                <h3 className="font-bold text-azul-monte-tabor text-lg mb-3">{item.title}</h3>
+                                <p className="text-gris-piedra text-sm">{item.desc}</p>
                             </div>
-                            <h3 className="font-bold text-azul-monte-tabor text-lg mb-3">Matemática</h3>
-                            <p className="text-gris-piedra text-sm">Evaluación adaptada según tu nivel educativo</p>
-                        </div>
-                        <div className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200">
-                            <div className="flex justify-center mb-4">
-                                <BookOpen className="w-10 h-10 text-dorado-nazaret" />
-                            </div>
-                            <h3 className="font-bold text-azul-monte-tabor text-lg mb-3">Lenguaje</h3>
-                            <p className="text-gris-piedra text-sm">Comprensión lectora y expresión escrita</p>
-                        </div>
-                        <div className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200">
-                            <div className="flex justify-center mb-4">
-                                <Globe className="w-10 h-10 text-dorado-nazaret" />
-                            </div>
-                            <h3 className="font-bold text-azul-monte-tabor text-lg mb-3">Inglés</h3>
-                            <p className="text-gris-piedra text-sm">Gramática, vocabulario y comprensión</p>
-                        </div>
+                        ))}
                     </div>
                     <a href={microfrontendUrls.studentExams}>
                         <Button size="lg" variant="secondary">

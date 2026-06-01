@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
@@ -46,43 +46,21 @@ const Header: React.FC = () => {
 
         checkAuthStatus();
 
-        // Escuchar cambios en localStorage
-        const handleStorageChange = () => {
-            checkAuthStatus();
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-
-        // También verificar cuando cambie el contenido actual
-        const interval = setInterval(checkAuthStatus, 1000);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            clearInterval(interval);
-        };
+        window.addEventListener('storage', checkAuthStatus);
+        return () => window.removeEventListener('storage', checkAuthStatus);
     }, []);
 
-    // Función para hacer logout completo
-    const handleLogoutAndGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        // Solo hacer logout si hay un usuario autenticado
+    const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
         if (isAnyUserLoggedIn) {
-            e.preventDefault(); // Prevenir navegación predeterminada
-
+            e.preventDefault();
             clearAllSessions();
-
-            // Actualizar estados locales
             setIsAdmin(false);
+            setIsAdminLoggedIn(false);
             setIsProfessorLoggedIn(false);
             setIsAnyUserLoggedIn(false);
-
-            // Navegar a la página de inicio
             navigate('/');
-
-            // Forzar recarga para limpiar cualquier estado en memoria
-            window.location.reload();
         }
-        // Si no hay usuario autenticado, dejar que el link funcione normalmente
-    };
+    }, [isAnyUserLoggedIn, navigate]);
 
     const clearAndGoAdmin = (e: React.MouseEvent) => {
         e.preventDefault();

@@ -1,97 +1,26 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
+import { useAuth } from '../../context/AuthContext';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const isHomePage = location.pathname === '/';
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
-    const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Verificar si el usuario actual es admin, profesor o cualquier usuario autenticado
-    useEffect(() => {
-        const checkAuthStatus = () => {
-            // Verificar múltiples fuentes de autenticación
-            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+    const { user, isAuthenticated } = useAuth();
 
-            // Verificar si hay profesor autenticado
-            const hasProfessorAuth = !!(professorToken && currentProfessor);
-            setIsProfessorLoggedIn(hasProfessorAuth);
+    const isAdmin = useMemo(() => user?.role === 'ADMIN', [user?.role]);
+    const isAnyUserLoggedIn = isAuthenticated;
 
-            // Verificar si hay CUALQUIER usuario autenticado
-            const hasAnyAuth = !!(authToken || professorToken || apoderadoToken);
-            setIsAnyUserLoggedIn(hasAnyAuth);
-
-            // Solo mostrar admin si hay un token válido Y datos de profesor admin
-            if ((authToken || professorToken) && currentProfessor) {
-                try {
-                    const professorData = JSON.parse(currentProfessor);
-                    setIsAdmin(professorData.isAdmin === true);
-                } catch (error) {
-                    setIsAdmin(false);
-                }
-            } else {
-                setIsAdmin(false);
-            }
-        };
-
-        checkAuthStatus();
-
-        // Escuchar cambios en localStorage
-        const handleStorageChange = () => {
-            checkAuthStatus();
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-
-        // También verificar cuando cambie el contenido actual
-        const interval = setInterval(checkAuthStatus, 1000);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            clearInterval(interval);
-        };
-    }, []);
-
-    // Función para hacer logout completo
     const handleLogoutAndGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        // Solo hacer logout si hay un usuario autenticado
         if (isAnyUserLoggedIn) {
-            e.preventDefault(); // Prevenir navegación predeterminada
-
-            // Limpiar TODOS los tokens y datos de autenticación
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('currentApoderado');
-
-            // Actualizar estados locales
-            setIsAdmin(false);
-            setIsProfessorLoggedIn(false);
-            setIsAnyUserLoggedIn(false);
-
-            // Navegar a la página de inicio
+            e.preventDefault();
             navigate('/');
-
-            // Forzar recarga para limpiar cualquier estado en memoria
-            window.location.reload();
         }
-        // Si no hay usuario autenticado, dejar que el link funcione normalmente
-    };
-
-    const navigateTo = (url: string) => {
-        window.location.href = url;
     };
 
     return (
@@ -108,14 +37,14 @@ const Header: React.FC = () => {
 
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-                    <a href={microfrontendUrls.home} onClick={handleLogoutAndGoHome} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">
+                    <a href={microfrontendUrls.home} onClick={handleLogoutAndGoHome} className="text-gris-piedra font-semibold transition-colors duration-150 [@media(hover:hover)]:hover:text-azul-monte-tabor active:scale-95">
                         Inicio
                     </a>
-                    <a href={microfrontendUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
+                    <a href={microfrontendUrls.studentExams} className="text-gris-piedra font-semibold transition-colors duration-150 [@media(hover:hover)]:hover:text-azul-monte-tabor active:scale-95">Exámenes</a>
                     {isAdmin && (
                         <a
                             href={microfrontendUrls.adminDashboard}
-                            className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
+                            className="text-gris-piedra px-3 py-1 rounded-lg transition-all duration-150 [@media(hover:hover)]:hover:text-azul-monte-tabor [@media(hover:hover)]:hover:bg-dorado-nazaret/10 active:scale-95"
                         >
                             Admin
                         </a>
@@ -159,59 +88,68 @@ const Header: React.FC = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu */}
-            {isMobileMenuOpen && (
-                <div className="md:hidden bg-blanco-pureza border-t border-gray-100 shadow-lg">
-                    <nav className="container mx-auto px-4 py-3 flex flex-col gap-1">
+            {/* Mobile Menu — transición suave Emil: ease-out 200ms, scale desde 0.97 */}
+            <div
+                className="md:hidden overflow-hidden"
+                style={{
+                    maxHeight: isMobileMenuOpen ? '400px' : '0',
+                    opacity: isMobileMenuOpen ? 1 : 0,
+                    transform: isMobileMenuOpen ? 'translateY(0)' : 'translateY(-6px)',
+                    transition: isMobileMenuOpen
+                        ? 'max-height 220ms cubic-bezier(0.23,1,0.32,1), opacity 180ms ease-out, transform 180ms cubic-bezier(0.23,1,0.32,1)'
+                        : 'max-height 160ms ease-in, opacity 120ms ease-in, transform 120ms ease-in',
+                    borderTop: isMobileMenuOpen ? '1px solid #f3f4f6' : 'none',
+                }}
+            >
+                <nav className="container mx-auto px-4 py-3 flex flex-col gap-1 bg-blanco-pureza shadow-lg">
+                    <a
+                        href={microfrontendUrls.home}
+                        onClick={(e) => { handleLogoutAndGoHome(e); setIsMobileMenuOpen(false); }}
+                        className="px-4 py-3 rounded-lg font-semibold transition-colors duration-150 text-gris-piedra active:bg-gray-100 [@media(hover:hover)]:hover:bg-gray-50"
+                    >
+                        Inicio
+                    </a>
+                    <a
+                        href={microfrontendUrls.studentExams}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="px-4 py-3 rounded-lg font-semibold transition-colors duration-150 text-gris-piedra active:bg-gray-100 [@media(hover:hover)]:hover:bg-gray-50"
+                    >
+                        Exámenes
+                    </a>
+                    <a
+                        href={microfrontendUrls.guardianLogin}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="px-4 py-3 rounded-lg font-semibold transition-colors duration-150 text-gris-piedra active:bg-gray-100 [@media(hover:hover)]:hover:bg-gray-50"
+                    >
+                        Portal Familia
+                    </a>
+                    {isAdmin && (
                         <a
-                            href={microfrontendUrls.home}
-                            onClick={(e) => { handleLogoutAndGoHome(e); setIsMobileMenuOpen(false); }}
-                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                        >
-                            Inicio
-                        </a>
-                        <a
-                            href={microfrontendUrls.studentExams}
+                            href={microfrontendUrls.adminDashboard}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors duration-150 text-gris-piedra active:bg-gray-100 [@media(hover:hover)]:hover:bg-gray-50"
                         >
-                            Exámenes
+                            Admin
                         </a>
-                        <a
-                            href={microfrontendUrls.guardianLogin}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                        >
-                            Portal Familia
-                        </a>
-                        {isAdmin && (
-                            <a
-                                href={microfrontendUrls.adminDashboard}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                            >
-                                Admin
+                    )}
+                    {!isAnyUserLoggedIn && (
+                        <div className="pt-2 pb-1 flex flex-col gap-2">
+                            <a href={microfrontendUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
+                                    Iniciar sesión
+                                </Button>
                             </a>
-                        )}
-                        {!isAnyUserLoggedIn && (
-                            <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={microfrontendUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
-                                        Iniciar sesión
+                            {isHomePage && (
+                                <a href={microfrontendUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button variant="primary" className="w-full !text-blanco-pureza">
+                                        Postular
                                     </Button>
                                 </a>
-                                {isHomePage && (
-                                    <a href={microfrontendUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
-                                        <Button variant="primary" className="w-full !text-blanco-pureza">
-                                            Postular
-                                        </Button>
-                                    </a>
-                                )}
-                            </div>
-                        )}
-                    </nav>
-                </div>
-            )}
+                            )}
+                        </div>
+                    )}
+                </nav>
+            </div>
         </header>
     );
 };

@@ -26,7 +26,7 @@ const Button: React.FC<ButtonProps> = ({
     ariaLabel,
     ...props
 }) => {
-    const baseClasses = 'inline-flex items-center justify-center font-bold rounded-lg shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const baseClasses = 'inline-flex items-center justify-center font-bold rounded-lg shadow-md transition-all duration-[160ms] ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.97] select-none';
 
     const variantClasses = {
         primary: 'bg-dorado-nazaret text-azul-monte-tabor hover:bg-amber-500 focus:ring-dorado-nazaret disabled:bg-gray-300 disabled:text-gray-500',

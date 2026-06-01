@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { microfrontendUrls } from '../../utils/microfrontendUrls';
@@ -44,53 +44,25 @@ const Header: React.FC = () => {
 
         checkAuthStatus();
 
-        // Escuchar cambios en localStorage
-        const handleStorageChange = () => {
-            checkAuthStatus();
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-
-        // También verificar cuando cambie el contenido actual
-        const interval = setInterval(checkAuthStatus, 1000);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            clearInterval(interval);
-        };
+        window.addEventListener('storage', checkAuthStatus);
+        return () => window.removeEventListener('storage', checkAuthStatus);
     }, []);
 
-    // Función para hacer logout completo
-    const handleLogoutAndGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        // Solo hacer logout si hay un usuario autenticado
+    const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
         if (isAnyUserLoggedIn) {
-            e.preventDefault(); // Prevenir navegación predeterminada
-
-            // Limpiar TODOS los tokens y datos de autenticación
+            e.preventDefault();
             localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
             localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
             localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
             localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
             localStorage.removeItem('currentUser');
             localStorage.removeItem('currentApoderado');
-
-            // Actualizar estados locales
             setIsAdmin(false);
             setIsProfessorLoggedIn(false);
             setIsAnyUserLoggedIn(false);
-
-            // Navegar a la página de inicio
             navigate('/');
-
-            // Forzar recarga para limpiar cualquier estado en memoria
-            window.location.reload();
         }
-        // Si no hay usuario autenticado, dejar que el link funcione normalmente
-    };
-
-    const navigateTo = (url: string) => {
-        window.location.href = url;
-    };
+    }, [isAnyUserLoggedIn, navigate]);
 
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">

@@ -15,8 +15,17 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
-  <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
-    <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-azul-monte-tabor"></div>
+  <div
+    className="flex min-h-screen items-center justify-center bg-[#f7f3ea]"
+    style={{ animation: 'mtn-fade-in 200ms ease-out 80ms both' }}
+  >
+    <div
+      className="h-10 w-10 rounded-full border-2 border-transparent border-t-azul-monte-tabor"
+      style={{ animation: 'spin 600ms linear infinite' }}
+    />
+    <style>{`
+      @keyframes mtn-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    `}</style>
   </div>
 );
 
