@@ -127,7 +127,7 @@ const ApoderadoLogin: React.FC = () => {
                     {/* Header */}
                     <div className="text-center">
                         <div className="flex justify-center mb-8">
-                            <img src="/images/logoMTN.png" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                            <img src="/images/logoMTN.webp" alt="Logo Monte Tabor y Nazaret" className="h-24" />
                         </div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                             {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}
