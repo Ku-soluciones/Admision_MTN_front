@@ -2,40 +2,9 @@ import React from 'react';
 
 export const LogoIcon = ({ className = "w-12 h-12" }: { className?: string }) => (
     <img
-        src="/images/logoMTN.png"
+        src="/images/logoMTN.webp"
         alt="Monte Tabor & Nazaret Logo"
         className={`${className} object-contain`}
-        onError={(e) => {
-            // Fallback al logo SVG si la imagen no carga
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const parent = target.parentNode as HTMLElement;
-            if (parent) {
-                parent.innerHTML = `
-                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="${className}">
-                        <path d="M50 10 C25 10, 15 25, 15 40 C15 60, 35 85, 50 90 C65 85, 85 60, 85 40 C85 25, 75 10, 50 10 Z" 
-                              fill="#1e3a8a" stroke="#0f172a" stroke-width="1"/>
-                        <path d="M50 15 C30 15, 22 27, 22 38 C22 55, 38 75, 50 80 C62 75, 78 55, 78 38 C78 27, 70 15, 50 15 Z" 
-                              fill="#f59e0b" opacity="0.9"/>
-                        <g fill="#1e3a8a">
-                            <rect x="47" y="30" width="6" height="25" rx="1"/>
-                            <rect x="37" y="37" width="26" height="6" rx="1"/>
-                            <rect x="46" y="55" width="8" height="4" rx="1"/>
-                        </g>
-                        <g fill="#1e3a8a" opacity="0.8">
-                            <path d="M35 62 L65 62 L63 70 L37 70 Z" fill="#ffffff"/>
-                            <path d="M35 62 L65 62 L63 70 L37 70 Z" stroke="#1e3a8a" stroke-width="1" fill="none"/>
-                            <line x1="50" y1="62" x2="50" y2="70" stroke="#1e3a8a" stroke-width="1"/>
-                        </g>
-                        <g fill="#ffffff" opacity="0.9">
-                            <polygon points="30,25 31,27 33,27 31.5,28.5 32,30.5 30,29 28,30.5 28.5,28.5 27,27 29,27" />
-                            <polygon points="70,25 71,27 73,27 71.5,28.5 72,30.5 70,29 68,30.5 68.5,28.5 67,27 69,27" />
-                        </g>
-                        <text x="50" y="82" text-anchor="middle" font-size="6" font-family="serif" fill="#1e3a8a" font-weight="bold">MT&N</text>
-                    </svg>
-                `;
-            }
-        }}
     />
 );
 
