@@ -1145,12 +1145,16 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   ];
 
   const getInterviewForType = (type: string) => {
-    // Buscar entrevista por tipo exacto
-    const found = studentInterviews.find(interview => interview.type === type);
+    // Estados que indican que la entrevista ya no está activa y no debe mostrarse
+    // como "la entrevista" actual del estudiante (ej: rechazadas o canceladas).
+    const INACTIVE_STATUSES = ['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'];
 
-    // Log solo para debugging - es normal no tener todas las entrevistas agendadas
-    if (found) {
-    }
+    // Buscar entrevista por tipo exacto, excluyendo las inactivas.
+    // Si solo existen entrevistas rechazadas/canceladas, devolvemos undefined
+    // para que la UI muestre "No programada" en lugar de la rechazada.
+    const found = studentInterviews.find(
+      interview => interview.type === type && !INACTIVE_STATUSES.includes(interview.status)
+    );
 
     return found;
   };
