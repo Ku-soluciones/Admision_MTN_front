@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Input from '../components/ui/Input';
 import RutInput from '../components/ui/RutInput';
@@ -29,6 +29,19 @@ const steps = [
   "Apoderado",                     // 6
   "Documentación",                 // 7
   "Confirmación"                   // 8
+];
+
+// Labels cortos para el stepper visual (evita solapamiento en lg)
+const stepShortLabels = [
+  "Postulante",
+  "Residencia",
+  "Postulación",
+  "Padre",
+  "Madre",
+  "Sostenedor",
+  "Apoderado",
+  "Docs",
+  "Confirmar"
 ];
 
 const gradeOptions = educationalLevels.map(level => ({
@@ -386,6 +399,10 @@ const ApplicationForm: React.FC = () => {
         if (!data.applicationYear) {
             updateField('applicationYear', applicationYear);
         }
+        // Default schoolApplied para el backend (no se muestra en UI)
+        if (!data.schoolApplied) {
+            updateField('schoolApplied', 'MONTE_TABOR');
+        }
     }, []);
 
     // Helper function to check if current school is required
@@ -595,6 +612,133 @@ const ApplicationForm: React.FC = () => {
         }
     }, [data.studentAddress, data.studentAddressStreet, parseAddress]);
 
+    // Sanity-check de fecha de nacimiento que NO depende del grado.
+    // Se ejecuta en el paso 0 para dar feedback inmediato al apoderado.
+    const validateBirthDateStandalone = useCallback(
+        (birthDate: string): { valid: boolean; message?: string } => {
+            if (!birthDate) return { valid: true };
+
+            const birth = new Date(birthDate);
+            if (Number.isNaN(birth.getTime())) {
+                return { valid: false, message: 'Esta fecha no es válida. Revisa el día, mes y año.' };
+            }
+
+            const today = new Date();
+            if (birth > today) {
+                return {
+                    valid: false,
+                    message: 'La fecha de nacimiento no puede ser posterior a hoy.',
+                };
+            }
+
+            // Edad cumplida al día de hoy
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+
+            if (age < 2) {
+                return {
+                    valid: false,
+                    message: 'El postulante debe tener al menos 2 años cumplidos.',
+                };
+            }
+            if (age > 25) {
+                return {
+                    valid: false,
+                    message: 'La edad supera el rango habitual del proceso (más de 25 años). Verifica la fecha ingresada.',
+                };
+            }
+            return { valid: true };
+        },
+        [],
+    );
+
+    // ── Autoguardado del borrador del formulario ──────────────────────────────
+    // Persiste `data` + `currentStep` en localStorage por apoderado para que
+    // recargar la página, cerrar la pestaña o caer la sesión no destruya el
+    // progreso de 9 pasos. Se limpia al enviar con éxito o en modo edición.
+    const draftKey = useMemo(() => {
+        const owner = user?.id ?? user?.email ?? 'guest';
+        return getStorageKey(`admission-draft:${owner}`);
+    }, [user?.id, user?.email]);
+
+    const didRestoreDraftRef = useRef(false);
+    const skipNextSaveRef = useRef(false);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [draftRestored, setDraftRestored] = useState(false);
+
+    // Restaurar borrador al montar (una sola vez, y solo si NO estamos en edición
+    // ni hay datos ya cargados desde el perfil del apoderado).
+    useEffect(() => {
+        if (didRestoreDraftRef.current) return;
+        if (location.state?.editMode) {
+            didRestoreDraftRef.current = true;
+            return;
+        }
+        try {
+            const raw = localStorage.getItem(draftKey);
+            if (!raw) {
+                didRestoreDraftRef.current = true;
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            // No pisar datos ya existentes si el efecto del perfil corrió antes
+            if (parsed?.data && Object.keys(data || {}).length === 0) {
+                skipNextSaveRef.current = true;
+                setData(parsed.data);
+                if (typeof parsed.currentStep === 'number') {
+                    setCurrentStep(Math.min(parsed.currentStep, steps.length - 1));
+                }
+                setDraftRestored(true);
+                // Ocultar el aviso solo
+                window.setTimeout(() => setDraftRestored(false), 6000);
+            }
+        } catch {
+            /* borrador corrupto, ignorar */
+        } finally {
+            didRestoreDraftRef.current = true;
+        }
+    }, [draftKey, location.state?.editMode]);
+
+    // Guardado debounced (400ms) ante cualquier cambio en data/currentStep.
+    useEffect(() => {
+        if (!didRestoreDraftRef.current) return;
+        if (location.state?.editMode) return;
+        if (skipNextSaveRef.current) {
+            skipNextSaveRef.current = false;
+            return;
+        }
+        if (!data || Object.keys(data).length === 0) return;
+
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+            try {
+                localStorage.setItem(
+                    draftKey,
+                    JSON.stringify({
+                        data,
+                        currentStep,
+                        savedAt: new Date().toISOString(),
+                    }),
+                );
+            } catch {
+                /* cuota llena u otro error de storage, ignorar */
+            }
+        }, 400);
+
+        return () => {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        };
+    }, [data, currentStep, draftKey, location.state?.editMode]);
+
+    const clearDraft = useCallback(() => {
+        try {
+            localStorage.removeItem(draftKey);
+        } catch {
+            /* ignore */
+        }
+    }, [draftKey]);
+
     // Helper function to validate birth date coherence with grade
     const validateBirthDateForGrade = useCallback((birthDate: string, grade: string): { valid: boolean; message?: string } => {
         if (!birthDate || !grade) return { valid: true };
@@ -628,7 +772,7 @@ const ApplicationForm: React.FC = () => {
         if (age < range.min || age > range.max) {
             return {
                 valid: false,
-                message: `La edad del postulante (${age} años) no es apropiada para ${range.name}. Se espera una edad entre ${range.min} y ${range.max} años.`
+                message: `Para ${range.name} la edad habitual es entre ${range.min} y ${range.max} años. El postulante tiene ${age}; verifica la fecha si crees que hay un error.`
             };
         }
 
@@ -678,13 +822,8 @@ const ApplicationForm: React.FC = () => {
                     !data.rut?.trim() || !data.birthDate) {
                     return false;
                 }
-                // Validate birth date coherence with grade
-                if (data.grade) {
-                    const birthDateValidation = validateBirthDateForGrade(data.birthDate, data.grade);
-                    if (!birthDateValidation.valid) {
-                        return false;
-                    }
-                }
+                // Nota: La validación de coherencia fecha-grado es solo informativa en Step 0
+                // porque el grado se elige en Step 2. No bloqueamos aquí.
                 // Validate optional email if provided
                 if (data.studentEmail && !isValidEmail(data.studentEmail)) {
                     return false;
@@ -704,7 +843,7 @@ const ApplicationForm: React.FC = () => {
 
             // Step 2: Postulación
             case 2:
-                if (!data.grade || !data.schoolApplied || !data.applicationYear || !data.admissionPreference) {
+                if (!data.grade || !data.applicationYear || !data.admissionPreference) {
                     return false;
                 }
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
@@ -784,6 +923,20 @@ const ApplicationForm: React.FC = () => {
     const nextStep = async () => {
         if (validateCurrentStep()) {
             let nextStepIndex = currentStep + 1;
+
+            // Guardar borrador inmediatamente al avanzar de paso (sin debounce)
+            if (!location.state?.editMode && data && Object.keys(data).length > 0) {
+                try {
+                    localStorage.setItem(
+                        draftKey,
+                        JSON.stringify({
+                            data,
+                            currentStep: nextStepIndex,
+                            savedAt: new Date().toISOString(),
+                        }),
+                    );
+                } catch { /* cuota llena, ignorar */ }
+            }
 
             // Si es el paso de documentación (step 7), enviar la postulación
             if (currentStep === 7) {
@@ -905,7 +1058,10 @@ const ApplicationForm: React.FC = () => {
                     // Guardar el ID de la aplicación para subir documentos
                     const applicationId = isEditMode ? location.state.applicationId : response.id;
                     setSubmittedApplicationId(applicationId);
-                    
+
+                    // El envío fue exitoso: descartar el borrador local.
+                    clearDraft();
+
                     // Subir documentos si hay alguno seleccionado
                     let documentsUploaded = 0;
                     if (uploadedDocuments.size > 0) {
@@ -1020,7 +1176,23 @@ const ApplicationForm: React.FC = () => {
         }
     };
     
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
+    const prevStep = () => {
+        const prevStepIndex = Math.max(currentStep - 1, 0);
+        // Guardar borrador inmediatamente al retroceder
+        if (!location.state?.editMode && data && Object.keys(data).length > 0) {
+            try {
+                localStorage.setItem(
+                    draftKey,
+                    JSON.stringify({
+                        data,
+                        currentStep: prevStepIndex,
+                        savedAt: new Date().toISOString(),
+                    }),
+                );
+            } catch { /* ignore */ }
+        }
+        setCurrentStep(prevStepIndex);
+    };
 
     // Funciones para manejar documentos
     const handleFileSelect = (documentType: string, file: File) => {
@@ -1415,13 +1587,16 @@ const ApplicationForm: React.FC = () => {
             case 0:
                 return (
                     <div className="space-y-4">
-                        <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Postulante</h3>
+                        {/* El nombre del paso ya vive en el header del wizard (h2 "Paso 1: Información del Postulante").
+                            No lo repetimos aquí para no duplicar la jerarquía. */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Input
                                 id="firstName"
                                 label="Nombres"
-                                placeholder="Juan Carlos"
+                                placeholder="Ej: Juan Carlos"
                                 isRequired
+                                autoComplete="given-name"
+                                autoCapitalize="words"
                                 value={data.firstName || ''}
                                 onChange={(e) => updateField('firstName', e.target.value)}
                                 onBlur={() => touchField('firstName')}
@@ -1430,8 +1605,10 @@ const ApplicationForm: React.FC = () => {
                             <Input
                                 id="paternalLastName"
                                 label="Apellido Paterno"
-                                placeholder="Pérez"
+                                placeholder="Ej: Pérez"
                                 isRequired
+                                autoComplete="family-name"
+                                autoCapitalize="words"
                                 value={data.paternalLastName || ''}
                                 onChange={(e) => updateField('paternalLastName', e.target.value)}
                                 onBlur={() => touchField('paternalLastName')}
@@ -1440,8 +1617,10 @@ const ApplicationForm: React.FC = () => {
                             <Input
                                 id="maternalLastName"
                                 label="Apellido Materno"
-                                placeholder="González"
+                                placeholder="Ej: González"
                                 isRequired
+                                autoComplete="additional-name"
+                                autoCapitalize="words"
                                 value={data.maternalLastName || ''}
                                 onChange={(e) => updateField('maternalLastName', e.target.value)}
                                 onBlur={() => touchField('maternalLastName')}
@@ -1454,6 +1633,7 @@ const ApplicationForm: React.FC = () => {
                                 label="RUT del Postulante"
                                 placeholder="12.345.678-9"
                                 required
+                                helpText="Puedes escribirlo con o sin puntos; se formatea solo."
                                 value={data.rut || ''}
                                 onChange={(value) => updateField('rut', value)}
                                 onBlur={() => touchField('rut')}
@@ -1465,19 +1645,40 @@ const ApplicationForm: React.FC = () => {
                                     label="Fecha de Nacimiento"
                                     type="date"
                                     isRequired
+                                    autoComplete="bday"
+                                    max={new Date().toISOString().split('T')[0]}
+                                    min="1995-01-01"
                                     value={data.birthDate || ''}
                                     onChange={(e) => updateField('birthDate', e.target.value)}
                                     onBlur={() => touchField('birthDate')}
                                     error={errors.birthDate}
                                 />
-                                {data.birthDate && data.grade && (() => {
-                                    const validation = validateBirthDateForGrade(data.birthDate, data.grade);
-                                    if (!validation.valid) {
+                                {/* Validación inmediata (no requiere haber elegido grado todavía) */}
+                                {data.birthDate && (() => {
+                                    const standalone = validateBirthDateStandalone(data.birthDate);
+                                    if (!standalone.valid) {
                                         return (
-                                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                                                <p className="text-sm text-red-700">{validation.message}</p>
+                                            <div
+                                                className="mt-2 p-2 bg-red-50 border border-rojo-sagrado/40 rounded-lg"
+                                                role="alert"
+                                            >
+                                                <p className="text-sm text-rojo-sagrado">{standalone.message}</p>
                                             </div>
                                         );
+                                    }
+                                    // Sólo evaluamos coherencia con grado si éste ya fue elegido en pasos siguientes
+                                    if (data.grade) {
+                                        const validation = validateBirthDateForGrade(data.birthDate, data.grade);
+                                        if (!validation.valid) {
+                                            return (
+                                                <div
+                                                    className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded-lg"
+                                                    role="status"
+                                                >
+                                                    <p className="text-sm text-amber-800">{validation.message}</p>
+                                                </div>
+                                            );
+                                        }
                                     }
                                     return null;
                                 })()}
@@ -1485,9 +1686,12 @@ const ApplicationForm: React.FC = () => {
                         </div>
                         <Input
                             id="studentEmail"
-                            label="Correo Electrónico (opcional)"
+                            label="Correo Electrónico"
                             type="email"
                             placeholder="estudiante@ejemplo.com"
+                            autoComplete="email"
+                            inputMode="email"
+                            helpText="Opcional. Si lo agregas, también enviaremos comunicaciones directamente al estudiante."
                             value={data.studentEmail || ''}
                             onChange={(e) => updateField('studentEmail', e.target.value)}
                             onBlur={() => touchField('studentEmail')}
@@ -1980,7 +2184,10 @@ const ApplicationForm: React.FC = () => {
                         {(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
-                                    Los datos se han completado automáticamente con la información del {data.supporterRelation} ingresada anteriormente.
+                                    {data.supporterName
+                                        ? `Los datos se han completado automáticamente con la información del ${data.supporterRelation} ingresada anteriormente.`
+                                        : `Seleccionaste "${data.supporterRelation}" pero aún no ingresaste esos datos. Completa los campos manualmente o vuelve al paso correspondiente.`
+                                    }
                                 </p>
                             </div>
                         )}
@@ -1995,7 +2202,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('supporterName', e.target.value)}
                                 onBlur={() => touchField('supporterName')}
                                 error={errors.supporterName}
-                                disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
+                                disabled={(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && !!data.supporterName}
                             />
                             <RutInput
                                 name="supporter-rut"
@@ -2006,7 +2213,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(value) => updateField('supporterRut', value)}
                                 onBlur={() => touchField('supporterRut')}
                                 error={errors.supporterRut}
-                                disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
+                                disabled={(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && !!data.supporterRut}
                             />
                             <Input
                                 id="supporter-email"
@@ -2018,7 +2225,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('supporterEmail', e.target.value)}
                                 onBlur={() => touchField('supporterEmail')}
                                 error={errors.supporterEmail}
-                                disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
+                                disabled={(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && !!data.supporterEmail}
                             />
                             <Input
                                 id="supporter-phone"
@@ -2030,7 +2237,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('supporterPhone', e.target.value)}
                                 onBlur={() => touchField('supporterPhone')}
                                 error={errors.supporterPhone}
-                                disabled={data.supporterRelation === 'padre' || data.supporterRelation === 'madre'}
+                                disabled={(data.supporterRelation === 'padre' || data.supporterRelation === 'madre') && !!data.supporterPhone}
                             />
                         </div>
                     </div>
@@ -2066,7 +2273,10 @@ const ApplicationForm: React.FC = () => {
                         {(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && (
                             <div className="p-3 bg-green-50 rounded-lg">
                                 <p className="text-sm text-green-800">
-                                    Los datos se han completado automáticamente con la información del {data.guardianRelation} ingresada anteriormente.
+                                    {data.guardianName
+                                        ? `Los datos se han completado automáticamente con la información del ${data.guardianRelation} ingresada anteriormente.`
+                                        : `Seleccionaste "${data.guardianRelation}" pero aún no ingresaste esos datos. Completa los campos manualmente o vuelve al paso correspondiente.`
+                                    }
                                 </p>
                             </div>
                         )}
@@ -2081,7 +2291,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('guardianName', e.target.value)}
                                 onBlur={() => touchField('guardianName')}
                                 error={errors.guardianName}
-                                disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
+                                disabled={(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && !!data.guardianName}
                             />
                             <RutInput
                                 name="guardian-rut"
@@ -2092,7 +2302,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(value) => updateField('guardianRut', value)}
                                 onBlur={() => touchField('guardianRut')}
                                 error={errors.guardianRut}
-                                disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
+                                disabled={(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && !!data.guardianRut}
                             />
                             <Input
                                 id="guardian-email"
@@ -2104,7 +2314,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('guardianEmail', e.target.value)}
                                 onBlur={() => touchField('guardianEmail')}
                                 error={errors.guardianEmail}
-                                disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
+                                disabled={(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && !!data.guardianEmail}
                             />
                             <Input
                                 id="guardian-phone"
@@ -2116,7 +2326,7 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('guardianPhone', e.target.value)}
                                 onBlur={() => touchField('guardianPhone')}
                                 error={errors.guardianPhone}
-                                disabled={data.guardianRelation === 'padre' || data.guardianRelation === 'madre'}
+                                disabled={(data.guardianRelation === 'padre' || data.guardianRelation === 'madre') && !!data.guardianPhone}
                             />
                         </div>
                     </div>
@@ -2267,35 +2477,39 @@ const ApplicationForm: React.FC = () => {
             // Step 8: Confirmación
             case 8:
                 return (
-                    <div className="text-center">
-                        <h3 className="text-2xl font-bold text-azul-monte-tabor mb-4">Postulación Enviada</h3>
-                        <p className="text-gris-piedra mb-6">Gracias por postular. Hemos recibido su información y nos pondremos en contacto pronto.</p>
-                        <CheckCircleIcon className="w-24 h-24 text-verde-esperanza mx-auto mb-6" />
-                        <p className="text-sm text-gris-piedra">Recibirá un correo de confirmación con los próximos pasos.</p>
-                        <div className="mt-8 p-6 bg-blue-50 rounded-lg text-left">
-                            <h4 className="font-bold text-azul-monte-tabor mb-3">Próximos pasos:</h4>
+                    <div className="text-center py-4">
+                        <CheckCircleIcon className="w-16 h-16 text-verde-esperanza mx-auto mb-5" />
+                        <h3 className="text-2xl font-bold text-azul-monte-tabor mb-2">¡Postulación enviada!</h3>
+                        <p className="text-gris-piedra max-w-md mx-auto">
+                            Recibimos los datos del postulante. El equipo de admisiones revisará la información en los próximos días.
+                        </p>
+                        <p className="text-sm text-gris-piedra mt-1">
+                            Te llegará un correo de confirmación con los próximos pasos.
+                        </p>
+
+                        <div className="mt-8 p-5 bg-azul-monte-tabor/5 border border-azul-monte-tabor/10 rounded-lg text-left">
+                            <h4 className="font-semibold text-azul-monte-tabor mb-3">Qué sigue</h4>
                             <ol className="list-decimal list-inside space-y-2 text-sm text-gris-piedra">
-                                <li>Recibirá un correo de confirmación en las próximas 24 horas</li>
-                                <li>El equipo de admisiones revisará su postulación</li>
-                                <li>Se le contactará para coordinar entrevistas familiares</li>
-                                <li>Podrá acceder al portal de exámenes una vez aprobada la documentación</li>
-                                <li>Los resultados se publicarán según el cronograma establecido</li>
+                                <li>Te enviaremos un correo de confirmación en las próximas 24 horas.</li>
+                                <li>Revisaremos la postulación y documentación entregada.</li>
+                                <li>Te contactaremos para coordinar las entrevistas familiares.</li>
+                                <li>Una vez aprobada la documentación, podrás acceder al portal de exámenes.</li>
+                                <li>Los resultados se publicarán según el cronograma del proceso.</li>
                             </ol>
                         </div>
-                        <div className="mt-6 space-y-3">
+
+                        <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-center">
                             <Button
                                 variant="primary"
                                 onClick={() => window.location.href = microfrontendUrls.guardianDashboard}
-                                className="w-full"
                             >
-                                Ver Mi Dashboard
+                                Ir a mi dashboard
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => window.location.href = microfrontendUrls.home}
-                                className="w-full"
                             >
-                                Volver al Inicio
+                                Volver al inicio
                             </Button>
                         </div>
                     </div>
@@ -2316,8 +2530,11 @@ const ApplicationForm: React.FC = () => {
     // Mientras Firebase restaura sesión, mostrar spinner (si no hay cache) o el formulario (si hay cache)
     if (isAuthLoading && !hasApoderadoSession) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-white">
-                <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-azul-monte-tabor" />
+            <div className="flex min-h-screen items-center justify-center bg-gray-50" role="status" aria-label="Cargando formulario">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-10 w-10 animate-spin rounded-full border-2 border-gris-piedra/20 border-t-azul-monte-tabor" />
+                    <p className="text-sm text-gris-piedra">Cargando...</p>
+                </div>
             </div>
         );
     }
@@ -2331,100 +2548,209 @@ const ApplicationForm: React.FC = () => {
         <div className="bg-gray-50 py-8 sm:py-16">
             <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
                 {/* Header con información del usuario */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold text-azul-monte-tabor font-serif">Formulario de Postulación</h1>
-                        <p className="text-gris-piedra">Siga los pasos para completar el proceso de admisión.</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-azul-monte-tabor font-serif">
+                            Formulario de Postulación
+                        </h1>
+                        <p className="text-sm text-gris-piedra mt-1">
+                            Completa los datos paso a paso. Guardamos tu progreso automáticamente.
+                        </p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gris-piedra">Apoderado:</p>
-                        <p className="font-semibold text-azul-monte-tabor">{user?.firstName} {user?.lastName}</p>
-                        <Link to="/dashboard-apoderado" className="text-sm text-azul-monte-tabor hover:underline">
-                            Ver mi dashboard →
+                    <div className="text-left sm:text-right">
+                        <p className="text-xs text-gris-piedra">Apoderado</p>
+                        <p className="text-sm font-semibold text-azul-monte-tabor">
+                            {user?.firstName} {user?.lastName}
+                        </p>
+                        <Link
+                            to="/dashboard-apoderado"
+                            className="inline-flex items-center gap-1 text-xs text-gris-piedra hover:text-azul-monte-tabor transition-colors"
+                            aria-label="Ver mi dashboard de apoderado"
+                        >
+                            Ver mi dashboard
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                         </Link>
                     </div>
                 </div>
 
-                {/* Progress Bar con Círculos */}
+                {/* Aviso de borrador restaurado (autodesaparece a los 6s) */}
+                {draftRestored && (
+                    <div
+                        className="mb-4 flex items-start gap-2 rounded-lg border border-azul-monte-tabor/20 bg-blue-50 px-3 py-2 text-sm text-azul-monte-tabor"
+                        role="status"
+                    >
+                        <span aria-hidden="true">💾</span>
+                        <span>
+                            Encontramos un borrador tuyo. Puedes continuar donde quedaste o
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    clearDraft();
+                                    setData({});
+                                    setCurrentStep(0);
+                                    setDraftRestored(false);
+                                }}
+                                className="ml-1 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor rounded"
+                            >
+                                empezar desde cero
+                            </button>
+                            .
+                        </span>
+                    </div>
+                )}
+
+                {/* ── Progreso unificado ─────────────────────────────────────
+                    Heading + barra (mobile/tablet) | stepper interactivo (lg+).
+                    Sin redundancia: la barra se oculta cuando el stepper es visible.
+                */}
                 <div className="mb-8 sm:mb-10">
-                    {/* Desktop View */}
-                    <div className="hidden sm:flex justify-between items-center gap-2 mb-8">
-                        {steps.map((step, index) => (
-                            <div key={index} className="flex flex-col items-center flex-1">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                                    index < currentStep
-                                        ? 'bg-verde-esperanza text-white'
-                                        : index === currentStep
-                                        ? 'bg-dorado-nazaret text-azul-monte-tabor border-2 border-dorado-nazaret'
-                                        : 'bg-gray-300 text-white'
-                                }`}>
-                                    {index + 1}
-                                </div>
-                                {index < steps.length - 1 && (
-                                    <div className={`h-0.5 w-full mt-3 transition-all duration-300 ${
-                                        index < currentStep ? 'bg-verde-esperanza' : 'bg-gray-300'
-                                    }`}></div>
-                                )}
-                            </div>
-                        ))}
+                    {/* Línea superior: nombre del paso + contador */}
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                        <h2 className="text-sm sm:text-base font-medium text-azul-monte-tabor">
+                            <span className="text-gris-piedra font-normal">Paso {currentStep + 1}:</span>{' '}
+                            <span className="font-semibold">{steps[currentStep]}</span>
+                        </h2>
+                        <span className="text-xs text-gris-piedra tabular-nums whitespace-nowrap lg:hidden">
+                            {currentStep + 1} / {steps.length}
+                        </span>
                     </div>
 
-                    {/* Mobile View */}
-                    <div className="sm:hidden text-center mb-6">
-                        <div className="inline-flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                                currentStep === 0
-                                    ? 'bg-dorado-nazaret text-azul-monte-tabor border-2 border-dorado-nazaret'
-                                    : 'bg-verde-esperanza text-white'
-                            }`}>
-                                {currentStep + 1}
-                            </div>
-                            <span className="text-sm text-gris-piedra">de {steps.length}</span>
-                        </div>
-                        <p className="text-xs text-gris-piedra mt-3">Paso {currentStep + 1}</p>
+                    {/* Barra de progreso — visible solo en < lg (cuando el stepper no se muestra) */}
+                    <div
+                        role="progressbar"
+                        aria-valuemin={1}
+                        aria-valuemax={steps.length}
+                        aria-valuenow={currentStep + 1}
+                        aria-label={`Paso ${currentStep + 1} de ${steps.length}: ${steps[currentStep]}`}
+                        className="h-1.5 w-full overflow-hidden rounded-full bg-gris-piedra/20 lg:hidden"
+                    >
+                        <div
+                            className="h-full bg-azul-monte-tabor transition-[width] duration-500 motion-reduce:transition-none"
+                            style={{
+                                width: `${((currentStep + 1) / steps.length) * 100}%`,
+                                transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                            }}
+                        />
                     </div>
 
-                    {/* Barra de Progreso */}
-                    <div className="w-full">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-medium text-azul-monte-tabor">
-                                {Math.round(((currentStep + 1) / steps.length) * 100)}%
-                            </span>
-                            <span className="text-xs text-gris-piedra">
-                                {currentStep + 1} de {steps.length}
-                            </span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-dorado-nazaret to-verde-esperanza rounded-full transition-all duration-500"
-                                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-                            ></div>
-                        </div>
-                    </div>
+                    {/* Stepper interactivo — solo lg+ (≥1024px) para evitar
+                        aplastar 9 columnas en tablet 768px.
+                        Los pasos completados son botones clickeables para navegar atrás.
+                    */}
+                    <ol
+                        aria-label="Progreso del formulario"
+                        className="mt-4 hidden lg:grid gap-0"
+                        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+                    >
+                        {steps.map((stepLabel, index) => {
+                            const isDone = index < currentStep;
+                            const isCurrent = index === currentStep;
+                            const isLast = index === steps.length - 1;
+                            const isNavigable = isDone; // Solo pasos completados son clickeables
+
+                            const circleClasses = `relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300 motion-reduce:transition-none ${
+                                isDone
+                                    ? 'bg-azul-monte-tabor text-white'
+                                    : isCurrent
+                                    ? 'bg-white text-azul-monte-tabor ring-2 ring-azul-monte-tabor'
+                                    : 'bg-white text-gris-piedra ring-1 ring-gris-piedra/30'
+                            }`;
+
+                            const circleContent = isDone ? (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                            ) : (
+                                index + 1
+                            );
+
+                            return (
+                                <li key={index} className="relative flex flex-col items-center">
+                                    {/* Connector entre círculos */}
+                                    {!isLast && (
+                                        <span
+                                            aria-hidden="true"
+                                            className={`absolute left-1/2 top-[15px] h-0.5 w-full transition-colors duration-300 motion-reduce:transition-none ${
+                                                isDone ? 'bg-azul-monte-tabor' : 'bg-gris-piedra/20'
+                                            }`}
+                                        />
+                                    )}
+
+                                    {/* Círculo: botón si es paso completado, span si no */}
+                                    {isNavigable ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setCurrentStep(index)}
+                                            className={`${circleClasses} cursor-pointer hover:ring-2 hover:ring-azul-monte-tabor/50 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:ring-offset-2`}
+                                            aria-label={`Volver al paso ${index + 1}: ${stepLabel}`}
+                                        >
+                                            {circleContent}
+                                        </button>
+                                    ) : (
+                                        <span
+                                            className={circleClasses}
+                                            aria-current={isCurrent ? 'step' : undefined}
+                                        >
+                                            {circleContent}
+                                        </span>
+                                    )}
+
+                                    {/* Label del paso */}
+                                    <span
+                                        className={`mt-2 text-center text-xs leading-tight ${
+                                            isCurrent
+                                                ? 'font-medium text-azul-monte-tabor'
+                                                : isDone
+                                                ? 'text-gris-piedra'
+                                                : 'text-gris-piedra/60'
+                                        }`}
+                                    >
+                                        {stepShortLabels[index]}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ol>
                 </div>
 
-                <Card className="p-4 sm:p-8 md:p-12">
+                <Card className="p-4 sm:p-8">
                     {renderStepContent()}
                 </Card>
 
-
                 {/* Navigation Buttons */}
                 {currentStep < steps.length - 1 && (
-                    <div className="mt-8 flex justify-between">
-                        <Button variant="outline" onClick={prevStep} disabled={currentStep === 0}>
-                            Anterior
-                        </Button>
+                    <div className={`mt-8 flex ${currentStep === 0 ? 'justify-end' : 'justify-between'}`}>
+                        {currentStep > 0 && (
+                            <Button variant="outline" onClick={prevStep}>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    Anterior
+                                </span>
+                            </Button>
+                        )}
                         <Button
                             variant="primary"
                             onClick={nextStep}
                             isLoading={isSubmitting}
-                            loadingText={location.state?.editMode ? "Guardando..." : "Enviando..."}
+                            loadingText={location.state?.editMode ? "Guardando cambios..." : "Enviando tu postulación..."}
                             disabled={!canProceedToNextStep && !isSubmitting}
+                            className={!canProceedToNextStep && !isSubmitting ? 'cursor-not-allowed opacity-60' : ''}
                         >
-                            {currentStep === 7
-                                ? (location.state?.editMode ? 'Guardar Cambios' : 'Enviar Postulación')
-                                : 'Siguiente'
-                            }
+                            <span className="inline-flex items-center gap-1.5">
+                                {currentStep === 7
+                                    ? (location.state?.editMode ? 'Guardar Cambios' : 'Enviar Postulación')
+                                    : 'Siguiente'
+                                }
+                                {currentStep < 7 && (
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                )}
+                            </span>
                         </Button>
                     </div>
                 )}

@@ -15,7 +15,15 @@ interface RutInputProps {
   className?: string;
   showValidation?: boolean;
   autoFormat?: boolean;
+  /** Texto de ayuda mostrado bajo el input cuando está vacío. */
+  helpText?: string;
+  /** Atributo autocomplete del input (ej: "off", "username"). */
+  autoComplete?: string;
+  /** inputMode del input. Por defecto "numeric" para teclado numérico en móvil. */
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search' | 'none';
 }
+
+const DEFAULT_HELP_TEXT = 'Puedes escribirlo con o sin puntos; se formatea solo.';
 
 const RutInput: React.FC<RutInputProps> = ({
   value,
@@ -29,7 +37,10 @@ const RutInput: React.FC<RutInputProps> = ({
   name = "rut",
   className = "",
   showValidation = true,
-  autoFormat = true
+  autoFormat = true,
+  helpText = DEFAULT_HELP_TEXT,
+  autoComplete = 'off',
+  inputMode = 'numeric',
 }) => {
   const [internalError, setInternalError] = useState<string>('');
   const [touched, setTouched] = useState(false);
@@ -72,12 +83,18 @@ const RutInput: React.FC<RutInputProps> = ({
   // Determinar qué error mostrar
   const displayError = externalError || (touched ? internalError : '');
 
-  // Determinar el estado visual
-  const isValid = value.trim() && isValidRut(value);
   const hasError = Boolean(displayError);
 
+  // Help text contextual: mostrar solo si está vacío y no hay error
+  const computedHelpText = !value.trim() && !hasError ? helpText : undefined;
+
+  // Si el error es de formato inválido, agregar ejemplo
+  const computedError = displayError === RUT_ERROR_MESSAGES.INVALID
+    ? `${displayError} — Ej: 12.345.678-9`
+    : displayError;
+
   return (
-    <div className={`relative ${className}`}>
+    <div className={className}>
       <Input
         type="text"
         value={value}
@@ -85,46 +102,17 @@ const RutInput: React.FC<RutInputProps> = ({
         onBlur={handleBlur}
         placeholder={placeholder}
         required={required}
+        isRequired={required}
         disabled={disabled}
-        error={displayError}
+        error={computedError}
         label={label}
         id={name}
         name={name}
-        maxLength={12} // 11.111.111-1 = 12 caracteres
-        className={`
-          ${hasError ? 'border-red-500 focus:border-red-500' : ''}
-          ${isValid && !hasError ? 'border-green-500 focus:border-green-500' : ''}
-        `}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        helpText={computedHelpText}
+        maxLength={12}
       />
-      
-      {/* Indicador visual de validación */}
-      {showValidation && value.trim() && touched && (
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-3">
-          {isValid && !hasError ? (
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : hasError ? (
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : null}
-        </div>
-      )}
-      
-      {/* Ayuda adicional */}
-      {!hasError && !value.trim() && (
-        <p className="mt-1 text-sm text-gray-500">
-          Ingresa tu RUT sin puntos ni guión, se formateará automáticamente
-        </p>
-      )}
-      
-      {/* Ejemplo de formato válido */}
-      {hasError && displayError === RUT_ERROR_MESSAGES.INVALID && (
-        <p className="mt-1 text-sm text-gray-500">
-          Formato válido: 12.345.678-9 o 12345678-9
-        </p>
-      )}
     </div>
   );
 };

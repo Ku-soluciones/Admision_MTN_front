@@ -34,7 +34,7 @@ const Input: React.FC<InputProps> = ({ label, id, error, isRequired, helpText, s
                     aria-required={isRequired}
                     aria-invalid={!!error}
                     aria-describedby={describedBy}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                    className={`w-full min-h-[44px] px-4 py-2.5 border rounded-lg text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-colors duration-200 ${
                         shouldShowToggle ? 'pr-10' : ''
                     } ${
                         error
