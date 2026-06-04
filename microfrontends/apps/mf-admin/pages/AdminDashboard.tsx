@@ -50,7 +50,6 @@ import {
   EVALUATION_STATUS_LABELS 
 } from '../types/evaluation';
 import EvaluationManagement from '../components/admin/EvaluationManagement';
-import EvaluationStatistics from '../components/admin/EvaluationStatistics';
 import EvaluationReports from '../components/admin/EvaluationReports';
 import { GuardianManagement, StaffManagement } from '../components/users';
 import { InterviewManagement } from '../components/interviews';
@@ -501,13 +500,6 @@ Esta acción:
                 Gestión de Evaluaciones
               </Button>
               <Button
-                variant={evaluationSubsection === 'statistics' ? 'primary' : 'outline'}
-                onClick={() => setEvaluationSubsection('statistics')}
-              >
-                <FiBarChart2 className="w-5 h-5 mr-2" />
-                Estadísticas y Análisis
-              </Button>
-              <Button
                 variant={evaluationSubsection === 'reports' ? 'primary' : 'outline'}
                 onClick={() => setEvaluationSubsection('reports')}
               >
@@ -523,10 +515,8 @@ Esta acción:
                 onRefresh={loadApplications}
                 onAssign={handleAssignEvaluator}
               />
-            ) : evaluationSubsection === 'statistics' ? (
-              <EvaluationStatistics />
             ) : (
-              <EvaluationReports 
+              <EvaluationReports
                 applications={applications}
                 onRefresh={loadApplications}
               />
