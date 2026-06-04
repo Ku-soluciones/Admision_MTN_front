@@ -37,10 +37,29 @@ const gradeOptions = educationalLevels.map(level => ({
 }));
 
 const schoolOptions = [
-    { value: '', label: 'Seleccione un colegio...' },
-    { value: 'MONTE_TABOR', label: 'Monte Tabor' },
-    { value: 'NAZARET', label: 'Nazaret' }
+    { value: '', label: 'Seleccione un género...' },
+    { value: 'MALE', label: 'Masculino' },
+    { value: 'FEMALE', label: 'Femenino' }
 ];
+
+const documentTypes = [
+    { key: 'BIRTH_CERTIFICATE', label: 'Certificado de Nacimiento', required: true },
+    { key: 'GRADES_2023', label: 'Certificado de Estudios 2023 (si aplica)', required: true },
+    { key: 'GRADES_2024', label: 'Certificado de Estudios 2024', required: true },
+    { key: 'GRADES_2025_SEMESTER_1', label: 'Certificado de Estudios primer semestre 2025', required: true },
+    { key: 'PERSONALITY_REPORT_2024', label: 'Informe de Personalidad 2024', required: false },
+    { key: 'PERSONALITY_REPORT_2025_SEMESTER_1', label: 'Informe de Personalidad primer semestre 2025', required: false },
+    { key: 'STUDENT_PHOTO', label: 'Fotografía del Postulante', required: false },
+    { key: 'BAPTISM_CERTIFICATE', label: 'Certificado de Bautismo', required: false },
+    { key: 'PREVIOUS_SCHOOL_REPORT', label: 'Informe de Jardín/Colegio Anterior', required: false },
+    { key: 'MEDICAL_CERTIFICATE', label: 'Certificado Médico', required: false },
+    { key: 'PSYCHOLOGICAL_REPORT', label: 'Informe Psicológico (si aplica)', required: false }
+];
+
+const getDocumentLabel = (documentType: string): string => {
+    const doc = documentTypes.find(d => d.key === documentType);
+    return doc ? doc.label : documentType;
+};
 
 
 const validationConfig = {
@@ -2124,26 +2143,6 @@ const ApplicationForm: React.FC = () => {
 
             // Step 7: Documentación
             case 7:
-                const documentTypes = [
-                    { key: 'BIRTH_CERTIFICATE', label: 'Certificado de Nacimiento', required: true },
-                    { key: 'GRADES_2023', label: 'Certificado de Estudios 2023 (si aplica)', required: true },
-                    { key: 'GRADES_2024', label: 'Certificado de Estudios 2024', required: true },
-                    { key: 'GRADES_2025_SEMESTER_1', label: 'Certificado de Estudios primer semestre 2025', required: true },
-                    { key: 'PERSONALITY_REPORT_2024', label: 'Informe de Personalidad 2024', required: false },
-                    { key: 'PERSONALITY_REPORT_2025_SEMESTER_1', label: 'Informe de Personalidad primer semestre 2025', required: false },
-                    { key: 'STUDENT_PHOTO', label: 'Fotografía del Postulante', required: false },
-                    { key: 'BAPTISM_CERTIFICATE', label: 'Certificado de Bautismo', required: false },
-                    { key: 'PREVIOUS_SCHOOL_REPORT', label: 'Informe de Jardín/Colegio Anterior', required: false },
-                    { key: 'MEDICAL_CERTIFICATE', label: 'Certificado Médico', required: false },
-                    { key: 'PSYCHOLOGICAL_REPORT', label: 'Informe Psicológico (si aplica)', required: false }
-                ];
-
-                // Función para traducir tipos de documentos a español
-                const getDocumentLabel = (documentType: string): string => {
-                    const doc = documentTypes.find(d => d.key === documentType);
-                    return doc ? doc.label : documentType;
-                };
-
                 return (
                     <div>
                         <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Carga de Documentos</h3>
