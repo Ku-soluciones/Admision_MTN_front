@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Quick Navigation
 
@@ -294,7 +294,7 @@ When refactoring or cleaning up pages:
    - Open DevTools, inspect the URL hash-based routing
    - Check `localStorage` to see auth tokens and user data
    - Look at one service file (e.g., `services/api.ts`) to understand API patterns
-   - Read this CLAUDE.md section: "Architecture Overview" and "API Communication"
+   - Read this AGENTS.md section: "Architecture Overview" and "API Communication"
 
 3. **Make a Change:**
    - Find where to edit (e.g., component in `pages/` or `components/`)

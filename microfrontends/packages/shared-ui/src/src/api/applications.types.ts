@@ -43,7 +43,7 @@ export interface Student {
   specialNeeds: boolean;
   specialNeedsDescription?: string;
   age?: number;
-  targetSchool?: 'MONTE_TABOR' | 'NAZARET';
+  gender?: 'MALE' | 'FEMALE';
   isEmployeeChild?: boolean;
   employeeParentName?: string;
   isAlumniChild?: boolean;
@@ -101,7 +101,7 @@ export interface UpdateApplicationRequest {
 export interface ApplicationSearchParams {
   status?: Application['status'];
   gradeApplying?: string;
-  targetSchool?: 'MONTE_TABOR' | 'NAZARET';
+  gender?: 'MALE' | 'FEMALE';
   submissionDateFrom?: string;
   submissionDateTo?: string;
   studentName?: string;

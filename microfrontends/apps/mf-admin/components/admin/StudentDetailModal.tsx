@@ -39,7 +39,7 @@ interface Postulante {
     direccion: string;
     cursoPostulado: string;
     colegioActual?: string;
-    colegioDestino: 'MONTE_TABOR' | 'NAZARET' | null;
+    colegioDestino: 'MALE' | 'FEMALE' | null;
     añoAcademico: string;
     estadoPostulacion: string;
     fechaPostulacion: string;
@@ -82,6 +82,7 @@ interface StudentDetailModalProps {
     onUpdateStatus?: (postulante: Postulante, newStatus: string) => void;
     onScheduleInterview?: (postulante: Postulante, interviewType?: string) => void;
     onAssignEvaluator?: (applicationId: number, evaluationType: string, evaluatorId: number) => Promise<void>;
+    onRefresh?: () => void;
 }
 
 const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -91,7 +92,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     onEdit,
     onUpdateStatus,
     onScheduleInterview,
-    onAssignEvaluator
+    onAssignEvaluator,
+    onRefresh
 }) => {
     const [activeTab, setActiveTab] = useState<'info' | 'familia' | 'academico' | 'entrevistas' | 'evaluaciones' | 'documentos' | 'historial'>('info');
     const [documentSubTab, setDocumentSubTab] = useState<'academic' | 'other'>('academic');
@@ -137,6 +139,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         try {
             const app = await applicationService.getApplicationById(postulante.id);
             setFullApplication(app);
+
+            // Actualizar selectedSchool con valor fresco del backend
+            if (app?.student?.gender) {
+                setSelectedSchool(app.student.gender);
+            }
 
             // Initialize document approval status from database
             if (app?.documents) {
@@ -422,20 +429,23 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         setSavingSchool(true);
         try {
             await applicationService.updateApplication(postulante.id, {
-                student: { targetSchool: school }
+                student: { gender: school }
             });
             setSelectedSchool(school);
             setIsEditingSchool(false);
             addNotification({
                 type: 'success',
-                title: 'Colegio asignado',
-                message: `Colegio destino actualizado correctamente`
+                title: 'Género asignado',
+                message: `Género destino actualizado correctamente`
             });
+            // Refrescar datos del modal y lista de postulantes
+            loadFullApplication();
+            if (onRefresh) onRefresh();
         } catch (error) {
             addNotification({
                 type: 'error',
                 title: 'Error',
-                message: 'No se pudo guardar el colegio destino'
+                message: 'No se pudo guardar el género destino'
             });
         } finally {
             setSavingSchool(false);
@@ -894,10 +904,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             <Badge variant="blue" size="sm">{postulante.cursoPostulado}</Badge>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-600">Colegio Destino:</span>
+                            <span className="text-gray-600">Género:</span>
                             {selectedSchool ? (
                                 <Badge variant="green" size="sm">
-                                    {selectedSchool === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
+                                    {selectedSchool === 'MALE' ? 'Masculino' : selectedSchool === 'FEMALE' ? 'Femenino' : 'Pendiente'}
                                 </Badge>
                             ) : (
                                 <Badge variant="warning" size="sm">Pendiente</Badge>
@@ -1066,10 +1076,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </h4>
                         <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
-                                <FiBriefcase className="w-4 h-4 text-gray-400" />
-                                <span>Profesión: {fatherData.profession || postulante.profesionPadre || 'No especificada'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
                                 <FiPhone className="w-4 h-4 text-gray-400" />
                                 <span>Teléfono: {fatherData.phone || postulante.telefonoPadre || 'No especificado'}</span>
                             </div>
@@ -1098,10 +1104,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             {motherData.fullName || postulante.nombreMadre || 'No especificado'}
                         </h4>
                         <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                                <FiBriefcase className="w-4 h-4 text-gray-400" />
-                                <span>Profesión: {motherData.profession || postulante.profesionMadre || 'No especificada'}</span>
-                            </div>
                             <div className="flex items-center gap-2">
                                 <FiPhone className="w-4 h-4 text-gray-400" />
                                 <span>Teléfono: {motherData.phone || postulante.telefonoMadre || 'No especificado'}</span>
@@ -1461,12 +1463,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 {/* Selector de colegio destino */}
                 <div className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-900">Colegio destino del estudiante</span>
+                        <span className="font-medium text-gray-900">Género del estudiante</span>
                         {selectedSchool && !isEditingSchool && (
                             <button
                                 onClick={() => setIsEditingSchool(true)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                                title="Editar colegio destino"
+                                title="Editar género del estudiante"
                             >
                                 <FiEdit className="w-4 h-4" />
                             </button>
@@ -1474,7 +1476,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </div>
                     {selectedSchool && !isEditingSchool ? (
                         <div className="bg-gray-100 text-gray-500 px-3 py-2 rounded-md text-sm font-medium">
-                            {selectedSchool === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
+                            {selectedSchool === 'MALE' ? 'Masculino' : selectedSchool === 'FEMALE' ? 'Femenino' : 'Pendiente'}
                         </div>
                     ) : (
                         <select
@@ -1483,9 +1485,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             onChange={(e) => { if (e.target.value) handleSaveSchool(e.target.value); }}
                             disabled={savingSchool}
                         >
-                            <option value="">Seleccione el colegio al que postula...</option>
-                            <option value="MONTE_TABOR">Monte Tabor</option>
-                            <option value="NAZARET">Nazaret</option>
+                            <option value="">Seleccione el género...</option>
+                            <option value="MALE">Masculino</option>
+                            <option value="FEMALE">Femenino</option>
                         </select>
                     )}
                 </div>

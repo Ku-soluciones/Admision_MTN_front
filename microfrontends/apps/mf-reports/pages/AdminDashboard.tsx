@@ -296,7 +296,7 @@ const AdminDashboard: React.FC = () => {
       // Datos académicos
       cursoPostulado: app.student.gradeApplied,
       colegioActual: app.student.currentSchool,
-      colegioDestino: (app.student.targetSchool || 'MONTE_TABOR'),
+      colegioDestino: (app.student.gender || 'MALE'),
       añoAcademico: '2025',
       
       // Estado de postulación
@@ -314,13 +314,11 @@ const AdminDashboard: React.FC = () => {
       nombrePadre: app.father?.fullName,
       emailPadre: app.father?.email,
       telefonoPadre: app.father?.phone,
-      profesionPadre: app.father?.profession,
-      
+
       nombreMadre: app.mother?.fullName,
       emailMadre: app.mother?.email,
       telefonoMadre: app.mother?.phone,
-      profesionMadre: app.mother?.profession,
-      
+
       // Información académica y evaluaciones
       documentosCompletos: app.documents ? app.documents.length > 0 : false,
       cantidadDocumentos: app.documents ? app.documents.length : 0,

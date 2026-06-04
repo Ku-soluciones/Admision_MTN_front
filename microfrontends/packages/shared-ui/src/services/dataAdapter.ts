@@ -52,7 +52,7 @@ export interface Application {
     email?: string;
     address?: string;
     gradeApplied?: string;
-    targetSchool?: string;
+    gender?: string;
     currentSchool?: string;
     additionalNotes?: string;
     isEmployeeChild?: boolean;
@@ -162,7 +162,7 @@ export class DataAdapter {
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
         address: 'Dirección no especificada',
         gradeApplied: this.inferGradeFromName(studentName),
-        targetSchool: 'MONTE_TABOR',
+        gender: 'MALE',
         currentSchool: 'Colegio anterior',
         additionalNotes: 'Datos migrados desde microservicio',
         isEmployeeChild: false,
@@ -214,7 +214,7 @@ export class DataAdapter {
               email: 'error@ejemplo.com',
               address: 'N/A',
               gradeApplied: 'KINDER',
-              targetSchool: 'MONTE_TABOR',
+              gender: 'MALE',
               currentSchool: 'N/A',
               additionalNotes: 'Error al procesar datos',
               isEmployeeChild: false,

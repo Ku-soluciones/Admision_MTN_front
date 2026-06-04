@@ -219,8 +219,8 @@ class SearchClient {
         { value: 2026, label: '2026' }
       ],
       schools: [
-        { value: 'MONTE_TABOR', label: 'Monte Tabor' },
-        { value: 'NAZARET', label: 'Nazaret' }
+        { value: 'MALE', label: 'Masculino' },
+        { value: 'FEMALE', label: 'Femenino' }
       ],
       evaluationStatuses: [
         { value: 'PENDING', label: 'Pendiente' },

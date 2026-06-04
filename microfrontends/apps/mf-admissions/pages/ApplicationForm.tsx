@@ -1111,7 +1111,6 @@ const ApplicationForm: React.FC = () => {
                 if (!data.parent1Email?.trim()) missing.push('Email');
                 if (!data.parent1Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent1Address?.trim()) missing.push('Dirección');
-                if (!data.parent1Profession?.trim()) missing.push('Profesión');
                 break;
 
             // Step 4: Datos de la Madre
@@ -1121,7 +1120,6 @@ const ApplicationForm: React.FC = () => {
                 if (!data.parent2Email?.trim()) missing.push('Email');
                 if (!data.parent2Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent2Address?.trim()) missing.push('Dirección');
-                if (!data.parent2Profession?.trim()) missing.push('Profesión');
                 break;
 
             // Step 5: Sostenedor
@@ -1878,18 +1876,6 @@ const ApplicationForm: React.FC = () => {
                                 error={errors.parent1Address}
                             />
                         </div>
-                        <div className="mt-4">
-                            <Input
-                                id="parent1-profession"
-                                label="Profesión"
-                                placeholder="Ingeniero Comercial"
-                                isRequired
-                                value={data.parent1Profession || ''}
-                                onChange={(e) => updateField('parent1Profession', e.target.value)}
-                                onBlur={() => touchField('parent1Profession')}
-                                error={errors.parent1Profession}
-                            />
-                        </div>
                     </div>
                 );
 
@@ -1952,18 +1938,6 @@ const ApplicationForm: React.FC = () => {
                                 onChange={(e) => updateField('parent2Address', e.target.value)}
                                 onBlur={() => touchField('parent2Address')}
                                 error={errors.parent2Address}
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <Input
-                                id="parent2-profession"
-                                label="Profesión"
-                                placeholder="Profesora de Educación Básica"
-                                isRequired
-                                value={data.parent2Profession || ''}
-                                onChange={(e) => updateField('parent2Profession', e.target.value)}
-                                onBlur={() => touchField('parent2Profession')}
-                                error={errors.parent2Profession}
                             />
                         </div>
                     </div>
