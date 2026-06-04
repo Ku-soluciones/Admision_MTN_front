@@ -15,7 +15,7 @@ export interface AdvancedSearchParams {
   // Grade and school
   gradeApplied?: string;
   academicYear?: number;
-  schoolApplied?: 'MONTE_TABOR' | 'NAZARET';
+  schoolApplied?: 'MALE' | 'FEMALE';
 
   // Document filters
   documentsComplete?: boolean;

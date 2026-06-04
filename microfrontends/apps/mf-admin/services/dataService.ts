@@ -47,7 +47,7 @@ export interface EmailNotificationData {
     subject: string;
     studentName: string;
     studentGender: 'MALE' | 'FEMALE';
-    targetSchool: 'MONTE_TABOR' | 'NAZARET';
+    gender: 'MALE' | 'FEMALE';
     sentAt: string;
     opened: boolean;
     openedAt?: string;
@@ -84,7 +84,7 @@ export interface PostulanteData {
     direccion: string;
     cursoPostulado: string;
     colegioActual?: string;
-    colegioDestino: 'MONTE_TABOR' | 'NAZARET';
+    colegioDestino: 'MALE' | 'FEMALE' | null;
     añoAcademico: string;
     estadoPostulacion: string;
     fechaPostulacion: string;
@@ -215,7 +215,7 @@ class DataService {
                 subject: 'Entrevista programada para Ana María',
                 studentName: 'Ana María Pérez',
                 studentGender: 'FEMALE',
-                targetSchool: 'MONTE_TABOR',
+                gender: 'MALE',
                 sentAt: '2025-08-20T10:00:00',
                 opened: true,
                 openedAt: '2025-08-20T10:05:00',
@@ -280,7 +280,7 @@ class DataService {
             direccion: student.address || 'Sin dirección',
             cursoPostulado: student.gradeApplied || 'No especificado',
             colegioActual: student.currentSchool || undefined,
-            colegioDestino: student.targetSchool || 'MONTE_TABOR',
+            colegioDestino: student.gender || null,
             añoAcademico: '2025',
             estadoPostulacion: app.status || 'PENDING',
             fechaPostulacion: app.submissionDate || app.createdAt || '',

@@ -124,7 +124,7 @@ const SavedFilters: React.FC<SavedFiltersProps> = ({
           id: '1',
           field: 'schoolApplied',
           operator: 'equals',
-          value: 'MONTE_TABOR',
+          value: 'MALE',
           logic: 'AND'
         },
         {

@@ -12,7 +12,7 @@ export interface ApplicationRequest {
     studentEmail?: string;
     studentAddress: string;
     grade: string;
-    schoolApplied: string; // "MONTE_TABOR" para niños, "NAZARET" para niñas
+    schoolApplied: string; // "MALE" para niños, "FEMALE" para niñas
     currentSchool?: string;
     additionalNotes?: string;
 
@@ -78,7 +78,7 @@ export interface Application {
         currentSchool?: string;
         additionalNotes?: string;
         // Campos de categorías especiales
-        targetSchool?: string;
+        gender?: string;
         isEmployeeChild?: boolean;
         employeeParentName?: string;
         isAlumniChild?: boolean;
@@ -484,6 +484,7 @@ class ApplicationService {
                 studentEmail: data.studentEmail || '',
                 studentAddress: data.studentAddress || '',
                 studentCurrentSchool: data.currentSchool || '',
+                studentGender: data.schoolApplied === 'MALE' ? 'MALE' : data.schoolApplied === 'FEMALE' ? 'FEMALE' : '',
                 studentAdmissionPreference: data.admissionPreference || 'NINGUNA',
                 studentPais: 'Chile',
                 studentRegion: '',
@@ -582,6 +583,12 @@ class ApplicationService {
             // Convertir gradeApplied al formato esperado por el backend
             if (applicationData.student?.gradeApplied) {
                 applicationData.student.gradeApplied = this.transformGradeToBackend(applicationData.student.gradeApplied);
+            }
+
+            // Convertir gender a studentGender para el backend
+            if (applicationData.student?.gender !== undefined) {
+                applicationData.studentGender = applicationData.student.gender === 'MALE' ? 'MALE' : applicationData.student.gender === 'FEMALE' ? 'FEMALE' : '';
+                delete applicationData.student.gender;
             }
 
             const response = await api.put(`/v1/applications/${applicationId}`, applicationData);

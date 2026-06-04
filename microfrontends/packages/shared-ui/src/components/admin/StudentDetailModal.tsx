@@ -39,7 +39,7 @@ interface Postulante {
     direccion: string;
     cursoPostulado: string;
     colegioActual?: string;
-    colegioDestino: 'MONTE_TABOR' | 'NAZARET';
+    colegioDestino: 'MALE' | 'FEMALE';
     añoAcademico: string;
     estadoPostulacion: string;
     fechaPostulacion: string;
@@ -793,9 +793,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             <Badge variant="blue" size="sm">{postulante.cursoPostulado}</Badge>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-gray-600">Colegio Destino:</span>
+                            <span className="text-gray-600">Género:</span>
                             <Badge variant="green" size="sm">
-                                {postulante.colegioDestino === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}
+                                {postulante.colegioDestino === 'MALE' ? 'Masculino' : postulante.colegioDestino === 'FEMALE' ? 'Femenino' : 'No especificado'}
                             </Badge>
                         </div>
                         <div className="flex justify-between">
@@ -930,10 +930,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </h4>
                         <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
-                                <FiBriefcase className="w-4 h-4 text-gray-400" />
-                                <span>Profesión: {fatherData.profession || postulante.profesionPadre || 'No especificada'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
                                 <FiPhone className="w-4 h-4 text-gray-400" />
                                 <span>Teléfono: {fatherData.phone || postulante.telefonoPadre || 'No especificado'}</span>
                             </div>
@@ -962,10 +958,6 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             {motherData.fullName || postulante.nombreMadre || 'No especificado'}
                         </h4>
                         <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                                <FiBriefcase className="w-4 h-4 text-gray-400" />
-                                <span>Profesión: {motherData.profession || postulante.profesionMadre || 'No especificada'}</span>
-                            </div>
                             <div className="flex items-center gap-2">
                                 <FiPhone className="w-4 h-4 text-gray-400" />
                                 <span>Teléfono: {motherData.phone || postulante.telefonoMadre || 'No especificado'}</span>

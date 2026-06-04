@@ -25,3 +25,11 @@
 {"ts":"2026-05-10T04:22:33.409Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5201/#/","durationMs":9,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-05-10T04:22:43.373Z","cmd":"goto","args":"http://localhost:5206/#/login","origin":"http://localhost:5206/#/login","durationMs":141,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-05-10T04:22:45.494Z","cmd":"snapshot","args":"-i -a -o /tmp/admin-login.png","origin":"http://localhost:5206/#/login","durationMs":73,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:41:45.866Z","cmd":"goto","args":"http://localhost:5204","origin":"http://localhost:5204/","durationMs":28,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:41:45.931Z","cmd":"snapshot","args":"-i -a -o /tmp/mf-eval-home.png","origin":"http://localhost:5204/","durationMs":25,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:44:30.273Z","cmd":"goto","args":"http://localhost:5204/#/profesor/login","origin":"http://localhost:5204/#/profesor/login","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:44:30.309Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5204/#/profesor/login","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:44:37.982Z","cmd":"console","args":"","origin":"http://localhost:5204/#/profesor/login","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:44:45.013Z","cmd":"network","args":"","origin":"http://localhost:5204/#/profesor/login","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:45:21.749Z","cmd":"goto","args":"http://127.0.0.1:5204/#/profesor/login","origin":"http://127.0.0.1:5204/#/profesor/login","durationMs":580,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-22T13:45:21.924Z","cmd":"snapshot","args":"-i -a -o /tmp/profesor-login.png","origin":"http://127.0.0.1:5204/#/profesor/login","durationMs":98,"status":"ok","hasCookies":false,"mode":"launched"}

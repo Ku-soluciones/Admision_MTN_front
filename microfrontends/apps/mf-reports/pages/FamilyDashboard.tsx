@@ -548,7 +548,6 @@ const FamilyDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p><strong>Teléfono:</strong> {myApplication.father.phone}</p>
-                      <p><strong>Profesión:</strong> {myApplication.father.profession}</p>
                       <p><strong>Dirección:</strong> {myApplication.father.address}</p>
                     </div>
                   </div>
@@ -567,7 +566,6 @@ const FamilyDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p><strong>Teléfono:</strong> {myApplication.mother.phone}</p>
-                      <p><strong>Profesión:</strong> {myApplication.mother.profession}</p>
                       <p><strong>Dirección:</strong> {myApplication.mother.address}</p>
                     </div>
                   </div>

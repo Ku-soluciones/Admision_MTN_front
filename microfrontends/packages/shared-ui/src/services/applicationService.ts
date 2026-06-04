@@ -11,7 +11,7 @@ export interface ApplicationRequest {
     studentEmail?: string;
     studentAddress: string;
     grade: string;
-    schoolApplied: string; // "MONTE_TABOR" para niños, "NAZARET" para niñas
+    schoolApplied: string; // "MALE" para niños, "FEMALE" para niñas
     currentSchool?: string;
     additionalNotes?: string;
 
@@ -74,7 +74,7 @@ export interface Application {
         currentSchool?: string;
         additionalNotes?: string;
         // Campos de categorías especiales
-        targetSchool?: string;
+        gender?: string;
         isEmployeeChild?: boolean;
         employeeParentName?: string;
         isAlumniChild?: boolean;
@@ -480,6 +480,7 @@ class ApplicationService {
                 studentEmail: data.studentEmail || '',
                 studentAddress: data.studentAddress || '',
                 studentCurrentSchool: data.currentSchool || '',
+                studentGender: data.schoolApplied === 'MALE' ? 'MALE' : data.schoolApplied === 'FEMALE' ? 'FEMALE' : '',
                 studentAdmissionPreference: data.admissionPreference || 'NINGUNA',
                 studentPais: 'Chile',
                 studentRegion: '',

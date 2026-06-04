@@ -34,7 +34,7 @@ interface Postulante {
     // Datos académicos
     cursoPostulado: string;
     colegioActual?: string;
-    colegioDestino: 'MONTE_TABOR' | 'NAZARET';
+    colegioDestino: 'MALE' | 'FEMALE';
     añoAcademico: string;
     
     // Estado de postulación
@@ -200,7 +200,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                         </Badge>
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                             <FiHome className="w-3 h-3" />
-                            <span>{record.colegioDestino === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret'}</span>
+                            <span>{record.colegioDestino === 'MALE' ? 'Masculino' : record.colegioDestino === 'FEMALE' ? 'Femenino' : 'No especificado'}</span>
                         </div>
                     </div>
                 );
@@ -429,7 +429,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
             // Datos académicos
             cursoPostulado: app.student.gradeApplied,
             colegioActual: app.student.currentSchool,
-            colegioDestino: (app.student.targetSchool || 'MONTE_TABOR') as 'MONTE_TABOR' | 'NAZARET',
+            colegioDestino: (app.student.gender || 'MALE') as 'MALE' | 'FEMALE',
             añoAcademico: '2025',
             
             // Estado de postulación
@@ -447,13 +447,11 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
             nombrePadre: app.father?.fullName,
             emailPadre: app.father?.email,
             telefonoPadre: app.father?.phone,
-            profesionPadre: app.father?.profession,
-            
+
             nombreMadre: app.mother?.fullName,
             emailMadre: app.mother?.email,
             telefonoMadre: app.mother?.phone,
-            profesionMadre: app.mother?.profession,
-            
+
             // Información académica y evaluaciones
             documentosCompletos: app.documents ? app.documents.length > 0 : false,
             cantidadDocumentos: app.documents ? app.documents.length : 0,
@@ -563,7 +561,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
             'Dirección': p.direccion,
             'Curso Postulado': p.cursoPostulado,
             'Colegio Actual': p.colegioActual || '',
-            'Colegio Destino': p.colegioDestino === 'MONTE_TABOR' ? 'Monte Tabor' : 'Nazaret',
+            'Género': p.colegioDestino === 'MALE' ? 'Masculino' : p.colegioDestino === 'FEMALE' ? 'Femenino' : 'No especificado',
             'Estado Postulación': p.estadoPostulacion,
             'Fecha Postulación': p.fechaPostulacion,
             'Contacto Principal': p.nombreContactoPrincipal,
@@ -573,11 +571,9 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
             'Nombre Padre': p.nombrePadre || '',
             'Email Padre': p.emailPadre || '',
             'Teléfono Padre': p.telefonoPadre || '',
-            'Profesión Padre': p.profesionPadre || '',
             'Nombre Madre': p.nombreMadre || '',
             'Email Madre': p.emailMadre || '',
             'Teléfono Madre': p.telefonoMadre || '',
-            'Profesión Madre': p.profesionMadre || '',
             'Documentos Completos': p.documentosCompletos ? 'Sí' : 'No',
             'Cantidad Documentos': p.cantidadDocumentos,
             'Evaluación Pendiente': p.evaluacionPendiente ? 'Sí' : 'No',
