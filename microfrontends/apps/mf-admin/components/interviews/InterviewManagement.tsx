@@ -1368,8 +1368,10 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
     return () => { cancelled = true; };
   }, [applicationId, refreshKey]);
 
+  const INACTIVE_STATUSES = ['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'];
+
   const getForType = (key: string) =>
-    interviews.find(i => i.type === key);
+    interviews.find(i => i.type === key && !INACTIVE_STATUSES.includes(i.status));
 
   const statusLabel = (s: string) => {
     const m: Record<string, string> = {
@@ -1535,7 +1537,7 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
         {/* Footer */}
         <div className="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
           <span className="text-xs text-gray-400">
-            {interviews.filter(i => i.status !== 'CANCELLED').length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
+            {interviews.filter(i => !['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'].includes(i.status)).length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
           </span>
           <button
             onClick={onClose}
