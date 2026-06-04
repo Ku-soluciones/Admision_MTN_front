@@ -177,13 +177,12 @@ const HomePage: React.FC = () => {
                     <p className="text-gris-piedra text-lg mb-8 max-w-2xl mx-auto">
                         Nuestro equipo está aquí para ayudarte en todo el proceso de admisión
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button variant="outline" size="lg">
-                            Contactar Admisión
-                        </Button>
-                        <Button variant="secondary" size="lg">
-                            Agendar Visita
-                        </Button>
+                    <div className="flex justify-center">
+                        <a href={`mailto:${import.meta.env.VITE_ADMISSIONS_EMAIL}?subject=Consulta%20proceso%20de%20admisi%C3%B3n`}>
+                            <Button variant="secondary" size="lg">
+                                Contactar Admisión
+                            </Button>
+                        </a>
                     </div>
                 </div>
             </section>
