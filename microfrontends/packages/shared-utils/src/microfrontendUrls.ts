@@ -50,7 +50,7 @@ export const microfrontendUrls = {
   admissionsComplementary: buildUrl('admissions', '/postulacion/complementaria'),
   guardianLogin: buildUrl('guardian', '/apoderado/login'),
   /** URL para ir directamente al formulario de registro del portal familia. */
-  guardianRegister: buildUrl('guardian', '/apoderado/login').replace('/#', '/?register=1#'),
+  guardianRegister: buildUrl('guardian', '/apoderado/login').replace('/#/apoderado/login', '/apoderado/login?register=1'),
   guardianDashboard: buildUrl('guardian', '/familia'),
   studentExams: buildUrl('student', '/examenes'),
   professorLogin: buildUrl('evaluations', '/profesor/login'),
