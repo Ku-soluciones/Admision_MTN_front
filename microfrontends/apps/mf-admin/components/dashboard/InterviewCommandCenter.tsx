@@ -190,26 +190,24 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   return (
     <div className="space-y-5">
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario y entrevistas</p>
-            <h2 className="mt-1 text-2xl font-bold text-gray-950">Centro operativo de entrevistas</h2>
-            <div className="mt-3 grid max-w-4xl gap-2 text-sm text-gray-600 md:grid-cols-3">
-              <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-                <FiActivity className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-600" aria-hidden="true" />
-                <span>Revisa agenda, carga y disponibilidad sin salir del calendario.</span>
-              </div>
-              <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-                <FiGrid className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
-                <span>Cambia entre dia, semana, dos semanas, mes o calendario mensual.</span>
-              </div>
-              <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-                <FiList className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" aria-hidden="true" />
-                <span>Agenda seleccionando un postulante pendiente por nombre o RUT.</span>
-              </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario Global</p>
+          <h2 className="mt-1 text-2xl font-bold text-gray-950">Centro operativo de entrevistas</h2>
+          <div className="mt-3 grid max-w-4xl gap-2 text-sm text-gray-600 md:grid-cols-3">
+            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
+              <FiActivity className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-600" aria-hidden="true" />
+              <span>Revisa agenda, carga y disponibilidad sin salir del calendario.</span>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
+              <FiGrid className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
+              <span>Cambia entre dia, semana, dos semanas, mes o calendario mensual.</span>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
+              <FiList className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" aria-hidden="true" />
+              <span>Agenda seleccionando un postulante pendiente por nombre o RUT.</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={loadOverview}
@@ -245,28 +243,6 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             </button>
           </div>
         </div>
-
-        {surface === 'operations' && (
-          <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_320px]">
-            <RangeSelector
-              viewMode={viewMode}
-              rangeLabel={rangeLabel}
-              onViewModeChange={setViewMode}
-              onPrevious={() => moveRange(-1)}
-              onNext={() => moveRange(1)}
-              onToday={() => setAnchorDate(new Date())}
-            />
-            <label className="relative block">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-              <input
-                value={searchTerm}
-                onChange={event => setSearchTerm(event.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Buscar familia o entrevistador"
-              />
-            </label>
-          </div>
-        )}
       </section>
 
       {surface === 'calendar' ? (
@@ -295,6 +271,25 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       ) : visibleOverview ? (
         <>
           <SummaryBar summary={visibleOverview.summary} />
+          <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+            <RangeSelector
+              viewMode={viewMode}
+              rangeLabel={rangeLabel}
+              onViewModeChange={setViewMode}
+              onPrevious={() => moveRange(-1)}
+              onNext={() => moveRange(1)}
+              onToday={() => setAnchorDate(new Date())}
+            />
+            <label className="relative block">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <input
+                value={searchTerm}
+                onChange={event => setSearchTerm(event.target.value)}
+                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                placeholder="Buscar familia o entrevistador"
+              />
+            </label>
+          </div>
           <WeeklyTimeline
             days={visibleOverview.days}
             viewMode={viewMode}
