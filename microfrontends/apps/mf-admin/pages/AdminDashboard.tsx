@@ -66,7 +66,7 @@ import EmailTemplateManager from '../components/admin/EmailTemplateManager';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
 import InterviewForm from '../components/interviews/InterviewForm';
-import { InterviewFormMode, InterviewType } from '../types/interview';
+import { InterviewFormMode, INTERVIEW_VALIDATION, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 
@@ -928,7 +928,7 @@ Esta acción:
                 mode: 'IN_PERSON' as any,
                 scheduledDate: '',
                 scheduledTime: '',
-                duration: 30,
+                duration: INTERVIEW_VALIDATION.DURATION.DEFAULT,
                 followUpRequired: false,
                 createdAt: new Date().toISOString(),
                 id: 0

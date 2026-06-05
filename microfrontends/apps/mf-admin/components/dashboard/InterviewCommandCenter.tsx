@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiActivity, FiCalendar, FiGrid, FiList, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
-import { InterviewStatus, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
+import { InterviewStatus, InterviewerInfo, INTERVIEW_VALIDATION, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
@@ -123,7 +123,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       const response = await interviewService.getWeeklyOverview({
         startDate: range.startDate,
         endDate: range.endDate,
-        duration: 30
+        duration: INTERVIEW_VALIDATION.DURATION.DEFAULT
       });
       setOverview(response);
     } catch (loadError) {
@@ -150,7 +150,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         mode: data.mode,
         scheduledDate: data.date,
         scheduledTime: data.time,
-        duration: 30,
+        duration: INTERVIEW_VALIDATION.DURATION.DEFAULT,
         location: data.location,
         status: InterviewStatus.SCHEDULED
       });

@@ -23,7 +23,8 @@ import {
   NextAvailableSlotsResponse,
   WeeklyOverviewResponse,
   WeeklyOverviewDay,
-  InterviewerInfo
+  InterviewerInfo,
+  INTERVIEW_VALIDATION
 } from '../types/interview';
 
 export interface InterviewResponse {
@@ -912,7 +913,7 @@ class InterviewService {
     const queryParams = new URLSearchParams({
       startDate: params.startDate,
       endDate: params.endDate,
-      duration: (params.duration || 30).toString()
+      duration: (params.duration || INTERVIEW_VALIDATION.DURATION.DEFAULT).toString()
     });
 
     try {
@@ -927,7 +928,7 @@ class InterviewService {
       // the aggregate endpoint is deployed.
     }
 
-    return this.buildWeeklyOverviewFallback(params.startDate, params.endDate, params.duration || 30);
+    return this.buildWeeklyOverviewFallback(params.startDate, params.endDate, params.duration || INTERVIEW_VALIDATION.DURATION.DEFAULT);
   }
 
   private async buildWeeklyOverviewFallback(
