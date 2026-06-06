@@ -1020,7 +1020,7 @@ const ApplicationForm: React.FC = () => {
                             passport: authData.passport || null, // Para estudiantes extranjeros
                             birthDate: data.birthDate,
                             studentEmail: data.studentEmail,
-                            studentAddress: data.studentAddress,
+                            address: data.studentAddress,
                             grade: data.grade,
                             schoolApplied: data.schoolApplied,
                             currentSchool: data.currentSchool,
