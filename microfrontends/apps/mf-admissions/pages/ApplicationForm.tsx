@@ -643,21 +643,26 @@ const ApplicationForm: React.FC = () => {
                 };
             }
 
-            // Edad cumplida al día de hoy
-            let age = today.getFullYear() - birth.getFullYear();
-            const m = today.getMonth() - birth.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+            // Calcular edad al 31 de marzo del año de postulación (currentYear + 1)
+            const applicationYear = today.getFullYear() + 1;
+            const referenceDate = new Date(applicationYear, 2, 31); // March 31 of application year
 
-            if (age < 2) {
+            let ageAtReference = applicationYear - birth.getFullYear();
+            const mRef = referenceDate.getMonth() - birth.getMonth();
+            if (mRef < 0 || (mRef === 0 && referenceDate.getDate() < birth.getDate())) ageAtReference--;
+
+            // Edad mínima: 4 años cumplidos al 31 de marzo del año de postulación
+            if (ageAtReference < 4) {
                 return {
                     valid: false,
-                    message: 'El postulante debe tener al menos 2 años cumplidos.',
+                    message: 'El postulante debe tener al menos 4 años cumplidos al 31 de marzo del año de postulación.',
                 };
             }
-            if (age > 25) {
+            // Edad máxima: 18 años para IV Medio (4medio)
+            if (ageAtReference > 18) {
                 return {
                     valid: false,
-                    message: 'La edad supera el rango habitual del proceso (más de 25 años). Verifica la fecha ingresada.',
+                    message: 'La edad máxima para postulación es 18 años cumplidos al 31 de marzo. Verifica la fecha de nacimiento.',
                 };
             }
             return { valid: true };
@@ -756,35 +761,40 @@ const ApplicationForm: React.FC = () => {
         if (!birthDate || !grade) return { valid: true };
 
         const birth = new Date(birthDate);
-        const currentYear = new Date().getFullYear();
-        const age = currentYear - birth.getFullYear();
+        const today = new Date();
+        const applicationYear = today.getFullYear() + 1;
+        const referenceDate = new Date(applicationYear, 2, 31); // March 31 of application year
 
-        // Define expected ages for each grade (approximate range)
+        let ageAtReference = applicationYear - birth.getFullYear();
+        const mRef = referenceDate.getMonth() - birth.getMonth();
+        if (mRef < 0 || (mRef === 0 && referenceDate.getDate() < birth.getDate())) ageAtReference--;
+
+        // Define expected ages for each grade (at March 31 of application year)
         const gradeAgeRanges: { [key: string]: { min: number; max: number; name: string } } = {
-            'playgroup': { min: 2, max: 3, name: 'Playgroup' },
-            'prekinder': { min: 3, max: 5, name: 'Pre-Kínder' },
-            'kinder': { min: 4, max: 6, name: 'Kínder' },
-            '1basico': { min: 5, max: 7, name: '1° Básico' },
-            '2basico': { min: 6, max: 8, name: '2° Básico' },
-            '3basico': { min: 7, max: 9, name: '3° Básico' },
-            '4basico': { min: 8, max: 10, name: '4° Básico' },
-            '5basico': { min: 9, max: 11, name: '5° Básico' },
-            '6basico': { min: 10, max: 12, name: '6° Básico' },
-            '7basico': { min: 11, max: 13, name: '7° Básico' },
-            '8basico': { min: 12, max: 14, name: '8° Básico' },
-            '1medio': { min: 13, max: 15, name: '1° Medio' },
-            '2medio': { min: 14, max: 16, name: '2° Medio' },
-            '3medio': { min: 15, max: 17, name: '3° Medio' },
-            '4medio': { min: 16, max: 18, name: '4° Medio' }
+            'playgroup': { min: 4, max: 5, name: 'Playgroup' },
+            'prekinder': { min: 5, max: 6, name: 'Pre-Kínder' },
+            'kinder': { min: 6, max: 7, name: 'Kínder' },
+            '1basico': { min: 7, max: 8, name: '1° Básico' },
+            '2basico': { min: 8, max: 9, name: '2° Básico' },
+            '3basico': { min: 9, max: 10, name: '3° Básico' },
+            '4basico': { min: 10, max: 11, name: '4° Básico' },
+            '5basico': { min: 11, max: 12, name: '5° Básico' },
+            '6basico': { min: 12, max: 13, name: '6° Básico' },
+            '7basico': { min: 13, max: 14, name: '7° Básico' },
+            '8basico': { min: 14, max: 15, name: '8° Básico' },
+            '1medio': { min: 15, max: 16, name: '1° Medio' },
+            '2medio': { min: 16, max: 17, name: '2° Medio' },
+            '3medio': { min: 17, max: 18, name: '3° Medio' },
+            '4medio': { min: 18, max: 19, name: '4° Medio' }
         };
 
         const range = gradeAgeRanges[grade];
         if (!range) return { valid: true };
 
-        if (age < range.min || age > range.max) {
+        if (ageAtReference < range.min || ageAtReference > range.max) {
             return {
                 valid: false,
-                message: `Para ${range.name} la edad habitual es entre ${range.min} y ${range.max} años. El postulante tiene ${age}; verifica la fecha si crees que hay un error.`
+                message: `Para ${range.name} la edad habitual es entre ${range.min} y ${range.max} años al 31 de marzo. El postulante tiene ${ageAtReference}; verifica la fecha si crees que hay un error.`
             };
         }
 
