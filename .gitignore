@@ -162,4 +162,13 @@ CLAUDE.md
 security-report.*
 vulnerability-report.*
 .vercel
+
+# AI tool directories and skills (installed locally, not versioned)
+.agents/
+.windsurf/
+.cursor/
+.claude/
+.gemini/
 .gstack/
+skills-lock.json
+docs/
