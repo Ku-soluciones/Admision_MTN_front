@@ -92,13 +92,11 @@ const validationConfig = {
     parent1Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent1Rut: { required: true, minLength: 9 },
     parent1Address: { required: true, minLength: 5 },
-    parent1Profession: { required: true, minLength: 2 },
     parent2Name: { required: true, minLength: 2 },
     parent2Email: { required: true, email: true },
     parent2Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent2Rut: { required: true, minLength: 9 },
     parent2Address: { required: true, minLength: 5 },
-    parent2Profession: { required: true, minLength: 2 },
     supporterName: { required: true, minLength: 2 },
     supporterEmail: { required: true, email: true },
     supporterPhone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
@@ -189,8 +187,8 @@ const ApplicationForm: React.FC = () => {
     // Fields that should be converted to uppercase
     const uppercaseFields = [
         'firstName', 'paternalLastName', 'maternalLastName', 'studentAddress', 'currentSchool', 'additionalNotes',
-        'parent1Name', 'parent1Address', 'parent1Profession',
-        'parent2Name', 'parent2Address', 'parent2Profession',
+        'parent1Name', 'parent1Address',
+        'parent2Name', 'parent2Address',
         'supporterName', 'supporterRelation',
         'guardianName', 'guardianRelation'
     ];
@@ -398,7 +396,6 @@ const ApplicationForm: React.FC = () => {
         updateField('parent1Phone', userData.phone);
         updateField('parent1Rut', userData.rut);
         updateField('parent1Address', userData.address.toUpperCase());
-        updateField('parent1Profession', userData.profession.toUpperCase());
     }, [updateField]);
 
     // Verificar si el usuario ya está autenticado
@@ -500,7 +497,6 @@ const ApplicationForm: React.FC = () => {
                     parent1Phone: familyData.father?.phone || '',
                     parent1Rut: familyData.father?.rut || '',
                     parent1Address: familyData.father?.address || '',
-                    parent1Profession: familyData.father?.profession || '',
 
                     // Mother data (parent2)
                     parent2Name: familyData.mother?.fullName || '',
@@ -508,7 +504,6 @@ const ApplicationForm: React.FC = () => {
                     parent2Phone: familyData.mother?.phone || '',
                     parent2Rut: familyData.mother?.rut || '',
                     parent2Address: familyData.mother?.address || '',
-                    parent2Profession: familyData.mother?.profession || '',
 
                     // Supporter data
                     supporterName: familyData.supporter?.fullName || '',
@@ -571,7 +566,6 @@ const ApplicationForm: React.FC = () => {
                     parent1Phone: appData.father?.phone || '',
                     parent1Rut: appData.father?.rut || '',
                     parent1Address: appData.father?.address || '',
-                    parent1Profession: appData.father?.profession || '',
 
                     // Mother data (parent2)
                     parent2Name: appData.mother?.fullName || '',
@@ -579,7 +573,6 @@ const ApplicationForm: React.FC = () => {
                     parent2Phone: appData.mother?.phone || '',
                     parent2Rut: appData.mother?.rut || '',
                     parent2Address: appData.mother?.address || '',
-                    parent2Profession: appData.mother?.profession || '',
 
                     // Supporter data
                     supporterName: appData.supporter?.fullName || '',
@@ -873,7 +866,7 @@ const ApplicationForm: React.FC = () => {
             // Step 3: Datos del Padre
             case 3:
                 if (!data.parent1Name?.trim() || !data.parent1Email?.trim() || !data.parent1Phone?.trim() ||
-                    !data.parent1Rut?.trim() || !data.parent1Address?.trim() || !data.parent1Profession?.trim()) {
+                    !data.parent1Rut?.trim() || !data.parent1Address?.trim() ) {
                     return false;
                 }
                 if (!isValidEmail(data.parent1Email || '') || !isValidPhone(data.parent1Phone || '')) {
@@ -884,7 +877,7 @@ const ApplicationForm: React.FC = () => {
             // Step 4: Datos de la Madre
             case 4:
                 if (!data.parent2Name?.trim() || !data.parent2Email?.trim() || !data.parent2Phone?.trim() ||
-                    !data.parent2Rut?.trim() || !data.parent2Address?.trim() || !data.parent2Profession?.trim()) {
+                    !data.parent2Rut?.trim() || !data.parent2Address?.trim()) {
                     return false;
                 }
                 if (!isValidEmail(data.parent2Email || '') || !isValidPhone(data.parent2Phone || '')) {
@@ -930,7 +923,7 @@ const ApplicationForm: React.FC = () => {
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
             case 0: return ['firstName', 'paternalLastName', 'maternalLastName', 'rut', 'birthDate', 'grade', 'studentAddress'];
-            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent1Profession', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address', 'parent2Profession'];
+            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address'];
             case 2: return ['supporterName', 'supporterEmail', 'supporterPhone', 'supporterRut', 'supporterRelation'];
             case 3: return ['guardianName', 'guardianEmail', 'guardianPhone', 'guardianRut', 'guardianRelation'];
             case 4: return []; // Document upload step
@@ -988,7 +981,6 @@ const ApplicationForm: React.FC = () => {
                                 email: data.parent1Email,
                                 phone: data.parent1Phone,
                                 address: data.parent1Address,
-                                profession: data.parent1Profession
                             },
                             mother: {
                                 fullName: data.parent2Name,
@@ -996,7 +988,6 @@ const ApplicationForm: React.FC = () => {
                                 email: data.parent2Email,
                                 phone: data.parent2Phone,
                                 address: data.parent2Address,
-                                profession: data.parent2Profession
                             },
                             supporter: {
                                 fullName: data.supporterName,
@@ -1045,7 +1036,6 @@ const ApplicationForm: React.FC = () => {
                             parent1Email: data.parent1Email,
                             parent1Phone: data.parent1Phone,
                             parent1Address: data.parent1Address,
-                            parent1Profession: data.parent1Profession,
 
                             // Datos de la madre
                             parent2Name: data.parent2Name,
@@ -1053,7 +1043,6 @@ const ApplicationForm: React.FC = () => {
                             parent2Email: data.parent2Email,
                             parent2Phone: data.parent2Phone,
                             parent2Address: data.parent2Address,
-                            parent2Profession: data.parent2Profession,
 
                             // Datos del sostenedor
                             supporterName: data.supporterName,
