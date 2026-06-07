@@ -18,6 +18,7 @@ import institutionalEmailService from '../../services/institutionalEmailService'
 import { userService } from '../../services/userService';
 import { documentService } from '../../services/documentService';
 import { DocumentType } from '../../types/document';
+import { getApiBaseUrl } from '../../config/api.config';
 
 interface Postulante {
     id: number;
@@ -116,6 +117,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [sendingReminders, setSendingReminders] = useState(false);
     const [viewingDocument, setViewingDocument] = useState<any>(null);
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+    const [documentBlobUrl, setDocumentBlobUrl] = useState<string | null>(null);
+    const [documentBlobLoading, setDocumentBlobLoading] = useState(false);
+    const [documentBlobError, setDocumentBlobError] = useState<string | null>(null);
     const [selectedSchool, setSelectedSchool] = useState<string>('');
     const [isEditingSchool, setIsEditingSchool] = useState(false);
     const [savingSchool, setSavingSchool] = useState(false);
@@ -405,19 +409,46 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const handleViewDocument = (doc: any) => {
         setViewingDocument(doc);
         setShowDocumentViewer(true);
+        setDocumentBlobUrl(null);
+        setDocumentBlobError(null);
+        setDocumentBlobLoading(true);
+
+        // Fetch the document through NGINX→BFF with the auth token
+        const url = getDocumentViewUrl(doc);
+        if (!url) {
+            setDocumentBlobError('No se pudo obtener la URL del documento');
+            setDocumentBlobLoading(false);
+            return;
+        }
+
+        documentService.viewDocument(doc.id)
+            .then((blob) => {
+                const blobUrl = URL.createObjectURL(blob);
+                setDocumentBlobUrl(blobUrl);
+            })
+            .catch((err) => {
+                console.error('Error al cargar el documento:', err);
+                setDocumentBlobError('Error al cargar el documento. Verifique que tiene permisos.');
+            })
+            .finally(() => {
+                setDocumentBlobLoading(false);
+            });
     };
 
-    const getDocumentViewUrl = (doc: any) => {
-        // Documents are now stored in Vercel Blob
-        // filePath contains the direct Vercel Blob URL
-        if (doc.filePath) {
-            // If filePath is already a full URL (starts with http), use it directly
-            if (doc.filePath.startsWith('http')) {
-                return doc.filePath;
-            }
+    // Cleanup blob URL when viewer closes
+    useEffect(() => {
+        if (!showDocumentViewer && documentBlobUrl) {
+            URL.revokeObjectURL(documentBlobUrl);
+            setDocumentBlobUrl(null);
+            setDocumentBlobError(null);
+        }
+    }, [showDocumentViewer]);
 
-            // Otherwise, construct gateway URL to fetch from backend
-            const gatewayUrl = import.meta.env.VITE_API_URL || 'https://admitia-bff-staging.up.railway.app';
+    const getDocumentViewUrl = (doc: any) => {
+        // Private Vercel Blob Storage requires a token to read.
+        // Always proxy through the BFF which holds the BLOB_READ_WRITE_TOKEN.
+        if (doc.id) {
+            const gatewayUrl = getApiBaseUrl();
             return `${gatewayUrl}/v1/documents/view/${doc.id}`;
         }
 
@@ -1537,11 +1568,14 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                             <div
                                                 key={originalIndex}
                                                 className={`flex items-center justify-between p-3 bg-white border-2 rounded-lg transition-all ${
-                                                    isApproved ? 'border-green-300 bg-green-50' :
-                                                    isRejected ? 'border-red-300 bg-red-50' :
-                                                    wasPreviouslyApproved ? 'border-green-200 bg-green-50/50' :
-                                                    'border-gray-200'
-                                                }`}
+                                                    isApproved
+                                                        ? 'border-green-300 bg-green-50' :
+                                                        isRejected
+                                                        ? 'border-red-300 bg-red-50' :
+                                                        wasPreviouslyApproved
+                                                        ? 'border-green-200 bg-green-50/50' :
+                                                        'border-gray-200'
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-3 flex-1">
                                                     {/* Status Button (NO LOCK - always editable) */}
@@ -1590,24 +1624,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                                         size="sm"
                                                         onClick={async () => {
                                                             try {
-                                                                // Use Vercel Blob URL directly for download
-                                                                const url = doc.filePath;
-                                                                if (url && url.startsWith('http')) {
-                                                                    // For Vercel Blob, add download=1 parameter
-                                                                    const downloadUrl = `${url}${url.includes('?') ? '&' : '?'}download=1`;
-                                                                    const link = document.createElement('a');
-                                                                    link.href = downloadUrl;
-                                                                    link.download = doc.fileName || doc.originalName || 'documento.pdf';
-                                                                    link.target = '_blank';
-                                                                    document.body.appendChild(link);
-                                                                    link.click();
-                                                                    document.body.removeChild(link);
-                                                                } else {
-                                                                    // Fallback: use gateway endpoint
-                                                                    const gatewayUrl = import.meta.env.VITE_API_URL || 'https://admitia-bff-staging.up.railway.app';
-                                                                    const downloadUrl = `${gatewayUrl}/v1/documents/${doc.id}/download`;
-                                                                    window.open(downloadUrl, '_blank');
-                                                                }
+                                                                // Always proxy through BFF (private blob requires token)
+                                                                const gatewayUrl = getApiBaseUrl();
+                                                                const downloadUrl = `${gatewayUrl}/v1/documents/${doc.id}/download`;
+                                                                window.open(downloadUrl, '_blank');
                                                             } catch (error) {
                                                                 addNotification({
                                                                     type: 'error',
@@ -2332,17 +2352,35 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                         {/* Visor del documento */}
                         <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '70vh' }}>
-                            {viewingDocument.fileName && (
+                            {documentBlobLoading && (
+                                <div className="flex flex-col items-center justify-center h-full gap-3">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-azul-monte-tabor"></div>
+                                    <p className="text-gray-600 text-sm">Cargando documento...</p>
+                                </div>
+                            )}
+                            {documentBlobError && (
+                                <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
+                                    <FiAlertCircle className="w-10 h-10 text-red-500" />
+                                    <p className="text-red-600 text-sm text-center">{documentBlobError}</p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleViewDocument(viewingDocument)}
+                                    >
+                                        Reintentar
+                                    </Button>
+                                </div>
+                            )}
+                            {!documentBlobLoading && !documentBlobError && documentBlobUrl && viewingDocument.fileName && (
                                 viewingDocument.fileName.toLowerCase().endsWith('.pdf') ? (
                                     <iframe
-                                        src={getDocumentViewUrl(viewingDocument) || ''}
+                                        src={documentBlobUrl}
                                         className="w-full h-full"
                                         title={viewingDocument.fileName}
                                     />
                                 ) : (
                                     <div className="flex items-center justify-center h-full">
                                         <img
-                                            src={getDocumentViewUrl(viewingDocument) || ''}
+                                            src={documentBlobUrl}
                                             alt={viewingDocument.fileName}
                                             className="max-w-full max-h-full object-contain"
                                         />
@@ -2353,15 +2391,27 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                         {/* Botones de acción */}
                         <div className="flex justify-between items-center pt-4 border-t">
-                            <Button
+                                <Button
                                 variant="outline"
-                                onClick={() => {
-                                    const url = getDocumentViewUrl(viewingDocument);
-                                    if (url) {
-                                        const link = document.createElement('a');
-                                        link.href = url.replace('/view/', '/download/');
-                                        link.download = viewingDocument.fileName || 'documento.pdf';
-                                        link.click();
+                                onClick={async () => {
+                                    if (viewingDocument.id) {
+                                        try {
+                                            const blob = await documentService.viewDocument(viewingDocument.id);
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = viewingDocument.fileName || 'documento';
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                        } catch {
+                                            addNotification({
+                                                type: 'error',
+                                                title: 'Error',
+                                                message: 'No se pudo descargar el documento'
+                                            });
+                                        }
                                     }
                                 }}
                             >

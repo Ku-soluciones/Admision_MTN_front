@@ -113,6 +113,9 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [sendingReminders, setSendingReminders] = useState(false);
     const [viewingDocument, setViewingDocument] = useState<any>(null);
     const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+    const [documentBlobUrl, setDocumentBlobUrl] = useState<string | null>(null);
+    const [documentBlobLoading, setDocumentBlobLoading] = useState(false);
+    const [documentBlobError, setDocumentBlobError] = useState<string | null>(null);
     const { addNotification } = useNotifications();
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
@@ -393,7 +396,38 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const handleViewDocument = (doc: any) => {
         setViewingDocument(doc);
         setShowDocumentViewer(true);
+        setDocumentBlobUrl(null);
+        setDocumentBlobError(null);
+        setDocumentBlobLoading(true);
+
+        if (!doc.id) {
+            setDocumentBlobError('No se pudo obtener la URL del documento');
+            setDocumentBlobLoading(false);
+            return;
+        }
+
+        documentService.viewDocument(doc.id)
+            .then((blob) => {
+                const blobUrl = URL.createObjectURL(blob);
+                setDocumentBlobUrl(blobUrl);
+            })
+            .catch((err) => {
+                console.error('Error al cargar el documento:', err);
+                setDocumentBlobError('Error al cargar el documento. Verifique que tiene permisos.');
+            })
+            .finally(() => {
+                setDocumentBlobLoading(false);
+            });
     };
+
+    // Cleanup blob URL when viewer closes
+    useEffect(() => {
+        if (!showDocumentViewer && documentBlobUrl) {
+            URL.revokeObjectURL(documentBlobUrl);
+            setDocumentBlobUrl(null);
+            setDocumentBlobError(null);
+        }
+    }, [showDocumentViewer]);
 
     const getDocumentViewUrl = (doc: any) => {
         // Documents are now stored in Vercel Blob
@@ -2133,17 +2167,35 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                         {/* Visor del documento */}
                         <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '70vh' }}>
-                            {viewingDocument.fileName && (
+                            {documentBlobLoading && (
+                                <div className="flex flex-col items-center justify-center h-full gap-3">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-azul-monte-tabor"></div>
+                                    <p className="text-gray-600 text-sm">Cargando documento...</p>
+                                </div>
+                            )}
+                            {documentBlobError && (
+                                <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
+                                    <FiAlertCircle className="w-10 h-10 text-red-500" />
+                                    <p className="text-red-600 text-sm text-center">{documentBlobError}</p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleViewDocument(viewingDocument)}
+                                    >
+                                        Reintentar
+                                    </Button>
+                                </div>
+                            )}
+                            {!documentBlobLoading && !documentBlobError && documentBlobUrl && viewingDocument.fileName && (
                                 viewingDocument.fileName.toLowerCase().endsWith('.pdf') ? (
                                     <iframe
-                                        src={getDocumentViewUrl(viewingDocument) || ''}
+                                        src={documentBlobUrl}
                                         className="w-full h-full"
                                         title={viewingDocument.fileName}
                                     />
                                 ) : (
                                     <div className="flex items-center justify-center h-full">
                                         <img
-                                            src={getDocumentViewUrl(viewingDocument) || ''}
+                                            src={documentBlobUrl}
                                             alt={viewingDocument.fileName}
                                             className="max-w-full max-h-full object-contain"
                                         />
@@ -2156,13 +2208,25 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         <div className="flex justify-between items-center pt-4 border-t">
                             <Button
                                 variant="outline"
-                                onClick={() => {
-                                    const url = getDocumentViewUrl(viewingDocument);
-                                    if (url) {
-                                        const link = document.createElement('a');
-                                        link.href = url.replace('/view/', '/download/');
-                                        link.download = viewingDocument.fileName || 'documento.pdf';
-                                        link.click();
+                                onClick={async () => {
+                                    if (viewingDocument.id) {
+                                        try {
+                                            const blob = await documentService.viewDocument(viewingDocument.id);
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = viewingDocument.fileName || 'documento';
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            URL.revokeObjectURL(url);
+                                        } catch {
+                                            addNotification({
+                                                type: 'error',
+                                                title: 'Error',
+                                                message: 'No se pudo descargar el documento'
+                                            });
+                                        }
                                     }
                                 }}
                             >

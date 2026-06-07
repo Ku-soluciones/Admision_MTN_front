@@ -13,9 +13,9 @@ import { useApplications, useNotifications } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { educationalLevelsForForm as educationalLevels } from '../services/staticData';
 import { microfrontendUrls } from '../utils/microfrontendUrls';
-import api from '../services/api';
 import { applicationService } from '../services/applicationService';
-import { documentService, DOCUMENT_TYPES } from '../services/documentService';
+import { checkStudentRutExists } from '../services/studentService';
+import { isValidRut, RUT_ERROR_MESSAGES } from '../../../packages/shared-ui/src/utils/rutUtils';
 import profileService from '../services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
@@ -155,7 +155,8 @@ const ApplicationForm: React.FC = () => {
     // Estado del formulario simplificado
     const [data, setData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
-    
+    const [isCheckingRut, setIsCheckingRut] = useState(false);
+
     // Estado para autenticación
     const [authData, setAuthData] = useState({
         email: '',
@@ -204,13 +205,51 @@ const ApplicationForm: React.FC = () => {
             const newData = { ...prev, [name]: processedValue };
             return newData;
         });
+
+        // Limpiar error de RUT duplicado al modificar el campo (evita error stale)
+        if (name === 'rut') {
+            setErrors((prev: any) => {
+                if (prev.rut === RUT_ERROR_MESSAGES.ALREADY_EXISTS) {
+                    const { rut: _, ...rest } = prev;
+                    return rest;
+                }
+                return prev;
+            });
+        }
     }, []);
     
     // Helper function to touch fields (placeholder)
     const touchField = useCallback((name: string) => {
         // Simple placeholder for now
     }, []);
-    
+
+    // Valida si el RUT del postulante ya existe en la BD al perder el foco
+    const validateStudentRut = useCallback(async () => {
+        touchField('rut');
+        const rut = data.rut?.trim();
+        if (!rut || !isValidRut(rut)) return; // solo consultar si el formato es válido
+
+        setIsCheckingRut(true);
+        try {
+            const exists = await checkStudentRutExists(rut);
+            if (exists) {
+                setErrors((prev: any) => ({ ...prev, rut: RUT_ERROR_MESSAGES.ALREADY_EXISTS }));
+            } else {
+                setErrors((prev: any) => {
+                    if (prev.rut === RUT_ERROR_MESSAGES.ALREADY_EXISTS) {
+                        const { rut: _, ...rest } = prev;
+                        return rest;
+                    }
+                    return prev;
+                });
+            }
+        } catch {
+            // Error de red: no bloquear al usuario, la validación se hará al enviar
+        } finally {
+            setIsCheckingRut(false);
+        }
+    }, [data.rut]);
+
     // Función para actualizar datos de autenticación
     const updateAuthField = useCallback((name: string, value: string) => {
         // Apply uppercase transformation for names, address, and profession
@@ -844,6 +883,10 @@ const ApplicationForm: React.FC = () => {
                     !data.rut?.trim() || !data.birthDate) {
                     return false;
                 }
+                // Bloquear si el RUT ya existe como postulante (validación async onBlur)
+                if (errors.rut) {
+                    return false;
+                }
                 // Nota: La validación de coherencia fecha-grado es solo informativa en Step 0
                 // porque el grado se elige en Step 2. No bloqueamos aquí.
                 // Validate optional email if provided
@@ -928,7 +971,7 @@ const ApplicationForm: React.FC = () => {
             default:
                 return true;
         }
-    }, [data, currentStep, requiresCurrentSchool]);
+    }, [data, currentStep, requiresCurrentSchool, errors]);
 
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
@@ -1241,7 +1284,7 @@ const ApplicationForm: React.FC = () => {
     // Helper function to check if current step can proceed
     const canProceedToNextStep = useMemo((): boolean => {
         return validateCurrentStep();
-    }, [data, currentStep, requiresCurrentSchool]);
+    }, [data, currentStep, requiresCurrentSchool, errors]);
 
     // Helper function to get missing fields for current step
     const getMissingFields = useMemo((): string[] => {
@@ -1254,6 +1297,7 @@ const ApplicationForm: React.FC = () => {
                 if (!data.paternalLastName?.trim()) missing.push('Apellido Paterno');
                 if (!data.maternalLastName?.trim()) missing.push('Apellido Materno');
                 if (!data.rut?.trim()) missing.push('RUT');
+                else if (errors.rut) missing.push('RUT (ya registrado)');
                 if (!data.birthDate) missing.push('Fecha de Nacimiento');
                 break;
 
@@ -1652,7 +1696,8 @@ const ApplicationForm: React.FC = () => {
                                 helpText="Puedes escribirlo con o sin puntos; se formatea solo."
                                 value={data.rut || ''}
                                 onChange={(value) => updateField('rut', value)}
-                                onBlur={() => touchField('rut')}
+                                onBlur={validateStudentRut}
+                                isChecking={isCheckingRut}
                                 error={errors.rut}
                             />
                             <div>
@@ -2709,8 +2754,8 @@ const ApplicationForm: React.FC = () => {
                             onClick={nextStep}
                             isLoading={isSubmitting}
                             loadingText={location.state?.editMode ? "Guardando cambios..." : "Enviando tu postulación..."}
-                            disabled={!canProceedToNextStep && !isSubmitting}
-                            className={!canProceedToNextStep && !isSubmitting ? 'cursor-not-allowed opacity-60' : ''}
+                            disabled={!canProceedToNextStep || isSubmitting || isCheckingRut}
+                            className={!canProceedToNextStep || isCheckingRut ? 'cursor-not-allowed opacity-60' : ''}
                         >
                             <span className="inline-flex items-center gap-1.5">
                                 {currentStep === 7

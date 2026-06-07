@@ -166,5 +166,6 @@ export const RUT_ERROR_MESSAGES = {
   REQUIRED: 'El RUT es obligatorio',
   INVALID_FORMAT: 'El formato del RUT no es válido',
   INVALID_DIGIT: 'El dígito verificador del RUT no es correcto',
-  INVALID: 'El RUT no es válido'
+  INVALID: 'El RUT no es válido',
+  ALREADY_EXISTS: 'Este RUT ya está registrado como postulante'
 };
