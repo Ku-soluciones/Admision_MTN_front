@@ -2,7 +2,7 @@ import React from 'react';
 
 export const LogoIcon = ({ className = "w-12 h-12" }: { className?: string }) => (
     <img
-        src="/images/logoMTN.webp"
+        src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943"
         alt="Monte Tabor & Nazaret Logo"
         className={`${className} object-contain`}
     />

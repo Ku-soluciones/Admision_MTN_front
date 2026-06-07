@@ -69,7 +69,7 @@ const Header: React.FC = () => {
             <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center">
                 <div className="flex-1">
                 <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <img src="/images/logoMTN.webp" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
+                    <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
                     <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
                         Colegio Monte Tabor y Nazaret
                     </span>
