@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
     return (
         <div className="bg-blanco-pureza">
             {/* Hero Section */}
-            <section className="relative text-blanco-pureza py-[7.5rem] sm:py-48 text-center bg-cover bg-center" style={{ backgroundImage: `url('/images/colegio.webp')`}}>
+            <section className="relative text-blanco-pureza py-[7.5rem] sm:py-48 text-center bg-cover bg-center" style={{ backgroundImage: `url('https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/colegio.png?updatedAt=1780848172602')`}}>
                 {/* Overlay azul con opacidad 85% */}
                 <div className="absolute inset-0 bg-azul-monte-tabor" style={{ opacity: 0.85, filter: 'brightness(0.75)' }}></div>
                 <div className="relative container mx-auto px-4 sm:px-6">

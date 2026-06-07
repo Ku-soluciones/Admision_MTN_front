@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
             <div className="max-w-md w-full">
                 <div className="flex justify-center mb-6">
                      <Link to="/" className="flex items-center gap-3">
-                        <img src="/images/logoMTN.webp" alt="Logo Colegio Monte Tabor y Nazaret" className="h-14" />
+                        <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Colegio Monte Tabor y Nazaret" className="h-14" />
                     </Link>
                 </div>
                 <Card className="p-5 sm:p-8 shadow-2xl">
