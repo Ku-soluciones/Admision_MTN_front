@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
 import Table from '../components/ui/Table';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
 import {
     DashboardIcon,
     FileTextIcon,
@@ -13,34 +13,34 @@ import {
     ClockIcon,
     BarChartIcon,
     LogoIcon
-} from '../components/icons/Icons';
+} from '../../admin/components/icons/Icons';
 import { 
     mockProfessors, 
     getPendingExamsByProfessor, 
     getProfessorStats,
     mockStudentExams,
     mockStudentProfiles
-} from '../services/staticData';
-import { ExamStatus, StudentExam, StudentProfile } from '../types';
+} from '../../admin/services/staticData';
+import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
 import { Link, useNavigate } from 'react-router-dom';
-import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../services/professorEvaluationService';
+import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
-import { notify } from '../utils/notify';
-import { EvaluationStatus, EvaluationType } from '../types/evaluation';
+import { notify } from '../../admin/utils/notify';
+import { EvaluationStatus, EvaluationType } from '../../admin/types/evaluation';
 import { FiRefreshCw, FiBarChart2, FiCalendar, FiEye } from 'react-icons/fi';
-import SimpleAvailabilityCalendar from '../components/schedule/SimpleAvailabilityCalendar';
-import ChangePasswordButton from '../src/components/common/ChangePasswordButton';
+import SimpleAvailabilityCalendar from '../../../packages/shared-ui/src/components/schedule/SimpleAvailabilityCalendar';
+import ChangePasswordButton from '../../admin/src/components/common/ChangePasswordButton';
 import {
     Interview,
     InterviewStatus,
     InterviewType,
     INTERVIEW_STATUS_LABELS,
     INTERVIEW_TYPE_LABELS
-} from '../types/interview';
+} from '../../admin/types/interview';
 import { interviewService } from '../services/interviewService';
-import { UserRole, USER_ROLE_LABELS } from '../types/user';
-import api from '../services/api';
-import { appUrls } from '../utils/appUrls';
+import { UserRole, USER_ROLE_LABELS } from '../../admin/types/user';
+import api from '../../admin/services/api';
+import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const baseSections = [

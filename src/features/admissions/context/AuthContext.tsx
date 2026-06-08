@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, signOut as firebaseAuthSignOut } from 'firebase/auth';
-import { auth, hasFirebaseConfig } from '../src/lib/firebase';
-import { authService } from '../services/authService';
-import api from '../services/api';
+import { auth, hasFirebaseConfig } from '../../admin/src/lib/firebase';
+import { authService } from '../../admin/services/authService';
+import api from '../../admin/services/api';
 import {
     getStorageKey,
     BASE_STORAGE_KEYS,

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
-import SimpleToast from '../components/ui/SimpleToast';
-import { ApplicationStatus, Document } from '../types';
-import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
-import { appUrls } from '../utils/appUrls';
-import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
+import Card from '../../admin/components/ui/Card';
+import Badge from '../../admin/components/ui/Badge';
+import Button from '../../admin/components/ui/Button';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
+import SimpleToast from '../../admin/components/ui/SimpleToast';
+import { ApplicationStatus, Document } from '../../admin/types';
+import { DOCUMENT_TYPE_LABELS, DocumentType } from '../../admin/types/document';
+import { appUrls } from '../../admin/utils/appUrls';
+import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../../admin/components/icons/Icons';
 import { 
   FiFileText, 
   FiBarChart2, 
@@ -37,15 +37,15 @@ import {
   FiX,
   FiLogOut
 } from 'react-icons/fi';
-import { useApplications } from '../context/AppContext';
-import { applicationService, Application } from '../services/applicationService';
-import { useAuth } from '../context/AuthContext';
-import useUserProfile from '../hooks/useUserProfile';
-import applicationWorkflowService, { type ApplicationDraft } from '../services/applicationWorkflowService';
+import { useApplications } from '../../admin/context/AppContext';
+import { applicationService, Application } from '../../admissions/services/applicationService';
+import { useAuth } from '../../coordinator/context/AuthContext';
+import useUserProfile from '../../admin/hooks/useUserProfile';
+import applicationWorkflowService, { type ApplicationDraft } from '../../admin/services/applicationWorkflowService';
 import documentGatewayService from '../services/documentGatewayService';
-import FamilyInterviews from '../components/family/FamilyInterviews';
-import FamilyCalendar from '../components/family/FamilyCalendar';
-import ComplementaryApplicationForm from './ComplementaryApplicationForm';
+import FamilyInterviews from '../../admin/components/family/FamilyInterviews';
+import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
+import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
 
 const sections = [
   { key: 'resumen', label: 'Resumen de Postulación' },

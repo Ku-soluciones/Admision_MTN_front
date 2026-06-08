@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
-import { professorEvaluationService } from '../services/professorEvaluationService';
+import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 import { familyInterviewService } from '../services/familyInterviewService';
 import FamilyInterviewForm, { FamilyInterviewData } from '../components/FamilyInterviewForm';
 import ParentQuestionnaireModal from '../components/interviews/ParentQuestionnaireModal';

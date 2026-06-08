@@ -1,7 +1,7 @@
-import api from './api';
+import api from '../../admin/services/api';
 import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
-// import encryptionService from './encryptionService';
+// import encryptionService from '../../admin/services/encryptionService';
 
 export interface ProfessorLoginRequest {
     email: string;

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Button from '../ui/Button';
-import { appUrls } from '../../utils/appUrls';
+import Button from '../../../admin/components/ui/Button';
+import { appUrls } from '../../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 const Header: React.FC = () => {

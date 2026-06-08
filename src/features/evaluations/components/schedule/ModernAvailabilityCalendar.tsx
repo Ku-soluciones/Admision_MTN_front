@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Button from '../ui/Button';
-import LoadingSpinner from '../ui/LoadingSpinner';
-import { interviewerScheduleService, InterviewerSchedule } from '../../services/interviewerScheduleService';
-import { useNotifications } from '../../context/AppContext';
+import Button from '../../../admin/components/ui/Button';
+import LoadingSpinner from '../../../admin/components/ui/LoadingSpinner';
+import { interviewerScheduleService, InterviewerSchedule } from '../../../../packages/shared-ui/src/services/interviewerScheduleService';
+import { useNotifications } from '../../../admin/context/AppContext';
 
 interface ModernAvailabilityCalendarProps {
   userId: number;

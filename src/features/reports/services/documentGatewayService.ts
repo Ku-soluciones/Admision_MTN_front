@@ -3,8 +3,8 @@
  * Handles binary upload to monolith + metadata registration to gateway
  */
 
-import httpClient from './http';
-import { applicationWorkflowService } from './applicationWorkflowService';
+import httpClient from '../../admin/services/http';
+import { applicationWorkflowService } from '../../admin/services/applicationWorkflowService';
 
 export interface MonolithUploadResponse {
   externalId: string;

@@ -4,13 +4,13 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ReportsDashboard from './pages/ReportsDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
-import { AppProvider } from './context/AppContext';
-import { AuthProvider } from './context/AuthContext';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
-import ToastContainer from './components/ui/ToastContainer';
-import GlobalToastHost from './components/ui/GlobalToastHost';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { AppProvider } from '../admin/context/AppContext';
+import { AuthProvider } from '../coordinator/context/AuthContext';
+import Header from '../coordinator/components/layout/Header';
+import Footer from '../admissions/components/layout/Footer';
+import ToastContainer from '../admin/components/ui/ToastContainer';
+import GlobalToastHost from '../evaluations/components/ui/GlobalToastHost';
+import { ErrorBoundary } from '../admin/components/ErrorBoundary';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">

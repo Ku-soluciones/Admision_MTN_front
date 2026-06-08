@@ -1,15 +1,15 @@
 import React from 'react';
-import Button from '../ui/Button';
-import Badge from '../ui/Badge';
-import LoadingSpinner from '../ui/LoadingSpinner';
-import { Application } from '../../services/applicationService';
+import Button from '../../../admin/components/ui/Button';
+import Badge from '../../../admin/components/ui/Badge';
+import LoadingSpinner from '../../../admin/components/ui/LoadingSpinner';
+import { Application } from '../../../admissions/services/applicationService';
 import {
   FileTextIcon,
   EyeIcon,
   ArchiveIcon,
   UserIcon,
   CheckCircleIcon
-} from '../icons/Icons';
+} from '../../../admin/components/icons/Icons';
 
 interface ApplicationsTableProps {
   applications: Application[];

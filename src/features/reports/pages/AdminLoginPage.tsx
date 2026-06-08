@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/AppContext';
+import Card from '../../admin/components/ui/Card';
+import Input from '../../admissions/components/ui/Input';
+import Button from '../../admin/components/ui/Button';
+import { useAuth } from '../../coordinator/context/AuthContext';
+import { useNotifications } from '../../admin/context/AppContext';
 
 const LoginPage: React.FC = () => {
     const [userType, setUserType] = useState<'familia' | 'admin'>('familia');

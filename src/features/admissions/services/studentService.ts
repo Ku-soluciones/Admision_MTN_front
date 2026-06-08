@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../../admin/services/api';
 import { cleanRut } from '../../../packages/shared-ui/src/utils/rutUtils';
 
 /**

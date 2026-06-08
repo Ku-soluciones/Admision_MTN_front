@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import InterviewManagement from '../components/interviews/InterviewManagement';
+import InterviewManagement from '../../admissions/components/interviews/InterviewManagement';
 
 const InterviewModule: React.FC = () => {
     const navigate = useNavigate();

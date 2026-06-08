@@ -1,9 +1,9 @@
-import api from './api';
+import api from '../../admin/services/api';
 import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth as firebaseAuth } from '../src/lib/firebase';
+import { auth as firebaseAuth } from '../../admin/src/lib/firebase';
 // RSA encryption removed - credentials sent over HTTPS only
-// import encryptionService from './encryptionService';
+// import encryptionService from '../../admin/services/encryptionService';
 
 export interface ProfessorLoginRequest {
     email: string;

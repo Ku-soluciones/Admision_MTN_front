@@ -3,15 +3,15 @@ import { Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ApplicationForm from './pages/ApplicationForm';
-import ComplementaryApplicationForm from './pages/ComplementaryApplicationForm';
+import ComplementaryApplicationForm from '../admin/pages/ComplementaryApplicationForm';
 import ApoderadoLogin from './pages/ApoderadoLogin';
-import { AppProvider } from './context/AppContext';
+import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import ToastContainer from './components/ui/ToastContainer';
-import GlobalToastHost from './components/ui/GlobalToastHost';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import ToastContainer from '../admin/components/ui/ToastContainer';
+import GlobalToastHost from '../admin/components/ui/GlobalToastHost';
+import { ErrorBoundary } from '../admin/components/ErrorBoundary';
 
 const LoadingFallback = () => (
   <div

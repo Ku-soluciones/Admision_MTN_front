@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import { examSubjects, getTopicsByLevel, educationalLevelsForForm } from '../services/staticData';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
+import { examSubjects, getTopicsByLevel, educationalLevelsForForm } from '../../admin/services/staticData';
 import { 
     ArrowLeft, 
     Clock, 

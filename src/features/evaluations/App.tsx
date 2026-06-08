@@ -8,15 +8,15 @@ import StudentProfile from './pages/StudentProfile';
 import AdmissionReportForm from './components/evaluations/AdmissionReportForm';
 import CycleDirectorReportForm from './components/evaluations/CycleDirectorReportForm';
 import CycleDirectorInterviewForm from './components/evaluations/CycleDirectorInterviewForm';
-import PsychologicalInterviewForm from './components/evaluations/PsychologicalInterviewForm';
+import PsychologicalInterviewForm from '../admin/components/evaluations/PsychologicalInterviewForm';
 import ProtectedProfessorRoute from './components/auth/ProtectedProfessorRoute';
-import { AppProvider } from './context/AppContext';
+import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from './context/AuthContext';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
-import ToastContainer from './components/ui/ToastContainer';
+import Header from '../coordinator/components/layout/Header';
+import Footer from '../admissions/components/layout/Footer';
+import ToastContainer from '../admin/components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from '../admin/components/ErrorBoundary';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">

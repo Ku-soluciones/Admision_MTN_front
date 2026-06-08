@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Card from '../../admin/components/ui/Card';
 import { FileText, Users, CheckCircle, Calculator, BookOpen, Globe } from 'lucide-react';
-import { appUrls } from '../utils/appUrls';
+import { appUrls } from '../../admin/utils/appUrls';
 
 const HomePage: React.FC = () => {
     const admissionSteps = [

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
-import SimpleToast from '../components/ui/SimpleToast';
-import { ApplicationStatus, Document } from '../types';
-import { DOCUMENT_TYPE_LABELS, DocumentType } from '../types/document';
-import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../components/icons/Icons';
+import Card from '../../admin/components/ui/Card';
+import Badge from '../../admin/components/ui/Badge';
+import Button from '../../admin/components/ui/Button';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
+import SimpleToast from '../../admin/components/ui/SimpleToast';
+import { ApplicationStatus, Document } from '../../admin/types';
+import { DOCUMENT_TYPE_LABELS, DocumentType } from '../../admin/types/document';
+import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../../admin/components/icons/Icons';
 import { 
   FiFileText, 
   FiBarChart2, 
@@ -36,16 +36,15 @@ import {
   FiLogOut,
   FiCreditCard
 } from 'react-icons/fi';
-import { useApplications } from '../context/AppContext';
-import { appUrls } from '../utils/appUrls';
-import { applicationService, Application } from '../services/applicationService';
-import { useAuth } from '../context/AuthContext';
-import useUserProfile from '../hooks/useUserProfile';
-import applicationWorkflowService, { type ApplicationDraft } from '../services/applicationWorkflowService';
-import { documentService } from '../services/documentService';
-import FamilyInterviews from '../components/family/FamilyInterviews';
-import FamilyCalendar from '../components/family/FamilyCalendar';
-import ComplementaryApplicationForm from './ComplementaryApplicationForm';
+import { useApplications } from '../../admin/context/AppContext';
+import { applicationService, Application } from '../../admissions/services/applicationService';
+import { useAuth } from '../../coordinator/context/AuthContext';
+import useUserProfile from '../../admin/hooks/useUserProfile';
+import applicationWorkflowService, { type ApplicationDraft } from '../../admin/services/applicationWorkflowService';
+import { documentService } from '../../admin/services/documentService';
+import FamilyInterviews from '../../admin/components/family/FamilyInterviews';
+import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
+import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
 
 const sections = [
   { key: 'resumen', label: 'Resumen de Postulación' },
@@ -194,14 +193,25 @@ const FamilyDashboard: React.FC = () => {
   const hasComplementaryFormAccess = payableApplications.length > 0;
   const visibleSections = sections;
 
-  // Navega a postulación dentro del mismo frontend integrado.
-  const navigateToAdmissions = async (path = '/postulacion') => {
-    try {
-      const base = path === '/postulacion' ? appUrls.admissions : appUrls.admissionsComplementary;
-      window.location.href = base;
-    } catch {
-      window.location.href = appUrls.admissions;
-    }
+  const buildFamilyPrefillState = () => {
+    if (!hasRealApplication || realApplications.length === 0) return undefined;
+
+    const firstApplication = realApplications[0];
+    return {
+      prefillFamilyData: true,
+      familyData: {
+        father: firstApplication.father,
+        mother: firstApplication.mother,
+        guardian: firstApplication.guardian,
+        supporter: firstApplication.supporter,
+      },
+    };
+  };
+
+  // Navega a postulación dentro del mismo frontend integrado sin perder el estado React.
+  const navigateToAdmissions = (path = '/postulacion') => {
+    const state = path === '/postulacion' ? buildFamilyPrefillState() : undefined;
+    navigate(path, state ? { state } : undefined);
   };
 
   // Handler for adding another child (navigate to form with family data pre-filled)

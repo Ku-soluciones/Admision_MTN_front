@@ -1,22 +1,22 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Input from '../components/ui/Input';
-import RutInput from '../components/ui/RutInput';
-import Select from '../components/ui/Select';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
+import RutInput from '../../admin/components/ui/RutInput';
+import Select from '../../admin/components/ui/Select';
+import Button from '../../admin/components/ui/Button';
+import Card from '../../admin/components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import ErrorModal from '../components/ui/ErrorModal';
 import { PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
-import { CheckCircleIcon, LogoIcon, UploadIcon } from '../components/icons/Icons';
-import { useApplications, useNotifications } from '../context/AppContext';
+import { CheckCircleIcon, LogoIcon, UploadIcon } from '../../admin/components/icons/Icons';
+import { useApplications, useNotifications } from '../../admin/context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { educationalLevelsForForm as educationalLevels } from '../services/staticData';
-import { appUrls } from '../utils/appUrls';
+import { educationalLevelsForForm as educationalLevels } from '../../admin/services/staticData';
+import { appUrls } from '../../admin/utils/appUrls';
 import { applicationService } from '../services/applicationService';
 import { checkStudentRutExists } from '../services/studentService';
 import { isValidRut, RUT_ERROR_MESSAGES } from '../../../packages/shared-ui/src/utils/rutUtils';
-import profileService from '../services/profileService';
+import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 
 const steps = [

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiSave, FiCheck, FiLoader, FiAlertCircle } from 'react-icons/fi';
 import { familyInterviewService } from '../services/familyInterviewService';
 import { fullTemplateData } from '@/src/data/minified_template';
-import { notify } from '../utils/notify';
+import { notify } from '../../admin/utils/notify';
 
 interface FamilyInterviewFormProps {
   evaluation: any; // Evaluation data with gradeApplied

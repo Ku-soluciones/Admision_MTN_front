@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getApiBaseUrl } from '../config/api.config';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Badge from '../components/ui/Badge';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { getApiBaseUrl } from '../../admin/config/api.config';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Input from '../../admissions/components/ui/Input';
+import Badge from '../../admin/components/ui/Badge';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
 import { FiSave, FiArrowLeft, FiCheckCircle, FiPaperclip, FiDownload, FiTrash2, FiUpload, FiClock } from 'react-icons/fi';
-import { professorEvaluationService } from '../services/professorEvaluationService';
+import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 
 interface EvaluationData {
   id: number;

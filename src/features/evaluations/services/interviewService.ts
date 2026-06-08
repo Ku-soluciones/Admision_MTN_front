@@ -1,6 +1,6 @@
-import api from './api';
+import api from '../../admin/services/api';
 import axios, { AxiosInstance } from 'axios';
-import { getApiBaseUrl } from '../config/api.config';
+import { getApiBaseUrl } from '../../admin/config/api.config';
 
 // Create a clean axios instance WITHOUT interceptors for interview deletion
 const cleanAxios: AxiosInstance = axios.create({
@@ -20,7 +20,7 @@ import {
   CreateInterviewRequest,
   UpdateInterviewRequest,
   CompleteInterviewRequest
-} from '../types/interview';
+} from '../../admin/types/interview';
 
 export interface InterviewResponse {
   id: number;

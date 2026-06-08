@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import Modal from '../components/ui/Modal';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
-import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon } from '../components/icons/Icons';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
+import Modal from '../../admin/components/ui/Modal';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
+import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon } from '../../admin/components/icons/Icons';
 import { 
   FiFileText, 
   FiBarChart2, 
@@ -34,41 +34,41 @@ import {
   FiX,
   FiSearch
 } from 'react-icons/fi';
-import CreateUserForm from '../components/admin/CreateUserForm';
-import { CreateUserRequest, UserRole, User } from '../types/user';
-import { useApplications, useNotifications, useAppContext } from '../context/AppContext';
-import { userService } from '../services/userService';
+import CreateUserForm from '../../admin/components/admin/CreateUserForm';
+import { CreateUserRequest, UserRole, User } from '../../admin/types/user';
+import { useApplications, useNotifications, useAppContext } from '../../admin/context/AppContext';
+import { userService } from '../../admin/services/userService';
 import {
   evaluationService
-} from '../services/evaluationService';
-import ChangePasswordButton from '../src/components/common/ChangePasswordButton';
+} from '../../admissions/services/evaluationService';
+import ChangePasswordButton from '../../admin/src/components/common/ChangePasswordButton';
 import {
   Evaluation, 
   EvaluationType, 
   EvaluationStatus,
   EVALUATION_TYPE_LABELS,
   EVALUATION_STATUS_LABELS 
-} from '../types/evaluation';
-import EvaluationManagement from '../components/admin/EvaluationManagement';
-import EvaluationStatistics from '../components/admin/EvaluationStatistics';
-import EvaluationReports from '../components/admin/EvaluationReports';
-import { GuardianManagement, StaffManagement } from '../components/users';
-import { InterviewManagement } from '../components/interviews';
-import SharedCalendar from '../components/admin/SharedCalendar';
-import ApplicantMetricsView from '../components/admin/ApplicantMetricsView';
-import { Application, applicationService } from '../services/applicationService';
-import CoordinatorDashboardModal from '../components/modals/CoordinatorDashboardModal';
+} from '../../admin/types/evaluation';
+import EvaluationManagement from '../../admin/components/admin/EvaluationManagement';
+import EvaluationStatistics from '../../admin/components/admin/EvaluationStatistics';
+import EvaluationReports from '../../admin/components/admin/EvaluationReports';
+import { GuardianManagement, StaffManagement } from '../../admin/components/users/index';
+import { InterviewManagement } from '../../admin/components/interviews/index';
+import SharedCalendar from '../../admin/components/admin/SharedCalendar';
+import ApplicantMetricsView from '../../admin/components/admin/ApplicantMetricsView';
+import { Application, applicationService } from '../../admissions/services/applicationService';
+import CoordinatorDashboardModal from '../../admin/components/modals/CoordinatorDashboardModal';
 // Mock service removido - usando applicationService real
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../coordinator/context/AuthContext';
 import ApplicationsTable from '../components/admin/ApplicationsTable';
-import SimpleToast from '../components/ui/SimpleToast';
-import { appUrls } from '../utils/appUrls';
+import SimpleToast from '../../admin/components/ui/SimpleToast';
+import { appUrls } from '../../admin/utils/appUrls';
 import AdminDataTables from '../components/admin/AdminDataTables';
-import StudentDetailModal from '../components/admin/StudentDetailModal';
-import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
-import InterviewForm from '../components/interviews/InterviewForm';
-import { InterviewFormMode, InterviewType } from '../types/interview';
-import interviewService from '../services/interviewService';
+import StudentDetailModal from '../../admissions/components/admin/StudentDetailModal';
+import ApplicationDecisionModal from '../../admin/components/admin/ApplicationDecisionModal';
+import InterviewForm from '../../admissions/components/interviews/InterviewForm';
+import { InterviewFormMode, InterviewType } from '../../admin/types/interview';
+import interviewService from '../../evaluations/services/interviewService';
 
 const sections = [
   { key: 'dashboard', label: 'Dashboard General' },

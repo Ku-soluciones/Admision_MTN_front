@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../../admin/services/api';
 import { EmailTemplate, InstitutionalEmailPayload, EmailResponse as EmailResponseType } from '../types/email';
 
 export interface QueueStatistics {

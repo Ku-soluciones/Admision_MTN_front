@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import { examSubjects } from '../services/staticData';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
+import { examSubjects } from '../../admin/services/staticData';
 import { Clock, BookOpen, Users, Calendar, Calculator, Globe } from 'lucide-react';
 
 const ExamPortal: React.FC = () => {

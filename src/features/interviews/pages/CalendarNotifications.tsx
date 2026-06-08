@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { CalendarIcon, ClockIcon, UsersIcon } from '../components/icons/Icons';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import { CalendarIcon, ClockIcon, UsersIcon } from '../../admin/components/icons/Icons';
 
 const CalendarNotifications: React.FC = () => {
     return (

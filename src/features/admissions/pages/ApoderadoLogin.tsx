@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Input from '../components/ui/Input';
-import RutInput from '../components/ui/RutInput';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
+import RutInput from '../../admin/components/ui/RutInput';
+import Button from '../../admin/components/ui/Button';
+import Card from '../../admin/components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/AppContext';
-import { appUrls } from '../utils/appUrls';
+import { useNotifications } from '../../admin/context/AppContext';
+import { appUrls } from '../../admin/utils/appUrls';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');

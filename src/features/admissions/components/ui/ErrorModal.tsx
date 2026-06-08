@@ -1,6 +1,6 @@
 import React from 'react';
 import { XCircle, X } from 'lucide-react';
-import Button from './Button';
+import Button from '../../../admin/components/ui/Button';
 
 interface ErrorModalProps {
     isOpen: boolean;

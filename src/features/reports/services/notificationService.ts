@@ -1,6 +1,6 @@
 // Sistema de Notificaciones Push en Tiempo Real para Entrevistas
 import React from 'react';
-import { Interview, InterviewStatus } from '../types/interview';
+import { Interview, InterviewStatus } from '../../admin/types/interview';
 
 export interface PushNotification {
   id: string;

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
-import Input from '../ui/Input';
-import { ArrowLeftIcon, SaveIcon, PrinterIcon } from '../icons/Icons';
-import { useNotifications } from '../../context/AppContext';
-import { professorEvaluationService, ProfessorEvaluation } from '../../services/professorEvaluationService';
+import Card from '../../../admin/components/ui/Card';
+import Button from '../../../admin/components/ui/Button';
+import Input from '../../../admissions/components/ui/Input';
+import { ArrowLeftIcon, SaveIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
+import { useNotifications } from '../../../admin/context/AppContext';
+import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
 
 interface CycleDirectorInterviewData {
     // Datos básicos del estudiante (auto-rellenados)

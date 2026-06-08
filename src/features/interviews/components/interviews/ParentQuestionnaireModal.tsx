@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiX, FiUsers, FiHeart, FiSmile, FiAlertCircle } from 'react-icons/fi';
-import Card from '../ui/Card';
-import { applicationService } from '../../services/applicationService';
+import Card from '../../../admin/components/ui/Card';
+import { applicationService } from '../../../admissions/services/applicationService';
 
 interface ChildDescription {
   childName: string;

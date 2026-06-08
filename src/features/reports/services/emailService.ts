@@ -15,7 +15,7 @@
  * - POST /api/email/verify-code - Verify email code
  */
 
-import api from './api';
+import api from '../../admin/services/api';
 import {
   EmailTemplate,
   EmailPayload,

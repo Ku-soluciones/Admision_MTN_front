@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../../admin/services/api';
 import { EmailTemplate as EmailTemplateEnum } from '../types/email';
 import { emailService } from './emailService';
 

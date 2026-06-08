@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import Button from '../ui/Button';
-import { appUrls } from '../../utils/appUrls';
+import Button from '../../../admin/components/ui/Button';
+import { appUrls } from '../../../admin/utils/appUrls';
 import { useAuth } from '../../context/AuthContext';
 
 const Header: React.FC = () => {

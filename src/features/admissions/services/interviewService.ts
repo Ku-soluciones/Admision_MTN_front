@@ -1,5 +1,0 @@
-// Re-export desde paquete compartido (version mayoritaria del servicio)
-// Fuente: src/packages/shared-ui/src/services/interviewService.ts
-// Variante local conservada en: evaluations, reports
-export * from '../../../packages/shared-ui/src/services/interviewService';
-export { default } from '../../../packages/shared-ui/src/services/interviewService';

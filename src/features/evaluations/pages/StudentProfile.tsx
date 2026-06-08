@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Badge from '../../admin/components/ui/Badge';
 import { 
     ArrowLeftIcon, 
     UserIcon, 
@@ -10,13 +10,13 @@ import {
     CheckCircleIcon,
     ClockIcon,
     FileTextIcon
-} from '../components/icons/Icons';
+} from '../../admin/components/icons/Icons';
 import { 
     mockStudentProfiles, 
     mockStudentExams, 
     mockProfessors 
-} from '../services/staticData';
-import { ExamStatus } from '../types';
+} from '../../admin/services/staticData';
+import { ExamStatus } from '../../admin/types';
 
 const StudentProfile: React.FC = () => {
     const { studentId } = useParams<{ studentId: string }>();

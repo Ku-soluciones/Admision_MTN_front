@@ -41,7 +41,7 @@ import CancelInterviewModal from './CancelInterviewModal';
 import RescheduleInterviewModal from './RescheduleInterviewModal';
 // Removed excessive imports for simplification
 import interviewService from '../../services/interviewService';
-import { emailTemplateService, EmailTemplate } from '../../services/emailTemplateService';
+import { emailTemplateService, EmailTemplate } from '../../../../packages/shared-ui/src/services/emailTemplateService';
 import { applicationService } from '../../services/applicationService';
 // Removed non-essential service imports
 

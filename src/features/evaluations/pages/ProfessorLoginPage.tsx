@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { useFormValidation } from '../hooks/useFormValidation';
-import { useNotifications } from '../context/AppContext';
+import Card from '../../admin/components/ui/Card';
+import Button from '../../admin/components/ui/Button';
+import Input from '../../admissions/components/ui/Input';
+import { useFormValidation } from '../../admin/hooks/useFormValidation';
+import { useNotifications } from '../../admin/context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
-import { appUrls } from '../utils/appUrls';
+import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {

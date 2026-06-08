@@ -8,7 +8,7 @@ import UserTable from './UserTable';
 import UserFilters from './UserFilters';
 import UserStats from './UserStats';
 import SimpleAvailabilityCalendar from '../schedule/SimpleAvailabilityCalendar';
-import AdminResetPasswordModal from '@/src/components/admin/AdminResetPasswordModal';
+import AdminResetPasswordModal from '../../src/components/admin/AdminResetPasswordModal';
 import {
   User,
   CreateUserRequest,

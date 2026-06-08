@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import DataTable, { TableColumn } from '../ui/DataTable';
-import Badge from '../ui/Badge';
-import Button from '../ui/Button';
-import Modal from '../ui/Modal';
+import DataTable, { TableColumn } from '../../../admin/components/ui/DataTable';
+import Badge from '../../../admin/components/ui/Badge';
+import Button from '../../../admin/components/ui/Button';
+import Modal from '../../../admin/components/ui/Modal';
 import { FiEdit, FiEye, FiDownload, FiCalendar, FiFileText, FiUser } from 'react-icons/fi';
-import { useNotifications } from '../../context/AppContext';
-import { applicationService } from '../../services/applicationService';
+import { useNotifications } from '../../../admin/context/AppContext';
+import { applicationService } from '../../../admissions/services/applicationService';
 
 interface Application {
     id: number;

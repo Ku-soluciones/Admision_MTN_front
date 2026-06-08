@@ -5,13 +5,13 @@ import ApoderadoLogin from './pages/ApoderadoLogin';
 import FamilyDashboard from './pages/FamilyDashboard';
 import InterviewConfirmationResult from './pages/InterviewConfirmationResult';
 import ProtectedApoderadoRoute from './components/auth/ProtectedApoderadoRoute';
-import { AppProvider } from './context/AppContext';
-import { AuthProvider } from './context/AuthContext';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
-import ToastContainer from './components/ui/ToastContainer';
-import GlobalToastHost from './components/ui/GlobalToastHost';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { AppProvider } from '../admin/context/AppContext';
+import { AuthProvider } from '../coordinator/context/AuthContext';
+import Header from '../coordinator/components/layout/Header';
+import Footer from '../admissions/components/layout/Footer';
+import ToastContainer from '../admin/components/ui/ToastContainer';
+import GlobalToastHost from '../admin/components/ui/GlobalToastHost';
+import { ErrorBoundary } from '../admin/components/ErrorBoundary';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">

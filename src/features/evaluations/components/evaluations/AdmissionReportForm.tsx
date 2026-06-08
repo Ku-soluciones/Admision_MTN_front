@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
-import Input from '../ui/Input';
-import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../icons/Icons';
-import { useNotifications } from '../../context/AppContext';
-import { professorEvaluationService, ProfessorEvaluation } from '../../services/professorEvaluationService';
-import { EvaluationType } from '../../types/evaluation';
+import Card from '../../../admin/components/ui/Card';
+import Button from '../../../admin/components/ui/Button';
+import Input from '../../../admissions/components/ui/Input';
+import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
+import { useNotifications } from '../../../admin/context/AppContext';
+import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
+import { EvaluationType } from '../../../admin/types/evaluation';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 interface AdmissionReportData {

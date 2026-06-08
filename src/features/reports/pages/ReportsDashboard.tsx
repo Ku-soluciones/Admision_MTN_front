@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import SimpleToast from '../components/ui/SimpleToast';
+import Button from '../../admin/components/ui/Button';
+import Modal from '../../admin/components/ui/Modal';
+import LoadingSpinner from '../../admin/components/ui/LoadingSpinner';
+import SimpleToast from '../../admin/components/ui/SimpleToast';
 import {
   ChartBarIcon,
   DownloadIcon,
@@ -15,12 +15,12 @@ import {
   RefreshIcon,
   ClipboardDocumentListIcon,
   ArrowLeftIcon
-} from '../components/icons/Icons';
+} from '../../admin/components/icons/Icons';
 import { FiFileText, FiArrowLeft } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
-import { applicationService } from '../services/applicationService';
-import { userService } from '../services/userService';
-import { professorEvaluationService } from '../services/professorEvaluationService';
+import { applicationService } from '../../admissions/services/applicationService';
+import { userService } from '../../admin/services/userService';
+import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 
 interface ReportData {
   id: string;
