@@ -1,0 +1,185 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Button from '../ui/Button';
+import { appUrls } from '../../utils/appUrls';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
+
+const Header: React.FC = () => {
+    const navigate = useNavigate();
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
+    const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Verificar si el usuario actual es admin, profesor o cualquier usuario autenticado
+    useEffect(() => {
+        const checkAuthStatus = () => {
+            // Verificar múltiples fuentes de autenticación
+            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+
+            // Verificar si hay profesor autenticado
+            const hasProfessorAuth = !!(professorToken && currentProfessor);
+            setIsProfessorLoggedIn(hasProfessorAuth);
+
+            // Verificar si hay CUALQUIER usuario autenticado
+            const hasAnyAuth = !!(authToken || professorToken || apoderadoToken);
+            setIsAnyUserLoggedIn(hasAnyAuth);
+
+            // Solo mostrar admin si hay un token válido Y datos de profesor admin
+            if ((authToken || professorToken) && currentProfessor) {
+                try {
+                    const professorData = JSON.parse(currentProfessor);
+                    setIsAdmin(professorData.isAdmin === true);
+                } catch (error) {
+                    setIsAdmin(false);
+                }
+            } else {
+                setIsAdmin(false);
+            }
+        };
+
+        checkAuthStatus();
+
+        window.addEventListener('storage', checkAuthStatus);
+        return () => window.removeEventListener('storage', checkAuthStatus);
+    }, []);
+
+    const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+        if (isAnyUserLoggedIn) {
+            e.preventDefault();
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
+            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentApoderado');
+            setIsAdmin(false);
+            setIsProfessorLoggedIn(false);
+            setIsAnyUserLoggedIn(false);
+            navigate('/');
+        }
+    }, [isAnyUserLoggedIn, navigate]);
+
+    return (
+        <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
+            <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center">
+                <div className="flex-1">
+                    <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
+                        <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
+                            Colegio Monte Tabor y Nazaret
+                        </span>
+                    </Link>
+                </div>
+
+                {/* Desktop Nav */}
+                <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+                    <a href={appUrls.home} onClick={handleLogoutAndGoHome} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">
+                        Inicio
+                    </a>
+                    <a href={appUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
+                    {isAdmin && (
+                        <a
+                            href={appUrls.adminDashboard}
+                            className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
+                        >
+                            Admin
+                        </a>
+                    )}
+                </nav>
+
+                <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
+                    {!isAnyUserLoggedIn && (
+                        <div className="hidden sm:flex items-center gap-2">
+                            <a href={appUrls.guardianLogin}>
+                                <Button size="sm" className="!bg-azul-monte-tabor !text-blanco-pureza">
+                                    Iniciar sesión
+                                </Button>
+                            </a>
+                            <a href={appUrls.guardianRegister}>
+                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                    Postular
+                                </Button>
+                            </a>
+                        </div>
+                    )}
+                    {/* Hamburger button */}
+                    <button
+                        className="md:hidden p-2 rounded-lg text-gris-piedra hover:text-azul-monte-tabor hover:bg-gray-100 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(prev => !prev)}
+                        aria-label="Abrir menú de navegación"
+                        aria-expanded={isMobileMenuOpen}
+                    >
+                        {isMobileMenuOpen ? (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* Mobile Menu */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden bg-blanco-pureza border-t border-gray-100 shadow-lg">
+                    <nav className="container mx-auto px-4 py-3 flex flex-col gap-1">
+                        <a
+                            href={appUrls.home}
+                            onClick={(e) => { handleLogoutAndGoHome(e); setIsMobileMenuOpen(false); }}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                        >
+                            Inicio
+                        </a>
+                        <a
+                            href={appUrls.studentExams}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                        >
+                            Exámenes
+                        </a>
+                        <a
+                            href={appUrls.guardianLogin}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                        >
+                            Portal Familia
+                        </a>
+                        {isAdmin && (
+                            <a
+                                href={appUrls.adminDashboard}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
+                            >
+                                Admin
+                            </a>
+                        )}
+                        {!isAnyUserLoggedIn && (
+                            <div className="pt-2 pb-1 flex flex-col gap-2">
+                                <a href={appUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
+                                        Iniciar sesión
+                                    </Button>
+                                </a>
+                                <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button variant="primary" className="w-full !text-blanco-pureza">
+                                        Postular
+                                    </Button>
+                                </a>
+                            </div>
+                        )}
+                    </nav>
+                </div>
+            )}
+        </header>
+    );
+};
+
+export default Header;
