@@ -2543,9 +2543,11 @@ const ApplicationForm: React.FC = () => {
             return JSON.parse(cached || 'null')?.role === 'APODERADO';
         } catch { return false; }
     })();
+    const isFamilyDashboardFlow = Boolean(location.state?.fromFamilyDashboard || (location.state?.prefillFamilyData && location.state?.familyData));
 
-    // Mientras Firebase restaura sesión, mostrar spinner (si no hay cache) o el formulario (si hay cache)
-    if (isAuthLoading && !hasApoderadoSession) {
+    // Mientras Firebase restaura sesión, mostrar spinner salvo en flujo de otro hijo,
+    // donde el dashboard ya entregó los datos familiares por navigation state.
+    if (isAuthLoading && !hasApoderadoSession && !isFamilyDashboardFlow) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gray-50" role="status" aria-label="Cargando formulario">
                 <div className="flex flex-col items-center gap-3">
@@ -2557,7 +2559,7 @@ const ApplicationForm: React.FC = () => {
     }
 
     // Mostrar formulario de autenticación solo si: carga terminó, no hay sesión React, y no hay cache local
-    if (!isAuthenticated && !hasApoderadoSession) {
+    if (!isAuthenticated && !hasApoderadoSession && !isFamilyDashboardFlow) {
         return renderAuthForm();
     }
 

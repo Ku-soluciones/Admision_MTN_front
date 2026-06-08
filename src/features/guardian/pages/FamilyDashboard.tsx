@@ -194,10 +194,13 @@ const FamilyDashboard: React.FC = () => {
   const visibleSections = sections;
 
   const buildFamilyPrefillState = () => {
-    if (!hasRealApplication || realApplications.length === 0) return undefined;
+    if (!hasRealApplication || realApplications.length === 0) {
+      return { fromFamilyDashboard: true };
+    }
 
     const firstApplication = realApplications[0];
     return {
+      fromFamilyDashboard: true,
       prefillFamilyData: true,
       familyData: {
         father: firstApplication.father,
