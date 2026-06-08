@@ -1,5 +1,5 @@
 /**
- * Cliente HTTP del MF para hablar con el BFF.
+ * Cliente HTTP para hablar con el BFF.
  *
  * Cambios respecto a la versión anterior (alineado con la guía de integración
  * BFF tras SECURITY_TOKENS.md):
@@ -8,8 +8,7 @@
  *     cada llamada a `/v1/auth/*` (NGINX enruta esta familia hacia el BFF).
  *  2. El access token se lee del `authStore` (memoria). Si todavía no hay
  *     sesión hidratada, se hace fallback a `localStorage` por compatibilidad
- *     transicional con flujos antiguos (Firebase `onAuthStateChanged`,
- *     handoff cross-origin vía `mf_token`).
+ *     transicional con flujos antiguos de Firebase `onAuthStateChanged`.
  *  3. Refresh reactivo con cola: si llega un 401 con `TOKEN_EXPIRED` /
  *     `UNAUTHORIZED` en una request normal, una sola llamada a
  *     `/v1/auth/refresh` es disparada y todas las requests en vuelo se
@@ -206,8 +205,7 @@ api.interceptors.response.use(
         // un 401 en ellos significa "no hay sesión activa", no "tu sesión expiró".
         // NO debemos redirigir ni limpiar storage agresivamente cuando estos
         // fallan, porque el AuthContext (bootstrapAuth, onAuthStateChanged) ya
-        // está manejando la rehidratación y puede recuperar la sesión por otra vía
-        // (Firebase, mf_token, token legacy en localStorage).
+        // está manejando la rehidratación y puede recuperar la sesión por otra vía.
         const isAuthProbe = isAuthEndpoint(url);
 
         // 400 "No autenticado" en endpoints sonda: no es un error real,
@@ -273,4 +271,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

@@ -25,35 +25,15 @@ const roleMap: Record<string, UserRole> = {
   TEACHER_ENGLISH: 'TEACHER_ENGLISH',
 };
 
-const BASE_DOMAIN = 'admitia.dedyn.io';
-
-const KNOWN_ENVS = ['dev', 'sta', 'staging', 'qa', 'uat', 'test'];
-
 /**
  * Infers the deployment environment from the current hostname at runtime.
- * Pattern: <feature-subdomain>.<env>.<BASE_DOMAIN>  → returns env segment
- * Pattern: <feature-subdomain>.<BASE_DOMAIN>          → returns 'production'
- * Localhost / unknown                            → returns 'development'
+ * Localhost returns development; deployed hosts use the production namespace.
  */
 export function resolveEnvironmentFromHost(hostname?: string): string {
   const host = hostname ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
 
   if (host === 'localhost' || host === '127.0.0.1') {
     return 'development';
-  }
-
-  if (!host.endsWith(BASE_DOMAIN)) {
-    return 'production';
-  }
-
-  const withoutBase = host.slice(0, host.length - BASE_DOMAIN.length - 1);
-  const parts = withoutBase.split('.');
-
-  if (parts.length >= 2) {
-    const envSegment = parts[parts.length - 1].toLowerCase();
-    if (KNOWN_ENVS.includes(envSegment)) {
-      return envSegment;
-    }
   }
 
   return 'production';
@@ -73,28 +53,13 @@ export function getStorageKey(baseKey: string, hostname?: string): string {
 }
 
 /**
- * Returns the environment-aware MF base domain.
- * Prefers VITE_APP_BASE_DOMAIN / VITE_APP_ENV when available (build-time),
- * then falls back to runtime hostname inference.
+ * Returns the configured application domain or the current browser hostname.
  */
 export function resolveEnvironmentDomain(env?: Record<string, string | undefined>): string {
-  const baseDomain = (env?.VITE_APP_BASE_DOMAIN || BASE_DOMAIN)
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return (env?.VITE_APP_BASE_DOMAIN || runtimeHost)
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '');
-
-  if (env?.VITE_APP_ENV) {
-    const mfEnv = env.VITE_APP_ENV.trim().toLowerCase();
-    if (!mfEnv || mfEnv === 'production' || mfEnv === 'prod') {
-      return baseDomain;
-    }
-    return `${mfEnv}.${baseDomain}`;
-  }
-
-  const runtimeEnv = resolveEnvironmentFromHost();
-  if (runtimeEnv === 'production' || runtimeEnv === 'development') {
-    return baseDomain;
-  }
-  return `${runtimeEnv}.${baseDomain}`;
 }
 
 export const BASE_STORAGE_KEYS = {

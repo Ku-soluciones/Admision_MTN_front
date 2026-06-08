@@ -12,7 +12,6 @@ import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -21,7 +20,6 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/familia') || location.pathname.startsWith('/dashboard-apoderado');
   const isLoginPage = location.pathname === '/apoderado/login';
@@ -42,7 +40,6 @@ function App() {
         <Route path="/interview/confirmation-result" element={<InterviewConfirmationResult />} />
         <Route path="/dashboard-apoderado" element={<ProtectedApoderadoRoute><FamilyDashboard /></ProtectedApoderadoRoute>} />
         <Route path="/familia" element={<ProtectedApoderadoRoute><FamilyDashboard /></ProtectedApoderadoRoute>} />
-        {legacyRedirects}
         <Route path="*" element={<Navigate to="/apoderado/login" replace />} />
     
                 </Routes>

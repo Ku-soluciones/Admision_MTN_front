@@ -12,8 +12,6 @@ import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes, ExternalRedirect } from './routing/legacyRedirects';
-import { appUrls } from './utils/appUrls';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -22,7 +20,6 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
   const hideHeader = location.pathname === '/login'
     || location.pathname === '/admin/login'
@@ -42,13 +39,12 @@ function App() {
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
 
-        <Route path="/" element={<ExternalRedirect to={appUrls.home} />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/profesor" element={<ProfessorLoginPage />} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
-        {legacyRedirects}
         <Route path="*" element={<Navigate to="/login" replace />} />
 
                 </Routes>

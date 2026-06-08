@@ -1,5 +1,5 @@
 /**
- * authService — capa de auth del MF apoderado.
+ * authService — capa de auth de apoderado.
  *
  * Adaptado al nuevo contrato del BFF (ver guía de integración tras
  * SECURITY_TOKENS.md y FIX_FIREBASE_UID_LINKING.md):

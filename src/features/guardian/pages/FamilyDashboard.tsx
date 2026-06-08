@@ -37,7 +37,6 @@ import {
   FiCreditCard
 } from 'react-icons/fi';
 import { useApplications } from '../context/AppContext';
-import { auth } from '../src/lib/firebase';
 import { appUrls } from '../utils/appUrls';
 import { applicationService, Application } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
@@ -195,13 +194,11 @@ const FamilyDashboard: React.FC = () => {
   const hasComplementaryFormAccess = payableApplications.length > 0;
   const visibleSections = sections;
 
-  // Navega a admissions pasando el idToken para evitar re-login cross-origin
+  // Navega a postulación dentro del mismo frontend integrado.
   const navigateToAdmissions = async (path = '/postulacion') => {
     try {
-      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       const base = path === '/postulacion' ? appUrls.admissions : appUrls.admissionsComplementary;
-      const url = token ? `${base}${base.includes('?') ? '&' : '?'}mf_token=${encodeURIComponent(token)}` : base;
-      window.location.href = url;
+      window.location.href = base;
     } catch {
       window.location.href = appUrls.admissions;
     }

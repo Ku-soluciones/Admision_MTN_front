@@ -6,7 +6,7 @@
  * nada de eso aquí.
  *
  * Se implementa como un singleton "vanilla" (sin Zustand) para no agregar
- * dependencias al paquete. Cada MF puede envolverlo en `useSyncExternalStore`
+ * dependencias al paquete. Cada app puede envolverlo en `useSyncExternalStore`
  * cuando necesite reactividad en React (ver `useAuthStore`).
  */
 import { useSyncExternalStore } from 'react';
@@ -160,4 +160,3 @@ export function purgeLegacyAuthStorage(preserveLegacyKeys: string[] = []): void 
     try { window.localStorage.removeItem(key); } catch { /* no-op */ }
   }
 }
-

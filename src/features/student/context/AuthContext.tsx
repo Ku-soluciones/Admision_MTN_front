@@ -93,28 +93,9 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
     }
 };
 
-// Limpieza de claves legacy y extracción de `mf_token` de la URL para handoff
-// cross-origin. Se ejecuta una sola vez al cargar el módulo.
+// Limpieza de claves históricas al cargar el módulo.
 (function bootstrapStorageOnce() {
     purgeLegacyAuthStorage();
-    try {
-        const hash = window.location.hash; // "#/postulacion?mf_token=eyJ..."
-        const queryStart = hash.indexOf('?');
-        if (queryStart === -1) return;
-        const params = new URLSearchParams(hash.slice(queryStart + 1));
-        const mfToken = params.get('mf_token');
-        if (!mfToken) return;
-        // Mantenemos por ahora el token en localStorage para compatibilidad con
-        // el handoff cross-origin existente. Si llega `mf_expires_in`, también
-        // hidratamos el authStore para que el resto del flujo lo use.
-        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), mfToken);
-        const expiresIn = Number(params.get('mf_expires_in'));
-        if (Number.isFinite(expiresIn) && expiresIn > 0) {
-            authStore.setSession({ token: mfToken, expiresIn });
-        }
-        const cleanHash = hash.slice(0, queryStart);
-        window.history.replaceState(null, '', window.location.pathname + window.location.search + cleanHash);
-    } catch { /* no-op en SSR o entornos sin window */ }
 })();
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -125,21 +106,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
     //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
     //    exponga /api/auth/refresh, basta con ajustar el orden.
-    //    Si llegamos con mf_token de otro origen (cross-origin handoff),
-    //    intercambiamos el Firebase ID token por un JWT del BFF.
+    //    Si hay un token persistido y no existe sesión BFF, intentamos
+    //    intercambiarlo por un JWT del BFF.
     useEffect(() => {
         let cancelled = false;
         
-        // Verificar si llegamos con mf_token de cross-origin
-        const crossOriginToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        const storedAccessToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         const hasValidBffSession = authStore.getValidAccessToken();
-        
-        // Si tenemos un token de cross-origin pero no sesión BFF válida,
-        // intercambiar el Firebase ID token por JWT del BFF
-        if (crossOriginToken && !hasValidBffSession) {
+
+        if (storedAccessToken && !hasValidBffSession) {
             (async () => {
                 try {
-                    const session = await exchangeFirebaseToken(crossOriginToken, api);
+                    const session = await exchangeFirebaseToken(storedAccessToken, api);
                     if (session && !cancelled) {
                         const userData = buildUserFromBff(session.user);
                         setAdminCompat(userData, session.token, session.user?.subject);
@@ -267,15 +245,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(null);
                 }
             } else {
-                // Firebase no tiene usuario en este origen. Si tenemos session
-                // BFF activa (vía bootstrapAuth o handoff mf_token), la
-                // mantenemos.
+                // Firebase no tiene usuario en este origen. Si tenemos sesión
+                // BFF activa, la mantenemos.
                 if (authStore.getValidAccessToken()) {
                     setIsLoading(false);
                     return;
                 }
-                // Existe un token legacy en localStorage (handoff mf_token o
-                // sesión previa antes del refactor). Intentamos validarlo de
+                // Existe un token histórico en localStorage. Intentamos validarlo de
                 // forma silenciosa: el interceptor ya tolera 400 "No
                 // autenticado" sin hacer ruido.
                 const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));

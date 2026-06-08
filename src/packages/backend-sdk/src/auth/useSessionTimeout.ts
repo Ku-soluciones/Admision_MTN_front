@@ -6,7 +6,7 @@
  * - Hard-cap absoluto: cierra la sesión cuando se cumple `absoluteExpiresAt`
  *   del store, sin importar la actividad reciente.
  *
- * El hook se ofrece desde el SDK para que cada MF lo consuma sin reimplementarlo.
+ * El hook se ofrece desde el SDK para reutilizarlo sin reimplementarlo.
  */
 import { useEffect, useRef } from 'react';
 import { authStore } from './store';
@@ -80,6 +80,5 @@ export function useSessionTimeout(
     };
   }, [onWarn, onExpire, options.inactivityMinutes, options.warnBeforeSeconds]);
 }
-
 
 

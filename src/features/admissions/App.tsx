@@ -12,7 +12,6 @@ import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
   <div
@@ -30,8 +29,6 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  const legacyRedirects = createLegacyRedirectRoutes();
-
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -46,7 +43,6 @@ function App() {
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/postulacion" element={<ApplicationForm />} />
         <Route path="/postulacion/complementaria" element={<ComplementaryApplicationForm />} />
-        {legacyRedirects}
         <Route path="*" element={<Navigate to="/" replace />} />
     
                 </Routes>

@@ -96,7 +96,7 @@ const setAdminCompat = (user: User, token: string, subject?: string) => {
 // ocurre cuando el usuario presiona "Iniciar Postulación" desde el home
 // estando deslogueado y queremos garantizar que NO se reutilice ninguna
 // sesión Firebase / BFF persistente (IndexedDB de Firebase, localStorage de
-// otra pestaña, mf_token vencido, etc.) del origen de admisiones.
+// otra pestaña, sesión vencida, etc.) del origen de admisiones.
 //
 // Bandera soportada: `fresh=1` tanto en la query string como dentro del hash
 // (`#/postulacion?fresh=1`). Se limpia de la URL tras procesarla.
@@ -140,35 +140,16 @@ const wipeLocalAuthArtifacts = () => {
     } catch { /* no-op */ }
 };
 
-// Limpieza de claves legacy y extracción de `mf_token` de la URL para handoff
-// cross-origin. Se ejecuta una sola vez al cargar el módulo.
+// Limpieza de claves históricas al cargar el módulo.
 (function bootstrapStorageOnce() {
     if (__freshSessionRequested) {
         // El usuario pidió explícitamente comenzar limpio: descartar toda
-        // sesión previa (token, mf_token, store) ANTES de cualquier hidratación.
+        // sesión previa antes de cualquier hidratación.
         wipeLocalAuthArtifacts();
         try { authStore.clear(); } catch { /* no-op */ }
-        return; // No procesar mf_token entrante en modo fresh.
+        return;
     }
     purgeLegacyAuthStorage();
-    try {
-        const hash = window.location.hash; // "#/postulacion?mf_token=eyJ..."
-        const queryStart = hash.indexOf('?');
-        if (queryStart === -1) return;
-        const params = new URLSearchParams(hash.slice(queryStart + 1));
-        const mfToken = params.get('mf_token');
-        if (!mfToken) return;
-        // Mantenemos por ahora el token en localStorage para compatibilidad con
-        // el handoff cross-origin existente. Si llega `mf_expires_in`, también
-        // hidratamos el authStore para que el resto del flujo lo use.
-        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), mfToken);
-        const expiresIn = Number(params.get('mf_expires_in'));
-        if (Number.isFinite(expiresIn) && expiresIn > 0) {
-            authStore.setSession({ token: mfToken, expiresIn });
-        }
-        const cleanHash = hash.slice(0, queryStart);
-        window.history.replaceState(null, '', window.location.pathname + window.location.search + cleanHash);
-    } catch { /* no-op en SSR o entornos sin window */ }
 })();
 
 /** Indica si el módulo se cargó con la bandera `?fresh=1` en la URL. */
@@ -184,8 +165,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 1. Rehidratación al montar: pedimos /v1/auth/refresh para recuperar la
     //    sesión si la cookie HttpOnly del refresh sigue viva. Cuando el BFF
     //    exponga /api/auth/refresh, basta con ajustar el orden.
-    //    Si llegamos con mf_token de otro origen (cross-origin handoff), 
-    //    intercambiamos el Firebase ID token por un JWT del BFF.
+    //    Si hay un token persistido y no existe sesión BFF, intentamos
+    //    intercambiarlo por un JWT del BFF.
     useEffect(() => {
         let cancelled = false;
         // Si la URL pidió sesión fresca, NO rehidratamos desde el refresh
@@ -197,18 +178,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return () => { cancelled = true; };
         }
         
-        // Verificar si llegamos con mf_token de cross-origin (ej: guardian)
-        // Si es así, intercambiar el Firebase ID token por un JWT del BFF
-        const crossOriginToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+        const storedAccessToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         const hasValidBffSession = authStore.getValidAccessToken();
         
-        // Si tenemos un token de cross-origin pero no sesión BFF válida,
-        // intercambiar el Firebase ID token por JWT del BFF
-        if (crossOriginToken && !hasValidBffSession && !wasFreshSessionRequested()) {
+        if (storedAccessToken && !hasValidBffSession && !wasFreshSessionRequested()) {
             (async () => {
                 try {
                     const res = await api.post('/v1/auth/firebase-login', { 
-                        idToken: crossOriginToken 
+                        idToken: storedAccessToken 
                     });
                     const data = res.data;
                     if (data?.token && typeof data.expiresIn === 'number') {
@@ -374,15 +351,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     setUser(null);
                 }
             } else {
-                // Firebase no tiene usuario en este origen. Si tenemos session
-                // BFF activa (vía bootstrapAuth o handoff mf_token), la
-                // mantenemos.
+                // Firebase no tiene usuario en este origen. Si tenemos sesión
+                // BFF activa, la mantenemos.
                 if (authStore.getValidAccessToken()) {
                     setIsLoading(false);
                     return;
                 }
-                // Existe un token legacy en localStorage (handoff mf_token o
-                // sesión previa antes del refactor). Intentamos validarlo de
+                // Existe un token histórico en localStorage. Intentamos validarlo de
                 // forma silenciosa: el interceptor ya tolera 400 "No
                 // autenticado" sin hacer ruido.
                 const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));

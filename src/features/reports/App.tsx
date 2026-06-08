@@ -11,7 +11,6 @@ import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { createLegacyRedirectRoutes } from './routing/legacyRedirects';
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -20,7 +19,6 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  const legacyRedirects = createLegacyRedirectRoutes();
   const location = useLocation();
   const isPortalPage = location.pathname !== '/login';
 
@@ -37,7 +35,6 @@ function App() {
         <Route path="/" element={<Navigate to="/reportes" replace />} />
         <Route path="/login" element={<AdminLoginPage />} />
         <Route path="/reportes" element={<ProtectedAdminRoute><ReportsDashboard /></ProtectedAdminRoute>} />
-        {legacyRedirects}
         <Route path="*" element={<Navigate to="/reportes" replace />} />
     
                 </Routes>
