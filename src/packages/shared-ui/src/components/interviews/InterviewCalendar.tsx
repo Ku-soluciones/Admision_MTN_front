@@ -26,6 +26,7 @@ import {
   INTERVIEW_STATUS_LABELS,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
+  InterviewLifecycle,
   InterviewUtils,
   INTERVIEW_CONFIG
 } from '../../types/interview';
@@ -36,6 +37,15 @@ const parseLocalDate = (dateString: string): Date => {
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
+
+const sortOperationalFirst = (interviews: Interview[]): Interview[] => (
+  [...interviews].sort((a, b) => {
+    const aInactive = InterviewLifecycle.isInactive(a.status) ? 1 : 0;
+    const bInactive = InterviewLifecycle.isInactive(b.status) ? 1 : 0;
+    if (aInactive !== bInactive) return aInactive - bInactive;
+    return `${a.scheduledTime}-${a.id}`.localeCompare(`${b.scheduledTime}-${b.id}`);
+  })
+);
 
 const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MONTHS = [
@@ -79,11 +89,11 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
-      const dayInterviews = interviews.filter(interview => {
+      const dayInterviews = sortOperationalFirst(interviews.filter(interview => {
         // Usar parseLocalDate para evitar problemas de zona horaria
         const interviewDate = parseLocalDate(interview.scheduledDate);
         return interviewDate.toDateString() === date.toDateString();
-      });
+      }));
       
       days.push({
         date: new Date(date),
@@ -110,7 +120,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
 
   const handleDateClick = (day: CalendarDay) => {
     setSelectedDate(day.date);
-    if (day.interviews.length === 0 && onSelectSlot) {
+    if (day.interviews.every(interview => InterviewLifecycle.isInactive(interview.status)) && onSelectSlot) {
       const startTime = new Date(day.date);
       startTime.setHours(9, 0, 0, 0);
       const endTime = new Date(startTime);
@@ -198,6 +208,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
 
   const renderCalendarDay = (day: CalendarDay, index: number) => {
     const isSelected = selectedDate && day.date.toDateString() === selectedDate.toDateString();
+    const historicalCount = day.interviews.filter(interview => InterviewLifecycle.isInactive(interview.status)).length;
     
     return (
       <div
@@ -233,6 +244,11 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
               +{day.interviews.length - 3} más
             </div>
           )}
+          {historicalCount > 0 && (
+            <div className="text-[11px] font-medium text-gray-400">
+              {historicalCount} historial
+            </div>
+          )}
         </div>
       </div>
     );
@@ -241,11 +257,12 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
   const renderSelectedDateDetails = () => {
     if (!selectedDate) return null;
     
-    const dayInterviews = interviews.filter(interview => {
+    const dayInterviews = sortOperationalFirst(interviews.filter(interview => {
       // Usar parseLocalDate para evitar problemas de zona horaria
       const interviewDate = parseLocalDate(interview.scheduledDate);
       return interviewDate.toDateString() === selectedDate.toDateString();
-    });
+    }));
+    const hasOperationalInterviews = dayInterviews.some(interview => !InterviewLifecycle.isInactive(interview.status));
     
     const formattedDate = selectedDate.toLocaleDateString('es-CL', {
       weekday: 'long',
@@ -260,10 +277,10 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
           {formattedDate}
         </h3>
         
-        {dayInterviews.length === 0 ? (
+        {!hasOperationalInterviews ? (
           <div className="text-center py-8">
             <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No hay entrevistas programadas</p>
+            <p className="text-gray-500">No hay entrevistas activas programadas</p>
             <Button
               variant="primary"
               size="sm"

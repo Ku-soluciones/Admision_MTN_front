@@ -67,6 +67,56 @@ export const INTERVIEW_RESULT_LABELS: Record<InterviewResult, string> = {
   [InterviewResult.REQUIRES_FOLLOW_UP]: 'Requiere Seguimiento'
 };
 
+export const INTERVIEW_INACTIVE_STATUSES = [
+  InterviewStatus.CANCELLED,
+  InterviewStatus.REJECTED_BY_FAMILY,
+  InterviewStatus.NO_SHOW
+] as const;
+
+export const INTERVIEW_ASSIGNED_STATUSES = [
+  InterviewStatus.PENDING,
+  InterviewStatus.SCHEDULED,
+  InterviewStatus.CONFIRMED,
+  InterviewStatus.IN_PROGRESS,
+  InterviewStatus.COMPLETED,
+  InterviewStatus.RESCHEDULED
+] as const;
+
+export const INTERVIEW_SCHEDULING_REQUIRED_STATUSES = [
+  InterviewStatus.PENDING,
+  InterviewStatus.CANCELLED,
+  InterviewStatus.RESCHEDULED,
+  InterviewStatus.REJECTED_BY_FAMILY,
+  InterviewStatus.NO_SHOW
+] as const;
+
+export const INTERVIEW_EDITABLE_STATUSES = [
+  InterviewStatus.SCHEDULED,
+  InterviewStatus.CONFIRMED
+] as const;
+
+export const INTERVIEW_CANCELLABLE_STATUSES = [
+  InterviewStatus.SCHEDULED,
+  InterviewStatus.CONFIRMED
+] as const;
+
+export const INTERVIEW_COMPLETABLE_STATUSES = [
+  InterviewStatus.CONFIRMED,
+  InterviewStatus.IN_PROGRESS
+] as const;
+
+const statusIn = <T extends readonly InterviewStatus[]>(status: InterviewStatus | string, statuses: T): boolean =>
+  statuses.includes(status as InterviewStatus);
+
+export const InterviewLifecycle = {
+  isInactive: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_INACTIVE_STATUSES),
+  countsAsAssigned: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_ASSIGNED_STATUSES),
+  needsScheduling: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_SCHEDULING_REQUIRED_STATUSES),
+  isEditable: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_EDITABLE_STATUSES),
+  canCancel: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_CANCELLABLE_STATUSES),
+  canComplete: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_COMPLETABLE_STATUSES)
+};
+
 // Interface principal de Entrevista
 export interface Interview {
   id: number;
@@ -364,6 +414,7 @@ export interface InterviewTableProps {
   onView: (interview: Interview) => void;
   onSendNotification?: (interview: Interview, type: 'scheduled' | 'confirmed' | 'reminder') => void;
   onSendReminder?: (interview: Interview) => void;
+  onRelease?: (interview: Interview) => void; // Callback to release rejected interview
   onRefreshDashboard?: () => void; // Callback to refresh parent dashboard data
   className?: string;
 }
@@ -374,6 +425,7 @@ export interface InterviewFormProps {
   onSubmit: (data: CreateInterviewRequest | UpdateInterviewRequest | CompleteInterviewRequest) => void;
   onCancel: () => void;
   onEdit?: (interview: Interview) => void;
+  onRelease?: (interview: Interview) => void; // Handler para liberar entrevistas rechazadas
   isSubmitting?: boolean;
   className?: string;
   refreshKey?: number; // Para refrescar slots disponibles
@@ -396,14 +448,14 @@ export interface InterviewStatsProps {
 // Utilidades para entrevistas
 export const InterviewUtils = {
   // Obtener color del estado
-  getStatusColor: (status: InterviewStatus): 'primary' | 'success' | 'warning' | 'error' | 'info' => {
+  getStatusColor: (status: InterviewStatus): 'success' | 'warning' | 'error' | 'info' | 'neutral' => {
     switch (status) {
       case InterviewStatus.PENDING:
         return 'warning';
       case InterviewStatus.SCHEDULED:
         return 'info';
       case InterviewStatus.CONFIRMED:
-        return 'primary';
+        return 'success';
       case InterviewStatus.IN_PROGRESS:
         return 'warning';
       case InterviewStatus.COMPLETED:
@@ -413,6 +465,8 @@ export const InterviewUtils = {
         return 'error';
       case InterviewStatus.RESCHEDULED:
         return 'warning';
+      case InterviewStatus.REJECTED_BY_FAMILY:
+        return 'neutral';
       default:
         return 'info';
     }
@@ -622,12 +676,14 @@ export const INTERVIEW_CONFIG = {
   ],
   REMINDER_HOURS: [24, 2], // Recordatorios a 24h y 2h antes
   COLORS: {
+    [InterviewStatus.PENDING]: '#9CA3AF',
     [InterviewStatus.SCHEDULED]: '#3B82F6',
     [InterviewStatus.CONFIRMED]: '#10B981',
     [InterviewStatus.IN_PROGRESS]: '#F59E0B',
     [InterviewStatus.COMPLETED]: '#059669',
     [InterviewStatus.CANCELLED]: '#EF4444',
     [InterviewStatus.NO_SHOW]: '#DC2626',
-    [InterviewStatus.RESCHEDULED]: '#F97316'
+    [InterviewStatus.RESCHEDULED]: '#F97316',
+    [InterviewStatus.REJECTED_BY_FAMILY]: '#6B7280'
   }
 };

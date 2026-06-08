@@ -918,7 +918,7 @@ Esta acción:
                 mode: 'IN_PERSON' as any,
                 scheduledDate: '',
                 scheduledTime: '',
-                duration: 30,
+                duration: 60,
                 followUpRequired: false,
                 createdAt: new Date().toISOString(),
                 id: 0

@@ -27,7 +27,8 @@ import {
   FiEdit,
   FiSave,
   FiCheck,
-  FiStar
+  FiStar,
+  FiUnlock
 } from 'react-icons/fi';
 import {
   Interview,
@@ -68,6 +69,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   onSubmit,
   onCancel,
   onEdit,
+  onRelease,
   isSubmitting = false,
   className = ''
 }) => {
@@ -1436,7 +1438,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             
             {/* Botones de acción */}
             <div className="flex gap-3">
-              {onEdit && interview && (
+              {/* Editar - oculto si está rechazada por familia */}
+              {onEdit && interview && interview.status !== InterviewStatus.REJECTED_BY_FAMILY && (
                 <Button
                   type="button"
                   variant="primary"
@@ -1444,6 +1447,21 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 >
                   <FiEdit className="w-4 h-4 mr-2" />
                   Editar
+                </Button>
+              )}
+              {/* Liberar - solo para entrevistas rechazadas */}
+              {onRelease && interview?.status === InterviewStatus.REJECTED_BY_FAMILY && (
+                <Button
+                  type="button"
+                  variant="primary" className="bg-amber-500 hover:bg-amber-600 border-amber-500 text-white"
+                  onClick={() => {
+                    if (confirm('¿Está seguro que desea liberar esta entrevista? El slot quedará disponible para reprogramar.')) {
+                      onRelease(interview);
+                    }
+                  }}
+                >
+                  <FiUnlock className="w-4 h-4 mr-2" />
+                  Liberar para Reagendar
                 </Button>
               )}
               <Button

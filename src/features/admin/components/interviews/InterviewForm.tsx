@@ -39,6 +39,7 @@ import {
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
   INTERVIEW_RESULT_LABELS,
+  InterviewLifecycle,
   InterviewUtils,
   INTERVIEW_VALIDATION,
   INTERVIEW_CONFIG
@@ -245,51 +246,23 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         interviewService.getAllInterviews(0, 1000) // Cargar todas las entrevistas activas
       ]);
 
-      console.log('[InterviewForm] Total interviews loaded:', interviewsResponse.interviews.length);
-      console.log('[InterviewForm] All interviews:', interviewsResponse.interviews.map(i => ({
-        appId: i.applicationId,
-        type: i.type,
-        status: i.status
-      })));
-
-      // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR activas
-      // Estados activos: SCHEDULED, CONFIRMED, IN_PROGRESS, RESCHEDULED, PENDING
-      const activeStatuses = [
-        InterviewStatus.SCHEDULED,
-        InterviewStatus.CONFIRMED,
-        InterviewStatus.IN_PROGRESS,
-        InterviewStatus.RESCHEDULED,
-        InterviewStatus.PENDING
-      ];
+      // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR ya asignadas
       const appIdsWithFamily = new Set<number>();
       const appIdsWithCycleDirector = new Set<number>();
 
       interviewsResponse.interviews.forEach(interview => {
-        console.log('[InterviewForm] Processing interview:', {
-          appId: interview.applicationId,
-          type: interview.type,
-          status: interview.status,
-          isActive: activeStatuses.includes(interview.status as InterviewStatus)
-        });
-
-        if (activeStatuses.includes(interview.status as InterviewStatus)) {
+        if (InterviewLifecycle.countsAsAssigned(interview.status as InterviewStatus)) {
           if (interview.type === InterviewType.FAMILY || interview.type === 'FAMILY') {
             appIdsWithFamily.add(interview.applicationId);
-            console.log('[InterviewForm] Added to Family:', interview.applicationId);
           } else if (interview.type === InterviewType.CYCLE_DIRECTOR || interview.type === 'CYCLE_DIRECTOR') {
             appIdsWithCycleDirector.add(interview.applicationId);
-            console.log('[InterviewForm] Added to CycleDirector:', interview.applicationId);
           }
         }
       });
 
-      console.log('[InterviewForm] Apps with Family:', Array.from(appIdsWithFamily));
-      console.log('[InterviewForm] Apps with CycleDirector:', Array.from(appIdsWithCycleDirector));
-
       // Filtrar aplicaciones que YA TENGAN AMBOS tipos de entrevista (no pueden agendar más)
       const validApplications = applicationsResponse.filter(app => {
         const hasBoth = appIdsWithFamily.has(app.id) && appIdsWithCycleDirector.has(app.id);
-        console.log(`[InterviewForm] App ${app.id} (${app.student?.firstName}): hasFamily=${appIdsWithFamily.has(app.id)}, hasCycleDirector=${appIdsWithCycleDirector.has(app.id)}, excluded=${hasBoth}`);
         return app &&
           app.id &&
           app.student &&
@@ -298,10 +271,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
           !hasBoth;
       });
 
-      console.log('[InterviewForm] Valid applications count:', validApplications.length);
       setApplications(validApplications);
     } catch (error) {
-      console.error('[InterviewForm] Error loading applications:', error);
       setApplications([]);
     }
   };
@@ -856,34 +827,108 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             </div>
           </Card>
         ) : mode === InterviewFormMode.CREATE && (
-          <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-full">
-                <UserIcon className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-green-900 mb-1">
-                  Nueva Entrevista
-                  {selectedApplicationInfo && (
-                    <span className="text-base font-normal text-green-700 block">
-                      Para: {selectedApplicationInfo.name}
-                    </span>
-                  )}
-                </h3>
-                <p className="text-sm text-green-700">
-                  {selectedApplicationInfo ? 
-                    `Programar entrevista para ${selectedApplicationInfo.name} - ${selectedApplicationInfo.grade}` :
-                    'Complete el formulario para programar una nueva entrevista'
-                  }
-                </p>
-                <div className="mt-2">
-                  <span className="text-xs text-green-600">
-                    ID de Postulación: #{formData.applicationId || 'Por seleccionar'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
+          (() => {
+            // Si hay interview, estamos REAGENDANDO (reusing the form for reschedule)
+            // Si no hay interview, estamos CREANDO nueva entrevista
+            const existingInterview = interview;
+
+            if (existingInterview) {
+              // REAGENDANDO - mostrar mensaje contextual según estado
+              if (existingInterview.status === InterviewStatus.REJECTED_BY_FAMILY) {
+                return (
+                  <Card className="p-6 shadow-sm bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-full bg-amber-100">
+                        <UserIcon className="w-6 h-6 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1 text-amber-900">
+                          Reagendar Entrevista Rechazada
+                        </h3>
+                        <p className="text-sm text-amber-700">
+                          La familia rechazó el horario anterior. Seleccione un nuevo horario que funcione para todas las partes.
+                        </p>
+                        <div className="mt-2">
+                          <span className="text-xs text-amber-600">
+                            Estado: {INTERVIEW_STATUS_LABELS[existingInterview.status]} {existingInterview.scheduledDate ? `(era: ${existingInterview.scheduledDate})` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              } else if (existingInterview.status === InterviewStatus.CANCELLED) {
+                return (
+                  <Card className="p-6 shadow-sm bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-full bg-emerald-100">
+                        <UserIcon className="w-6 h-6 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1 text-emerald-900">
+                          Reagendar Entrevista Cancelada
+                        </h3>
+                        <p className="text-sm text-emerald-700">
+                          Esta entrevista fue cancelada. Seleccione nueva fecha y hora para reactivarla.
+                        </p>
+                        <div className="mt-2">
+                          <span className="text-xs text-emerald-600">
+                            Estado: {INTERVIEW_STATUS_LABELS[existingInterview.status]} {existingInterview.scheduledDate ? `(era: ${existingInterview.scheduledDate})` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              } else {
+                // PENDING u otros
+                return (
+                  <Card className="p-6 shadow-sm bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-full bg-green-100">
+                        <UserIcon className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1 text-green-900">
+                          Agendar Entrevista
+                        </h3>
+                        <p className="text-sm text-green-700">
+                          Complete el formulario para programar la entrevista.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              }
+            } else {
+              // CREANDO NUEVA ENTREVISTA
+              return (
+                <Card className="p-6 shadow-sm bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-green-100">
+                      <UserIcon className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1 text-green-900">
+                        Nueva Entrevista
+                        {selectedApplicationInfo && (
+                          <span className="text-base font-normal text-green-700 block">
+                            Para: {selectedApplicationInfo.name}
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-green-700">
+                        {selectedApplicationInfo
+                          ? `Programar entrevista para ${selectedApplicationInfo.name} - ${selectedApplicationInfo.grade}`
+                          : 'Complete el formulario para programar una nueva entrevista'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              );
+            }
+          })()
         )}
 
         {/* Formulario principal */}

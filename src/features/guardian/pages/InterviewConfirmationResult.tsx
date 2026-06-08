@@ -73,7 +73,7 @@ export default function InterviewConfirmationResult() {
               <XCircle className="w-10 h-10 text-orange-600" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Entrevista Reprogramada
+              Solicitud de nuevo horario recibida
             </h1>
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
               <p className="text-orange-800 text-lg">
@@ -87,7 +87,7 @@ export default function InterviewConfirmationResult() {
               </h3>
               <ul className="text-blue-800 text-sm space-y-1">
                 <li>• El coordinador fue notificado</li>
-                <li>• Le contactará para agendar nueva fecha</li>
+                <li>• Admisión propondrá una nueva fecha</li>
                 <li>• Revise su correo en los próximos días</li>
               </ul>
             </div>

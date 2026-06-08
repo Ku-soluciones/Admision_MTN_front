@@ -517,6 +517,22 @@ class InterviewService {
     return this.mapInterviewResponse(response.data);
   }
 
+  async releaseRejectedInterview(id: number, notes?: string): Promise<Interview> {
+    const response = await api.patch<any>(`${this.baseUrl}/${id}/release`, {
+      notes
+    });
+
+    if (response.data && response.data.success && response.data.data && response.data.data.interview) {
+      return this.mapBackendResponse(response.data.data.interview);
+    }
+
+    if (response.data && response.data.interview) {
+      return this.mapBackendResponse(response.data.interview);
+    }
+
+    return this.mapBackendResponse(response.data);
+  }
+
   // Consultas especiales
   async getTodaysInterviews(): Promise<Interview[]> {
     const response = await api.get<InterviewResponse[]>(`${this.baseUrl}/today`);
@@ -743,7 +759,7 @@ class InterviewService {
   }
 
   // Para calendario
-  async getCalendarInterviews(startDate: string, endDate: string, interviewerId?: number): Promise<Interview[]> {
+  async getCalendarInterviews(startDate: string, endDate: string, interviewerId?: number, includeRejected?: boolean): Promise<Interview[]> {
     const params = new URLSearchParams({
       startDate,
       endDate
@@ -751,6 +767,10 @@ class InterviewService {
 
     if (interviewerId) {
       params.append('interviewerId', interviewerId.toString());
+    }
+
+    if (includeRejected) {
+      params.append('includeRejected', 'true');
     }
 
     const response = await api.get<any>(`${this.baseUrl}/calendar?${params}`);
@@ -902,6 +922,16 @@ class InterviewService {
     const query = queryParams.toString();
     const response = await api.get<any>(`${this.baseUrl}/next-available-slots${query ? `?${query}` : ''}`);
     return response.data?.data ?? response.data;
+  }
+
+  async getSlotAvailability(date: string, time: string, duration: number): Promise<{ availableInterviewers: InterviewerInfo[]; interviewerCount: number }> {
+    const params = new URLSearchParams({ date, time, duration: duration.toString() });
+    const response = await api.get<any>(`${this.baseUrl}/slot-availability?${params}`);
+    const data = response.data?.data ?? response.data;
+    return {
+      availableInterviewers: data?.availableInterviewers ?? [],
+      interviewerCount: data?.interviewerCount ?? 0
+    };
   }
 
   async getWeeklyOverview(params: {

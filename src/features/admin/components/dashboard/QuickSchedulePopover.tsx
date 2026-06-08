@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheck, FiSearch, FiX } from 'react-icons/fi';
+import { FiCheck, FiCheckCircle, FiSearch, FiX } from 'react-icons/fi';
 import { Application, applicationService } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
-import { InterviewMode, InterviewStatus, InterviewType, InterviewerInfo } from '../../types/interview';
+import {
+  INTERVIEW_TYPE_LABELS,
+  InterviewLifecycle,
+  InterviewMode,
+  InterviewStatus,
+  InterviewType,
+  InterviewerInfo
+} from '../../types/interview';
 import { QuickScheduleData } from './dashboardTypes';
 
 interface QuickSchedulePopoverProps {
@@ -10,7 +17,7 @@ interface QuickSchedulePopoverProps {
   time: string;
   availableInterviewers: InterviewerInfo[];
   isSubmitting: boolean;
-  onSchedule: (data: QuickScheduleData) => void;
+  onSchedule: (data: QuickScheduleData, bookedInterviewerIds: [number, number]) => void;
   onClose: () => void;
 }
 
@@ -65,19 +72,32 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   onSchedule,
   onClose
 }) => {
-  const pairs = useMemo(() => buildPairs(availableInterviewers), [availableInterviewers]);
+  const [remainingInterviewers, setRemainingInterviewers] = useState<InterviewerInfo[]>(availableInterviewers);
+  const pairs = useMemo(() => buildPairs(remainingInterviewers), [remainingInterviewers]);
   const [pairIndex, setPairIndex] = useState(0);
   const [applications, setApplications] = useState<Application[]>([]);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [assignedTypesByApplication, setAssignedTypesByApplication] = useState<Record<number, InterviewType[]>>({});
   const [applicationSearch, setApplicationSearch] = useState('');
   const [selectedApplicationId, setSelectedApplicationId] = useState('');
   const [type, setType] = useState<InterviewType>(InterviewType.FAMILY);
   const [mode, setMode] = useState<InterviewMode>(InterviewMode.IN_PERSON);
   const [location, setLocation] = useState('');
   const [dateError, setDateError] = useState<string | null>(date < getTodayDateString() ? 'No se puede agendar en fechas anteriores a hoy.' : null);
+  const [lastBookedStudentName, setLastBookedStudentName] = useState<string | null>(null);
+  const [bookedCount, setBookedCount] = useState(0);
   const selectedPair = pairs[pairIndex];
   const selectedApplication = applications.find(application => application.id === Number(selectedApplicationId));
-  const canSubmit = Boolean(selectedPair && selectedApplication && !dateError && !isSubmitting);
+  const selectedAssignedTypes = selectedApplication ? assignedTypesByApplication[selectedApplication.id] || [] : [];
+  const availableTypes = [InterviewType.FAMILY, InterviewType.CYCLE_DIRECTOR].filter(
+    interviewType => !selectedAssignedTypes.includes(interviewType)
+  );
+  const typeAlreadyAssigned = selectedAssignedTypes.includes(type);
+  const needsLocation = mode === InterviewMode.IN_PERSON || mode === InterviewMode.HYBRID || mode === InterviewMode.VIRTUAL;
+  const locationLabel = mode === InterviewMode.VIRTUAL ? 'Enlace de reunion' : mode === InterviewMode.HYBRID ? 'Ubicacion y enlace' : 'Ubicacion';
+  const locationPlaceholder = mode === InterviewMode.VIRTUAL ? 'https://meet.google.com/...' : mode === InterviewMode.HYBRID ? 'Sala de entrevistas y enlace remoto' : 'Sala de entrevistas';
+  const locationError = needsLocation && !location.trim() ? `${locationLabel} es obligatorio para esta modalidad.` : null;
+  const canSubmit = Boolean(selectedPair && selectedApplication && !typeAlreadyAssigned && !locationError && !dateError && !isSubmitting);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,22 +112,18 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
         if (cancelled) return;
 
         // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR activas
-        const activeStatuses = [
-          InterviewStatus.SCHEDULED,
-          InterviewStatus.CONFIRMED,
-          InterviewStatus.IN_PROGRESS,
-          InterviewStatus.RESCHEDULED,
-          InterviewStatus.PENDING
-        ];
         const appIdsWithFamily = new Set<number>();
         const appIdsWithCycleDirector = new Set<number>();
+        const nextAssignedTypes: Record<number, InterviewType[]> = {};
 
         interviewsResponse.interviews.forEach(interview => {
-          if (activeStatuses.includes(interview.status as InterviewStatus)) {
+          if (InterviewLifecycle.countsAsAssigned(interview.status as InterviewStatus)) {
             if (interview.type === InterviewType.FAMILY) {
               appIdsWithFamily.add(interview.applicationId);
+              nextAssignedTypes[interview.applicationId] = [...(nextAssignedTypes[interview.applicationId] || []), InterviewType.FAMILY];
             } else if (interview.type === InterviewType.CYCLE_DIRECTOR) {
               appIdsWithCycleDirector.add(interview.applicationId);
+              nextAssignedTypes[interview.applicationId] = [...(nextAssignedTypes[interview.applicationId] || []), InterviewType.CYCLE_DIRECTOR];
             }
           }
         });
@@ -119,6 +135,7 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
         );
 
         setApplications(validApplications);
+        setAssignedTypesByApplication(nextAssignedTypes);
       })
       .catch(() => {
         if (!cancelled) setApplications([]);
@@ -158,6 +175,9 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
       return;
     }
 
+    const bookedPair: [number, number] = [selectedPair[0].id, selectedPair[1].id];
+    const studentName = getStudentName(selectedApplication);
+
     onSchedule({
       date,
       time,
@@ -167,8 +187,29 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
       type,
       mode,
       location: location.trim() || undefined
-    });
+    }, bookedPair);
+
+    const nextRemaining = remainingInterviewers.filter(
+      interviewer => !bookedPair.includes(interviewer.id)
+    );
+    const nextPairs = buildPairs(nextRemaining);
+
+    setLastBookedStudentName(studentName);
+    setBookedCount(prev => prev + 1);
+    setRemainingInterviewers(nextRemaining);
+    setPairIndex(0);
+    setSelectedApplicationId('');
+    setApplicationSearch('');
+
+    if (nextPairs.length === 0) {
+      setTimeout(onClose, 1200);
+    }
   };
+
+  useEffect(() => {
+    if (!selectedApplication || availableTypes.includes(type)) return;
+    setType(availableTypes[0] || InterviewType.FAMILY);
+  }, [availableTypes, selectedApplication, type]);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/35 p-4">
@@ -182,12 +223,24 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
             aria-label="Cerrar"
           >
             <FiX aria-hidden="true" />
           </button>
         </div>
+
+        {lastBookedStudentName && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+            <FiCheckCircle className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+            <span>
+              <strong>{lastBookedStudentName}</strong> agendada · {bookedCount} agendada{bookedCount !== 1 ? 's' : ''} en este slot
+              {pairs.length > 0
+                ? ` · ${pairs.length} pareja${pairs.length !== 1 ? 's' : ''} restante${pairs.length !== 1 ? 's' : ''}`
+                : ' · Cerrando...'}
+            </span>
+          </div>
+        )}
 
         <div className="space-y-4">
           <label className="block">
@@ -195,13 +248,17 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
             <select
               value={pairIndex}
               onChange={event => setPairIndex(Number(event.target.value))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {pairs.map((pair, index) => (
-                <option key={`${pair[0].id}-${pair[1].id}`} value={index}>
-                  {pair[0].name} + {pair[1].name}
-                </option>
-              ))}
+              {pairs.length === 0 ? (
+                <option value={0} disabled>Sin parejas disponibles</option>
+              ) : (
+                pairs.map((pair, index) => (
+                  <option key={`${pair[0].id}-${pair[1].id}`} value={index}>
+                    {pair[0].name} + {pair[1].name}
+                  </option>
+                ))
+              )}
             </select>
           </label>
 
@@ -218,7 +275,7 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
               <input
                 value={applicationSearch}
                 onChange={event => setApplicationSearch(event.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-11 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 placeholder="Ej: Sofia Gonzalez, 12.345.678-9, 7 basico"
               />
             </label>
@@ -264,18 +321,27 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
               <select
                 value={type}
                 onChange={event => setType(event.target.value as InterviewType)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                disabled={!selectedApplication || availableTypes.length === 0}
+                className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
-                <option value={InterviewType.FAMILY}>Familiar</option>
-                <option value={InterviewType.CYCLE_DIRECTOR}>Director de Ciclo</option>
+                {[InterviewType.FAMILY, InterviewType.CYCLE_DIRECTOR].map(interviewType => (
+                  <option key={interviewType} value={interviewType} disabled={selectedAssignedTypes.includes(interviewType)}>
+                    {INTERVIEW_TYPE_LABELS[interviewType]}{selectedAssignedTypes.includes(interviewType) ? ' (ya asignada)' : ''}
+                  </option>
+                ))}
               </select>
+              {selectedApplication && availableTypes.length === 0 && (
+                <p className="mt-1 text-xs font-semibold text-amber-700">
+                  Este postulante ya tiene ambos tipos de entrevista asignados.
+                </p>
+              )}
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-semibold text-gray-700">Modalidad</span>
               <select
                 value={mode}
                 onChange={event => setMode(event.target.value as InterviewMode)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value={InterviewMode.IN_PERSON}>Presencial</option>
                 <option value={InterviewMode.VIRTUAL}>Virtual</option>
@@ -285,13 +351,16 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-gray-700">Ubicacion o enlace</span>
+            <span className="mb-1 block text-sm font-semibold text-gray-700">{locationLabel}</span>
             <input
               value={location}
               onChange={event => setLocation(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="Sala de entrevistas, Meet, Zoom..."
+              className={`min-h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                locationError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder={locationPlaceholder}
             />
+            {locationError && <p className="mt-1 text-xs font-semibold text-red-600">{locationError}</p>}
           </label>
         </div>
 
@@ -299,17 +368,17 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="min-h-11 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             <FiCheck className="h-4 w-4" aria-hidden="true" />
-            {isSubmitting ? 'Programando...' : 'Programar entrevista'}
+            {isSubmitting ? 'Programando...' : pairs.length > 1 ? 'Programar y continuar' : 'Programar entrevista'}
           </button>
         </div>
       </form>

@@ -34,10 +34,12 @@ import {
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
   INTERVIEW_RESULT_LABELS,
+  InterviewLifecycle,
   InterviewUtils
 } from '../../types/interview';
 import InterviewTable from './InterviewTable';
 import InterviewForm from './InterviewForm';
+import InterviewDetailsPanel from './InterviewDetailsPanel';
 import InterviewCalendar from './InterviewCalendar';
 import InterviewStatsPanel from './InterviewStatsPanel';
 import InterviewStatusPanel from './InterviewStatusPanel';
@@ -229,9 +231,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     return interviews.some(interview => 
       interview.applicationId === applicationId && 
       interview.type === interviewType &&
-      (interview.status === InterviewStatus.SCHEDULED || 
-       interview.status === InterviewStatus.CONFIRMED ||
-       interview.status === InterviewStatus.IN_PROGRESS)
+      InterviewLifecycle.countsAsAssigned(interview.status)
     );
   };
 
@@ -294,6 +294,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     showToast('Entrevista cancelada exitosamente', 'success');
     setShowCancelModal(false);
     setInterviewToCancel(null);
+    setShowForm(false);
     await loadInterviews();
     await loadStats();
     setRefreshKey(prev => prev + 1);
@@ -308,9 +309,28 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     showToast('Entrevista reagendada exitosamente', 'success');
     setShowRescheduleModal(false);
     setInterviewToReschedule(null);
+    setShowForm(false);
     await loadInterviews();
     await loadStats();
     setRefreshKey(prev => prev + 1);
+  };
+
+  const handleReleaseInterview = async (interview: Interview) => {
+    try {
+      setIsSubmitting(true);
+      await interviewService.releaseRejectedInterview(interview.id);
+      showToast('Entrevista liberada - ahora puede reprogramarse', 'success');
+      // Cerrar el modal si está abierto
+      setShowForm(false);
+      setSelectedInterview(null);
+      await loadInterviews();
+      await loadStats();
+      setRefreshKey(prev => prev + 1);
+    } catch (err: any) {
+      showToast(err.message || 'Error al liberar la entrevista', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFilterChange = (newFilters: Partial<InterviewFilters>) => {
@@ -604,6 +624,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
                 onView={handleViewInterview}
                 onSendNotification={handleSendNotification}
                 onSendReminder={handleSendReminder}
+                onRelease={handleReleaseInterview}
               />
             </Card>
           )}
@@ -633,16 +654,30 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           formMode === InterviewFormMode.COMPLETE ? 'Completar Entrevista' :
           'Detalles de Entrevista'
         }
-        size="lg"
+        size={formMode === InterviewFormMode.VIEW ? 'xl' : 'lg'}
       >
-        <InterviewForm
-          interview={selectedInterview}
-          mode={formMode}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowForm(false)}
-          onEdit={handleEditFromView}
-          isSubmitting={isSubmitting}
-        />
+        {formMode === InterviewFormMode.VIEW && selectedInterview ? (
+          <InterviewDetailsPanel
+            interview={selectedInterview}
+            onClose={() => setShowForm(false)}
+            onEdit={handleEditInterview}
+            onCancel={handleCancelInterview}
+            onReschedule={handleRescheduleInterview}
+            onRelease={handleReleaseInterview}
+            onComplete={handleCompleteInterview}
+            onSendInvitation={(interview) => handleSendNotification(interview, 'scheduled')}
+          />
+        ) : (
+          <InterviewForm
+            interview={selectedInterview}
+            mode={formMode}
+            onSubmit={handleFormSubmit}
+            onCancel={() => setShowForm(false)}
+            onEdit={handleEditFromView}
+            onRelease={handleReleaseInterview}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </Modal>
 
       {/* Modal de cancelación de entrevista */}

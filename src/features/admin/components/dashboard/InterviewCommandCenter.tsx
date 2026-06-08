@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiActivity, FiCalendar, FiGrid, FiList, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FiCalendar, FiGrid, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
-import { InterviewStatus, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
+import { InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
 import QuickSchedulePopover from './QuickSchedulePopover';
 import RangeSelector from './RangeSelector';
+import RejectedInterviewsQueue from './RejectedInterviewsQueue';
 import ScheduledPairsTable from './ScheduledPairsTable';
 import SummaryBar from './SummaryBar';
 import WeeklyTimeline from './WeeklyTimeline';
@@ -89,12 +90,146 @@ const filterOverview = (overview: WeeklyOverviewResponse, searchTerm: string): W
   };
 };
 
+const onlyHourlyOverviewSlots = (overview: WeeklyOverviewResponse): WeeklyOverviewResponse => ({
+  ...overview,
+  days: overview.days.map(day => ({
+    ...day,
+    available: day.available.filter(slot => slot.time.endsWith(':00'))
+  }))
+});
+
+type SlotAvailabilityCache = Record<string, InterviewerInfo[]>;
+
+const SLOT_AVAILABILITY_CACHE_KEY = 'admin-interview-slot-availability-cache';
+
+const getSlotKey = (date: string, time: string): string => `${date}T${time}`;
+
+const readSlotAvailabilityCache = (): SlotAvailabilityCache => {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(window.sessionStorage.getItem(SLOT_AVAILABILITY_CACHE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const writeSlotAvailabilityCache = (cache: SlotAvailabilityCache) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(SLOT_AVAILABILITY_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Session cache is only a UX aid; never block scheduling if storage fails.
+  }
+};
+
+const uniqueInterviewers = (interviewers: InterviewerInfo[]): InterviewerInfo[] => {
+  const seen = new Set<number>();
+  return interviewers.filter(interviewer => {
+    if (seen.has(interviewer.id)) return false;
+    seen.add(interviewer.id);
+    return true;
+  });
+};
+
+const cacheExplicitAvailability = (
+  overview: WeeklyOverviewResponse,
+  currentCache: SlotAvailabilityCache
+): SlotAvailabilityCache => {
+  const nextCache = { ...currentCache };
+  overview.days.forEach(day => {
+    // Cache slots the backend explicitly says are available
+    day.available.forEach(slot => {
+      if (slot.interviewerCount >= 2) {
+        nextCache[getSlotKey(day.date, slot.time)] = uniqueInterviewers(slot.availableInterviewers);
+      }
+    });
+    // Seed cache from scheduled interviews so restorePartialAvailability can
+    // recover remaining pairs even on a fresh page load with no prior session.
+    // We merge — never replace a richer existing entry.
+    day.scheduled.forEach(interview => {
+      if (InterviewLifecycle.isInactive(interview.status as InterviewStatus)) return;
+      const key = getSlotKey(day.date, interview.time);
+      const existing = nextCache[key] ?? [];
+      const fromInterview: InterviewerInfo[] = [interview.interviewer1, interview.interviewer2].filter(Boolean) as InterviewerInfo[];
+      const merged = uniqueInterviewers([...existing, ...fromInterview]);
+      nextCache[key] = merged;
+    });
+  });
+  return nextCache;
+};
+
+const removeBookedInterviewersFromCache = (
+  currentCache: SlotAvailabilityCache,
+  date: string,
+  time: string,
+  bookedInterviewerIds: number[],
+  fallbackInterviewers: InterviewerInfo[] = []
+): SlotAvailabilityCache => {
+  const key = getSlotKey(date, time);
+  const knownInterviewers = currentCache[key] || fallbackInterviewers;
+  return {
+    ...currentCache,
+    [key]: uniqueInterviewers(knownInterviewers)
+      .filter(interviewer => !bookedInterviewerIds.includes(interviewer.id))
+  };
+};
+
+const restorePartialAvailability = (
+  overview: WeeklyOverviewResponse,
+  availabilityCache: SlotAvailabilityCache
+): WeeklyOverviewResponse => ({
+  ...overview,
+  days: overview.days.map(day => {
+    const availableByTime = new Map(day.available.map(slot => [slot.time, slot]));
+    const scheduledTimes = Array.from(new Set(day.scheduled.map(interview => interview.time)));
+    const recoveredSlots = scheduledTimes.flatMap(time => {
+      const explicitSlot = availableByTime.get(time);
+      if (explicitSlot && explicitSlot.interviewerCount >= 2) return [];
+
+      const rememberedInterviewers = availabilityCache[getSlotKey(day.date, time)];
+      if (!rememberedInterviewers?.length) return [];
+
+      const occupiedInterviewerIds = new Set<number>();
+      day.scheduled
+        .filter(interview => interview.time === time && !InterviewLifecycle.isInactive(interview.status as InterviewStatus))
+        .forEach(interview => {
+          occupiedInterviewerIds.add(interview.interviewer1.id);
+          if (interview.interviewer2?.id) occupiedInterviewerIds.add(interview.interviewer2.id);
+        });
+
+      const remainingInterviewers = rememberedInterviewers.filter(interviewer => !occupiedInterviewerIds.has(interviewer.id));
+      if (remainingInterviewers.length < 2) return [];
+
+      return [{
+        time,
+        availableInterviewers: remainingInterviewers,
+        interviewerCount: remainingInterviewers.length
+      }];
+    });
+
+    const mergedAvailableByTime = new Map(day.available.map(slot => [slot.time, slot]));
+    recoveredSlots.forEach(slot => {
+      const currentSlot = mergedAvailableByTime.get(slot.time);
+      if (!currentSlot || currentSlot.interviewerCount < 2) {
+        mergedAvailableByTime.set(slot.time, slot);
+      }
+    });
+
+    return {
+      ...day,
+      available: Array.from(mergedAvailableByTime.values()).sort((a, b) => a.time.localeCompare(b.time))
+    };
+  })
+});
+
 const getStepDays = (viewMode: CommandCenterViewMode): number => {
   if (viewMode === 'day') return 1;
   if (viewMode === '2weeks') return 14;
   if (viewMode === 'month') return 28;
   return 7;
 };
+
+const BOOKING_DURATION_MINUTES = INTERVIEW_VALIDATION.DURATION.DEFAULT;
 
 const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   initialSurface = 'operations',
@@ -111,10 +246,72 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   const [filterByInterviewer, setFilterByInterviewer] = useState<number | null>(null);
   const [isScheduling, setIsScheduling] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const availabilityCacheRef = useRef<SlotAvailabilityCache>(readSlotAvailabilityCache());
 
   const range = useMemo(() => getRangeForMode(anchorDate, viewMode), [anchorDate, viewMode]);
   const rangeLabel = useMemo(() => formatRangeLabel(range.startDate, range.endDate, viewMode), [range.endDate, range.startDate, viewMode]);
   const visibleOverview = useMemo(() => overview ? filterOverview(overview, searchTerm) : null, [overview, searchTerm]);
+  const rejectedCount = useMemo(() => (
+    visibleOverview?.days.reduce((count, day) => (
+      count + day.scheduled.filter(interview => interview.status === InterviewStatus.REJECTED_BY_FAMILY).length
+    ), 0) || 0
+  ), [visibleOverview]);
+
+  const enrichScheduledSlots = useCallback(async (hourlyOverview: WeeklyOverviewResponse): Promise<WeeklyOverviewResponse> => {
+    const today = new Date().toISOString().split('T')[0];
+    const slotsToEnrich: Array<{ dayIndex: number; time: string; date: string }> = [];
+
+    hourlyOverview.days.forEach((day, dayIndex) => {
+      if (day.date < today) return;
+      const availableByTime = new Map(day.available.map(slot => [slot.time, slot]));
+      const scheduledTimes = Array.from(new Set(
+        day.scheduled
+          .filter(interview => !InterviewLifecycle.isInactive(interview.status as InterviewStatus))
+          .map(interview => interview.time)
+      ));
+      scheduledTimes.forEach(time => {
+        const existing = availableByTime.get(time);
+        if (!existing || existing.interviewerCount < 2) {
+          slotsToEnrich.push({ dayIndex, time, date: day.date });
+        }
+      });
+    });
+
+    if (slotsToEnrich.length === 0) return hourlyOverview;
+
+    const enriched = await Promise.all(
+      slotsToEnrich.map(async slot => {
+        try {
+          const result = await interviewService.getSlotAvailability(slot.date, slot.time, BOOKING_DURATION_MINUTES);
+          return { ...slot, ...result };
+        } catch {
+          return { ...slot, availableInterviewers: [], interviewerCount: 0 };
+        }
+      })
+    );
+
+    const enrichedDays = hourlyOverview.days.map((day, dayIndex) => {
+      const additions = enriched.filter(e => e.dayIndex === dayIndex && e.interviewerCount >= 2);
+      if (additions.length === 0) return day;
+      const availableByTime = new Map(day.available.map(slot => [slot.time, slot]));
+      additions.forEach(addition => {
+        const existing = availableByTime.get(addition.time);
+        if (!existing || existing.interviewerCount < 2) {
+          availableByTime.set(addition.time, {
+            time: addition.time,
+            availableInterviewers: addition.availableInterviewers,
+            interviewerCount: addition.interviewerCount
+          });
+        }
+      });
+      return {
+        ...day,
+        available: Array.from(availableByTime.values()).sort((a, b) => a.time.localeCompare(b.time))
+      };
+    });
+
+    return { ...hourlyOverview, days: enrichedDays };
+  }, []);
 
   const loadOverview = useCallback(async () => {
     setIsLoading(true);
@@ -123,22 +320,26 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       const response = await interviewService.getWeeklyOverview({
         startDate: range.startDate,
         endDate: range.endDate,
-        duration: 30
+        duration: BOOKING_DURATION_MINUTES
       });
-      setOverview(response);
+      const hourlyOverview = onlyHourlyOverviewSlots(response);
+      const enrichedOverview = await enrichScheduledSlots(hourlyOverview);
+      availabilityCacheRef.current = cacheExplicitAvailability(enrichedOverview, availabilityCacheRef.current);
+      writeSlotAvailabilityCache(availabilityCacheRef.current);
+      setOverview(restorePartialAvailability(enrichedOverview, availabilityCacheRef.current));
     } catch (loadError) {
       setError('No se pudo cargar el centro de entrevistas.');
       setOverview(null);
     } finally {
       setIsLoading(false);
     }
-  }, [range.endDate, range.startDate]);
+  }, [enrichScheduledSlots, range.endDate, range.startDate]);
 
   useEffect(() => {
     void loadOverview();
   }, [loadOverview]);
 
-  const handleSchedule = async (data: QuickScheduleData) => {
+  const handleSchedule = async (data: QuickScheduleData, bookedInterviewerIds: [number, number]) => {
     setIsScheduling(true);
     setSuccessMessage(null);
     try {
@@ -150,22 +351,29 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         mode: data.mode,
         scheduledDate: data.date,
         scheduledTime: data.time,
-        duration: 30,
+        duration: BOOKING_DURATION_MINUTES,
         location: data.location,
         status: InterviewStatus.SCHEDULED
       });
+
+      availabilityCacheRef.current = removeBookedInterviewersFromCache(
+        availabilityCacheRef.current,
+        data.date,
+        data.time,
+        [bookedInterviewerIds[0], bookedInterviewerIds[1]],
+        selectedSlot?.availableInterviewers || []
+      );
+      writeSlotAvailabilityCache(availabilityCacheRef.current);
 
       // Enviar invitación por email automáticamente
       try {
         await interviewService.sendInterviewInvitation(interview.id);
       } catch (emailError) {
-        // No fallar si el email no se envía, solo loggear el error
-        console.warn('No se pudo enviar la invitación por email:', emailError);
+        // No bloquear la agenda si falla la notificación.
       }
 
-      setSelectedSlot(null);
       setSuccessMessage('Entrevista programada, invitación enviada y dashboard actualizado.');
-      await loadOverview();
+      void loadOverview();
     } catch (scheduleError) {
       setError('No se pudo programar la entrevista desde el dashboard.');
     } finally {
@@ -187,32 +395,35 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     setSelectedSlot({ date, time, availableInterviewers });
   };
 
+  const handleReleaseHistoricalInterview = async (interviewId: number) => {
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await interviewService.releaseRejectedInterview(interviewId);
+      setSuccessMessage('Entrevista liberada para reagendar.');
+      await loadOverview();
+    } catch (releaseError: any) {
+      setError(releaseError.message || 'No se pudo liberar la entrevista rechazada.');
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario Global</p>
-          <h2 className="mt-1 text-2xl font-bold text-gray-950">Centro operativo de entrevistas</h2>
-          <div className="mt-3 grid max-w-4xl gap-2 text-sm text-gray-600 md:grid-cols-3">
-            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-              <FiActivity className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-600" aria-hidden="true" />
-              <span>Revisa agenda, carga y disponibilidad sin salir del calendario.</span>
-            </div>
-            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-              <FiGrid className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
-              <span>Cambia entre dia, semana, dos semanas, mes o calendario mensual.</span>
-            </div>
-            <div className="flex items-start gap-2 rounded-lg bg-gray-50 p-3">
-              <FiList className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" aria-hidden="true" />
-              <span>Agenda seleccionando un postulante pendiente por nombre o RUT.</span>
-            </div>
+      <section className="sticky top-0 z-20 rounded-lg border border-gray-200 bg-white/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-gray-950">Centro operativo de entrevistas</h2>
+            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
+              {surface === 'operations' ? rangeLabel : 'Calendario mensual de entrevistas'}
+            </p>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={loadOverview}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+              aria-label="Actualizar centro operativo"
             >
               <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
               Actualizar
@@ -220,10 +431,11 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             <button
               type="button"
               onClick={() => setSurface('calendar')}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+              aria-pressed={surface === 'calendar'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
                 surface === 'calendar'
-                  ? 'border-gray-900 bg-gray-900 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'border-gray-900 bg-gray-900 text-white focus:ring-gray-300'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
               }`}
             >
               <FiCalendar className="h-4 w-4" aria-hidden="true" />
@@ -232,10 +444,11 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             <button
               type="button"
               onClick={() => setSurface('operations')}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+              aria-pressed={surface === 'operations'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
                 surface === 'operations'
-                  ? 'border-gray-900 bg-gray-900 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'border-gray-900 bg-gray-900 text-white focus:ring-gray-300'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
               }`}
             >
               <FiGrid className="h-4 w-4" aria-hidden="true" />
@@ -243,6 +456,31 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             </button>
           </div>
         </div>
+
+        {surface === 'operations' && visibleOverview && (
+          <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+            <SummaryBar summary={visibleOverview.summary} rejectedCount={rejectedCount} />
+            <div className="grid gap-3 xl:grid-cols-[minmax(520px,1fr)_minmax(260px,360px)]">
+              <RangeSelector
+                viewMode={viewMode}
+                rangeLabel={rangeLabel}
+                onViewModeChange={setViewMode}
+                onPrevious={() => moveRange(-1)}
+                onNext={() => moveRange(1)}
+                onToday={() => setAnchorDate(new Date())}
+              />
+              <label className="relative block">
+                <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+                <input
+                  value={searchTerm}
+                  onChange={event => setSearchTerm(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  placeholder="Buscar familia o entrevistador"
+                />
+              </label>
+            </div>
+          </div>
+        )}
       </section>
 
       {surface === 'calendar' ? (
@@ -270,26 +508,11 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         </div>
       ) : visibleOverview ? (
         <>
-          <SummaryBar summary={visibleOverview.summary} />
-          <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-            <RangeSelector
-              viewMode={viewMode}
-              rangeLabel={rangeLabel}
-              onViewModeChange={setViewMode}
-              onPrevious={() => moveRange(-1)}
-              onNext={() => moveRange(1)}
-              onToday={() => setAnchorDate(new Date())}
-            />
-            <label className="relative block">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-              <input
-                value={searchTerm}
-                onChange={event => setSearchTerm(event.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Buscar familia o entrevistador"
-              />
-            </label>
-          </div>
+          <RejectedInterviewsQueue
+            days={visibleOverview.days}
+            onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
+            onReleaseInterview={(interview) => void handleReleaseHistoricalInterview(interview.id)}
+          />
           <WeeklyTimeline
             days={visibleOverview.days}
             viewMode={viewMode}
@@ -311,6 +534,8 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           <ScheduledPairsTable
             days={visibleOverview.days}
             onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
+            onReleaseInterview={(interview) => void handleReleaseHistoricalInterview(interview.id)}
+            onRescheduleInterview={(interview) => onNavigateToInterviews?.(interview.id)}
           />
         </>
       ) : (

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
-import { FiX, FiAlertTriangle, FiCalendar, FiClock, FiUser } from 'react-icons/fi';
-import { Interview, INTERVIEW_TYPE_LABELS } from '../../types/interview';
+import { FiUnlock, FiAlertCircle, FiCalendar, FiClock, FiUser, FiInfo } from 'react-icons/fi';
+import { Interview, INTERVIEW_TYPE_LABELS, INTERVIEW_STATUS_LABELS } from '../../types/interview';
 import { interviewService } from '../../services/interviewService';
 
-interface CancelInterviewModalProps {
+interface ReleaseInterviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   interview: Interview | null;
   onSuccess: () => void;
 }
 
-const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
+const ReleaseInterviewModal: React.FC<ReleaseInterviewModalProps> = ({
   isOpen,
   onClose,
   interview,
@@ -20,7 +20,7 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,14 +31,12 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
       setIsSubmitting(true);
       setError(null);
 
-      // ✅ AHORA SÍ: Cancelar (soft delete) en vez de eliminar (hard delete)
-      // Esto libera el slot inmediatamente y mantiene el historial
-      await interviewService.cancelInterview(interview.id, reason.trim() || 'Cancelada por administrador');
+      await interviewService.releaseRejectedInterview(interview.id, notes.trim() || undefined);
 
       onSuccess();
       onClose();
     } catch (error: any) {
-      setError(error.response?.data?.message || error.message || 'Error al cancelar la entrevista');
+      setError(error.response?.data?.message || error.message || 'Error al liberar la entrevista');
     } finally {
       setIsSubmitting(false);
     }
@@ -47,7 +45,7 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       setError(null);
-      setReason('');
+      setNotes('');
       onClose();
     }
   };
@@ -80,20 +78,20 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Cancelar Entrevista"
+      title="Liberar Entrevista Rechazada"
       size="md"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {/* Advertencia */}
+        {/* Información */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start space-x-3">
-          <FiAlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <FiInfo className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-amber-800 mb-1">
-              ¿Está seguro que desea cancelar esta entrevista?
+              Liberar entrevista para reprogramación
             </h4>
             <p className="text-sm text-amber-700">
-              La entrevista se marcará como cancelada y <strong>el horario se liberará automáticamente</strong> para que otros la usen. 
-              El historial se mantendrá visible con estado "Cancelada".
+              Esta acción permitirá reagendar la entrevista que fue rechazada por la familia. 
+              La entrevista volverá a estado pendiente y podrá ser reprogramada con nueva fecha y hora.
             </p>
           </div>
         </div>
@@ -123,11 +121,20 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
               </div>
             </div>
 
-            {/* Fecha y Hora */}
+            {/* Estado actual */}
+            <div className="flex items-start space-x-2">
+              <FiAlertCircle className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs text-gray-600">Estado Actual</p>
+                <p className="text-sm font-medium text-gray-900">{INTERVIEW_STATUS_LABELS[interview.status]}</p>
+              </div>
+            </div>
+
+            {/* Fecha y Hora original */}
             <div className="flex items-start space-x-2">
               <FiCalendar className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-gray-600">Fecha y Hora</p>
+                <p className="text-xs text-gray-600">Fecha y Hora Original</p>
                 <p className="text-sm font-medium text-gray-900 capitalize">{dateTime.date}</p>
                 <p className="text-sm text-gray-700 flex items-center mt-1">
                   <FiClock className="w-3 h-3 mr-1" />
@@ -152,21 +159,21 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
           </div>
         </div>
 
-        {/* Motivo de cancelación */}
+        {/* Notas opcionales */}
         <div className="space-y-2">
-          <label htmlFor="cancellationReason" className="block text-sm font-medium text-gray-700">
-            Motivo de cancelación (opcional)
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+            Notas (opcional)
           </label>
           <textarea
-            id="cancellationReason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Ingrese el motivo de la cancelación..."
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Agregue notas sobre la liberación de esta entrevista..."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
             rows={3}
             maxLength={500}
           />
-          <p className="text-xs text-gray-500 text-right">{reason.length}/500</p>
+          <p className="text-xs text-gray-500 text-right">{notes.length}/500</p>
         </div>
 
         {/* Error message */}
@@ -184,23 +191,23 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
             onClick={handleClose}
             disabled={isSubmitting}
           >
-            Volver
+            Cancelar
           </Button>
           <Button
             type="submit"
-            variant="danger"
+            variant="primary"
             disabled={isSubmitting}
-            className="bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="bg-amber-600 hover:bg-amber-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
                 <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                Cancelando...
+                Liberando...
               </>
             ) : (
               <>
-                <FiX className="w-4 h-4 mr-2" />
-                Cancelar Entrevista
+                <FiUnlock className="w-4 h-4 mr-2" />
+                Liberar para Reagendar
               </>
             )}
           </Button>
@@ -210,4 +217,4 @@ const CancelInterviewModal: React.FC<CancelInterviewModalProps> = ({
   );
 };
 
-export default CancelInterviewModal;
+export default ReleaseInterviewModal;

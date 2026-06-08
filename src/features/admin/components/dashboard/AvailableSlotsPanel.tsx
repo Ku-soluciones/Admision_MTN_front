@@ -16,10 +16,12 @@ const getTodayDateString = (): string => {
   return `${year}-${month}-${day}`;
 };
 
+const isHourlySlot = (time: string): boolean => time.endsWith(':00');
+
 const AvailableSlotsPanel: React.FC<AvailableSlotsPanelProps> = ({ days, onSlotClick }) => {
   const slots = days
     .flatMap(day => day.available.map(slot => ({ ...slot, date: day.date, dayLabel: day.dayLabel })))
-    .filter(slot => slot.interviewerCount >= 2 && slot.date >= getTodayDateString())
+    .filter(slot => slot.interviewerCount >= 2 && slot.date >= getTodayDateString() && isHourlySlot(slot.time))
     .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
     .slice(0, 8);
 

@@ -134,31 +134,82 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
   const currentDateTime = formatDateTime(interview.scheduledDate, interview.scheduledTime);
   const newDateTime = newDate && newTime ? formatDateTime(newDate, newTime) : null;
 
+  // Determinar el tipo de operación según el estado
+  const getModalConfig = () => {
+    switch (interview.status) {
+      case 'PENDING':
+        return {
+          title: 'Agendar Entrevista',
+          color: 'green',
+          header: 'Programar nueva entrevista',
+          message: 'Seleccione fecha y hora para programar esta entrevista. Se notificará automáticamente al apoderado.',
+          buttonText: 'Programar Entrevista',
+          showCurrentDate: false
+        };
+      case 'CANCELLED':
+        return {
+          title: 'Reagendar Entrevista Cancelada',
+          color: 'emerald',
+          header: 'Reagendar entrevista cancelada',
+          message: 'Esta entrevista fue cancelada anteriormente. Al seleccionar nueva fecha y hora, se reactivará y notificará a todas las partes.',
+          buttonText: 'Reagendar Entrevista',
+          showCurrentDate: true
+        };
+      case 'REJECTED_BY_FAMILY':
+        return {
+          title: 'Reagendar Entrevista Rechazada',
+          color: 'amber',
+          header: 'La familia rechazó el horario anterior',
+          message: 'Seleccione un nuevo horario que funcione para todas las partes. La entrevista se programará inmediatamente.',
+          buttonText: 'Programar Nuevo Horario',
+          showCurrentDate: false // No mostrar fecha rechazada
+        };
+      default: // SCHEDULED, CONFIRMED
+        return {
+          title: 'Reagendar Entrevista',
+          color: 'blue',
+          header: 'Cambiar fecha y hora',
+          message: 'El horario actual será liberado automáticamente. Se notificará del cambio a apoderado y entrevistadores.',
+          buttonText: 'Confirmar Reagendación',
+          showCurrentDate: true
+        };
+    }
+  };
+
+  const config = getModalConfig();
+  const colorMap: Record<string, { bg: string; border: string; icon: string; header: string; text: string }> = {
+    green: { bg: 'bg-green-50', border: 'border-green-200', icon: 'text-green-600', header: 'text-green-800', text: 'text-green-700' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600', header: 'text-emerald-800', text: 'text-emerald-700' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', header: 'text-amber-800', text: 'text-amber-700' },
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', header: 'text-blue-800', text: 'text-blue-700' }
+  };
+  const colorClasses = colorMap[config.color] || colorMap.blue;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Reagendar Entrevista"
+      title={config.title}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {/* Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start space-x-3">
-          <FiAlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        {/* Info contextual según estado */}
+        <div className={`${colorClasses.bg} ${colorClasses.border} rounded-lg p-4 flex items-start space-x-3 border`}>
+          <FiAlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${colorClasses.icon}`} />
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-blue-800 mb-1">
-              Reagendar Entrevista
+            <h4 className={`text-sm font-semibold mb-1 ${colorClasses.header}`}>
+              {config.header}
             </h4>
-            <p className="text-sm text-blue-700">
-              Seleccione una nueva fecha y hora disponible. Se enviará una notificación automática al apoderado y al entrevistador con los nuevos detalles.
+            <p className={`text-sm ${colorClasses.text}`}>
+              {config.message}
             </p>
           </div>
         </div>
 
-        {/* Detalles de la entrevista actual */}
+        {/* Detalles de la entrevista */}
         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <h4 className="text-sm font-semibold text-gray-700 mb-3">
-            Información Actual de la Entrevista
+            {config.showCurrentDate ? 'Horario Actual' : 'Información de la Entrevista'}
           </h4>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -322,17 +373,22 @@ const RescheduleInterviewModal: React.FC<RescheduleInterviewModalProps> = ({
               reason.trim().length < 10 ||
               (newDate === interview.scheduledDate && newTime === interview.scheduledTime)
             }
-            className="bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className={`text-white disabled:bg-gray-300 disabled:cursor-not-allowed ${
+              interview.status === 'PENDING' ? 'bg-green-600 hover:bg-green-700' :
+              interview.status === 'CANCELLED' ? 'bg-emerald-600 hover:bg-emerald-700' :
+              interview.status === 'REJECTED_BY_FAMILY' ? 'bg-amber-600 hover:bg-amber-700' :
+              'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
             {isSubmitting ? (
               <>
                 <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                Reagendando...
+                {interview.status === 'PENDING' ? 'Programando...' : 'Reagendando...'}
               </>
             ) : (
               <>
                 <FiRefreshCw className="w-4 h-4 mr-2" />
-                Reagendar Entrevista
+                {config.buttonText}
               </>
             )}
           </Button>

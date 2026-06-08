@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Modal from '../ui/Modal';
+import InterviewDetailsPanel from '../interviews/InterviewDetailsPanel';
 import {
   CalendarIcon,
   ChevronLeftIcon,
@@ -33,6 +34,7 @@ import {
   INTERVIEW_STATUS_LABELS,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
+  InterviewLifecycle,
   InterviewUtils,
   INTERVIEW_CONFIG
 } from '../../types/interview';
@@ -51,6 +53,15 @@ const getDateString = (date: Date): string => {
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+const sortOperationalFirst = (interviews: Interview[]): Interview[] => (
+  [...interviews].sort((a, b) => {
+    const aInactive = InterviewLifecycle.isInactive(a.status) ? 1 : 0;
+    const bInactive = InterviewLifecycle.isInactive(b.status) ? 1 : 0;
+    if (aInactive !== bInactive) return aInactive - bInactive;
+    return `${a.scheduledTime}-${a.id}`.localeCompare(`${b.scheduledTime}-${b.id}`);
+  })
+);
 
 interface CalendarDay {
   date: Date;
@@ -85,6 +96,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [selectedDayInterviews, setSelectedDayInterviews] = useState<Interview[]>([]);
   const [showDayInterviews, setShowDayInterviews] = useState(false);
+  const [calendarMessage, setCalendarMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [filters, setFilters] = useState({
     interviewerId: '',
     status: '',
@@ -92,11 +104,12 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
     mode: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showRejected, setShowRejected] = useState(true); // Mostrar rechazadas por defecto en admin
 
   useEffect(() => {
     loadCalendarData();
     loadUsers();
-  }, [currentDate, filters]);
+  }, [currentDate, filters, showRejected]);
 
   const loadCalendarData = async () => {
     try {
@@ -112,11 +125,12 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      // Obtener entrevistas del mes
+      // Obtener entrevistas del mes (incluyendo rechazadas si se solicita)
       let calendarInterviews = await interviewService.getCalendarInterviews(
         startDateStr, 
         endDateStr,
-        filters.interviewerId ? parseInt(filters.interviewerId) : undefined
+        filters.interviewerId ? parseInt(filters.interviewerId) : undefined,
+        showRejected // Nuevo parámetro para incluir rechazadas
       );
 
       // Aplicar filtros adicionales
@@ -132,6 +146,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
       setInterviews(calendarInterviews);
     } catch (error) {
+      setCalendarMessage({ type: 'error', text: 'No se pudo cargar el calendario de entrevistas.' });
     } finally {
       setIsLoading(false);
     }
@@ -168,13 +183,13 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
-      const dayInterviews = interviews.filter(interview => {
+      const dayInterviews = sortOperationalFirst(interviews.filter(interview => {
         // Parse date as YYYY-MM-DD WITHOUT timezone conversion
         // scheduledDate from backend is "2025-01-17" (no time, no timezone)
         // We need to compare it to calendar day without UTC conversion
         const dateStr = date.toISOString().split('T')[0]; // "2025-01-17"
         return interview.scheduledDate === dateStr;
-      });
+      }));
       
       days.push({
         date: new Date(date),
@@ -204,7 +219,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       return;
     }
 
-    if (onCreateInterview && day.interviews.length === 0) {
+    if (onCreateInterview && day.interviews.every(interview => InterviewLifecycle.isInactive(interview.status))) {
       onCreateInterview(day.date, '09:00');
     }
   };
@@ -292,9 +307,11 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
   };
 
   const renderCalendarDay = (day: CalendarDay, index: number) => {
-    const hasConflicts = day.interviews.length > 1 && 
-      day.interviews.some((interview, i) => 
-        day.interviews.slice(i + 1).some(other => 
+    const operationalInterviews = day.interviews.filter(interview => !InterviewLifecycle.isInactive(interview.status));
+    const historicalCount = day.interviews.length - operationalInterviews.length;
+    const hasConflicts = operationalInterviews.length > 1 && 
+      operationalInterviews.some((interview, i) => 
+        operationalInterviews.slice(i + 1).some(other => 
           interview.scheduledTime === other.scheduledTime
         )
       );
@@ -340,6 +357,11 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
               className="text-xs text-gray-500 font-medium bg-gray-100 hover:bg-gray-200 rounded px-1 cursor-pointer transition-colors"
             >
               +{day.interviews.length - 2} más
+            </div>
+          )}
+          {historicalCount > 0 && (
+            <div className="text-[11px] font-medium text-gray-400">
+              {historicalCount} historial
             </div>
           )}
         </div>
@@ -486,7 +508,38 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Toggle mostrar rechazadas */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showRejected}
+                onChange={(e) => setShowRejected(e.target.checked)}
+                className="w-4 h-4 text-azul-monte-tabor border-gray-300 rounded focus:ring-azul-monte-tabor"
+              />
+              <span className="text-sm text-gray-700">
+                Mostrar entrevistas rechazadas por familia
+              </span>
+              {showRejected && (
+                <span className="text-xs text-gray-500 ml-2">
+                  (Las entrevistas rechazadas aparecen en gris y pueden ser liberadas para reprogramar)
+                </span>
+              )}
+            </label>
+          </div>
         </Card>
+      )}
+
+      {/* Resumen y título del mes */}
+      {calendarMessage && (
+        <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${
+          calendarMessage.type === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {calendarMessage.text}
+        </div>
       )}
 
       {/* Resumen y título del mes */}
@@ -545,90 +598,23 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       </Card>
 
       {/* Modal de detalles de entrevista */}
-      <Modal isOpen={showDetails} onClose={() => setShowDetails(false)}>
+      <Modal isOpen={showDetails} onClose={() => setShowDetails(false)} size="xl" showCloseButton={false}>
         {selectedInterview && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Detalles de la Entrevista
-            </h3>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Estudiante</label>
-                  <p className="text-gray-900">{selectedInterview.studentName}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Entrevistador{selectedInterview.secondInterviewerName ? 'es' : ''}</label>
-                  <p className="text-gray-900">
-                    {selectedInterview.interviewerName}
-                    {selectedInterview.secondInterviewerName && (
-                      <span> y {selectedInterview.secondInterviewerName}</span>
-                    )}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Tipo</label>
-                  <p className="text-gray-900">{INTERVIEW_TYPE_LABELS[selectedInterview.type]}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Estado</label>
-                  <Badge variant={getStatusColor(selectedInterview.status)}>
-                    {INTERVIEW_STATUS_LABELS[selectedInterview.status]}
-                  </Badge>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Fecha y Hora</label>
-                  <p className="text-gray-900">
-                    {new Date(selectedInterview.scheduledDate).toLocaleDateString('es-CL')} - {formatTime(selectedInterview.scheduledTime)}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Duración</label>
-                  <p className="text-gray-900">{InterviewUtils.formatDuration(selectedInterview.duration)}</p>
-                </div>
-              </div>
-
-              {selectedInterview.location && (
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Ubicación</label>
-                  <p className="text-gray-900">{selectedInterview.location}</p>
-                </div>
-              )}
-
-              {selectedInterview.virtualMeetingLink && (
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Enlace Virtual</label>
-                  <a
-                    href={selectedInterview.virtualMeetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {selectedInterview.virtualMeetingLink}
-                  </a>
-                </div>
-              )}
-
-              {selectedInterview.notes && (
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Notas</label>
-                  <p className="text-gray-900">{selectedInterview.notes}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <Button variant="outline" onClick={() => setShowDetails(false)}>
-                Cerrar
-              </Button>
-            </div>
-          </div>
+          <InterviewDetailsPanel
+            interview={selectedInterview}
+            onClose={() => setShowDetails(false)}
+            onRelease={selectedInterview.status === InterviewStatus.REJECTED_BY_FAMILY ? async (interview) => {
+              try {
+                await interviewService.releaseRejectedInterview(interview.id);
+                setShowDetails(false);
+                setSelectedInterview(null);
+                setCalendarMessage({ type: 'success', text: 'Entrevista liberada para reagendar.' });
+                loadCalendarData();
+              } catch (error: any) {
+                setCalendarMessage({ type: 'error', text: error.message || 'Error al liberar la entrevista.' });
+              }
+            } : undefined}
+          />
         )}
       </Modal>
 

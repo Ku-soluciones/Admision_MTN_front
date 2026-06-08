@@ -118,12 +118,13 @@ class InstitutionalEmailService {
       totalDocuments: number;
       studentName?: string;
       parentNames?: string;
+      interviewId?: number; // El BFF usa esto para generar URLs con JWT
       interviewDate?: string;
       interviewTime?: string;
       interviewType?: string;
       interviewLocation?: string;
-      confirmUrl?: string;
-      rejectUrl?: string;
+      confirmUrl?: string; // Placeholder - el BFF lo reemplaza con URL JWT
+      rejectUrl?: string; // Placeholder - el BFF lo reemplaza con URL JWT
     }
   ): Promise<EmailResponse> {
     try {

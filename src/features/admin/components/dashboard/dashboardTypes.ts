@@ -1,5 +1,6 @@
 import {
   InterviewMode,
+  InterviewLifecycle,
   InterviewStatus,
   InterviewType,
   InterviewerInfo,
@@ -31,6 +32,31 @@ export interface TimelineCellData {
   available?: WeeklyOverviewAvailableSlot;
 }
 
+export const isOperationalInterview = (interview: WeeklyOverviewScheduledInterview): boolean => (
+  !InterviewLifecycle.isInactive(interview.status)
+);
+
+export const isHistoricalInterview = (interview: WeeklyOverviewScheduledInterview): boolean => (
+  InterviewLifecycle.isInactive(interview.status)
+);
+
+export const getSlotKey = (date: string, time: string): string => `${date}T${time}`;
+
+export const getOperationalInterviews = (interviews: WeeklyOverviewScheduledInterview[]): WeeklyOverviewScheduledInterview[] => (
+  interviews.filter(isOperationalInterview)
+);
+
+export const getHistoricalInterviews = (interviews: WeeklyOverviewScheduledInterview[]): WeeklyOverviewScheduledInterview[] => (
+  interviews.filter(isHistoricalInterview)
+);
+
+export const getPrimaryOperationalInterview = (
+  interviews: WeeklyOverviewScheduledInterview[]
+): WeeklyOverviewScheduledInterview | undefined => (
+  getOperationalInterviews(interviews)
+    .sort((a, b) => a.id - b.id)[0]
+);
+
 export const VIEW_LABELS: Record<CommandCenterViewMode, string> = {
   day: 'Dia',
   week: 'Semana',
@@ -43,7 +69,8 @@ export const STATUS_STYLES: Record<string, string> = {
   [InterviewStatus.CONFIRMED]: 'bg-cyan-100 border-cyan-500 text-cyan-900 shadow-sm',
   [InterviewStatus.COMPLETED]: 'bg-emerald-100 border-emerald-500 text-emerald-900 shadow-sm',
   [InterviewStatus.CANCELLED]: 'bg-red-100 border-red-500 text-red-900 opacity-60 line-through',
-  [InterviewStatus.NO_SHOW]: 'bg-amber-100 border-amber-500 text-amber-900'
+  [InterviewStatus.NO_SHOW]: 'bg-amber-100 border-amber-500 text-amber-900',
+  [InterviewStatus.REJECTED_BY_FAMILY]: 'bg-gray-200 border-gray-500 text-gray-700 opacity-70'
 };
 
 export const formatRole = (role: string): string => {

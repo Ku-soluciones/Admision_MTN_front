@@ -19,7 +19,8 @@ import {
   FiUser,
   FiMail,
   FiBell,
-  FiTrash2
+  FiTrash2,
+  FiUnlock
 } from 'react-icons/fi';
 import {
   Interview,
@@ -32,6 +33,7 @@ import {
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
   INTERVIEW_RESULT_LABELS,
+  InterviewLifecycle,
   InterviewUtils
 } from '../../types/interview';
 
@@ -55,6 +57,7 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
   onView,
   onSendNotification,
   onSendReminder,
+  onRelease,
   onRefreshDashboard,
   className = ''
 }) => {
@@ -128,16 +131,13 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
   };
 
   const getTypeBadge = (type: InterviewType) => {
-    const colors = {
-      [InterviewType.INDIVIDUAL]: 'bg-blue-100 text-blue-800',
+    const colors: Record<InterviewType, string> = {
       [InterviewType.FAMILY]: 'bg-green-100 text-green-800',
-      [InterviewType.PSYCHOLOGICAL]: 'bg-purple-100 text-purple-800',
-      [InterviewType.ACADEMIC]: 'bg-yellow-100 text-yellow-800',
-      [InterviewType.BEHAVIORAL]: 'bg-pink-100 text-pink-800'
+      [InterviewType.CYCLE_DIRECTOR]: 'bg-blue-100 text-blue-800'
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[type]}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[type] || 'bg-gray-100 text-gray-800'}`}>
         {INTERVIEW_TYPE_LABELS[type]}
       </span>
     );
@@ -208,19 +208,33 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
     };
   };
 
-  const canCompleteInterview = (interview: Interview): boolean => {
-    return interview.status === InterviewStatus.IN_PROGRESS || 
-           interview.status === InterviewStatus.CONFIRMED;
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // REDISEÑO UX: Acciones por categoría de estado
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  // Estados que necesitan ACCIÓN PRINCIPAL: Agendar/Reagendar
+  const needsScheduling = (interview: Interview): boolean => {
+    return InterviewLifecycle.needsScheduling(interview.status);
   };
 
-  const canEditInterview = (interview: Interview): boolean => {
-    return interview.status !== InterviewStatus.COMPLETED && 
-           interview.status !== InterviewStatus.CANCELLED;
+  // Estados ACTIVOS que se pueden modificar
+  const isActiveInterview = (interview: Interview): boolean => {
+    return InterviewLifecycle.isEditable(interview.status);
   };
 
+  // Estados que se pueden cancelar
   const canCancelInterview = (interview: Interview): boolean => {
-    return interview.status === InterviewStatus.SCHEDULED || 
-           interview.status === InterviewStatus.CONFIRMED;
+    return InterviewLifecycle.canCancel(interview.status);
+  };
+
+  // Estados que se pueden completar
+  const canCompleteInterview = (interview: Interview): boolean => {
+    return InterviewLifecycle.canComplete(interview.status);
+  };
+
+  // Estados finalizados (solo lectura)
+  const isFinalStatus = (interview: Interview): boolean => {
+    return interview.status === InterviewStatus.COMPLETED;
   };
 
   const isUpcoming = (interview: Interview): boolean => {
@@ -403,88 +417,127 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Ver */}
-                      <Tip label="Ver detalles">
-                        <button
-                          onClick={() => onView(interview)}
-                          className="flex items-center justify-center w-8 h-8 rounded-xl bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm shrink-0"
-                        >
-                          <FiEye className="w-3.5 h-3.5" />
-                        </button>
-                      </Tip>
+                      {/* ═══════════════════════════════════════════════════════════════
+                           REDISEÑO UX: Botones organizados por ACCIÓN PRINCIPAL del estado
+                          ═══════════════════════════════════════════════════════════════ */}
 
-                      {/* Editar */}
-                      {canEditInterview(interview) && (
-                        <Tip label="Editar">
-                          <button
-                            onClick={() => onEdit(interview)}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors shrink-0"
-                          >
-                            <FiEdit className="w-3.5 h-3.5" />
-                          </button>
-                        </Tip>
+                      {/* CASO 1: NECESITA AGENDAMIENTO (PENDIENTE/CANCELADA/RECHAZADA)
+                         Acción principal: AGENDAR/REAGENDAR (botón verde prominente) */}
+                      {needsScheduling(interview) && (
+                        <>
+                          {interview.status === InterviewStatus.REJECTED_BY_FAMILY && onRelease ? (
+                            <Tip label="Liberar para reagendar">
+                              <button
+                                onClick={() => onRelease(interview)}
+                                className="flex items-center justify-center w-8 h-8 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm shrink-0"
+                              >
+                                <FiUnlock className="w-3.5 h-3.5" />
+                              </button>
+                            </Tip>
+                          ) : (
+                            <Tip label={interview.status === InterviewStatus.PENDING ? "Agendar entrevista" : "Reagendar entrevista"}>
+                              <button
+                                onClick={() => onReschedule(interview)}
+                                className="flex items-center justify-center w-8 h-8 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors shadow-sm shrink-0"
+                              >
+                                <FiCalendar className="w-3.5 h-3.5" />
+                              </button>
+                            </Tip>
+                          )}
+                          <Tip label="Ver detalles">
+                            <button
+                              onClick={() => onView(interview)}
+                              className="flex items-center justify-center w-8 h-8 rounded-xl bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm shrink-0"
+                            >
+                              <FiEye className="w-3.5 h-3.5" />
+                            </button>
+                          </Tip>
+                          {/* Eliminar solo para canceladas (limpieza) */}
+                          {interview.status === InterviewStatus.CANCELLED && (
+                            <Tip label="Eliminar permanentemente">
+                              <button
+                                onClick={() => handleDelete(interview)}
+                                disabled={deletingId === interview.id}
+                                className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors shrink-0 disabled:opacity-50"
+                              >
+                                {deletingId === interview.id
+                                  ? <FiRefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  : <FiTrash2 className="w-3.5 h-3.5" />
+                                }
+                              </button>
+                            </Tip>
+                          )}
+                        </>
                       )}
 
-                      {/* Reprogramar */}
-                      {canEditInterview(interview) && (
-                        <Tip label="Reprogramar">
-                          <button
-                            onClick={() => onReschedule(interview)}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
-                          >
-                            <FiRefreshCw className="w-3.5 h-3.5" />
-                          </button>
-                        </Tip>
+                      {/* CASO 2: ACTIVA (AGENDADA/CONFIRMADA)
+                         Acciones: Ver, Editar, Completar, Cancelar */}
+                      {isActiveInterview(interview) && (
+                        <>
+                          <Tip label="Ver detalles">
+                            <button
+                              onClick={() => onView(interview)}
+                              className="flex items-center justify-center w-8 h-8 rounded-xl bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm shrink-0"
+                            >
+                              <FiEye className="w-3.5 h-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Editar entrevista">
+                            <button
+                              onClick={() => onEdit(interview)}
+                              className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors shrink-0"
+                            >
+                              <FiEdit className="w-3.5 h-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Reagendar entrevista">
+                            <button
+                              onClick={() => onReschedule(interview)}
+                              className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
+                            >
+                              <FiRefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          </Tip>
+                          {canCompleteInterview(interview) && (
+                            <Tip label="Completar entrevista">
+                              <button
+                                onClick={() => onComplete(interview)}
+                                className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-green-400 text-green-600 hover:bg-green-50 transition-colors shrink-0"
+                              >
+                                <FiCheck className="w-3.5 h-3.5" />
+                              </button>
+                            </Tip>
+                          )}
+                          <Tip label="Cancelar entrevista">
+                            <button
+                              onClick={() => onCancel(interview)}
+                              className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-red-300 text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                            >
+                              <FiX className="w-3.5 h-3.5" />
+                            </button>
+                          </Tip>
+                          {onSendNotification && (
+                            <Tip label="Enviar notificación">
+                              <button
+                                onClick={() => onSendNotification!(interview, 'scheduled')}
+                                className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-sky-300 text-sky-600 hover:bg-sky-50 transition-colors shrink-0"
+                              >
+                                <FiMail className="w-3.5 h-3.5" />
+                              </button>
+                            </Tip>
+                          )}
+                        </>
                       )}
 
-                      {/* Completar */}
-                      {canCompleteInterview(interview) && (
-                        <Tip label="Completar entrevista">
+                      {/* CASO 3: FINALIZADA (COMPLETADA/EN PROGRESO)
+                         Solo: Ver detalles */}
+                      {isFinalStatus(interview) && (
+                        <Tip label="Ver detalles">
                           <button
-                            onClick={() => onComplete(interview)}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-green-400 text-green-600 hover:bg-green-50 transition-colors shrink-0"
+                            onClick={() => onView(interview)}
+                            className="flex items-center justify-center w-8 h-8 rounded-xl bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm shrink-0"
                           >
-                            <FiCheck className="w-3.5 h-3.5" />
-                          </button>
-                        </Tip>
-                      )}
-
-                      {/* Notificación */}
-                      {onSendNotification && (
-                        <Tip label="Enviar notificación">
-                          <button
-                            onClick={() => onSendNotification!(interview, 'scheduled')}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-sky-300 text-sky-600 hover:bg-sky-50 transition-colors shrink-0"
-                          >
-                            <FiMail className="w-3.5 h-3.5" />
-                          </button>
-                        </Tip>
-                      )}
-
-                      {/* Cancelar */}
-                      {canCancelInterview(interview) && (
-                        <Tip label="Cancelar entrevista">
-                          <button
-                            onClick={() => onCancel(interview)}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-red-300 text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                          >
-                            <FiX className="w-3.5 h-3.5" />
-                          </button>
-                        </Tip>
-                      )}
-
-                      {/* Eliminar (solo canceladas) */}
-                      {interview.status === InterviewStatus.CANCELLED && (
-                        <Tip label="Eliminar permanentemente">
-                          <button
-                            onClick={() => handleDelete(interview)}
-                            disabled={deletingId === interview.id}
-                            className="flex items-center justify-center w-8 h-8 rounded-xl border-2 border-red-400 text-red-700 hover:bg-red-100 transition-colors shrink-0 disabled:opacity-50"
-                          >
-                            {deletingId === interview.id
-                              ? <FiRefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              : <FiTrash2 className="w-3.5 h-3.5" />
-                            }
+                            <FiEye className="w-3.5 h-3.5" />
                           </button>
                         </Tip>
                       )}
@@ -502,9 +555,9 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
                       </Tip>
                     </div>
 
-                    {/* Spacer invisible para mantener alto */}
+                    {/* Spacer invisible para mantener alto (máx 4 botones + deseleccionar) */}
                     <div className="invisible flex items-center gap-1.5">
-                      <span className="w-8 h-8" /><span className="w-8 h-8" /><span className="w-8 h-8" />
+                      <span className="w-8 h-8" /><span className="w-8 h-8" /><span className="w-8 h-8" /><span className="w-8 h-8" /><span className="w-7 h-7" />
                     </div>
                   </td>
                 </tr>

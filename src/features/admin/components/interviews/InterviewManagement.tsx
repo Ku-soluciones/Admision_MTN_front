@@ -29,16 +29,19 @@ import {
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_MODE_LABELS,
   INTERVIEW_RESULT_LABELS,
+  InterviewLifecycle,
   InterviewUtils
 } from '../../types/interview';
 import InterviewTable from './InterviewTable';
 import InterviewForm from './InterviewForm';
+import InterviewDetailsPanel from './InterviewDetailsPanel';
 import InterviewCalendar from './InterviewCalendar';
 import InterviewStatsPanel from './InterviewStatsPanel';
 import InterviewStatusPanel from './InterviewStatusPanel';
 import InterviewOverview from './InterviewOverview';
 import CancelInterviewModal from './CancelInterviewModal';
 import RescheduleInterviewModal from './RescheduleInterviewModal';
+import ReleaseInterviewModal from './ReleaseInterviewModal';
 // Removed excessive imports for simplification
 import interviewService from '../../services/interviewService';
 import { emailTemplateService, EmailTemplate } from '../../../../packages/shared-ui/src/services/emailTemplateService';
@@ -64,11 +67,13 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   const [activeView, setActiveView] = useState<'grid' | 'form'>('grid');
   const [formMode, setFormMode] = useState<InterviewFormMode>(InterviewFormMode.CREATE);
 
-  // Estados para modales de cancelación y reagendación
+  // Estados para modales de cancelación, reagendación y liberación
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [interviewToCancel, setInterviewToCancel] = useState<Interview | null>(null);
   const [interviewToReschedule, setInterviewToReschedule] = useState<Interview | null>(null);
+  const [interviewToRelease, setInterviewToRelease] = useState<Interview | null>(null);
 
   // Estado para sincronización entre vistas
   const [refreshKey, setRefreshKey] = useState(0);
@@ -248,6 +253,12 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     setActiveView('form');
   };
 
+  const handleOpenInterview = (interview: Interview) => {
+    setSelectedInterview(interview);
+    setFormMode(InterviewFormMode.VIEW);
+    setActiveView('form');
+  };
+
   const handleEditFromView = (interview: Interview) => {
     setSelectedInterview(interview);
     setFormMode(InterviewFormMode.EDIT);
@@ -256,11 +267,9 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   // Verificar si ya existe una entrevista programada del mismo tipo para la aplicación
   const hasScheduledInterviewOfType = (applicationId: number, interviewType: InterviewType): boolean => {
     return interviews.some(interview => 
-      interview.applicationId === applicationId && 
+      interview.applicationId === applicationId &&
       interview.type === interviewType &&
-      (interview.status === InterviewStatus.SCHEDULED || 
-       interview.status === InterviewStatus.CONFIRMED ||
-       interview.status === InterviewStatus.IN_PROGRESS)
+      InterviewLifecycle.countsAsAssigned(interview.status)
     );
   };
 
@@ -338,6 +347,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     await loadInterviews();
     await loadStats();
     setRefreshKey(prev => prev + 1);
+    setActiveView('grid');
   };
 
   const handleRescheduleInterview = (interview: Interview) => {
@@ -352,6 +362,22 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     await loadInterviews();
     await loadStats();
     setRefreshKey(prev => prev + 1);
+    setActiveView('grid');
+  };
+
+  const handleReleaseInterview = (interview: Interview) => {
+    setInterviewToRelease(interview);
+    setShowReleaseModal(true);
+  };
+
+  const handleReleaseSuccess = async () => {
+    showToast('Entrevista liberada para reagendar', 'success');
+    setShowReleaseModal(false);
+    setInterviewToRelease(null);
+    await loadInterviews();
+    await loadStats();
+    setRefreshKey(prev => prev + 1);
+    setActiveView('grid');
   };
 
   const handleFilterChange = (newFilters: Partial<InterviewFilters>) => {
@@ -439,15 +465,28 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         </div>
 
         <Card className="p-6">
-          <InterviewForm
-            interview={selectedInterview ?? undefined}
-            mode={formMode}
-            onSubmit={handleFormSubmit}
-            onCancel={() => setActiveView('grid')}
-            onEdit={handleEditFromView}
-            isSubmitting={isSubmitting}
-            refreshKey={refreshKey}
-          />
+          {formMode === InterviewFormMode.VIEW && selectedInterview ? (
+            <InterviewDetailsPanel
+              interview={selectedInterview}
+              onClose={() => setActiveView('grid')}
+              onEdit={handleEditInterview}
+              onCancel={handleCancelInterview}
+              onReschedule={handleRescheduleInterview}
+              onRelease={handleReleaseInterview}
+              onComplete={handleCompleteInterview}
+              onSendInvitation={(interview) => handleSendNotification(interview, 'scheduled')}
+            />
+          ) : (
+            <InterviewForm
+              interview={selectedInterview ?? undefined}
+              mode={formMode}
+              onSubmit={handleFormSubmit}
+              onCancel={() => setActiveView('grid')}
+              onEdit={handleEditFromView}
+              isSubmitting={isSubmitting}
+              refreshKey={refreshKey}
+            />
+          )}
         </Card>
 
         {toast && (
@@ -457,6 +496,36 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             onClose={() => setToast(null)}
           />
         )}
+
+        <CancelInterviewModal
+          isOpen={showCancelModal}
+          onClose={() => {
+            setShowCancelModal(false);
+            setInterviewToCancel(null);
+          }}
+          interview={interviewToCancel}
+          onSuccess={handleCancelSuccess}
+        />
+
+        <RescheduleInterviewModal
+          isOpen={showRescheduleModal}
+          onClose={() => {
+            setShowRescheduleModal(false);
+            setInterviewToReschedule(null);
+          }}
+          interview={interviewToReschedule}
+          onSuccess={handleRescheduleSuccess}
+        />
+
+        <ReleaseInterviewModal
+          isOpen={showReleaseModal}
+          onClose={() => {
+            setShowReleaseModal(false);
+            setInterviewToRelease(null);
+          }}
+          interview={interviewToRelease}
+          onSuccess={handleReleaseSuccess}
+        />
       </div>
     );
   }
@@ -669,7 +738,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
                 studentName={selectedStudentName}
                 onBack={handleBackToStudentList}
                 onScheduleInterview={handleScheduleInterviewForStudent}
-                onViewInterview={handleViewInterview}
+                onViewInterview={handleOpenInterview}
                 onEditInterview={handleEditInterview}
                 refreshKey={refreshKey}
               />
@@ -690,9 +759,10 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
                 onComplete={handleCompleteInterview}
                 onCancel={handleCancelInterview}
                 onReschedule={handleRescheduleInterview}
-                onView={handleViewInterview}
+                onView={handleOpenInterview}
                 onSendNotification={handleSendNotification}
                 onSendReminder={handleSendReminder}
+                onRelease={handleReleaseInterview}
               />
             </Card>
           )}
@@ -702,7 +772,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
               <InterviewCalendar
                 key={`calendar-${refreshKey}`}
                 interviews={interviews}
-                onSelectEvent={handleViewInterview}
+                onSelectEvent={handleOpenInterview}
                 onSelectSlot={(slotInfo) => {
                   handleCreateInterview();
                 }}
@@ -735,6 +805,16 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         onSuccess={handleRescheduleSuccess}
       />
 
+      <ReleaseInterviewModal
+        isOpen={showReleaseModal}
+        onClose={() => {
+          setShowReleaseModal(false);
+          setInterviewToRelease(null);
+        }}
+        interview={interviewToRelease}
+        onSuccess={handleReleaseSuccess}
+      />
+
       {/* Removed complex email modal for simplification */}
 
       {/* Modal gestión entrevistas del estudiante */}
@@ -748,7 +828,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             setShowStudentModal(false);
             handleScheduleInterviewForStudent(appId, type);
           }}
-          onView={handleViewInterview}
+          onView={handleOpenInterview}
           onEdit={handleEditInterview}
           onRefresh={() => {
             setStudentModalRefreshKey(k => k + 1);
@@ -1147,13 +1227,11 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   const getInterviewForType = (type: string) => {
     // Estados que indican que la entrevista ya no está activa y no debe mostrarse
     // como "la entrevista" actual del estudiante (ej: rechazadas o canceladas).
-    const INACTIVE_STATUSES = ['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'];
-
     // Buscar entrevista por tipo exacto, excluyendo las inactivas.
     // Si solo existen entrevistas rechazadas/canceladas, devolvemos undefined
     // para que la UI muestre "No programada" en lugar de la rechazada.
     const found = studentInterviews.find(
-      interview => interview.type === type && !INACTIVE_STATUSES.includes(interview.status)
+      interview => interview.type === type && !InterviewLifecycle.isInactive(interview.status)
     );
 
     return found;
@@ -1372,10 +1450,8 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
     return () => { cancelled = true; };
   }, [applicationId, refreshKey]);
 
-  const INACTIVE_STATUSES = ['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'];
-
   const getForType = (key: string) =>
-    interviews.find(i => i.type === key && !INACTIVE_STATUSES.includes(i.status));
+    interviews.find(i => i.type === key && !InterviewLifecycle.isInactive(i.status));
 
   const statusLabel = (s: string) => {
     const m: Record<string, string> = {
@@ -1541,7 +1617,7 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
         {/* Footer */}
         <div className="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
           <span className="text-xs text-gray-400">
-            {interviews.filter(i => !['CANCELLED', 'REJECTED_BY_FAMILY', 'NO_SHOW'].includes(i.status)).length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
+            {interviews.filter(i => !InterviewLifecycle.isInactive(i.status)).length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
           </span>
           <button
             onClick={onClose}

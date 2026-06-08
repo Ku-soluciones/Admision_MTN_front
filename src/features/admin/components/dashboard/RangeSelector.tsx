@@ -29,7 +29,8 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
             key={mode}
             type="button"
             onClick={() => onViewModeChange(mode)}
-            className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+            aria-pressed={viewMode === mode}
+            className={`min-h-11 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100 ${
               viewMode === mode
                 ? 'bg-gray-900 text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -44,18 +45,18 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
         <button
           type="button"
           onClick={onPrevious}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
           aria-label="Rango anterior"
         >
           <FiChevronLeft aria-hidden="true" />
         </button>
-        <div className="min-w-[220px] rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-800">
+        <div className="flex min-h-11 min-w-[220px] items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-800">
           {rangeLabel}
         </div>
         <button
           type="button"
           onClick={onNext}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
           aria-label="Rango siguiente"
         >
           <FiChevronRight aria-hidden="true" />
@@ -63,7 +64,7 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
         <button
           type="button"
           onClick={onToday}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
         >
           <FiRotateCcw className="h-4 w-4" aria-hidden="true" />
           Hoy

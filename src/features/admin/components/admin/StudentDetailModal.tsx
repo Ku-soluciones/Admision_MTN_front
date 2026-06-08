@@ -616,28 +616,27 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 const upcomingInterview = interviews.find(i => i.status === 'SCHEDULED' || i.status === 'PENDING');
                 
                 if (upcomingInterview) {
-                    // Generar URLs pasarela (apuntan al BFF)
-                    const bffBaseUrl = window.location.origin.replace('admin', 'api'); // Ajustar según tu dominio
-                    const confirmUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=confirm`;
-                    const rejectUrl = `${bffBaseUrl}/api/public/interview/confirm?interviewId=${upcomingInterview.id}&action=reject`;
-                    
                     // Construir parentNames desde postulante
                     const parentNames = [postulante.nombrePadre, postulante.nombreMadre]
                         .filter(n => n && n.trim())
                         .join(' y ') || postulante.nombreContactoPrincipal || 'Apoderados';
-                    
+
+                    // El BFF generará las URLs de confirmación con JWT usando el interviewId
+                    // Las URLs incorrectas del frontend serán reemplazadas por el BFF
                     response = await institutionalEmailService.sendDocumentAllApprovedEmail(
                         postulante.id,
                         {
                             totalDocuments,
                             studentName: fullApplication.student?.firstName,
                             parentNames,
+                            interviewId: upcomingInterview.id, // El BFF usa esto para generar URLs con JWT
                             interviewDate: upcomingInterview.scheduledDate,
                             interviewTime: upcomingInterview.scheduledTime,
                             interviewType: upcomingInterview.interviewType,
                             interviewLocation: upcomingInterview.location,
-                            confirmUrl,
-                            rejectUrl
+                            // Placeholders que serán reemplazados por el BFF con URLs JWT
+                            confirmUrl: '#confirm-placeholder',
+                            rejectUrl: '#reject-placeholder'
                         }
                     );
                 } else {
