@@ -13,3 +13,4 @@ export * from './broadcast';
 export * from './bootstrap';
 export * from './refreshQueue';
 export * from './useSessionTimeout';
+export * from './events';

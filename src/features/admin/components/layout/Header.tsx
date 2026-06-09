@@ -1,74 +1,36 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { appUrls } from '../../utils/appUrls';
-import { getStorageKey, BASE_STORAGE_KEYS, clearAllSessions } from '../../../../packages/backend-sdk/src/index';
+import { authStore, clearAllSessions } from '../../../../packages/backend-sdk/src/index';
+import { useHeaderAuthState } from '../../../../packages/shared-ui/src/hooks/useHeaderAuthState';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-    const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
-    const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
+    // Fuente canónica: in-memory authStore (con fallback transicional a
+    // localStorage durante el bootstrap F5). Reemplaza el `useEffect` que
+    // leía `currentProfessor.isAdmin` directamente desde localStorage, un
+    // flag spoofable desde DevTools.
+    const { isAdmin, isProfessorLoggedIn, isAnyUserLoggedIn } = useHeaderAuthState();
+    const isAdminLoggedIn = isAdmin;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    // Verificar si el usuario actual es admin, profesor o cualquier usuario autenticado
-    useEffect(() => {
-        const checkAuthStatus = () => {
-            // Verificar múltiples fuentes de autenticación
-            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
-
-            // Verificar si hay profesor autenticado
-            const hasProfessorAuth = !!(professorToken && currentProfessor);
-            setIsProfessorLoggedIn(hasProfessorAuth);
-
-            // Verificar si hay CUALQUIER usuario autenticado
-            const hasAnyAuth = !!(authToken || professorToken || apoderadoToken);
-            setIsAnyUserLoggedIn(hasAnyAuth);
-
-            // Solo mostrar admin si hay un token válido Y datos de profesor admin
-            let adminActive = false;
-            if ((authToken || professorToken) && currentProfessor) {
-                try {
-                    const professorData = JSON.parse(currentProfessor);
-                    adminActive = professorData.isAdmin === true;
-                } catch (error) {
-                    adminActive = false;
-                }
-            }
-            setIsAdmin(adminActive);
-            setIsAdminLoggedIn(adminActive);
-        };
-
-        checkAuthStatus();
-
-        window.addEventListener('storage', checkAuthStatus);
-        return () => window.removeEventListener('storage', checkAuthStatus);
-    }, []);
 
     const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
         if (isAnyUserLoggedIn) {
             e.preventDefault();
+            // Limpia store en memoria + localStorage (todas las claves de rol y
+            // sufijos de entorno). El hook re-derivará el estado vacío.
+            try { authStore.clear(); } catch { /* no-op */ }
             clearAllSessions();
-            setIsAdmin(false);
-            setIsAdminLoggedIn(false);
-            setIsProfessorLoggedIn(false);
-            setIsAnyUserLoggedIn(false);
             navigate('/');
         }
     }, [isAnyUserLoggedIn, navigate]);
 
     const clearAndGoAdmin = (e: React.MouseEvent) => {
         e.preventDefault();
+        try { authStore.clear(); } catch { /* no-op */ }
         clearAllSessions();
-        setIsAdmin(false);
-        setIsAdminLoggedIn(false);
-        setIsProfessorLoggedIn(false);
-        setIsAnyUserLoggedIn(false);
         window.location.href = appUrls.adminLogin;
     };
 

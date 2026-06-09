@@ -31,6 +31,7 @@ import {
     isSessionTerminal,
     reasonFromCode,
     broadcastLogout,
+    emitAuthEvent,
 } from '../../../backend-sdk/src/index';
 
 const api = axios.create({
@@ -121,10 +122,13 @@ const refreshQueue = createRefreshQueue({
             throw new Error('Respuesta de refresh inválida');
         }
         authStore.updateAccessToken(data.token, data.expiresIn, data.user ?? undefined);
+        emitAuthEvent({ type: 'refresh-succeeded', expiresIn: data.expiresIn });
         return data.token as string;
     },
-    onFailure: () => {
+    onFailure: (err) => {
         authStore.clear();
+        const status = (err as any)?.response?.status;
+        emitAuthEvent({ type: 'refresh-failed', status, reason: 'reactive' });
     },
 });
 
@@ -167,12 +171,22 @@ function redirectToLoginWithReason(reason: string): void {
     const currentPath = window.location.pathname;
     const isLoginPage = currentPath.includes('/login') || currentPath === '/';
     if (isLoginPage) return;
+    emitAuthEvent({ type: 'expired', route: currentPath });
+    // Bump a 100ms para dar margen al AuthNavigationBridge (suscrito al
+    // bus de eventos) a ejecutar la navegación SPA. Si el bridge la maneja,
+    // marca `window.__authNavHandled = true` y abortamos el reload duro.
+    // Si no hay bridge (e.g. fallo de hidratación de React), el fallback
+    // `window.location.href` sigue funcionando como safety net.
     setTimeout(() => {
+        if ((window as any).__authNavHandled) {
+            (window as any).__authNavHandled = false;
+            return;
+        }
         const target = currentPath.includes('/admin') || currentPath.includes('/profesor')
             ? `/admin/login?reason=${reason}`
             : `/login?reason=${reason}`;
         window.location.href = target;
-    }, 50);
+    }, 100);
 }
 
 function clearLegacyStorage(): void {
@@ -218,13 +232,22 @@ api.interceptors.response.use(
 
         // Códigos terminales: nunca reintentar, limpiar y redirigir.
         // Excepción: si el endpoint que falló es uno de auth (refresh/logout/login),
-        // el AuthContext lo manejará — no redirigimos desde aquí.
+        // el AuthContext lo manejará — no redirigimos NI emitimos eventos
+        // desde aquí. Sólo limpiamos el estado local en silencio.
         if (status === 401 && isSessionTerminal(code)) {
             authStore.clear();
             clearLegacyStorage();
             csrfService.clearToken();
-            broadcastLogout(reasonFromCode(code));
-            if (!probe && !isAuthProbe) redirectToLoginWithReason(reasonFromCode(code));
+            // Sólo notificamos (bridge SPA-nav + otras pestañas) cuando
+            // efectivamente vamos a redirigir. Para auth-probes o endpoints
+            // sonda, un 401 terminal significa "no había sesión", no "se
+            // perdió la sesión" — no debemos navegar ni propagar a otras
+            // pestañas que pueden tener sesiones legítimas independientes.
+            if (!probe && !isAuthProbe) {
+                emitAuthEvent({ type: 'terminal', code, status });
+                broadcastLogout(reasonFromCode(code));
+                redirectToLoginWithReason(reasonFromCode(code));
+            }
             return Promise.reject(error);
         }
 
@@ -240,7 +263,11 @@ api.interceptors.response.use(
             if (!newToken) {
                 authStore.clear();
                 clearLegacyStorage();
-                if (!probe && !isAuthProbe) redirectToLoginWithReason('expired');
+                if (!probe && !isAuthProbe) {
+                    // emit + redirect (idem que arriba: sólo cuando vamos
+                    // efectivamente a navegar al login).
+                    redirectToLoginWithReason('expired');
+                }
                 return Promise.reject(error);
             }
             original.headers = original.headers ?? {};

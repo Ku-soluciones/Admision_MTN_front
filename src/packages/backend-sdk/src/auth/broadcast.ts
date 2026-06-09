@@ -4,10 +4,19 @@
  * Permite que un login/logout/refresh en una pestaña se propague a todas
  * las demás del mismo origen. Si BroadcastChannel no está disponible
  * (entornos antiguos / SSR), usa un fallback con `storage` events.
+ *
+ * Validación: todos los mensajes pasan por `isValidAuthMessage()` antes
+ * de aplicarse al store. Un mensaje malformado (token vacío, expiresIn
+ * no numérico, timestamp ausente o demasiado viejo) se descarta en
+ * silencio en vez de corromper la sesión local.
  */
 import { authStore } from './store';
+import { emitAuthEvent } from './events';
 
 const CHANNEL_NAME = 'admitia-auth';
+
+/** Antigüedad máxima aceptada de un mensaje broadcast (ms). Mitiga replays. */
+const MAX_MESSAGE_AGE_MS = 60_000;
 
 type AuthMessage =
   | { type: 'LOGIN'; token: string; expiresIn: number; user?: any; firebaseLinked?: boolean; t: number }
@@ -32,8 +41,41 @@ function getChannel(): BroadcastChannel | null {
   return channel;
 }
 
-function handleMessage(msg: AuthMessage | undefined): void {
-  if (!msg || typeof msg !== 'object') return;
+/**
+ * Valida la forma del mensaje antes de aplicarlo al store.
+ * Devuelve `true` sólo si el payload tiene la estructura esperada para
+ * su `type` y no es un replay obvio (timestamp >60s en el pasado/futuro).
+ */
+function isValidAuthMessage(msg: unknown): msg is AuthMessage {
+  if (!msg || typeof msg !== 'object') return false;
+  const m = msg as Record<string, unknown>;
+
+  // Timestamp obligatorio y dentro de una ventana razonable.
+  if (typeof m.t !== 'number' || !Number.isFinite(m.t)) return false;
+  const drift = Math.abs(Date.now() - m.t);
+  if (drift > MAX_MESSAGE_AGE_MS) return false;
+
+  switch (m.type) {
+    case 'LOGIN':
+    case 'REFRESH': {
+      const tokenOk = typeof m.token === 'string' && m.token.length > 0;
+      const expOk = typeof m.expiresIn === 'number' && Number.isFinite(m.expiresIn) && m.expiresIn > 0;
+      return tokenOk && expOk;
+    }
+    case 'LOGOUT':
+      // `reason` es opcional; si está presente, debe ser string.
+      return m.reason === undefined || typeof m.reason === 'string';
+    default:
+      return false;
+  }
+}
+
+function handleMessage(raw: AuthMessage | undefined): void {
+  if (!isValidAuthMessage(raw)) {
+    // Mensaje malformado o caducado: descartar.
+    return;
+  }
+  const msg = raw;
   switch (msg.type) {
     case 'LOGIN':
       // Sólo adoptar el login si no tenemos sesión activa local.
@@ -52,6 +94,7 @@ function handleMessage(msg: AuthMessage | undefined): void {
       break;
     case 'LOGOUT':
       authStore.clear();
+      emitAuthEvent({ type: 'cross-tab-logout', reason: msg.reason });
       // Notificar a todos los callbacks registrados
       onLogoutCallbacks.forEach(cb => {
         try { cb(msg.reason); } catch { /* no-op */ }

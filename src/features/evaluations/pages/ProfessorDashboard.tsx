@@ -41,7 +41,7 @@ import { interviewService } from '../services/interviewService';
 import { UserRole, USER_ROLE_LABELS } from '../../admin/types/user';
 import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
 
 const baseSections = [
     { key: 'dashboard', label: 'Dashboard General', icon: DashboardIcon },
@@ -266,8 +266,14 @@ const ProfessorDashboard: React.FC = () => {
         return true;
     });
 
-    // Determinar si mostrar sección de administrador
-    const sections = currentProfessor?.isAdmin
+    // Determinar si mostrar sección de administrador.
+    // Fuente canónica: `authStore.user.role === 'ADMIN'`. Fallback al
+    // `currentProfessor.role` de localStorage durante bootstrap. Evita
+    // depender del flag `isAdmin` (booleano libre, spoofable).
+    const isAdminUser = useAuthStore((s) => s.user?.role === 'ADMIN')
+        || currentProfessor?.role === 'ADMIN';
+
+    const sections = isAdminUser
         ? [...filteredSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
         : filteredSections;
 
@@ -1489,7 +1495,7 @@ const ProfessorDashboard: React.FC = () => {
                                 <p><strong>Email:</strong> {currentProfessor?.email}</p>
                                 <p><strong>Asignatura:</strong> {currentProfessor?.subject ? getSubjectName(currentProfessor.subject) : 'No especificada'}</p>
                                 <p><strong>Rol:</strong> {currentProfessor?.role ? USER_ROLE_LABELS[currentProfessor.role as UserRole] : 'No especificado'}</p>
-                                {currentProfessor?.isAdmin && (
+                                {isAdminUser && (
                                     <p className="text-dorado-nazaret"><strong>Permisos:</strong> Administrador</p>
                                 )}
                             </div>

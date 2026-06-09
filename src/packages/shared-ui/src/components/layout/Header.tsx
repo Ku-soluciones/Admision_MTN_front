@@ -1,65 +1,25 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
 import { appUrls } from '../../../../shared-utils/src/appUrls';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../backend-sdk/src/index';
+import { authStore, clearAllSessions } from '../../../../backend-sdk/src/index';
+import { useHeaderAuthState } from '../../hooks/useHeaderAuthState';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [isProfessorLoggedIn, setIsProfessorLoggedIn] = useState(false);
-    const [isAnyUserLoggedIn, setIsAnyUserLoggedIn] = useState(false);
+    // Fuente canónica: in-memory authStore (con fallback transicional a
+    // localStorage durante bootstrap F5). Ver `useHeaderAuthState`.
+    const { isAdmin, isProfessorLoggedIn, isAnyUserLoggedIn } = useHeaderAuthState();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    // Verificar si el usuario actual es admin, profesor o cualquier usuario autenticado
-    useEffect(() => {
-        const checkAuthStatus = () => {
-            // Verificar múltiples fuentes de autenticación
-            const currentProfessor = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-            const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-            const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-            const apoderadoToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
-
-            // Verificar si hay profesor autenticado
-            const hasProfessorAuth = !!(professorToken && currentProfessor);
-            setIsProfessorLoggedIn(hasProfessorAuth);
-
-            // Verificar si hay CUALQUIER usuario autenticado
-            const hasAnyAuth = !!(authToken || professorToken || apoderadoToken);
-            setIsAnyUserLoggedIn(hasAnyAuth);
-
-            // Solo mostrar admin si hay un token válido Y datos de profesor admin
-            if ((authToken || professorToken) && currentProfessor) {
-                try {
-                    const professorData = JSON.parse(currentProfessor);
-                    setIsAdmin(professorData.isAdmin === true);
-                } catch (error) {
-                    setIsAdmin(false);
-                }
-            } else {
-                setIsAdmin(false);
-            }
-        };
-
-        checkAuthStatus();
-
-        window.addEventListener('storage', checkAuthStatus);
-        return () => window.removeEventListener('storage', checkAuthStatus);
-    }, []);
 
     const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
         if (isAnyUserLoggedIn) {
             e.preventDefault();
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.APODERADO_TOKEN));
-            localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('currentApoderado');
-            setIsAdmin(false);
-            setIsProfessorLoggedIn(false);
-            setIsAnyUserLoggedIn(false);
+            // Limpieza unificada (store en memoria + todas las claves de rol y
+            // sufijos de entorno). Reemplaza al cleanup parcial anterior.
+            try { authStore.clear(); } catch { /* no-op */ }
+            clearAllSessions();
             navigate('/');
         }
     }, [isAnyUserLoggedIn, navigate]);

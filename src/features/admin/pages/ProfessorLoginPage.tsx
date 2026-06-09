@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -7,9 +8,11 @@ import { useNotifications } from '../context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { appUrls } from '../utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
+import SessionExpiryBanner from '../../../packages/shared-ui/src/components/auth/SessionExpiryBanner';
 
 const ProfessorLoginPage: React.FC = () => {
     const { addNotification } = useNotifications();
+    const [searchParams] = useSearchParams();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -189,6 +192,7 @@ const ProfessorLoginPage: React.FC = () => {
 
                     {/* Formulario de Login */}
                     <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-6 mt-8">
+                        <SessionExpiryBanner reason={searchParams.get('reason')} variant="admin" />
                         {loginError && (
                             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                 {loginError}

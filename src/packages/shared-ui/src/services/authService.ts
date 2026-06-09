@@ -29,6 +29,7 @@ import {
     cancelScheduledRefresh,
     broadcastLogin,
     broadcastLogout,
+    clearAllSessions,
 } from '../../../backend-sdk/src/index';
 
 // El módulo Firebase exporta `auth` como `Auth | null` (el null aparece si
@@ -215,6 +216,12 @@ class AuthService {
                 // Fallback transicional: persistir el idToken en localStorage
                 // como lo hacía la versión anterior. Será removido cuando el
                 // BFF entregue siempre el nuevo contrato.
+                // ⚠️ El BFF rechaza idTokens de Firebase cuyo `auth_time`
+                // supere ~8h, así que esta ruta produce 401 silenciosos en
+                // sesiones largas. Si aparece en producción, hay que arreglar
+                // el BFF para que SIEMPRE devuelva { token, expiresIn }.
+                // eslint-disable-next-line no-console
+                console.warn('[Auth] BFF no devolvió token+expiresIn en firebase-login; usando idToken Firebase como Bearer (transición; expira a las ~8h).');
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
             }
 
@@ -288,6 +295,9 @@ class AuthService {
             if (data?.token && typeof data.expiresIn === 'number') {
                 adoptSession(data);
             } else {
+                // Mismo fallback transicional que en `login()` — ver nota allí.
+                // eslint-disable-next-line no-console
+                console.warn('[Auth] BFF no devolvió token+expiresIn en firebase-register; usando idToken Firebase como Bearer (transición; expira a las ~8h).');
                 localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN), idToken);
             }
 
@@ -369,24 +379,19 @@ class AuthService {
         try { await signOut(auth); } catch { /* no-op */ }
 
         authStore.clear();
-        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-        localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
+        // Limpieza exhaustiva: cubre todas las claves de rol y todos los
+        // sufijos de entorno (no sólo el actual). Reemplaza al cleanup
+        // parcial anterior, que dejaba residuos al cambiar de env local.
+        try { clearAllSessions(); } catch { /* no-op */ }
         broadcastLogout('user');
     }
 }
 
 export const authService = new AuthService();
 
-// Best-effort logout cuando la pestaña se cierra. Usa sendBeacon para no
-// bloquear el unload. La cookie HttpOnly + Authorization header viajan
-// automáticamente porque sendBeacon respeta cookies same-site del request.
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', () => {
-        try {
-            const url = (import.meta as any).env?.VITE_API_BASE_URL
-                ? `${(import.meta as any).env.VITE_API_BASE_URL}${ENDPOINTS.logout}`
-                : ENDPOINTS.logout;
-            navigator.sendBeacon?.(url);
-        } catch { /* no-op */ }
-    });
-}
+// Nota: previamente este módulo registraba un listener `beforeunload` que
+// disparaba `navigator.sendBeacon(/v1/auth/logout)` "best-effort" al cerrar la
+// pestaña. Se removió porque también se ejecutaba en cada F5 / navegación
+// interna, revocando la cookie HttpOnly de refresh server-side; el siguiente
+// load fallaba en `bootstrapAuth()` y mandaba al usuario a /login. El cierre
+// limpio de sesión es responsabilidad explícita de `logout()`.

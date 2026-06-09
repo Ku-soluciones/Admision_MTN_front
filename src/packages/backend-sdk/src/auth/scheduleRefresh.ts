@@ -7,6 +7,7 @@
  * disparar la llamada con `withCredentials: true`.
  */
 import { authStore } from './store';
+import { emitAuthEvent } from './events';
 
 /** Lee una variable VITE_* desde import.meta.env o globalThis sin romper en
  *  entornos donde `import.meta` no está disponible (tests, CommonJS). */
@@ -75,17 +76,20 @@ export function scheduleRefresh(expiresIn: number, options?: ScheduleRefreshOpti
       const result = await currentOptions.refresh();
       if (!result) {
         cancelScheduledRefresh();
+        emitAuthEvent({ type: 'refresh-failed', reason: 'proactive-null' });
         return;
       }
       authStore.updateAccessToken(result.token, result.expiresIn, result.user ?? undefined);
       if (typeof result.firebaseLinked === 'boolean') {
         authStore.setFirebaseLinked(result.firebaseLinked);
       }
+      emitAuthEvent({ type: 'refresh-succeeded', expiresIn: result.expiresIn });
       // Re-programa con la nueva expiración.
       scheduleRefresh(result.expiresIn);
     } catch (err) {
       cancelScheduledRefresh();
       authStore.clear();
+      emitAuthEvent({ type: 'refresh-failed', reason: 'proactive-throw' });
       currentOptions.onFailure?.(err);
     }
   }, delayMs);

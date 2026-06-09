@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import SessionExpiryBanner from '../../../packages/shared-ui/src/components/auth/SessionExpiryBanner';
 
 const AdminLogin: React.FC = () => {
     const navigate = useNavigate();
@@ -73,6 +74,7 @@ const AdminLogin: React.FC = () => {
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-6 mt-8">
+                        <SessionExpiryBanner reason={searchParams.get('reason')} variant="admin" />
                         {error && (
                             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                 {error}

@@ -9,6 +9,7 @@ import { LogoIcon } from '../components/icons/Icons';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
 import { appUrls } from '../utils/appUrls';
+import SessionExpiryBanner from '../../../packages/shared-ui/src/components/auth/SessionExpiryBanner';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -142,6 +143,7 @@ const ApoderadoLogin: React.FC = () => {
                     {!showRegister ? (
                         // Formulario de Login
                         <form onSubmit={handleLogin} className="space-y-6 mt-8">
+                            <SessionExpiryBanner reason={searchParams.get('reason')} />
                             {error && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                     {error}

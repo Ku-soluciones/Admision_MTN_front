@@ -1,33 +1,19 @@
+/**
+ * Re-export del guard unificado de `shared-ui`, con el `useAuth` del
+ * coordinator context (que es el `AuthProvider` envolviendo este feature
+ * según `interviews/App.tsx`). Cierra el spoof anterior y respeta el
+ * bootstrap del AuthContext.
+ */
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import SharedProtectedProfessorRoute from
+  '../../../../packages/shared-ui/src/components/auth/ProtectedProfessorRoute';
+import { useAuth } from '../../../coordinator/context/AuthContext';
 
-interface ProtectedProfessorRouteProps {
-    children: React.ReactNode;
-}
-
-const ProtectedProfessorRoute: React.FC<ProtectedProfessorRouteProps> = ({ children }) => {
-    // Verificar si hay un profesor logueado
-    const currentProfessor = localStorage.getItem('currentProfessor');
-    
-    if (!currentProfessor) {
-        // Redirigir al login si no hay profesor autenticado
-        return <Navigate to="/profesor/login" replace />;
-    }
-
-    try {
-        // Verificar que los datos del profesor sean válidos
-        const professorData = JSON.parse(currentProfessor);
-        if (!professorData.id || !professorData.email) {
-            localStorage.removeItem('currentProfessor');
-            return <Navigate to="/profesor/login" replace />;
-        }
-    } catch (error) {
-        // Datos corruptos, limpiar y redirigir
-        localStorage.removeItem('currentProfessor');
-        return <Navigate to="/profesor/login" replace />;
-    }
-
-    return <>{children}</>;
-};
+const ProtectedProfessorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <SharedProtectedProfessorRoute useAuthHook={useAuth}>
+    {children}
+  </SharedProtectedProfessorRoute>
+);
 
 export default ProtectedProfessorRoute;
+

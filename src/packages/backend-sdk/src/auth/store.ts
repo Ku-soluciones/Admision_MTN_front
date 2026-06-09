@@ -151,12 +151,41 @@ export function useAuthStore<T>(selector: (s: AuthState) => T): T {
  *
  * Si `preserveLegacyKeys` se pasa, esos keys NO se eliminan (útil durante la
  * transición cuando todavía existen flujos que leen de localStorage).
+ *
+ * Cubre tres familias de keys:
+ *  1. Keys legacy "planas" del front pre-SDK (`token`, `auth`, `user`, …).
+ *  2. Keys base actuales (`auth_token`, `professor_token`, …) sin sufijo.
+ *  3. Las mismas keys base con TODOS los sufijos de entorno conocidos
+ *     (`auth_token__production`, `auth_token__development`, …) para que un
+ *     cambio de host (p.ej. localhost → staging local) no deje tokens
+ *     huérfanos que el interceptor adopte por equivocación.
  */
 export function purgeLegacyAuthStorage(preserveLegacyKeys: string[] = []): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
-  const targets = ['token', 'refreshToken', 'auth', 'user'];
-  for (const key of targets) {
-    if (preserveLegacyKeys.includes(key)) continue;
+
+  const legacyFlatKeys = ['token', 'refreshToken', 'auth', 'user'];
+  const baseSdkKeys = [
+    'auth_token',
+    'professor_token',
+    'apoderado_token',
+    'authenticated_user',
+    'professor_user',
+    'apoderado_user',
+    'currentProfessor',
+  ];
+  const envSuffixes = [
+    'development', 'staging', 'sta', 'production',
+    'dev', 'qa', 'uat', 'test',
+  ];
+
+  const remove = (key: string): void => {
+    if (preserveLegacyKeys.includes(key)) return;
     try { window.localStorage.removeItem(key); } catch { /* no-op */ }
-  }
+  };
+
+  legacyFlatKeys.forEach(remove);
+  baseSdkKeys.forEach((base) => {
+    remove(base);
+    envSuffixes.forEach((env) => remove(`${base}__${env}`));
+  });
 }
