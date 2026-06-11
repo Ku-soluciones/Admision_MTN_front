@@ -70,14 +70,90 @@ import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 
 const sections = [
-  { key: 'metricas', label: 'Métricas de Postulantes' },
-  { key: 'postulaciones', label: 'Gestión de Postulaciones' },
-  { key: 'evaluaciones', label: 'Gestión de Evaluaciones' },
-  { key: 'entrevistas', label: 'Gestión de Entrevistas' },
-  { key: 'calendario', label: 'Calendario Global' },
-  { key: 'usuarios', label: 'Gestión de Usuarios' },
-  { key: 'configuracion', label: 'Configuración' },
+  { key: 'metricas',      label: 'Métricas de Postulantes',  icon: BarChartIcon },
+  { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: FileTextIcon },
+  { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: CheckCircleIcon },
+  { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: ClockIcon },
+  { key: 'calendario',    label: 'Calendario Global',        icon: DashboardIcon },
+  { key: 'usuarios',      label: 'Gestión de Usuarios',      icon: UsersIcon },
+  { key: 'configuracion', label: 'Configuración',            icon: UserIcon },
 ];
+
+interface SidebarContentProps {
+  user: { firstName?: string; lastName?: string } | null;
+  activeSection: string;
+  onSectionChange: (key: string) => void;
+  onShowCoordinator: () => void;
+  onLogout: () => void;
+  onNavigate?: () => void;
+}
+
+const SidebarContent = React.memo(function SidebarContent({
+  user,
+  activeSection,
+  onSectionChange,
+  onShowCoordinator,
+  onLogout,
+  onNavigate,
+}: SidebarContentProps) {
+  return (
+    <>
+      <div className="p-6 text-center">
+        <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
+        <h1 className="text-xl font-bold text-azul-monte-tabor">Panel Admin</h1>
+        <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
+      </div>
+      <div className="px-4 mb-4">
+        <button
+          onClick={() => { onShowCoordinator(); onNavigate?.(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors bg-azul-monte-tabor hover:bg-blue-900 text-white shadow-sm"
+          aria-label="Abrir dashboard del coordinador con analytics y búsqueda avanzada"
+        >
+          <FiBarChart2 className="w-5 h-5" aria-hidden="true" />
+          <div className="flex-1">
+            <div className="text-sm font-semibold">Dashboard Coordinador</div>
+            <div className="text-xs opacity-90">Analytics y búsqueda avanzada</div>
+          </div>
+        </button>
+      </div>
+      <nav className="px-4" aria-label="Menú de navegación principal del administrador">
+        {sections.map(section => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.key}
+              onClick={() => {
+                onSectionChange(section.key);
+                onNavigate?.();
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
+                activeSection === section.key
+                  ? 'bg-azul-monte-tabor text-white'
+                  : 'text-gris-piedra hover:bg-gray-100'
+              }`}
+              aria-label={`Navegar a ${section.label}`}
+              aria-current={activeSection === section.key ? 'page' : undefined}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span className="text-sm">{section.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      <div className="px-4 mt-auto pb-6 flex flex-col gap-3">
+        <ChangePasswordButton className="w-full" variant="outline" />
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={onLogout}
+          ariaLabel="Cerrar sesión y salir del panel de administración"
+        >
+          Cerrar Sesión
+        </Button>
+      </div>
+    </>
+  );
+});
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -700,64 +776,6 @@ Esta acción:
     }
   };
 
-  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <>
-      <div className="p-6 text-center">
-        <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
-        <h1 className="text-xl font-bold text-azul-monte-tabor">Panel Admin</h1>
-        <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
-      </div>
-      <div className="px-4 mb-4">
-        <button
-          onClick={() => { setShowCoordinatorDashboard(true); onNavigate?.(); }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg"
-          aria-label="Abrir dashboard del coordinador con analytics y búsqueda avanzada"
-        >
-          <FiBarChart2 className="w-5 h-5" aria-hidden="true" />
-          <div className="flex-1">
-            <div className="text-sm font-semibold">Dashboard Coordinador</div>
-            <div className="text-xs opacity-90">Analytics y búsqueda avanzada</div>
-          </div>
-        </button>
-      </div>
-      <nav className="px-4" aria-label="Menú de navegación principal del administrador">
-        {sections.map(section => (
-          <button
-            key={section.key}
-            onClick={() => {
-              setInterviewToOpenId(null);
-              setActiveSection(section.key);
-              onNavigate?.();
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
-              activeSection === section.key
-                ? 'bg-azul-monte-tabor text-white'
-                : 'text-gris-piedra hover:bg-gray-100'
-            }`}
-            aria-label={`Navegar a sección ${section.label}`}
-            aria-current={activeSection === section.key ? 'page' : undefined}
-          >
-            <span className="text-sm">{section.label}</span>
-          </button>
-        ))}
-      </nav>
-      <div className="px-4 mt-4">
-        <ChangePasswordButton className="w-full" variant="outline" />
-      </div>
-      <div className="px-4 mt-4">
-        <Button
-          variant="primary"
-          className="w-full bg-azul-monte-tabor hover:bg-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-md hover:shadow-lg"
-          onClick={() => logout()}
-          ariaLabel="Cerrar sesión y salir del panel de administración"
-        >
-          Cerrar Sesión
-        </Button>
-      </div>
-      <div className="flex-1"></div>
-    </>
-  );
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Overlay global de carga */}
@@ -777,8 +795,10 @@ Esta acción:
         </div>
         <button
           onClick={() => setIsSidebarOpen(prev => !prev)}
-          className="p-2 rounded-lg text-gris-piedra hover:bg-gray-100 transition-colors"
-          aria-label="Abrir menú de navegación"
+          className="p-2.5 min-w-[44px] min-h-[44px] rounded-lg text-gris-piedra hover:bg-gray-100 transition-colors"
+          aria-expanded={isSidebarOpen}
+          aria-controls="mobile-sidebar"
+          aria-label={isSidebarOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
         >
           {isSidebarOpen ? (
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -798,14 +818,32 @@ Esta acción:
       )}
 
       {/* Mobile sidebar drawer */}
-      <div className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <SidebarContent onNavigate={() => setIsSidebarOpen(false)} />
+      <div
+        id="mobile-sidebar"
+        aria-hidden={!isSidebarOpen}
+        {...(!isSidebarOpen ? { inert: '' } : {})}
+        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <SidebarContent
+          user={user}
+          activeSection={activeSection}
+          onSectionChange={(key) => { setInterviewToOpenId(null); setActiveSection(key); }}
+          onShowCoordinator={() => setShowCoordinatorDashboard(true)}
+          onLogout={logout}
+          onNavigate={() => setIsSidebarOpen(false)}
+        />
       </div>
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <aside className="w-64 bg-white shadow-md min-h-screen flex-col hidden md:flex sticky top-0 self-start h-screen overflow-y-auto">
-          <SidebarContent />
+          <SidebarContent
+            user={user}
+            activeSection={activeSection}
+            onSectionChange={(key) => { setInterviewToOpenId(null); setActiveSection(key); }}
+            onShowCoordinator={() => setShowCoordinatorDashboard(true)}
+            onLogout={logout}
+          />
         </aside>
 
         {/* Main Content */}
