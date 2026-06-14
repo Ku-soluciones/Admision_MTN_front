@@ -1,8 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { interviewerScheduleService, InterviewerSchedule } from '../../services/interviewerScheduleService';
 import { useNotifications } from '../../context/AppContext';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as const;
+type DayKey = typeof DAYS[number];
+
+const DAY_LABELS: Record<DayKey, string> = {
+  MONDAY: 'Lunes',
+  TUESDAY: 'Martes',
+  WEDNESDAY: 'Miércoles',
+  THURSDAY: 'Jueves',
+  FRIDAY: 'Viernes',
+};
+
+const DAY_SHORT: Record<DayKey, string> = {
+  MONDAY: 'L',
+  TUESDAY: 'M',
+  WEDNESDAY: 'X',
+  THURSDAY: 'J',
+  FRIDAY: 'V',
+};
+
+/** Blocks from 08:00 to 15:00 — each represents one 60-min slot ending at +1h.
+ *  Last block is 15:00–16:00, so full range is 08:00–16:00. */
+const TIME_SLOTS = Array.from({ length: 8 }, (_, i) => {
+  const hour = 8 + i;
+  return `${hour.toString().padStart(2, '0')}:00`;
+});
+
+const formatHour = (time: string): string => {
+  const hour = parseInt(time.split(':')[0]);
+  return `${hour}:00`;
+};
+
+const endHourLabel = (time: string): string => {
+  const hour = parseInt(time.split(':')[0]) + 1;
+  return `${hour}:00`;
+};
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SimpleAvailabilityCalendarProps {
   userId: number;
@@ -10,556 +50,420 @@ interface SimpleAvailabilityCalendarProps {
   onScheduleChange?: () => void;
 }
 
-interface TimeSlot {
-  hour: number;
-  minute: number;
-  time: string;
-  isSelected: boolean;
-  hasSchedule: boolean;
+type SlotState = 'empty' | 'saved' | 'added' | 'removed';
+
+interface SlotInfo {
+  state: SlotState;
   scheduleId?: number;
 }
 
-interface DaySchedule {
-  [key: string]: TimeSlot;
+type WeekGrid = Record<DayKey, Record<string, SlotInfo>>;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function emptyGrid(): WeekGrid {
+  const grid = {} as WeekGrid;
+  for (const day of DAYS) {
+    grid[day] = {};
+    for (const slot of TIME_SLOTS) {
+      grid[day][slot] = { state: 'empty' };
+    }
+  }
+  return grid;
 }
 
-interface WeeklySchedule {
-  MONDAY: DaySchedule;
-  TUESDAY: DaySchedule;
-  WEDNESDAY: DaySchedule;
-  THURSDAY: DaySchedule;
-  FRIDAY: DaySchedule;
+function countSlots(grid: WeekGrid, predicate: (s: SlotState) => boolean): number {
+  let n = 0;
+  for (const day of DAYS) {
+    for (const slot of TIME_SLOTS) {
+      if (predicate(grid[day][slot].state)) n++;
+    }
+  }
+  return n;
 }
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
   userId,
   userRole,
-  onScheduleChange
+  onScheduleChange,
 }) => {
-  const [schedule, setSchedule] = useState<WeeklySchedule>({
-    MONDAY: {},
-    TUESDAY: {},
-    WEDNESDAY: {},
-    THURSDAY: {},
-    FRIDAY: {}
-  });
-
+  const [grid, setGrid] = useState<WeekGrid>(emptyGrid);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [reloading, setReloading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  
-  // Quick config state
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('16:00');
-  const [selectedDays, setSelectedDays] = useState({
-    MONDAY: false,
-    TUESDAY: false,
-    WEDNESDAY: false,
-    THURSDAY: false,
-    FRIDAY: false
-  });
-
   const { addNotification } = useNotifications();
 
-  // Generate time slots from 8:00 AM to 4:00 PM (60 minute intervals)
-  const generateTimeSlots = (): string[] => {
-    const slots: string[] = [];
-    for (let hour = 8; hour < 16; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`);
+  // ── Derived state ──────────────────────────────────────────────────────────
+
+  const hasChanges = useMemo(() => {
+    return countSlots(grid, s => s === 'added' || s === 'removed') > 0;
+  }, [grid]);
+
+  const stats = useMemo(() => {
+    let activeBlocks = 0;
+    const dayBlocks: Record<string, number> = {};
+    for (const day of DAYS) {
+      let dayCount = 0;
+      for (const slot of TIME_SLOTS) {
+        const s = grid[day][slot].state;
+        if (s === 'saved' || s === 'added') {
+          activeBlocks++;
+          dayCount++;
+        }
+      }
+      dayBlocks[day] = dayCount;
     }
-    return slots;
-  };
+    const activeDays = DAYS.filter(d => dayBlocks[d] > 0).length;
+    return { activeBlocks, activeDays, totalHours: activeBlocks, dayBlocks };
+  }, [grid]);
 
-  const timeSlots = generateTimeSlots();
-  const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
-  const dayLabels = {
-    MONDAY: 'Lunes',
-    TUESDAY: 'Martes',
-    WEDNESDAY: 'Miércoles',
-    THURSDAY: 'Jueves',
-    FRIDAY: 'Viernes'
-  };
+  // ── Load ───────────────────────────────────────────────────────────────────
 
-  const dayButtons = [
-    { key: 'MONDAY', label: 'L' },
-    { key: 'TUESDAY', label: 'M' },
-    { key: 'WEDNESDAY', label: 'X' },
-    { key: 'THURSDAY', label: 'J' },
-    { key: 'FRIDAY', label: 'V' }
-  ];
-
-  // Initialize empty schedule
-  const initializeEmptySchedule = (): WeeklySchedule => {
-    const emptySchedule: WeeklySchedule = {
-      MONDAY: {},
-      TUESDAY: {},
-      WEDNESDAY: {},
-      THURSDAY: {},
-      FRIDAY: {}
-    };
-
-    days.forEach(day => {
-      timeSlots.forEach(timeSlot => {
-        const [hourStr, minuteStr] = timeSlot.split(':');
-        emptySchedule[day as keyof WeeklySchedule][timeSlot] = {
-          hour: parseInt(hourStr),
-          minute: parseInt(minuteStr),
-          time: timeSlot,
-          isSelected: false,
-          hasSchedule: false
-        };
-      });
-    });
-
-    return emptySchedule;
-  };
-
-  // Load existing schedules
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     try {
       setLoading(true);
-      const currentYear = new Date().getFullYear();
-      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, currentYear);
+      const year = new Date().getFullYear();
+      const schedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, year);
+      const newGrid = emptyGrid();
 
-      const newSchedule = initializeEmptySchedule();
+      schedules.forEach((sch: InterviewerSchedule) => {
+        if (!sch.dayOfWeek || !(DAYS as readonly string[]).includes(sch.dayOfWeek)) return;
+        if (sch.scheduleType !== 'RECURRING') return;
 
-      schedules.forEach((schedule: InterviewerSchedule) => {
-        const validDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
-        if (!schedule.dayOfWeek || !validDays.includes(schedule.dayOfWeek)) {
-          return;
-        }
-
-        if (schedule.dayOfWeek && schedule.scheduleType === 'RECURRING') {
-          const startTime = schedule.startTime.substring(0, 5);
-          const endTime = schedule.endTime.substring(0, 5);
-
-          timeSlots.forEach(slot => {
-            if (slot >= startTime && slot < endTime) {
-              if (newSchedule[schedule.dayOfWeek as keyof WeeklySchedule][slot]) {
-                newSchedule[schedule.dayOfWeek as keyof WeeklySchedule][slot] = {
-                  ...newSchedule[schedule.dayOfWeek as keyof WeeklySchedule][slot],
-                  hasSchedule: true,
-                  isSelected: false,
-                  scheduleId: schedule.id
-                };
-              }
-            }
-          });
-        }
+        const st = sch.startTime.substring(0, 5);
+        const et = sch.endTime.substring(0, 5);
+        TIME_SLOTS.forEach(slot => {
+          if (slot >= st && slot < et && newGrid[sch.dayOfWeek as DayKey][slot]) {
+            newGrid[sch.dayOfWeek as DayKey][slot] = {
+              state: 'saved',
+              scheduleId: sch.id,
+            };
+          }
+        });
       });
 
-      setSchedule(newSchedule);
-    } catch (error) {
-      console.error('Error loading schedules:', error);
+      setGrid(newGrid);
+    } catch (err) {
+      console.error('Error loading schedules:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     if (userId) {
       loadSchedules();
     } else {
-      setSchedule(initializeEmptySchedule());
+      setGrid(emptyGrid());
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, loadSchedules]);
 
-  // Format time for display
-  const formatTimeDisplay = (time: string): string => {
-    const [hourStr, minuteStr] = time.split(':');
-    const hour = parseInt(hourStr);
-    const minute = minuteStr;
+  // ── Actions ────────────────────────────────────────────────────────────────
 
-    if (hour === 12) return `12:${minute} PM`;
-    if (hour > 12) return `${hour - 12}:${minute} PM`;
-    return `${hour}:${minute} AM`;
-  };
-
-  // Toggle time slot selection
-  const toggleTimeSlot = (day: string, timeSlot: string) => {
-    setSchedule(prev => {
-      const newSchedule = JSON.parse(JSON.stringify(prev)) as WeeklySchedule;
-      const currentSlot = newSchedule[day as keyof WeeklySchedule][timeSlot];
-
-      if (!currentSlot) return prev;
-
-      if (currentSlot.hasSchedule) {
-        newSchedule[day as keyof WeeklySchedule][timeSlot] = {
-          ...currentSlot,
-          hasSchedule: false,
-          isSelected: false
-        };
-      } else {
-        newSchedule[day as keyof WeeklySchedule][timeSlot] = {
-          ...currentSlot,
-          isSelected: !currentSlot.isSelected
-        };
+  const toggleSlot = (day: DayKey, slot: string) => {
+    setGrid(prev => {
+      const next = JSON.parse(JSON.stringify(prev)) as WeekGrid;
+      const cur = next[day][slot];
+      switch (cur.state) {
+        case 'empty':
+          next[day][slot] = { state: 'added' };
+          break;
+        case 'saved':
+          next[day][slot] = { state: 'removed', scheduleId: cur.scheduleId };
+          break;
+        case 'added':
+          next[day][slot] = { state: 'empty' };
+          break;
+        case 'removed':
+          next[day][slot] = { state: 'saved', scheduleId: cur.scheduleId };
+          break;
       }
-
-      setHasChanges(true);
-      return newSchedule;
+      return next;
     });
   };
 
-  // Toggle day selection for quick config
-  const toggleDay = (day: string) => {
-    setSelectedDays(prev => ({
-      ...prev,
-      [day]: !prev[day as keyof typeof prev]
-    }));
+  const toggleDay = (day: DayKey) => {
+    setGrid(prev => {
+      const next = JSON.parse(JSON.stringify(prev)) as WeekGrid;
+      const hasEmpty = TIME_SLOTS.some(s => next[day][s].state === 'empty' || next[day][s].state === 'removed');
+      for (const slot of TIME_SLOTS) {
+        const cur = next[day][slot];
+        if (hasEmpty) {
+          if (cur.state === 'empty') next[day][slot] = { state: 'added' };
+          if (cur.state === 'removed') next[day][slot] = { state: 'saved', scheduleId: cur.scheduleId };
+        } else {
+          if (cur.state === 'saved') next[day][slot] = { state: 'removed', scheduleId: cur.scheduleId };
+          if (cur.state === 'added') next[day][slot] = { state: 'empty' };
+        }
+      }
+      return next;
+    });
   };
 
-  // Apply quick config
-  const applyQuickConfig = () => {
-    const activeDays = Object.keys(selectedDays).filter(day => selectedDays[day as keyof typeof selectedDays]);
-    
-    if (activeDays.length === 0) {
-      addNotification({
-        type: 'warning',
-        title: 'Configuración rápida',
-        message: 'Por favor selecciona al menos un día de la semana.'
-      });
-      return;
-    }
-
-    setSchedule(prev => {
-      const newSchedule = JSON.parse(JSON.stringify(prev)) as WeeklySchedule;
-
-      activeDays.forEach(day => {
-        timeSlots.forEach(slot => {
-          if (slot >= startTime && slot < endTime) {
-            if (newSchedule[day as keyof WeeklySchedule][slot]) {
-              newSchedule[day as keyof WeeklySchedule][slot] = {
-                ...newSchedule[day as keyof WeeklySchedule][slot],
-                isSelected: true
-              };
-            }
+  const toggleAll = () => {
+    setGrid(prev => {
+      const next = JSON.parse(JSON.stringify(prev)) as WeekGrid;
+      const hasEmpty = DAYS.some(d => TIME_SLOTS.some(s => next[d][s].state === 'empty' || next[d][s].state === 'removed'));
+      for (const day of DAYS) {
+        for (const slot of TIME_SLOTS) {
+          const cur = next[day][slot];
+          if (hasEmpty) {
+            if (cur.state === 'empty') next[day][slot] = { state: 'added' };
+            if (cur.state === 'removed') next[day][slot] = { state: 'saved', scheduleId: cur.scheduleId };
+          } else {
+            if (cur.state === 'saved') next[day][slot] = { state: 'removed', scheduleId: cur.scheduleId };
+            if (cur.state === 'added') next[day][slot] = { state: 'empty' };
           }
-        });
-      });
-
-      setHasChanges(true);
-      return newSchedule;
-    });
-  };
-
-  // Calculate summary
-  const getSummary = () => {
-    let totalBlocks = 0;
-    let activeDays = 0;
-
-    days.forEach(day => {
-      const daySchedule = schedule[day as keyof WeeklySchedule];
-      const selectedSlots = Object.entries(daySchedule)
-        .filter(([_, slot]) => slot.isSelected || slot.hasSchedule)
-        .map(([time, _]) => time);
-
-      if (selectedSlots.length > 0) {
-        activeDays++;
-        totalBlocks += selectedSlots.length;
+        }
       }
+      return next;
     });
-
-    const totalHours = totalBlocks;
-
-    return {
-      activeDays,
-      totalHours,
-      timeRange: activeDays > 0 ? `${formatTimeDisplay(startTime)} - ${formatTimeDisplay(endTime)}` : ''
-    };
   };
 
-  // Save schedules
-  const saveSchedules = async () => {
+  const discard = () => {
+    loadSchedules();
+  };
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+
+  const save = async () => {
     try {
       setSaving(true);
 
-      // Get all selected slots
-      const selectedSlots = new Set<string>();
-      for (const day of days) {
-        const daySchedule = schedule[day as keyof WeeklySchedule];
-        Object.entries(daySchedule).forEach(([time, slot]) => {
-          if (slot.isSelected || slot.hasSchedule) {
-            selectedSlots.add(`${day}-${time}`);
+      const toDelete = new Set<number>();
+      const toCreate: Array<{ day: string; time: string }> = [];
+
+      for (const day of DAYS) {
+        for (const slot of TIME_SLOTS) {
+          const info = grid[day][slot];
+          if (info.state === 'removed' && info.scheduleId) {
+            toDelete.add(info.scheduleId);
           }
-        });
+          if (info.state === 'added') {
+            toCreate.push({ day, time: slot });
+          }
+        }
       }
 
-      // Get existing schedules for diff calculation
-      const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, new Date().getFullYear());
-
-      // Build map of existing RECURRING slots in DB
-      const existingSlotsMap = new Map<string, number>();
-      existingSchedules.forEach((s: InterviewerSchedule) => {
-        if (s.dayOfWeek && s.scheduleType === 'RECURRING' && s.id) {
-          const st = s.startTime.substring(0, 5);
-          const et = s.endTime.substring(0, 5);
-          timeSlots.forEach(slot => {
-            if (slot >= st && slot < et) {
-              existingSlotsMap.set(`${s.dayOfWeek}-${slot}`, s.id!);
-            }
-          });
-        }
-      });
-
-      // Calculate diffs
-      const slotsToDelete = new Set<number>();
-      const slotsToCreate: Array<{ day: string; time: string }> = [];
-
-      existingSlotsMap.forEach((scheduleId, key) => {
-        if (!selectedSlots.has(key)) {
-          slotsToDelete.add(scheduleId);
-        }
-      });
-
-      selectedSlots.forEach(key => {
-        if (!existingSlotsMap.has(key)) {
-          const [day, time] = key.split('-');
-          slotsToCreate.push({ day, time });
-        }
-      });
-
-      // Delete removed schedules
-      for (const scheduleId of Array.from(slotsToDelete)) {
-        await interviewerScheduleService.deleteSchedule(scheduleId);
+      for (const id of Array.from(toDelete)) {
+        await interviewerScheduleService.deleteSchedule(id);
       }
 
-      // Create new schedules (60 min blocks)
-      for (const { day, time } of slotsToCreate) {
-        const [hour] = time.split(':').map(Number);
-        const nextHour = hour + 1;
-        const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
-
+      for (const { day, time } of toCreate) {
+        const hour = parseInt(time.split(':')[0]);
         await interviewerScheduleService.createSchedule({
-          interviewer: {
-            id: userId,
-            firstName: '',
-            lastName: '',
-            email: '',
-            role: userRole || 'PROFESSOR'
-          },
+          interviewer: { id: userId, firstName: '', lastName: '', email: '', role: userRole || 'PROFESSOR' },
           dayOfWeek: day,
           startTime: time,
-          endTime: endTime,
-          scheduleType: 'RECURRING' as const,
+          endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+          scheduleType: 'RECURRING',
           year: new Date().getFullYear(),
           isActive: true,
-          notes: 'Bloque de 60 minutos - Sistema de horarios'
+          notes: 'Bloque de 60 minutos',
         });
       }
 
-      // Reload schedules with loading indicator
-      setReloading(true);
       await loadSchedules();
-      setReloading(false);
-      
-      setHasChanges(false);
-
-      if (onScheduleChange) {
-        onScheduleChange();
-      }
+      onScheduleChange?.();
 
       addNotification({
         type: 'success',
         title: 'Horarios guardados',
-        message: `Se actualizaron los bloques de horario exitosamente (${slotsToCreate.length} creados, ${slotsToDelete.size} eliminados).`,
+        message: `${toCreate.length} creados, ${toDelete.size} eliminados.`,
       });
-
-    } catch (error) {
+    } catch {
       addNotification({
         type: 'error',
-        title: 'Error al guardar horarios',
-        message: 'No se pudieron guardar los horarios. Por favor, inténtalo nuevamente.',
+        title: 'Error al guardar',
+        message: 'No se pudieron guardar los horarios. Intenta nuevamente.',
       });
     } finally {
       setSaving(false);
     }
   };
 
-  // Cancel changes
-  const cancelChanges = () => {
-    loadSchedules();
-    setHasChanges(false);
+  // ── Slot visual ────────────────────────────────────────────────────────────
+
+  const slotClasses = (state: SlotState): string => {
+    const base = 'w-full h-10 rounded-md text-sm font-medium transition-all duration-100 ease-out cursor-pointer select-none flex items-center justify-center';
+    switch (state) {
+      case 'saved':
+        return `${base} bg-emerald-100 text-emerald-700 border-2 border-emerald-300 hover:bg-emerald-200`;
+      case 'added':
+        return `${base} bg-blue-100 text-blue-700 border-2 border-blue-300 hover:bg-blue-200 border-dashed`;
+      case 'removed':
+        return `${base} bg-red-50 text-red-400 border-2 border-red-300 hover:bg-red-100 line-through`;
+      default:
+        return `${base} bg-gray-50 text-gray-300 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200`;
+    }
   };
+
+  const slotLabel = (state: SlotState): string => {
+    switch (state) {
+      case 'saved': return '✓';
+      case 'added': return '+';
+      case 'removed': return '−';
+      default: return '';
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-12">
         <LoadingSpinner />
-        <span className="ml-2">Cargando horarios...</span>
+        <span className="ml-3 text-gray-500">Cargando horarios…</span>
       </div>
     );
   }
 
-  const summary = getSummary();
-
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white relative">
-      {/* Loading Overlay */}
-      {(saving || reloading) && (
-        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 rounded-lg">
-          <div className="flex flex-col items-center gap-4">
-            <LoadingSpinner size="lg" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-900">
-                {saving ? 'Guardando horarios...' : 'Actualizando vista...'}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                {saving ? 'Procesando tus cambios en paralelo' : 'Cargando datos actualizados'}
-              </p>
-            </div>
+    <div className="relative">
+      {/* Saving overlay */}
+      {saving && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex items-center justify-center z-50 rounded-xl">
+          <div className="flex flex-col items-center gap-3">
+            <LoadingSpinner />
+            <p className="text-sm font-medium text-gray-700">Guardando cambios…</p>
           </div>
         </div>
       )}
-      
-      {/* Header with copy button */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Disponibilidad para entrevistas</h1>
-          <p className="text-gray-600 mt-1">Define cuándo puedes recibir entrevistas durante la semana.</p>
-        </div>
-        <Button variant="outline" size="sm">
-          Copiar
-        </Button>
-      </div>
 
-      {/* Quick Configuration */}
+      {/* ── Header ── */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-4">Configuración rápida</h2>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Desde</label>
-            <select 
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {timeSlots.slice(0, -1).map(slot => (
-                <option key={slot} value={slot}>{formatTimeDisplay(slot)}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Hasta</label>
-            <select 
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {timeSlots.slice(1).map(slot => (
-                <option key={slot} value={slot}>{formatTimeDisplay(slot)}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-1">
-            {dayButtons.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => toggleDay(key)}
-                className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
-                  selectedDays[key as keyof typeof selectedDays]
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <Button onClick={applyQuickConfig}>
-            Aplicar a días seleccionados
-          </Button>
-        </div>
+        <h2 className="text-xl font-bold text-gray-900">Disponibilidad semanal</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Bloques de 1 hora · Lunes a viernes · 08:00 a 16:00
+        </p>
       </div>
 
-      {/* Summary */}
-      <div className="mb-6 p-4 bg-gray-50 rounded">
-        {summary.activeDays > 0 ? (
-          <p className="text-gray-700">
-            <strong className="capitalize">{dayLabels.MONDAY.toLowerCase()}</strong> a <strong className="capitalize">{dayLabels.FRIDAY.toLowerCase()}</strong> · {summary.timeRange} · {summary.totalHours} horas semanales
-          </p>
-        ) : (
-          <p className="text-gray-500">Sin disponibilidad configurada</p>
+      {/* ── Summary chips ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          {stats.activeBlocks} {stats.activeBlocks === 1 ? 'bloque' : 'bloques'} · {stats.totalHours}h semanales
+        </span>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+          {stats.activeDays} de 5 días activos
+        </span>
+        {hasChanges && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            Cambios sin guardar
+          </span>
         )}
       </div>
 
-      {/* Weekly Schedule Table */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-4">Agenda semanal</h2>
-        <div className="border border-gray-300 rounded overflow-hidden">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-700">Hora</th>
-                {days.map(day => (
-                  <th key={day} className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
-                    {dayLabels[day as keyof typeof dayLabels]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {timeSlots.map(timeSlot => (
-                <tr key={timeSlot}>
-                  <td className="border border-gray-300 px-4 py-2 text-sm text-gray-700">
-                    {formatTimeDisplay(timeSlot)}
-                  </td>
-                  {days.map(day => {
-                    const slot = schedule[day as keyof WeeklySchedule][timeSlot];
-                    const isSelected = slot?.isSelected;
-                    const hasSchedule = slot?.hasSchedule;
+      {/* ── Quick actions ── */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        <button
+          type="button"
+          onClick={toggleAll}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          {countSlots(grid, s => s === 'empty' || s === 'removed') > 0
+            ? 'Seleccionar todo'
+            : 'Limpiar todo'}
+        </button>
+      </div>
 
-                    return (
-                      <td key={`${day}-${timeSlot}`} className="border border-gray-300 px-4 py-2 text-center">
-                        <button
-                          onClick={() => toggleTimeSlot(day, timeSlot)}
-                          className={`w-full h-6 flex items-center justify-center text-sm ${
-                            hasSchedule || isSelected
-                              ? 'text-green-600 font-medium'
-                              : 'text-gray-400'
-                          } hover:bg-gray-50 transition-colors`}
-                        >
-                          {hasSchedule || isSelected ? '✓' : '-'}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ── Grid ── */}
+      <div className="overflow-x-auto">
+        <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: 'auto repeat(5, minmax(72px, 1fr))' }}>
+
+          {/* Header row */}
+          <div className="w-20" /> {/* empty corner */}
+          {DAYS.map(day => {
+            const dayActive = stats.dayBlocks[day] > 0;
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleDay(day)}
+                className={`text-center py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer select-none ${
+                  dayActive
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+                title={`Click para ${dayActive ? 'limpiar' : 'llenar'} ${DAY_LABELS[day]}`}
+              >
+                <span className="hidden sm:inline">{DAY_LABELS[day]}</span>
+                <span className="sm:hidden">{DAY_SHORT[day]}</span>
+              </button>
+            );
+          })}
+
+          {/* Time rows */}
+          {TIME_SLOTS.map(slot => (
+            <React.Fragment key={slot}>
+              {/* Time label */}
+              <div className="w-20 flex items-center justify-end pr-3">
+                <span className="text-xs font-medium text-gray-400 tabular-nums leading-none">
+                  {formatHour(slot)}
+                  <span className="text-[10px] text-gray-300 block">
+                    {endHourLabel(slot)}
+                  </span>
+                </span>
+              </div>
+
+              {/* Day cells */}
+              {DAYS.map(day => {
+                const info = grid[day][slot];
+                return (
+                  <button
+                    key={`${day}-${slot}`}
+                    type="button"
+                    onClick={() => toggleSlot(day, slot)}
+                    className={slotClasses(info.state)}
+                    aria-label={`${DAY_LABELS[day]} ${formatHour(slot)} - ${info.state === 'saved' ? 'Guardado' : info.state === 'added' ? 'Nuevo' : info.state === 'removed' ? 'Eliminado' : 'Vacío'}`}
+                  >
+                    {slotLabel(info.state)}
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* ── Legend ── */}
+      <div className="flex flex-wrap items-center gap-4 mt-4 text-xs text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-emerald-100 border-2 border-emerald-300" />
+          Guardado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-blue-100 border-2 border-blue-300 border-dashed" />
+          Nuevo
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-red-50 border-2 border-red-300" />
+          A eliminar
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-gray-50 border-2 border-transparent" />
+          Vacío
+        </span>
+      </div>
+
+      {/* ── Sticky action bar ── */}
       {hasChanges && (
-        <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded">
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-800 font-medium">Cambios sin guardar</span>
-            {saving && (
-              <div className="flex items-center gap-2">
-                <LoadingSpinner size="sm" />
-                <span className="text-yellow-600 text-sm">Procesando...</span>
-              </div>
+        <div className="sticky bottom-0 mt-6 -mx-6 px-6 py-4 bg-white/95 backdrop-blur border-t border-gray-200 flex items-center justify-between gap-4 z-40">
+          <p className="text-sm text-gray-600">
+            {countSlots(grid, s => s === 'added')} {countSlots(grid, s => s === 'added') === 1 ? 'bloque nuevo' : 'bloques nuevos'}
+            {countSlots(grid, s => s === 'removed') > 0 && (
+              <> · {countSlots(grid, s => s === 'removed')} a eliminar</>
             )}
-            {reloading && (
-              <div className="flex items-center gap-2">
-                <LoadingSpinner size="sm" />
-                <span className="text-yellow-600 text-sm">Actualizando vista...</span>
-              </div>
-            )}
-          </div>
+          </p>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={cancelChanges} disabled={saving || reloading}>
-              Cancelar
+            <Button variant="ghost" size="sm" onClick={discard} disabled={saving}>
+              Descartar
             </Button>
-            <Button onClick={saveSchedules} disabled={saving || reloading}>
-              {saving ? 'Guardando...' : reloading ? 'Actualizando...' : 'Guardar cambios'}
+            <Button variant="primary" size="sm" onClick={save} isLoading={saving} loadingText="Guardando…">
+              Guardar cambios
             </Button>
           </div>
         </div>

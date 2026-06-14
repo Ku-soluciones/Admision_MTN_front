@@ -26,11 +26,7 @@ const generateTimeSlots = (): string[] => {
 const timeSlots = generateTimeSlots();
 
 const formatTimeDisplay = (time: string): string => {
-  const [hourStr, minuteStr] = time.split(':');
-  const hour = parseInt(hourStr);
-  if (hour === 12) return `12:${minuteStr} PM`;
-  if (hour > 12) return `${hour - 12}:${minuteStr} PM`;
-  return `${hour}:${minuteStr} AM`;
+  return time; // 24h format (Chile)
 };
 
 /**
