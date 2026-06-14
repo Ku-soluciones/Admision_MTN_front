@@ -401,6 +401,86 @@ const ProfessorDashboard: React.FC = () => {
                     </div>
                 )}
             </Card>
+
+            {/* Próximas Entrevistas — mini widget en dashboard */}
+            {currentProfessor?.role !== 'TEACHER' && (() => {
+                const upcoming = interviews
+                    .filter(i => i.status === InterviewStatus.SCHEDULED || i.status === InterviewStatus.CONFIRMED)
+                    .sort((a, b) => new Date(`${a.scheduledDate}T${a.scheduledTime}`).getTime() - new Date(`${b.scheduledDate}T${b.scheduledTime}`).getTime())
+                    .slice(0, 4);
+
+                return (
+                    <Card className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-azul-monte-tabor flex items-center gap-2">
+                                <FiCalendar className="w-5 h-5" />
+                                Próximas Entrevistas
+                            </h2>
+                            <div className="flex gap-2">
+                                {upcoming.length > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setActiveSection('entrevistas')}
+                                    >
+                                        Ver todas
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setActiveSection('horarios')}
+                                    className="flex items-center gap-1"
+                                >
+                                    <ClockIcon className="w-3.5 h-3.5" />
+                                    Horarios
+                                </Button>
+                            </div>
+                        </div>
+                        {upcoming.length === 0 ? (
+                            <div className="text-center py-6 bg-gray-50 rounded-lg">
+                                <FiCalendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                <p className="text-sm text-gris-piedra">No hay entrevistas programadas próximamente</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {upcoming.map(interview => {
+                                    const [y, m, d] = interview.scheduledDate.split('-');
+                                    const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                                    const isToday = new Date().toDateString() === date.toDateString();
+                                    return (
+                                        <div
+                                            key={interview.id}
+                                            className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                                                isToday
+                                                    ? 'bg-blue-50 border-blue-200'
+                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            <div className={`flex-shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center leading-none ${
+                                                isToday ? 'bg-azul-monte-tabor text-white' : 'bg-white border border-gray-200 text-gray-700'
+                                            }`}>
+                                                <span className="text-[10px] uppercase font-medium">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                                                <span className="text-base font-bold">{d}</span>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-sm text-azul-monte-tabor truncate">{interview.studentName}</p>
+                                                <p className="text-xs text-gris-piedra mt-0.5">
+                                                    {interview.scheduledTime} · {interview.duration} min
+                                                    {isToday && <span className="ml-1 text-blue-600 font-medium">· Hoy</span>}
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                    {INTERVIEW_TYPE_LABELS[interview.type as InterviewType] || interview.type}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </Card>
+                );
+            })()}
         </div>
     );
 
@@ -667,19 +747,33 @@ const ProfessorDashboard: React.FC = () => {
                             <FiCalendar className="mr-2" />
                             💬 Mis Entrevistas e Informes
                         </h2>
-                        {/* Botón de recarga manual */}
-                        <Button
-                            onClick={() => {
-                                setRefreshKey(prev => prev + 1);
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2"
-                            disabled={isLoading}
-                        >
-                            <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                            Actualizar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {/* Acceso rápido a horarios */}
+                            {currentProfessor?.role !== 'TEACHER' && (
+                                <Button
+                                    onClick={() => setActiveSection('horarios')}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2"
+                                >
+                                    <ClockIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Gestionar Horarios</span>
+                                </Button>
+                            )}
+                            {/* Botón de recarga manual */}
+                            <Button
+                                onClick={() => {
+                                    setRefreshKey(prev => prev + 1);
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-2"
+                                disabled={isLoading}
+                            >
+                                <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline">Actualizar</span>
+                            </Button>
+                        </div>
                     </div>
 
                     {isLoading ? (
@@ -941,7 +1035,12 @@ const ProfessorDashboard: React.FC = () => {
                                                             Tipo: {INTERVIEW_TYPE_LABELS[interview.type as InterviewType] || interview.type}
                                                         </p>
                                                         <div className="text-xs text-gray-600 mt-1">
-                                                            Realizada el {new Date(interview.scheduledDate).toLocaleDateString('es-CL')} a las {interview.scheduledTime}
+                                                            Realizada el {(() => {
+                                                                const [y, m, d] = interview.scheduledDate.split('-');
+                                                                return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).toLocaleDateString('es-CL', {
+                                                                    day: 'numeric', month: 'long', year: 'numeric'
+                                                                });
+                                                            })()} a las {interview.scheduledTime}
                                                         </div>
                                                         {interview.secondInterviewerName && (
                                                             <div className="text-xs text-gray-600">Con: {interview.secondInterviewerName}</div>
@@ -1471,12 +1570,64 @@ const ProfessorDashboard: React.FC = () => {
                 return renderEstudiantes();
             case 'horarios':
                 return currentProfessor ? (
-                    <SimpleAvailabilityCalendar
-                        userId={currentProfessor.id}
-                        userRole={currentProfessor.role}
-                        onScheduleChange={() => {
-                        }}
-                    />
+                    <div className="space-y-6">
+                        {/* Próximas entrevistas — contexto para gestionar horarios */}
+                        {(() => {
+                            const upcoming = interviews
+                                .filter(i => i.status === InterviewStatus.SCHEDULED || i.status === InterviewStatus.CONFIRMED)
+                                .sort((a, b) => {
+                                    const dA = new Date(`${a.scheduledDate}T${a.scheduledTime}`);
+                                    const dB = new Date(`${b.scheduledDate}T${b.scheduledTime}`);
+                                    return dA.getTime() - dB.getTime();
+                                })
+                                .slice(0, 3);
+
+                            if (upcoming.length === 0) return null;
+
+                            return (
+                                <Card className="p-4 bg-blue-50 border-blue-200">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <FiCalendar className="w-4 h-4 text-azul-monte-tabor" />
+                                        <h3 className="text-sm font-semibold text-azul-monte-tabor">
+                                            Próximas entrevistas ({upcoming.length})
+                                        </h3>
+                                        <span className="text-xs text-gray-500 ml-auto">
+                                            Estos bloques ya están ocupados
+                                        </span>
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        {upcoming.map(interview => {
+                                            const [year, month, day] = interview.scheduledDate.split('-');
+                                            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                            return (
+                                                <div key={interview.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-blue-100 text-xs">
+                                                    <div className="flex-shrink-0 w-8 h-8 rounded bg-azul-monte-tabor text-white flex flex-col items-center justify-center leading-none">
+                                                        <span className="text-[10px] uppercase">{date.toLocaleDateString('es-CL', { month: 'short' })}</span>
+                                                        <span className="text-sm font-bold">{day}</span>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium text-gray-800 truncate">{interview.studentName}</p>
+                                                        <p className="text-gray-500">{interview.scheduledTime} · {interview.duration} min</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </Card>
+                            );
+                        })()}
+
+                        {/* Calendario de disponibilidad */}
+                        <Card className="p-6">
+                            <SimpleAvailabilityCalendar
+                                userId={currentProfessor.id}
+                                userRole={currentProfessor.role}
+                                onScheduleChange={() => {
+                                    setRefreshKey(prev => prev + 1);
+                                }}
+                            />
+                        </Card>
+                    </div>
                 ) : (
                     <Card className="p-6">
                         <p className="text-gris-piedra">No se pudo cargar la información del profesor</p>

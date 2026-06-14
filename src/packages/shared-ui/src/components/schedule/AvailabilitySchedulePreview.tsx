@@ -6,32 +6,38 @@ interface AvailabilitySchedulePreviewProps {
   userId: number;
 }
 
-const DAYS: Array<keyof typeof DAY_LABELS> = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
-const DAY_LABELS = {
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as const;
+type DayKey = typeof DAYS[number];
+
+const DAY_LABELS: Record<DayKey, string> = {
   MONDAY: 'Lun',
   TUESDAY: 'Mar',
   WEDNESDAY: 'Mié',
   THURSDAY: 'Jue',
-  FRIDAY: 'Vie'
-} as const;
-
-const generateTimeSlots = (): string[] => {
-  const slots: string[] = [];
-  for (let hour = 8; hour < 16; hour++) {
-    slots.push(`${hour.toString().padStart(2, '0')}:00`);
-  }
-  return slots;
+  FRIDAY: 'Vie',
 };
 
-const timeSlots = generateTimeSlots();
+const TIME_SLOTS = Array.from({ length: 8 }, (_, i) => {
+  const hour = 8 + i;
+  return `${hour.toString().padStart(2, '0')}:00`;
+});
 
-const formatTimeDisplay = (time: string): string => {
-  return time; // 24h format (Chile)
+/** Index where afternoon starts (12:00) */
+const AFTERNOON_INDEX = 4;
+
+const formatHour = (time: string): string => {
+  const hour = parseInt(time.split(':')[0]);
+  return `${hour}:00`;
+};
+
+const endHour = (time: string): string => {
+  const hour = parseInt(time.split(':')[0]) + 1;
+  return `${hour}:00`;
 };
 
 /**
  * Vista de solo lectura de los horarios de disponibilidad del usuario.
- * Pensada para incrustarse en el modal de edición sin permitir cambios.
+ * Diseño visual alineado con SimpleAvailabilityCalendar (editor).
  */
 const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
@@ -41,7 +47,7 @@ const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = 
     TUESDAY: new Set(),
     WEDNESDAY: new Set(),
     THURSDAY: new Set(),
-    FRIDAY: new Set()
+    FRIDAY: new Set(),
   });
 
   useEffect(() => {
@@ -62,15 +68,15 @@ const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = 
           TUESDAY: new Set(),
           WEDNESDAY: new Set(),
           THURSDAY: new Set(),
-          FRIDAY: new Set()
+          FRIDAY: new Set(),
         };
 
         schedules.forEach((s: InterviewerSchedule) => {
           if (!s.dayOfWeek || s.scheduleType !== 'RECURRING') return;
-          if (!DAYS.includes(s.dayOfWeek as any)) return;
+          if (!(DAYS as readonly string[]).includes(s.dayOfWeek)) return;
           const start = s.startTime.substring(0, 5);
           const end = s.endTime.substring(0, 5);
-          timeSlots.forEach(slot => {
+          TIME_SLOTS.forEach(slot => {
             if (slot >= start && slot < end) {
               next[s.dayOfWeek as string].add(slot);
             }
@@ -78,7 +84,7 @@ const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = 
         });
 
         if (!cancelled) setSchedule(next);
-      } catch (e) {
+      } catch {
         if (!cancelled) setError('No se pudieron cargar los horarios');
       } finally {
         if (!cancelled) setLoading(false);
@@ -94,13 +100,20 @@ const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = 
     return (
       <div className="flex items-center justify-center py-6">
         <LoadingSpinner size="sm" />
-        <span className="ml-2 text-sm text-gray-600">Cargando horarios...</span>
+        <span className="ml-2 text-sm text-gray-500">Cargando horarios…</span>
       </div>
     );
   }
 
   if (error) {
-    return <p className="text-sm text-red-600">{error}</p>;
+    return (
+      <div className="flex items-center gap-2 py-4 px-3 bg-red-50 rounded-lg text-sm text-red-600">
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        {error}
+      </div>
+    );
   }
 
   const totalBlocks = DAYS.reduce((acc, d) => acc + schedule[d].size, 0);
@@ -108,60 +121,94 @@ const AvailabilitySchedulePreview: React.FC<AvailabilitySchedulePreviewProps> = 
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3 text-xs text-gray-600">
-        <span>
-          <strong className="text-gray-900">{activeDays}</strong> día(s) activo(s)
-          {' · '}
-          <strong className="text-gray-900">{totalBlocks}</strong> bloque(s) de 60 min
-        </span>
-        <span className="text-gray-400">Solo lectura</span>
+      {/* ── Summary ── */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {totalBlocks} {totalBlocks === 1 ? 'bloque' : 'bloques'} · {totalBlocks}h
+          </span>
+          <span className="text-xs text-gray-400">{activeDays}/5 días</span>
+        </div>
+        <span className="text-[10px] uppercase tracking-wider text-gray-300 font-medium">Solo lectura</span>
       </div>
 
-      <div className="border border-gray-200 rounded overflow-hidden">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="border border-gray-200 px-2 py-1 text-left font-medium text-gray-600">Hora</th>
-              {DAYS.map(day => (
-                <th key={day} className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-600">
-                  {DAY_LABELS[day]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {timeSlots.map(slot => (
-              <tr key={slot}>
-                <td className="border border-gray-200 px-2 py-1 text-gray-600 whitespace-nowrap">
-                  {formatTimeDisplay(slot)}
-                </td>
-                {DAYS.map(day => {
-                  const has = schedule[day].has(slot);
-                  return (
-                    <td
-                      key={`${day}-${slot}`}
-                      className={`border border-gray-200 px-2 py-1 text-center ${
-                        has ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-300'
-                      }`}
-                    >
-                      {has ? '✓' : '·'}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* ── Mini grid ── */}
+      <div
+        className="inline-grid gap-1 w-full"
+        style={{ gridTemplateColumns: 'minmax(40px, auto) repeat(5, 1fr)' }}
+      >
+        {/* Header */}
+        <div />
+        {DAYS.map(day => {
+          const dayActive = schedule[day].size > 0;
+          return (
+            <div
+              key={day}
+              className={`text-center py-1.5 rounded text-xs font-semibold ${
+                dayActive ? 'text-emerald-600 bg-emerald-50' : 'text-gray-400'
+              }`}
+            >
+              {DAY_LABELS[day]}
+            </div>
+          );
+        })}
+
+        {/* Slots */}
+        {TIME_SLOTS.map((slot, idx) => (
+          <React.Fragment key={slot}>
+            {/* Afternoon separator */}
+            {idx === AFTERNOON_INDEX && (
+              <div className="col-span-6 flex items-center gap-1.5 py-0.5">
+                <div className="h-px flex-1 bg-gray-100" />
+                <span className="text-[9px] uppercase tracking-widest text-gray-300">PM</span>
+                <div className="h-px flex-1 bg-gray-100" />
+              </div>
+            )}
+
+            {/* Time label */}
+            <div className="flex items-center justify-end pr-1.5">
+              <span className="text-[10px] font-medium text-gray-400 tabular-nums">{formatHour(slot)}</span>
+            </div>
+
+            {/* Day cells */}
+            {DAYS.map(day => {
+              const has = schedule[day].has(slot);
+              return (
+                <div
+                  key={`${day}-${slot}`}
+                  className={`h-8 rounded flex items-center justify-center text-[10px] font-medium transition-colors ${
+                    has
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                      : 'bg-gray-50/50 text-gray-200 border border-transparent'
+                  }`}
+                  title={has ? `${DAY_LABELS[day]} ${formatHour(slot)}–${endHour(slot)}` : undefined}
+                >
+                  {has ? (
+                    <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="w-1 h-1 rounded-full bg-gray-200" />
+                  )}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
       </div>
 
+      {/* ── Empty state ── */}
       {totalBlocks === 0 && (
-        <p className="mt-3 text-sm text-gray-500 italic">
-          Este usuario aún no ha configurado horarios. Usa "Gestionar Horarios" para definirlos.
-        </p>
+        <div className="mt-3 flex items-center gap-2 py-3 px-4 bg-gray-50 rounded-lg text-sm text-gray-500">
+          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          Sin horarios configurados. Usa "Gestionar Horarios" para definirlos.
+        </div>
       )}
     </div>
   );
 };
 
 export default AvailabilitySchedulePreview;
-
