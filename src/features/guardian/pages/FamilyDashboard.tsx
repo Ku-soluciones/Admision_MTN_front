@@ -207,6 +207,13 @@ const FamilyDashboard: React.FC = () => {
         mother: firstApplication.mother,
         guardian: firstApplication.guardian,
         supporter: firstApplication.supporter,
+        residence: {
+          address: firstApplication.student?.address || '',
+          pais: firstApplication.student?.pais || 'Chile',
+          region: firstApplication.student?.region || '',
+          comuna: firstApplication.student?.comuna || '',
+        },
+        admissionPreference: firstApplication.student?.admissionPreference || '',
       },
     };
   };

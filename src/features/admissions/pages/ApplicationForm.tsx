@@ -190,8 +190,8 @@ const ApplicationForm: React.FC = () => {
         'firstName', 'paternalLastName', 'maternalLastName', 'studentAddress', 'currentSchool', 'additionalNotes',
         'parent1Name', 'parent1Address',
         'parent2Name', 'parent2Address',
-        'supporterName', 'supporterRelation',
-        'guardianName', 'guardianRelation'
+        'supporterName',
+        'guardianName'
     ];
 
     // Helper function to update fields
@@ -517,18 +517,30 @@ const ApplicationForm: React.FC = () => {
                 // Extract family address (prefer father's, then mother's)
                 const familyAddress = familyData.father?.address || familyData.mother?.address || '';
 
+                // Extract residence data from previous application
+                const residence = familyData.residence || {};
+
                 // Calculate application year (current year + 1)
                 const currentYear = new Date().getFullYear();
                 const nextYear = currentYear + 1;
 
                 // Pre-llenar datos familiares (padres, apoderado, sostenedor)
                 // Y también pre-llenar la dirección del estudiante (típicamente la misma que la familia)
+                // Y datos de residencia geográfica de la postulación anterior
                 setData({
                     // Application year (always next year)
                     applicationYear: nextYear.toString(),
 
                     // Student address (pre-filled with family address)
-                    studentAddress: familyAddress,
+                    studentAddress: residence.address || familyAddress,
+
+                    // Residence geographic data (pre-filled from previous application)
+                    pais: residence.pais || 'Chile',
+                    region: residence.region || '',
+                    comuna: residence.comuna || '',
+
+                    // Admission preference (pre-filled from previous application, editable)
+                    admissionPreference: familyData.admissionPreference || '',
 
                     // Father data (parent1)
                     parent1Name: familyData.father?.fullName || '',
@@ -549,14 +561,14 @@ const ApplicationForm: React.FC = () => {
                     supporterEmail: familyData.supporter?.email || '',
                     supporterPhone: familyData.supporter?.phone || '',
                     supporterRut: familyData.supporter?.rut || '',
-                    supporterRelation: familyData.supporter?.relationship || '',
+                    supporterRelation: (familyData.supporter?.relationship || '').toLowerCase(),
 
                     // Guardian data
                     guardianName: familyData.guardian?.fullName || '',
                     guardianEmail: familyData.guardian?.email || '',
                     guardianPhone: familyData.guardian?.phone || '',
                     guardianRut: familyData.guardian?.rut || '',
-                    guardianRelation: familyData.guardian?.relationship || ''
+                    guardianRelation: (familyData.guardian?.relationship || '').toLowerCase()
                 });
 
                 return; // Exit early - no need to check edit mode
@@ -618,14 +630,14 @@ const ApplicationForm: React.FC = () => {
                     supporterEmail: appData.supporter?.email || '',
                     supporterPhone: appData.supporter?.phone || '',
                     supporterRut: appData.supporter?.rut || '',
-                    supporterRelation: appData.supporter?.relationship || '',
+                    supporterRelation: (appData.supporter?.relationship || '').toLowerCase(),
 
                     // Guardian data
                     guardianName: appData.guardian?.fullName || '',
                     guardianEmail: appData.guardian?.email || '',
                     guardianPhone: appData.guardian?.phone || '',
                     guardianRut: appData.guardian?.rut || '',
-                    guardianRelation: appData.guardian?.relationship || ''
+                    guardianRelation: (appData.guardian?.relationship || '').toLowerCase()
                 });
 
 
@@ -2202,7 +2214,6 @@ const ApplicationForm: React.FC = () => {
                             id="supporter-relation"
                             label="Parentesco con el postulante"
                             options={[
-                                { value: '', label: 'Seleccione...' },
                                 { value: 'padre', label: 'Padre' },
                                 { value: 'madre', label: 'Madre' },
                                 { value: 'abuelo', label: 'Abuelo/a' },
@@ -2291,7 +2302,6 @@ const ApplicationForm: React.FC = () => {
                             id="guardian-relation"
                             label="Parentesco con el postulante"
                             options={[
-                                { value: '', label: 'Seleccione...' },
                                 { value: 'padre', label: 'Padre' },
                                 { value: 'madre', label: 'Madre' },
                                 { value: 'abuelo', label: 'Abuelo/a' },

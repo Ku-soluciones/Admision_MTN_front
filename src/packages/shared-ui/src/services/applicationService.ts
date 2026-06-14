@@ -73,6 +73,10 @@ export interface Application {
         gradeApplied?: string;
         currentSchool?: string;
         additionalNotes?: string;
+        pais?: string;
+        region?: string;
+        comuna?: string;
+        admissionPreference?: string;
         // Campos de categorías especiales
         gender?: string;
         isEmployeeChild?: boolean;
