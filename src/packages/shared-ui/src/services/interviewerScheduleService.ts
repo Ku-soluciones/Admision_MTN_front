@@ -212,7 +212,7 @@ export class InterviewerScheduleService {
                 id: interviewer.id,
                 firstName: interviewer.name.split(' ')[0] || '',
                 lastName: interviewer.name.split(' ').slice(1).join(' ') || '',
-                email: `${interviewer.name.toLowerCase().replace(/\s+/g, '.')}@mtn.cl`, // Generate email for display
+                email: interviewer.email || '',
                 role: interviewer.role,
                 educationalLevel: interviewer.educationalLevel,
                 subject: interviewer.subject
@@ -402,23 +402,17 @@ export const getDayOfWeekOptions = () => [
 
 export const getScheduleTypeOptions = () => [
     { value: 'RECURRING', label: 'Horario Recurrente' },
-    { value: 'SPECIFIC_DATE', label: 'Fecha Específica' },
-    { value: 'EXCEPTION', label: 'Excepción (No disponible)' }
+    { value: 'SPECIFIC_DATE', label: 'Fecha Específica' }
 ];
 
 export const getTimeSlotOptions = () => {
     const slots = [];
-    // Generate 18 slots from 08:00 to 17:00 (every 30 minutes)
-    for (let hour = 8; hour <= 17; hour++) {
-        for (let minute of [0, 30]) {
-            // Skip 17:30 to end exactly at 17:00
-            if (hour === 17 && minute === 30) break;
-
-            const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-            const displayTime = `${hour}:${minute === 0 ? '00' : '30'}`;
-            slots.push({ value: time, label: displayTime });
-        }
+    // Generate 8 slots from 08:00 to 15:00 (every 60 minutes)
+    for (let hour = 8; hour < 16; hour++) {
+        const time = `${hour.toString().padStart(2, '0')}:00`;
+        const displayTime = `${hour}:00`;
+        slots.push({ value: time, label: displayTime });
     }
-    // Should return exactly 18 slots: 08:00, 08:30, 09:00, ..., 16:30, 17:00
+    // Should return exactly 8 slots: 08:00, 09:00, ..., 15:00
     return slots;
 };

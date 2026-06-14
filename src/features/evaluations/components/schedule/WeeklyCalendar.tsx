@@ -50,19 +50,16 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   const { addNotification } = useNotifications();
 
-  // Generar slots de 30 minutos desde 8:00 AM hasta 4:30 PM
+  // Generar slots de 60 minutos desde 8:00 AM hasta 3:00 PM
   const generateTimeSlots = (): string[] => {
     const slots: string[] = [];
-    for (let hour = 8; hour <= 16; hour++) {
+    for (let hour = 8; hour < 16; hour++) {
       slots.push(`${hour.toString().padStart(2, '0')}:00`);
-      if (hour < 16) { // No agregar 16:30 si solo queremos hasta 16:00
-        slots.push(`${hour.toString().padStart(2, '0')}:30`);
-      }
     }
     return slots;
   };
 
-  const timeSlots = generateTimeSlots(); // ["08:00", "08:30", ..., "16:00", "16:30"]
+  const timeSlots = generateTimeSlots(); // ["08:00", "09:00", ..., "15:00"]
   const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
   const dayLabels = {
     MONDAY: 'Lunes',
@@ -206,7 +203,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
 
       // 1. Cargar horarios actuales de la BD
-      const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, 2025);
+      const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, new Date().getFullYear());
 
       // 2. Construir conjunto de slots seleccionados en pantalla
       // IMPORTANTE: Incluir tanto los nuevos (isSelected) como los existentes (hasSchedule)
@@ -261,7 +258,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       // 5. Ejecutar solo los cambios necesarios
 
       // Eliminar horarios desmarcados
-      for (const scheduleId of slotsToDelete) {
+      for (const scheduleId of Array.from(slotsToDelete)) {
         await interviewerScheduleService.deleteSchedule(scheduleId);
       }
 
@@ -277,25 +274,24 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         // Ordenar tiempos
         times.sort();
 
-        // Crear UN registro por cada bloque de 30 minutos
+        // Crear UN registro por cada bloque de 60 minutos
         for (const slot of times) {
-          const [hour, minute] = slot.split(':').map(Number);
+          const [hour] = slot.split(':').map(Number);
 
-          // Calcular el fin del bloque (siempre +30 minutos)
-          const nextMinute = minute === 0 ? 30 : 0;
-          const nextHour = minute === 30 ? hour + 1 : hour;
-          const endTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
+          // Calcular el fin del bloque (siempre +60 minutos)
+          const nextHour = hour + 1;
+          const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
 
 
           const scheduleData = {
-            interviewer: { id: userId },
+            interviewer: { id: userId, firstName: '', lastName: '', email: '', role: userRole || 'PROFESSOR' },
             dayOfWeek: day,
             startTime: slot,
-            endTime: endTime,  // Siempre +30 minutos
+            endTime: endTime,  // Siempre +60 minutos
             scheduleType: 'RECURRING' as const,
-            year: 2025,
+            year: new Date().getFullYear(),
             isActive: true,
-            notes: 'Bloque de 30 minutos - Sistema de horarios'
+            notes: 'Bloque de 60 minutos - Sistema de horarios'
           };
 
           await interviewerScheduleService.createSchedule(scheduleData);
@@ -350,7 +346,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
             Horarios Disponibles para Entrevistas
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Haz click en las casillas para marcar tus horarios disponibles (8:00 AM - 4:30 PM, intervalos de 30 min)
+            Haz click en las casillas para marcar tus horarios disponibles (8:00 AM - 4:00 PM, intervalos de 60 min)
           </p>
         </div>
 

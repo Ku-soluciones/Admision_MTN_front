@@ -262,7 +262,7 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
       }
     });
 
-    const totalHours = (totalBlocks * 0.5);
+    const totalHours = totalBlocks;
 
     return {
       activeDays,
@@ -287,35 +287,53 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
         });
       }
 
-      // Get existing schedules and delete ALL of them first
+      // Get existing schedules for diff calculation
       const existingSchedules = await interviewerScheduleService.getInterviewerSchedulesByYear(userId, new Date().getFullYear());
-      const existingScheduleIds = new Set<number>();
-      
-      existingSchedules.forEach((schedule: InterviewerSchedule) => {
-        if (schedule.id) {
-          existingScheduleIds.add(schedule.id);
+
+      // Build map of existing RECURRING slots in DB
+      const existingSlotsMap = new Map<string, number>();
+      existingSchedules.forEach((s: InterviewerSchedule) => {
+        if (s.dayOfWeek && s.scheduleType === 'RECURRING' && s.id) {
+          const st = s.startTime.substring(0, 5);
+          const et = s.endTime.substring(0, 5);
+          timeSlots.forEach(slot => {
+            if (slot >= st && slot < et) {
+              existingSlotsMap.set(`${s.dayOfWeek}-${slot}`, s.id!);
+            }
+          });
         }
       });
 
-      // Delete all existing schedules in parallel
-      if (existingScheduleIds.size > 0) {
-        await Promise.all(
-          Array.from(existingScheduleIds).map(scheduleId => 
-            interviewerScheduleService.deleteSchedule(scheduleId)
-          )
-        );
+      // Calculate diffs
+      const slotsToDelete = new Set<number>();
+      const slotsToCreate: Array<{ day: string; time: string }> = [];
+
+      existingSlotsMap.forEach((scheduleId, key) => {
+        if (!selectedSlots.has(key)) {
+          slotsToDelete.add(scheduleId);
+        }
+      });
+
+      selectedSlots.forEach(key => {
+        if (!existingSlotsMap.has(key)) {
+          const [day, time] = key.split('-');
+          slotsToCreate.push({ day, time });
+        }
+      });
+
+      // Delete removed schedules
+      for (const scheduleId of Array.from(slotsToDelete)) {
+        await interviewerScheduleService.deleteSchedule(scheduleId);
       }
 
-      // Prepare new schedules for creation
-      const newSchedules: Array<InterviewerSchedule> = [];
-      selectedSlots.forEach(key => {
-        const [day, time] = key.split('-');
+      // Create new schedules (60 min blocks)
+      for (const { day, time } of slotsToCreate) {
         const [hour] = time.split(':').map(Number);
         const nextHour = hour + 1;
         const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
 
-        newSchedules.push({
-          interviewer: { 
+        await interviewerScheduleService.createSchedule({
+          interviewer: {
             id: userId,
             firstName: '',
             lastName: '',
@@ -330,15 +348,6 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
           isActive: true,
           notes: 'Bloque de 60 minutos - Sistema de horarios'
         });
-      });
-
-      // Create all new schedules in parallel
-      if (newSchedules.length > 0) {
-        await Promise.all(
-          newSchedules.map(scheduleData => 
-            interviewerScheduleService.createSchedule(scheduleData)
-          )
-        );
       }
 
       // Reload schedules with loading indicator
@@ -355,7 +364,7 @@ const SimpleAvailabilityCalendar: React.FC<SimpleAvailabilityCalendarProps> = ({
       addNotification({
         type: 'success',
         title: 'Horarios guardados',
-        message: `Se han guardado ${newSchedules.length} bloques de horario exitosamente.`,
+        message: `Se actualizaron los bloques de horario exitosamente (${slotsToCreate.length} creados, ${slotsToDelete.size} eliminados).`,
       });
 
     } catch (error) {
