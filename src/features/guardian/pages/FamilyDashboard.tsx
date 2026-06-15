@@ -47,10 +47,10 @@ import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
 import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
 
 const sections = [
-  { key: 'resumen', label: 'Resumen de Postulación' },
-  { key: 'datos', label: 'Datos del Postulante y Apoderados' },
-  { key: 'documentos', label: 'Documentos' },
-  { key: 'ayuda', label: 'Ayuda y Soporte' },
+  { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
+  { key: 'datos',      label: 'Datos del Postulante y Apoderados', icon: UsersIcon },
+  { key: 'documentos', label: 'Documentos',                        icon: FileTextIcon },
+  { key: 'ayuda',      label: 'Ayuda y Soporte',                   icon: FiInfo },
 ];
 
 const getStatusColor = (status: ApplicationStatus) => {
@@ -74,6 +74,64 @@ const getDocumentStatusIcon = (status: Document['status']) => {
     }
 };
 
+interface SidebarContentProps {
+  user: { firstName?: string; lastName?: string } | null;
+  activeSection: string;
+  sections: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
+  onSectionChange: (key: string) => void;
+  onShowLogout: () => void;
+  onNavigate?: () => void;
+}
+
+const SidebarContent = React.memo(function SidebarContent({
+  user,
+  activeSection,
+  sections,
+  onSectionChange,
+  onShowLogout,
+  onNavigate,
+}: SidebarContentProps) {
+  return (
+    <>
+      <div className="p-6 text-center">
+        <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
+        <h1 className="text-xl font-bold text-azul-monte-tabor">Portal Apoderados</h1>
+        <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
+      </div>
+      <nav className="px-4" aria-label="Secciones del portal de apoderados">
+        {sections.map(section => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.key}
+              onClick={() => { onSectionChange(section.key); onNavigate?.(); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
+                activeSection === section.key
+                  ? 'bg-azul-monte-tabor text-white'
+                  : 'text-gris-piedra hover:bg-gray-100'
+              }`}
+              aria-label={`Navegar a ${section.label}`}
+              aria-current={activeSection === section.key ? 'page' : undefined}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span className="text-sm">{section.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      <div className="px-4 mt-auto pb-6 flex flex-col gap-3">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={onShowLogout}
+          ariaLabel="Cerrar sesión y salir del portal"
+        >
+          Cerrar Sesión
+        </Button>
+      </div>
+    </>
+  );
+});
 
 const FamilyDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -719,42 +777,6 @@ const FamilyDashboard: React.FC = () => {
     }
   };
 
-  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <>
-      <div className="p-6">
-        <LogoIcon className="mx-auto w-1/2 w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
-        <h1 className="text-xl font-bold text-azul-monte-tabor">Portal Apoderados</h1>
-        <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
-      </div>
-      <nav className="px-4" aria-label="Secciones del portal de apoderados">
-        {visibleSections.map(section => (
-          <button
-            key={section.key}
-            onClick={() => { setActiveSection(section.key); onNavigate?.(); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors ${
-              activeSection === section.key
-                ? 'bg-azul-monte-tabor text-white'
-                : 'text-gris-piedra hover:bg-gray-100'
-            }`}
-            aria-label={`Navegar a sección ${section.label}`}
-            aria-current={activeSection === section.key ? 'page' : undefined}
-          >
-            <span className="text-sm">{section.label}</span>
-          </button>
-        ))}
-      </nav>
-      <div className="px-4 mt-4">
-        <Button
-          variant="primary"
-          className="w-full bg-azul-monte-tabor hover:bg-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-md hover:shadow-lg"
-          onClick={() => setShowLogoutConfirm(true)}
-        >
-          Cerrar Sesión
-        </Button>
-      </div>
-      <div className="flex-1"></div>
-    </>
-  );
 
   // Mostrar estado de carga
   if (isLoading) {
@@ -794,8 +816,10 @@ const FamilyDashboard: React.FC = () => {
         </div>
         <button
           onClick={() => setIsSidebarOpen(prev => !prev)}
-          className="p-2 rounded-lg text-gris-piedra hover:bg-gray-100 transition-colors"
-          aria-label="Abrir menú de secciones"
+          className="p-2.5 min-w-[44px] min-h-[44px] rounded-lg text-gris-piedra hover:bg-gray-100 transition-colors"
+          aria-expanded={isSidebarOpen}
+          aria-controls="mobile-sidebar-apoderado"
+          aria-label={isSidebarOpen ? 'Cerrar menú de secciones' : 'Abrir menú de secciones'}
         >
           {isSidebarOpen ? (
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -815,14 +839,32 @@ const FamilyDashboard: React.FC = () => {
       )}
 
       {/* Mobile sidebar drawer */}
-      <div className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <SidebarContent onNavigate={() => setIsSidebarOpen(false)} />
+      <div
+        id="mobile-sidebar-apoderado"
+        aria-hidden={!isSidebarOpen}
+        {...(!isSidebarOpen ? { inert: '' } : {})}
+        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <SidebarContent
+          user={user}
+          activeSection={activeSection}
+          sections={sections}
+          onSectionChange={setActiveSection}
+          onShowLogout={() => setShowLogoutConfirm(true)}
+          onNavigate={() => setIsSidebarOpen(false)}
+        />
       </div>
 
       <div className="flex">
         {/* Desktop Sidebar */}
         <aside className="w-64 bg-white shadow-md min-h-screen flex-col hidden md:flex sticky top-0 self-start h-screen overflow-y-auto" role="complementary" aria-label="Menú de navegación">
-          <SidebarContent />
+          <SidebarContent
+            user={user}
+            activeSection={activeSection}
+            sections={sections}
+            onSectionChange={setActiveSection}
+            onShowLogout={() => setShowLogoutConfirm(true)}
+          />
         </aside>
 
         {/* Main Content */}
