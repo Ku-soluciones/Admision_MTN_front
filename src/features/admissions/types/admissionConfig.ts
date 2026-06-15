@@ -69,6 +69,55 @@ export interface AdmissionExams {
   exams: AdmissionExam[];
 }
 
+// ─── Detalle de Exámenes por Nivel ─────────────────────
+
+export interface ExamTopic {
+  order: number;
+  title: string;
+  description: string;
+}
+
+export interface ExamLevelTopics {
+  title: string;
+  topics: ExamTopic[];
+}
+
+export interface ExamDetailDate {
+  id: string;
+  date: string;
+  dayLabel: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  durationLabel: string;
+  durationMinutes: number;
+}
+
+export interface ExamDetail {
+  id: string;
+  name: string;
+  description: string;
+  durationLabel: string;
+  durationMinutes: number;
+  questions: number;
+  minimumScore: number;
+  minimumScoreLabel: string;
+  instructionsTitle: string;
+  instructions: string[];
+  levelSelector: {
+    title: string;
+    description: string;
+  };
+  topicsByLevel: Record<string, ExamLevelTopics>;
+  examDatesTitle: string;
+  examDatesDescription: string;
+  availableDates: ExamDetailDate[];
+}
+
+export interface ExamDetailsConfig {
+  examDetails: Record<string, ExamDetail>;
+}
+
 // ─── Contenedor de toda la config de admisión ──────────
 
 export interface AdmissionConfig {

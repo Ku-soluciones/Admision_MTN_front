@@ -4,6 +4,8 @@ import type {
   AdmissionHome,
   AdmissionExams,
   AdmissionConfig,
+  ExamDetailsConfig,
+  ExamDetail,
 } from '../types/admissionConfig';
 
 const STALE_TIME = 1000 * 60 * 5; // 5 minutos
@@ -35,6 +37,32 @@ export function useAdmissionExams() {
 }
 
 /**
+ * Hook que obtiene el detalle completo de todos los exámenes
+ * (con topics por nivel) desde Vercel Edge Config.
+ */
+export function useExamDetails() {
+  return useQuery<ExamDetailsConfig>({
+    queryKey: ['edge-config', 'examDetails'],
+    queryFn: () => getEdgeConfigItem<ExamDetailsConfig>('examDetails'),
+    staleTime: STALE_TIME,
+    retry: 2,
+  });
+}
+
+/**
+ * Hook que obtiene el detalle de un examen específico por su id.
+ */
+export function useExamDetail(examId: string | undefined) {
+  const { data, isLoading, isError } = useExamDetails();
+
+  const examDetail: ExamDetail | undefined = examId
+    ? data?.examDetails?.[examId] ?? (data as any)?.[examId]
+    : undefined;
+
+  return { data: examDetail, isLoading, isError };
+}
+
+/**
  * Hook combinado que obtiene toda la config de admisión.
  */
 export function useAdmissionConfig(): {
@@ -54,4 +82,3 @@ export function useAdmissionConfig(): {
     isError: home.isError || exams.isError,
   };
 }
-
