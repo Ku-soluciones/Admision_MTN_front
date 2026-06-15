@@ -1,36 +1,39 @@
 /**
- * Vercel Edge Config – cliente REST para lectura desde el browser.
+ * Vercel Edge Config – cliente para el frontend.
  *
- * Usa las variables VITE_EDGE_CONFIG_ID y VITE_EDGE_CONFIG_TOKEN que exponen
- * únicamente un token de sólo lectura, por lo que es seguro incluirlas en el
- * bundle del cliente.
+ * En producción las peticiones van a la Serverless Edge Function
+ * /api/edge-config/[key] que usa el SDK @vercel/edge-config.
  *
- * Documentación del REST API:
- * https://vercel.com/docs/edge-config/read-edge-config#rest-api
+ * En desarrollo local (sin `vercel dev`) se puede apuntar a la
+ * REST API directa usando VITE_EDGE_CONFIG_ID y VITE_EDGE_CONFIG_TOKEN,
+ * o usar `vercel dev` para que las funciones estén disponibles.
  */
 
-const BASE = 'https://edge-config.vercel.com';
-
-function getConnectionParams() {
+/**
+ * Determina la URL base para obtener ítems de Edge Config.
+ *
+ * - Si existe `/api/edge-config` (producción / vercel dev) → la usa.
+ * - Fallback: REST API directo con ID + Token (sólo dev local con vite).
+ */
+function getItemUrl(key: string): string {
   const id = import.meta.env.VITE_EDGE_CONFIG_ID;
   const token = import.meta.env.VITE_EDGE_CONFIG_TOKEN;
 
+  // En producción y con `vercel dev` la serverless function está disponible
+  // Usamos path relativo para que funcione en cualquier dominio
   if (!id || !token) {
-    throw new Error(
-      '[EdgeConfig] Faltan las variables VITE_EDGE_CONFIG_ID o VITE_EDGE_CONFIG_TOKEN',
-    );
+    return `/api/edge-config/${key}`;
   }
 
-  return { id, token };
+  // Fallback: REST API directo (dev local sin vercel dev)
+  return `https://edge-config.vercel.com/${id}/item/${key}?token=${token}`;
 }
 
 /**
  * Obtiene un ítem individual de Edge Config por su clave.
  */
 export async function getEdgeConfigItem<T = unknown>(key: string): Promise<T> {
-  const { id, token } = getConnectionParams();
-  const url = `${BASE}/${id}/item/${key}?token=${token}`;
-
+  const url = getItemUrl(key);
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -43,27 +46,17 @@ export async function getEdgeConfigItem<T = unknown>(key: string): Promise<T> {
 }
 
 /**
- * Obtiene múltiples ítems de Edge Config de una sola vez.
- * Si no se pasan claves, devuelve todos los ítems.
+ * Obtiene múltiples ítems de Edge Config haciendo llamadas en paralelo.
  */
 export async function getEdgeConfigItems<T = Record<string, unknown>>(
-  keys?: string[],
+  keys: string[],
 ): Promise<T> {
-  const { id, token } = getConnectionParams();
-  const params = new URLSearchParams({ token });
-  if (keys?.length) {
-    params.set('keys', keys.join(','));
-  }
-  const url = `${BASE}/${id}/items?${params.toString()}`;
+  const entries = await Promise.all(
+    keys.map(async (key) => {
+      const value = await getEdgeConfigItem(key);
+      return [key, value] as const;
+    }),
+  );
 
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    throw new Error(
-      `[EdgeConfig] Error al obtener items: ${res.status} ${res.statusText}`,
-    );
-  }
-
-  return res.json() as Promise<T>;
+  return Object.fromEntries(entries) as T;
 }
-
