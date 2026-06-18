@@ -40,31 +40,21 @@ const Header: React.FC = () => {
                         Inicio
                     </a>
                     <a href={appUrls.studentExams} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Exámenes</a>
-                    {isAdmin && (
-                        <a
-                            href={appUrls.adminDashboard}
-                            className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
-                        >
-                            Admin
-                        </a>
-                    )}
                 </nav>
 
                 <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
-                    {!isAnyUserLoggedIn && (
-                        <div className="hidden sm:flex items-center gap-2">
-                            <a href={appUrls.guardianLogin}>
-                                <Button size="sm" className="!bg-azul-monte-tabor !text-blanco-pureza">
-                                    Iniciar sesión
-                                </Button>
-                            </a>
-                            <a href={appUrls.guardianRegister}>
-                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
-                        </div>
-                    )}
+                    <div className="hidden sm:flex items-center gap-2">
+                        <a href={appUrls.guardianLogin}>
+                            <Button size="sm" className="!bg-azul-monte-tabor !text-blanco-pureza">
+                                Iniciar sesión
+                            </Button>
+                        </a>
+                        <a href={appUrls.guardianRegister}>
+                            <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                Postular
+                            </Button>
+                        </a>
+                    </div>
                     {/* Hamburger button */}
                     <button
                         className="md:hidden p-2 rounded-lg text-gris-piedra hover:text-azul-monte-tabor hover:bg-gray-100 transition-colors"
@@ -110,29 +100,18 @@ const Header: React.FC = () => {
                         >
                             Portal Familia
                         </a>
-                        {isAdmin && (
-                            <a
-                                href={appUrls.adminDashboard}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                            >
-                                Admin
+                        <div className="pt-2 pb-1 flex flex-col gap-2">
+                            <a href={appUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
+                                    Iniciar sesión
+                                </Button>
                             </a>
-                        )}
-                        {!isAnyUserLoggedIn && (
-                            <div className="pt-2 pb-1 flex flex-col gap-2">
-                                <a href={appUrls.guardianLogin} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button className="w-full !bg-azul-monte-tabor !text-blanco-pureza">
-                                        Iniciar sesión
-                                    </Button>
-                                </a>
-                                <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full !text-blanco-pureza">
-                                        Postular
-                                    </Button>
-                                </a>
-                            </div>
-                        )}
+                            <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button variant="primary" className="w-full !text-blanco-pureza">
+                                    Postular
+                                </Button>
+                            </a>
+                        </div>
                     </nav>
                 </div>
             )}
