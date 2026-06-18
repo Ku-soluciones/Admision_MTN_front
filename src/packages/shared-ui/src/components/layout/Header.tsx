@@ -46,24 +46,14 @@ const Header: React.FC = () => {
                     {!isProfessorLoggedIn && (
                         <a href={appUrls.professorLogin} className="text-gris-piedra hover:text-azul-monte-tabor font-semibold transition-colors duration-200">Profesores</a>
                     )}
-                    {isAdmin && (
-                        <a
-                            href={appUrls.adminDashboard}
-                            className="text-gris-piedra hover:text-azul-monte-tabor hover:bg-dorado-nazaret/10 px-3 py-1 rounded-lg transition-all duration-200"
-                        >
-                            Admin
-                        </a>
-                    )}
                 </nav>
 
                 <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
-                    {!isAnyUserLoggedIn && (
-                        <a href={appUrls.freshAdmissions} className="hidden sm:block">
-                            <Button variant="primary" size="sm">
-                                Iniciar Postulación
-                            </Button>
-                        </a>
-                    )}
+                    <a href={appUrls.freshAdmissions} className="hidden sm:block">
+                        <Button variant="primary" size="sm">
+                            Iniciar Postulación
+                        </Button>
+                    </a>
                     {/* Hamburger button */}
                     <button
                         className="md:hidden p-2 rounded-lg text-gris-piedra hover:text-azul-monte-tabor hover:bg-gray-100 transition-colors"
@@ -118,24 +108,13 @@ const Header: React.FC = () => {
                                 Profesores
                             </a>
                         )}
-                        {isAdmin && (
-                            <a
-                                href={appUrls.adminDashboard}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="px-4 py-3 rounded-lg font-semibold transition-colors text-gris-piedra hover:bg-gray-50"
-                            >
-                                Admin
+                        <div className="pt-2 pb-1">
+                            <a href={appUrls.freshAdmissions} onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button variant="primary" className="w-full">
+                                    Iniciar Postulación
+                                </Button>
                             </a>
-                        )}
-                        {!isAnyUserLoggedIn && (
-                            <div className="pt-2 pb-1">
-                                <a href={appUrls.freshAdmissions} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full">
-                                        Iniciar Postulación
-                                    </Button>
-                                </a>
-                            </div>
-                        )}
+                        </div>
                     </nav>
                 </div>
             )}
