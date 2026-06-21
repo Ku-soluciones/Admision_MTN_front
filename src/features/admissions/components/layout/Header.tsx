@@ -26,15 +26,11 @@ const Header: React.FC = () => {
     return (
         <header className="bg-blanco-pureza shadow-md sticky top-0 z-50">
             <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center">
-                <div className="flex-1">
-                    <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
-                        <span className="text-base sm:text-xl font-bold text-azul-monte-tabor font-serif hidden xs:block truncate">
-                            Colegio Monte Tabor y Nazaret
-                        </span>
-                    </Link>
-                </div>
+                <Link to="/" onClick={handleLogoutAndGoHome} className="flex items-center flex-shrink-0">
+                    <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/Logo%20Colegio%20monte%20tabor%20y%20Nazaret%20II.png" alt="Logo Colegio Monte Tabor y Nazaret" className="h-10 sm:h-12 flex-shrink-0" />
+                </Link>
 
+                <div className="ml-auto flex items-center gap-4 sm:gap-6">
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-6 lg:gap-8">
                     <a href={appUrls.home} onClick={handleLogoutAndGoHome} className="text-gris-piedra font-semibold transition-colors duration-150 [@media(hover:hover)]:hover:text-azul-monte-tabor active:scale-95">
@@ -43,7 +39,6 @@ const Header: React.FC = () => {
                     <a href={appUrls.studentExams} className="text-gris-piedra font-semibold transition-colors duration-150 [@media(hover:hover)]:hover:text-azul-monte-tabor active:scale-95">Exámenes</a>
                 </nav>
 
-                <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
                     <div className="hidden sm:flex items-center gap-2">
                         <a href={appUrls.guardianLogin}>
                             <Button size="sm" className="!bg-azul-monte-tabor !text-blanco-pureza">
