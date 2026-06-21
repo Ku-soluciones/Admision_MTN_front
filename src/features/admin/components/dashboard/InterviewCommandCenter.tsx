@@ -409,15 +409,42 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
 
   return (
     <div className="space-y-5">
-      <section className="sticky top-0 z-20 rounded-lg border border-gray-200 bg-white/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-gray-950">Centro operativo de entrevistas</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario Global</p>
+            <h2 className="mt-1 text-lg font-bold text-gray-950">Centro operativo de entrevistas</h2>
             <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
               {surface === 'operations' ? rangeLabel : 'Calendario mensual de entrevistas'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSurface('operations')}
+              aria-pressed={surface === 'operations'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                surface === 'operations'
+                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+              }`}
+            >
+              <FiGrid className="h-4 w-4" aria-hidden="true" />
+              Vista operativa
+            </button>
+            <button
+              type="button"
+              onClick={() => setSurface('calendar')}
+              aria-pressed={surface === 'calendar'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                surface === 'calendar'
+                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+              }`}
+            >
+              <FiCalendar className="h-4 w-4" aria-hidden="true" />
+              Calendario
+            </button>
             <button
               type="button"
               onClick={loadOverview}
@@ -428,59 +455,8 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
               <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
               Actualizar
             </button>
-            <button
-              type="button"
-              onClick={() => setSurface('calendar')}
-              aria-pressed={surface === 'calendar'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                surface === 'calendar'
-                  ? 'border-gray-900 bg-gray-900 text-white focus:ring-gray-300'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-              }`}
-            >
-              <FiCalendar className="h-4 w-4" aria-hidden="true" />
-              Calendario
-            </button>
-            <button
-              type="button"
-              onClick={() => setSurface('operations')}
-              aria-pressed={surface === 'operations'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                surface === 'operations'
-                  ? 'border-gray-900 bg-gray-900 text-white focus:ring-gray-300'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-              }`}
-            >
-              <FiGrid className="h-4 w-4" aria-hidden="true" />
-              Vista operativa
-            </button>
           </div>
         </div>
-
-        {surface === 'operations' && visibleOverview && (
-          <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
-            <SummaryBar summary={visibleOverview.summary} rejectedCount={rejectedCount} />
-            <div className="grid gap-3 xl:grid-cols-[minmax(520px,1fr)_minmax(260px,360px)]">
-              <RangeSelector
-                viewMode={viewMode}
-                rangeLabel={rangeLabel}
-                onViewModeChange={setViewMode}
-                onPrevious={() => moveRange(-1)}
-                onNext={() => moveRange(1)}
-                onToday={() => setAnchorDate(new Date())}
-              />
-              <label className="relative block">
-                <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
-                <input
-                  value={searchTerm}
-                  onChange={event => setSearchTerm(event.target.value)}
-                  className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="Buscar familia o entrevistador"
-                />
-              </label>
-            </div>
-          </div>
-        )}
       </section>
 
       {surface === 'calendar' ? (
@@ -508,11 +484,31 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         </div>
       ) : visibleOverview ? (
         <>
+          <SummaryBar summary={visibleOverview.summary} rejectedCount={rejectedCount} />
           <RejectedInterviewsQueue
             days={visibleOverview.days}
             onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
             onReleaseInterview={(interview) => void handleReleaseHistoricalInterview(interview.id)}
           />
+          <div className="grid gap-3 xl:grid-cols-[minmax(520px,1fr)_minmax(260px,360px)]">
+            <RangeSelector
+              viewMode={viewMode}
+              rangeLabel={rangeLabel}
+              onViewModeChange={setViewMode}
+              onPrevious={() => moveRange(-1)}
+              onNext={() => moveRange(1)}
+              onToday={() => setAnchorDate(new Date())}
+            />
+            <label className="relative block">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+              <input
+                value={searchTerm}
+                onChange={event => setSearchTerm(event.target.value)}
+                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                placeholder="Buscar familia o entrevistador"
+              />
+            </label>
+          </div>
           <WeeklyTimeline
             days={visibleOverview.days}
             viewMode={viewMode}

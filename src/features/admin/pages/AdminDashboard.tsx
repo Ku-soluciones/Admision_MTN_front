@@ -7,8 +7,9 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon, LogoIcon } from '../components/icons/Icons';
 import { 
-  FiFileText, 
-  FiBarChart2, 
+  FiFileText,
+  FiUsers,
+  FiBarChart2,
   FiFile, 
   FiKey, 
   FiMail, 
@@ -566,23 +567,42 @@ Esta acción:
       case 'evaluaciones':
         return (
           <div className="space-y-6">
-            {/* Navigation tabs for subsections */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={evaluationSubsection === 'management' ? 'primary' : 'outline'}
-                onClick={() => setEvaluationSubsection('management')}
-              >
-                <FiList className="w-5 h-5 mr-2" />
-                Gestión de Evaluaciones
-              </Button>
-              <Button
-                variant={evaluationSubsection === 'reports' ? 'primary' : 'outline'}
-                onClick={() => setEvaluationSubsection('reports')}
-              >
-                <FiFile className="w-5 h-5 mr-2" />
-                Informes y Reportes
-              </Button>
-            </div>
+            {/* Header CalGlobal-style */}
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Evaluaciones</p>
+                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Evaluaciones</h1>
+                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Administra y supervisa las evaluaciones del proceso de admisión</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEvaluationSubsection('management')}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                      evaluationSubsection === 'management'
+                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                    }`}
+                  >
+                    <FiList className="h-4 w-4" aria-hidden="true" />
+                    Gestión de Evaluaciones
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEvaluationSubsection('reports')}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                      evaluationSubsection === 'reports'
+                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                    }`}
+                  >
+                    <FiFile className="h-4 w-4" aria-hidden="true" />
+                    Informes y Reportes
+                  </button>
+                </div>
+              </div>
+            </section>
 
             {/* Render appropriate subsection */}
             {evaluationSubsection === 'management' ? (
@@ -590,6 +610,7 @@ Esta acción:
                 applications={applications}
                 onRefresh={loadApplications}
                 onAssign={handleAssignEvaluator}
+                hideHeader
               />
             ) : (
               <EvaluationReports
@@ -624,79 +645,77 @@ Esta acción:
 
         return (
           <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-center space-x-3">
-                <FileTextIcon className="w-8 h-8 text-azul-monte-tabor" />
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Gestión de Postulaciones
-                  </h1>
-                  <p className="text-sm text-gray-600">
+            {/* Header CalGlobal-style */}
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Postulaciones</p>
+                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Postulaciones</h1>
+                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
+                    Mostrando {filteredApplications.length} de {adminApplications.length} postulaciones
                     {statusFilter !== 'all' && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                      <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                         Filtro: {getStatusLabel(statusFilter)}
                       </span>
                     )}
-                    Mostrando {filteredApplications.length} de {adminApplications.length} postulaciones
                   </p>
                 </div>
               </div>
+            </section>
 
-              <div className="flex flex-wrap items-center gap-2">
+            {/* Estadísticas + Actualizar */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2" aria-label="Resumen de postulaciones">
+                <div className="min-w-[132px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
+                  <div className="flex items-center gap-2">
+                    <FiFileText className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <p className="min-w-0 truncate text-xs font-semibold">Total Activas</p>
+                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.length}</p>
+                  </div>
+                </div>
+                <div className="min-w-[100px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+                  <div className="flex items-center gap-2">
+                    <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <p className="min-w-0 truncate text-xs font-semibold">Nuevas</p>
+                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
+                  </div>
+                </div>
+                <div className="min-w-[116px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <p className="min-w-0 truncate text-xs font-semibold">Aceptadas</p>
+                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
+                  </div>
+                </div>
+                <div className="min-w-[116px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
+                  <div className="flex items-center gap-2">
+                    <FiUsers className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <p className="min-w-0 truncate text-xs font-semibold">En Revisión</p>
+                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {statusFilter !== 'all' && (
-                  <Button
-                    variant="outline"
+                  <button
+                    type="button"
                     onClick={() => setStatusFilter('all')}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
-                    <FiX className="w-5 h-5 mr-2" />
+                    <FiX className="h-4 w-4" aria-hidden="true" />
                     Limpiar Filtro
-                  </Button>
+                  </button>
                 )}
-                <Button
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={loadAdminApplications}
                   disabled={isLoadingAdminApplications}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
                 >
-                  <FiRefreshCw className={`w-5 h-5 mr-2 ${isLoadingAdminApplications ? 'animate-spin' : ''}`} />
+                  <FiRefreshCw className={`h-4 w-4 ${isLoadingAdminApplications ? 'animate-spin' : ''}`} aria-hidden="true" />
                   Actualizar
-                </Button>
+                </button>
               </div>
-            </div>
-
-            {/* Estadísticas rápidas */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="p-4 text-center">
-                <FileTextIcon className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-blue-600">
-                  {applicationsToFilter.length}
-                </p>
-                <p className="text-sm text-gray-600">Total Activas</p>
-              </Card>
-
-              <Card className="p-4 text-center">
-                <ClockIcon className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-yellow-600">
-                  {applicationsToFilter.filter(app => app.status === 'PENDING').length}
-                </p>
-                <p className="text-sm text-gray-600">Nuevas</p>
-              </Card>
-
-              <Card className="p-4 text-center">
-                <CheckCircleIcon className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-600">
-                  {applicationsToFilter.filter(app => app.status === 'APPROVED').length}
-                </p>
-                <p className="text-sm text-gray-600">Aceptadas</p>
-              </Card>
-
-              <Card className="p-4 text-center">
-                <UsersIcon className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-purple-600">
-                  {applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}
-                </p>
-                <p className="text-sm text-gray-600">En Revisión</p>
-              </Card>
             </div>
 
             {/* Tabla de postulaciones */}
@@ -715,29 +734,48 @@ Esta acción:
       case 'usuarios':
         return (
           <div className="space-y-6">
-            {/* Navigation tabs for subsections */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={userSubsection === 'staff' ? 'primary' : 'outline'}
-                onClick={() => setUserSubsection('staff')}
-              >
-                <FiUser className="w-5 h-5 mr-2" />
-                Personal del Colegio
-              </Button>
-              <Button
-                variant={userSubsection === 'guardians' ? 'primary' : 'outline'}
-                onClick={() => setUserSubsection('guardians')}
-              >
-                <UsersIcon className="w-5 h-5 mr-2" />
-                Apoderados
-              </Button>
-            </div>
+            {/* Header CalGlobal-style */}
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
+                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
+                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Administra el personal del colegio y apoderados</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUserSubsection('staff')}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                      userSubsection === 'staff'
+                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                    }`}
+                  >
+                    <FiUser className="h-4 w-4" aria-hidden="true" />
+                    Personal del Colegio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserSubsection('guardians')}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                      userSubsection === 'guardians'
+                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                    }`}
+                  >
+                    <UsersIcon className="h-4 w-4" aria-hidden="true" />
+                    Apoderados
+                  </button>
+                </div>
+              </div>
+            </section>
 
             {/* Render appropriate subsection */}
             {userSubsection === 'staff' ? (
-              <StaffManagement onBack={() => setActiveSection('dashboard')} />
+              <StaffManagement hideHeader />
             ) : (
-              <GuardianManagement onBack={() => setActiveSection('dashboard')} />
+              <GuardianManagement hideHeader />
             )}
           </div>
         );
