@@ -334,33 +334,34 @@ export const ApplicantMetricsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Métricas Detalladas de Postulantes</h2>
-          <p className="text-gray-600 mt-1">
-            Rendimiento académico y entrevistas de cada postulante
-          </p>
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Métricas de Postulantes</p>
+            <h1 className="mt-1 text-lg font-bold text-gray-950">Métricas de Postulantes</h1>
+            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Rendimiento académico y entrevistas de cada postulante</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+              <FiFilter className="h-4 w-4" aria-hidden="true" />
+              {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+            </button>
+            <button
+              type="button"
+              onClick={exportToExcel}
+              disabled={applicants.length === 0}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-dorado-nazaret bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-60"
+            >
+              <FiDownload className="h-4 w-4" aria-hidden="true" />
+              Exportar a Excel
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <FiFilter className="h-4 w-4" />
-            {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={exportToExcel}
-            disabled={applicants.length === 0}
-            className="flex items-center gap-2"
-          >
-            <FiDownload className="h-4 w-4" />
-            Exportar a Excel
-          </Button>
-        </div>
-      </div>
+      </section>
 
       {showFilters && (
         <Card className="p-6">
@@ -464,60 +465,49 @@ export const ApplicantMetricsView: React.FC = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Postulantes</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{applicants.length}</p>
-            </div>
-            <FiUser className="h-8 w-8 text-blue-500" />
+      <div className="flex flex-wrap gap-2" aria-label="Resumen de métricas">
+        <div className="min-w-[148px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
+          <div className="flex items-center gap-2">
+            <FiUser className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+            <p className="min-w-0 truncate text-xs font-semibold">Total Postulantes</p>
+            <p className="ml-auto text-lg font-bold leading-none">{applicants.length}</p>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Evaluaciones Completadas</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {applicants.length > 0 ? Math.round(
-                  applicants.reduce((sum, a) => {
-                    const completed = [a.examScores?.mathematics, a.examScores?.language, a.examScores?.english]
-                      .filter(e => e && e.status === 'COMPLETED').length;
-                    return sum + (completed / 3) * 100;
-                  }, 0) / applicants.length
-                ) : 0}%
-              </p>
-            </div>
-            <FiAward className="h-8 w-8 text-green-500" />
+        </div>
+        <div className="min-w-[180px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+          <div className="flex items-center gap-2">
+            <FiAward className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+            <p className="min-w-0 truncate text-xs font-semibold">Evaluaciones Completadas</p>
+            <p className="ml-auto text-lg font-bold leading-none">
+              {applicants.length > 0 ? Math.round(
+                applicants.reduce((sum, a) => {
+                  const completed = [a.examScores?.mathematics, a.examScores?.language, a.examScores?.english]
+                    .filter(e => e && e.status === 'COMPLETED').length;
+                  return sum + (completed / 3) * 100;
+                }, 0) / applicants.length
+              ) : 0}%
+            </p>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Entrevistas Realizadas</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">
-                {applicants.reduce((sum, a) => sum + (a.familyInterviews?.length || 0), 0)}
-              </p>
-            </div>
-            <FiFileText className="h-8 w-8 text-purple-500" />
+        </div>
+        <div className="min-w-[164px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
+          <div className="flex items-center gap-2">
+            <FiFileText className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+            <p className="min-w-0 truncate text-xs font-semibold">Entrevistas Realizadas</p>
+            <p className="ml-auto text-lg font-bold leading-none">
+              {applicants.reduce((sum, a) => sum + (a.familyInterviews?.length || 0), 0)}
+            </p>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Documentos Aprobados</p>
-              <p className="text-3xl font-bold text-orange-600 mt-2">
-                {applicants.length > 0 ? Math.round(
-                  applicants.reduce((sum, a) => sum + parseFloat(String(a.documents?.completionRate || '0')), 0) / applicants.length
-                ) : 0}%
-              </p>
-            </div>
-            <FiTrendingUp className="h-8 w-8 text-orange-500" />
+        </div>
+        <div className="min-w-[164px] rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-700">
+          <div className="flex items-center gap-2">
+            <FiTrendingUp className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+            <p className="min-w-0 truncate text-xs font-semibold">Documentos Aprobados</p>
+            <p className="ml-auto text-lg font-bold leading-none">
+              {applicants.length > 0 ? Math.round(
+                applicants.reduce((sum, a) => sum + parseFloat(String(a.documents?.completionRate || '0')), 0) / applicants.length
+              ) : 0}%
+            </p>
           </div>
-        </Card>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

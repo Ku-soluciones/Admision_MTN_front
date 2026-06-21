@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   PlusIcon,
 } from '../icons/Icons';
-import { FiCalendar, FiClock, FiUser, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiCheckCircle, FiClock, FiUser, FiStar, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
 import {
   Interview,
   InterviewStatus,
@@ -533,86 +533,123 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {onBack && (
-            <Button 
-              onClick={onBack}
-              variant="outline"
-              className="flex items-center"
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Entrevistas</p>
+            <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Entrevistas</h1>
+            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Centro de evaluación de candidatos</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('students')}
+              aria-pressed={viewMode === 'students'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                viewMode === 'students'
+                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+              }`}
             >
-              <FiArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-          )}
-          <CalendarIcon className="w-8 h-8 text-azul-monte-tabor flex-shrink-0" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Gestión de Entrevistas
-            </h1>
-            <p className="text-sm text-gray-600">
-              Programa, gestiona y evalúa las entrevistas de admisión
-            </p>
+              <FiUser className="h-4 w-4" aria-hidden="true" />
+              Estudiantes
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                viewMode === 'table'
+                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+              }`}
+            >
+              <FiFilter className="h-4 w-4" aria-hidden="true" />
+              Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              aria-pressed={viewMode === 'calendar'}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                viewMode === 'calendar'
+                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+              }`}
+            >
+              <FiCalendar className="h-4 w-4" aria-hidden="true" />
+              Calendario
+            </button>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? 'bg-blue-50 border-blue-300' : ''}
-          >
-            <FiFilter className="w-5 h-5 mr-2" />
-            Filtros
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={loadInterviews}
-            disabled={isLoading}
-          >
-            <FiRefreshCw className={`w-5 h-5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-
-          <Button
-            variant="primary"
-            onClick={handleCreateInterview}
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Nueva Entrevista
-          </Button>
-        </div>
-      </div>
+      </section>
 
       {/* Estadísticas rápidas */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4 text-center">
-            <CalendarIcon className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-blue-600">{stats.totalInterviews}</p>
-            <p className="text-sm text-gray-600">Total Entrevistas</p>
-          </Card>
-          
-          <Card className="p-4 text-center">
-            <ClockIcon className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-orange-600">{stats.pendingInterviews}</p>
-            <p className="text-sm text-gray-600">Pendientes</p>
-          </Card>
-          
-          <Card className="p-4 text-center">
-            <CheckCircleIcon className="w-6 h-6 text-green-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-green-600">{stats.completedInterviews}</p>
-            <p className="text-sm text-gray-600">Completadas</p>
-          </Card>
-          
-          <Card className="p-4 text-center">
-            <UserIcon className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-purple-600">{(stats.averageScore || 0).toFixed(1)}</p>
-            <p className="text-sm text-gray-600">Puntuación Promedio</p>
-          </Card>
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Resumen de entrevistas">
+          <div className="min-w-[148px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
+            <div className="flex items-center gap-2">
+              <FiCalendar className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <p className="min-w-0 truncate text-xs font-semibold">Total Entrevistas</p>
+              <p className="ml-auto text-lg font-bold leading-none">{stats.totalInterviews}</p>
+            </div>
+          </div>
+          <div className="min-w-[132px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+            <div className="flex items-center gap-2">
+              <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <p className="min-w-0 truncate text-xs font-semibold">Pendientes</p>
+              <p className="ml-auto text-lg font-bold leading-none">{stats.pendingInterviews}</p>
+            </div>
+          </div>
+          <div className="min-w-[132px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+            <div className="flex items-center gap-2">
+              <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <p className="min-w-0 truncate text-xs font-semibold">Completadas</p>
+              <p className="ml-auto text-lg font-bold leading-none">{stats.completedInterviews}</p>
+            </div>
+          </div>
+          <div className="min-w-[160px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
+            <div className="flex items-center gap-2">
+              <FiStar className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <p className="min-w-0 truncate text-xs font-semibold">Puntuación Promedio</p>
+              <p className="ml-auto text-lg font-bold leading-none">{(stats.averageScore || 0).toFixed(1)}</p>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Acciones */}
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+            showFilters
+              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <FiFilter className="h-4 w-4" aria-hidden="true" />
+          Filtros
+        </button>
+        <button
+          type="button"
+          onClick={loadInterviews}
+          disabled={isLoading}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+        >
+          <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          Actualizar
+        </button>
+        <button
+          type="button"
+          onClick={handleCreateInterview}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-dorado-nazaret bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        >
+          <PlusIcon className="h-4 w-4" aria-hidden="true" />
+          Nueva Entrevista
+        </button>
+      </div>
 
       {/* Filtros expansibles */}
       {showFilters && (
@@ -689,31 +726,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           </div>
         </Card>
       )}
-
-      {/* Navegación de vistas */}
-      <div className="flex gap-2">
-        <Button
-          variant={viewMode === 'students' ? 'primary' : 'outline'}
-          onClick={() => setViewMode('students')}
-        >
-          <FiUser className="w-5 h-5 mr-2" />
-          Estudiantes
-        </Button>
-        <Button
-          variant={viewMode === 'table' ? 'primary' : 'outline'}
-          onClick={() => setViewMode('table')}
-        >
-          <FiFilter className="w-5 h-5 mr-2" />
-          Lista
-        </Button>
-        <Button
-          variant={viewMode === 'calendar' ? 'primary' : 'outline'}
-          onClick={() => setViewMode('calendar')}
-        >
-          <FiCalendar className="w-5 h-5 mr-2" />
-          Calendario
-        </Button>
-      </div>
 
       {/* Vista principal según modo seleccionado */}
       {isLoading ? (

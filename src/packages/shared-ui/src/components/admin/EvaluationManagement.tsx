@@ -47,6 +47,7 @@ interface EvaluationManagementProps {
   applications: Application[];
   onRefresh: () => void;
   onAssign: (applicationId: number, assignments: EvaluatorAssignment[]) => Promise<void>;
+  hideHeader?: boolean;
 }
 
 interface EvaluatorAssignment {
@@ -62,7 +63,8 @@ interface EvaluatorCache {
 const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
   applications,
   onRefresh,
-  onAssign
+  onAssign,
+  hideHeader = false
 }) => {
   const [evaluators, setEvaluators] = useState<any[]>([]);
   const [evaluatorCache, setEvaluatorCache] = useState<EvaluatorCache>({});
@@ -296,10 +298,12 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
     <div className="space-y-4">
       <Card className="p-6">
         {/* Header: título + filtros */}
-        <div className="flex items-center space-x-3 mb-4">
-          <BarChart3 className="w-5 h-5 text-azul-monte-tabor" />
-          <h2 className="text-lg font-semibold text-gray-900">Gestión de Evaluaciones</h2>
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center space-x-3 mb-4">
+            <BarChart3 className="w-5 h-5 text-azul-monte-tabor" />
+            <h2 className="text-lg font-semibold text-gray-900">Gestión de Evaluaciones</h2>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">

@@ -29,9 +29,10 @@ import {
 
 interface GuardianManagementProps {
   onBack?: () => void;
+  hideHeader?: boolean;
 }
 
-const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack }) => {
+const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHeader = false }) => {
   // Función para calcular el mejor tamaño de página
   const getOptimalPageSize = (totalUsers: number): number => {
     if (totalUsers <= 20) return Math.max(10, totalUsers);  // Mínimo 10, pero si hay menos, mostrar todos
@@ -273,48 +274,47 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack }) => {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {onBack && (
-            <Button 
-              onClick={onBack}
-              variant="outline"
-              className="flex items-center"
-            >
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-          )}
-          <UsersIcon className="w-8 h-8 text-azul-monte-tabor flex-shrink-0" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Gestión de Usuarios
-            </h1>
-            <p className="text-sm text-gray-600">
-              Administra los usuarios del sistema de admisión
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowStats(!showStats)}
+      {hideHeader ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => openForm(UserFormMode.CREATE)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
           >
-            <ChartBarIcon className="w-5 h-5 mr-2" />
-            {showStats ? 'Ocultar' : 'Ver'} Estadísticas
-          </Button>
-          
-          <Button onClick={() => openForm(UserFormMode.CREATE)}>
-            <PlusIcon className="w-5 h-5 mr-2" />
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
             Nuevo Usuario
-          </Button>
+          </button>
         </div>
-      </div>
-
-      {/* Estadísticas */}
-      {showStats && state.stats && (
-        <UserStats stats={state.stats} />
+      ) : (
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
+              <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
+              <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Apoderados y responsables del proceso de admisión</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                  Volver
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => openForm(UserFormMode.CREATE)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+              >
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Nuevo Usuario
+              </button>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Filtros */}
