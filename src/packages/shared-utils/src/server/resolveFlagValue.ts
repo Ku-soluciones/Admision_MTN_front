@@ -5,6 +5,9 @@ type FlagSource = 'vercel-flags' | 'default';
 interface ResolvedFlagValue {
   enabled: boolean;
   source: FlagSource;
+  reason?: string;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 let flagsClientPromise: Promise<ReturnType<typeof createClient>> | null = null;
@@ -31,6 +34,9 @@ export async function resolveFlagValue(flagKey: string): Promise<ResolvedFlagVal
     return {
       enabled: Boolean(result.value),
       source: 'vercel-flags',
+      reason: result.reason,
+      errorCode: result.errorCode,
+      errorMessage: result.errorMessage,
     };
   }
 
