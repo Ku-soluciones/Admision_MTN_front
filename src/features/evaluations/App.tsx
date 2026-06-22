@@ -10,6 +10,7 @@ import CycleDirectorReportForm from './components/evaluations/CycleDirectorRepor
 import CycleDirectorInterviewForm from './components/evaluations/CycleDirectorInterviewForm';
 import PsychologicalInterviewForm from '../admin/components/evaluations/PsychologicalInterviewForm';
 import ProtectedProfessorRoute from './components/auth/ProtectedProfessorRoute';
+import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/ProcessActiveGuard';
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from '../coordinator/components/layout/Header';
@@ -40,7 +41,7 @@ function App() {
                 <Routes>
 
         <Route path="/" element={<Navigate to="/profesor/login" replace />} />
-        <Route path="/profesor/login" element={<ProfessorLoginPage />} />
+        <Route path="/profesor/login" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/profesor" element={<ProtectedProfessorRoute><ProfessorDashboard /></ProtectedProfessorRoute>} />
         <Route path="/profesor/evaluacion/:evaluationId" element={<ProtectedProfessorRoute><EvaluationForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/informe/:examId" element={<ProtectedProfessorRoute><AdmissionReportForm /></ProtectedProfessorRoute>} />

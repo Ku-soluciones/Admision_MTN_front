@@ -1,0 +1,535 @@
+{
+  "examDetails": {
+    "math": {
+      "id": "math",
+      "name": "Matemática",
+      "description": "Evaluación de conocimientos matemáticos básicos",
+      "durationLabel": "1h 20min",
+      "durationMinutes": 80,
+      "questions": 31,
+      "minimumScore": 60,
+      "minimumScoreLabel": "60%",
+      "instructionsTitle": "Instrucciones del Examen",
+      "instructions": [
+        "Presentarse 30 minutos antes del examen",
+        "Traer lápiz y goma",
+        "No se permite el uso de celulares",
+        "El examen tiene una duración máxima de 80 minutos"
+      ],
+      "levelSelector": {
+        "title": "Selecciona tu Nivel Educativo",
+        "description": "Los temas del examen se adaptan según tu nivel educativo actual."
+      },
+      "topicsByLevel": {
+        "prekinder": {
+          "title": "Temas a Evaluar - Prekínder",
+          "topics": [
+            { "order": 1, "title": "Números del 1 al 10", "description": "Reconocimiento, conteo y escritura de números" },
+            { "order": 2, "title": "Figuras geométricas básicas", "description": "Círculo, cuadrado, triángulo y rectángulo" },
+            { "order": 3, "title": "Comparaciones", "description": "Más que, menos que, igual que; grande, mediano, pequeño" },
+            { "order": 4, "title": "Patrones simples", "description": "Identificación y continuación de secuencias de colores y formas" },
+            { "order": 5, "title": "Clasificación y agrupación", "description": "Agrupar objetos por color, forma y tamaño" }
+          ]
+        },
+        "kinder": {
+          "title": "Temas a Evaluar - Kínder",
+          "topics": [
+            { "order": 1, "title": "Números del 1 al 20", "description": "Conteo, lectura, escritura y orden de números" },
+            { "order": 2, "title": "Sumas y restas simples", "description": "Operaciones con números del 1 al 10 con material concreto" },
+            { "order": 3, "title": "Figuras geométricas", "description": "Reconocimiento de figuras 2D y cuerpos 3D básicos" },
+            { "order": 4, "title": "Secuencias y patrones", "description": "Completar y crear patrones numéricos y figurativos" },
+            { "order": 5, "title": "Medición básica", "description": "Comparaciones de longitud, peso y capacidad" }
+          ]
+        },
+        "1-basico": {
+          "title": "Temas a Evaluar - 1° Básico",
+          "topics": [
+            { "order": 1, "title": "Números hasta el 100", "description": "Lectura, escritura, comparación y orden" },
+            { "order": 2, "title": "Suma y resta", "description": "Operaciones con números hasta 20 sin y con reserva" },
+            { "order": 3, "title": "Figuras 2D y 3D", "description": "Identificación de caras, aristas y vértices" },
+            { "order": 4, "title": "Patrones numéricos", "description": "Secuencias ascendentes y descendentes" },
+            { "order": 5, "title": "Medición", "description": "Unidades no estandarizadas de longitud y tiempo (horas)" }
+          ]
+        },
+        "2-basico": {
+          "title": "Temas a Evaluar - 2° Básico",
+          "topics": [
+            { "order": 1, "title": "Números hasta el 1 000", "description": "Lectura, escritura, descomposición y valor posicional" },
+            { "order": 2, "title": "Suma y resta con reserva", "description": "Operaciones con números de hasta tres cifras" },
+            { "order": 3, "title": "Multiplicación introductoria", "description": "Tablas del 2, 5 y 10; concepto de multiplicación como suma repetida" },
+            { "order": 4, "title": "Geometría", "description": "Líneas rectas, curvas, simetría y figuras compuestas" },
+            { "order": 5, "title": "Resolución de problemas", "description": "Problemas contextualizados de suma, resta y multiplicación" }
+          ]
+        },
+        "3-basico": {
+          "title": "Temas a Evaluar - 3° Básico",
+          "topics": [
+            { "order": 1, "title": "Multiplicación y división", "description": "Tablas de multiplicar del 1 al 10 y divisiones exactas" },
+            { "order": 2, "title": "Fracciones introductorias", "description": "Representación, lectura y comparación de fracciones simples" },
+            { "order": 3, "title": "Geometría", "description": "Perímetro de figuras 2D, ángulos rectos" },
+            { "order": 4, "title": "Datos y gráficos", "description": "Lectura e interpretación de pictogramas y gráficos de barras" },
+            { "order": 5, "title": "Patrones y ecuaciones", "description": "Ecuaciones de un paso y patrones numéricos crecientes" }
+          ]
+        },
+        "4-basico": {
+          "title": "Temas a Evaluar - 4° Básico",
+          "topics": [
+            { "order": 1, "title": "Fracciones y decimales", "description": "Fracciones equivalentes, comparación y decimales hasta las centésimas" },
+            { "order": 2, "title": "Multiplicación y división avanzada", "description": "Multiplicación por números de dos cifras y división con resto" },
+            { "order": 3, "title": "Geometría", "description": "Área y perímetro de rectángulos, triángulos y figuras compuestas" },
+            { "order": 4, "title": "Medición", "description": "Unidades de medida estándar (cm, m, km, g, kg, L)" },
+            { "order": 5, "title": "Resolución de problemas", "description": "Problemas de múltiples pasos con las cuatro operaciones" }
+          ]
+        },
+        "5-basico": {
+          "title": "Temas a Evaluar - 5° Básico",
+          "topics": [
+            { "order": 1, "title": "Fracciones y decimales", "description": "Operaciones con fracciones (suma, resta) y decimales" },
+            { "order": 2, "title": "Porcentajes", "description": "Concepto de porcentaje, cálculo y relación con fracciones" },
+            { "order": 3, "title": "Geometría", "description": "Clasificación de triángulos, cuadriláteros y transformaciones isométricas" },
+            { "order": 4, "title": "Datos y estadística", "description": "Media aritmética, tablas de frecuencia y gráficos de líneas" },
+            { "order": 5, "title": "Álgebra introductoria", "description": "Expresiones con variables y ecuaciones simples de un paso" }
+          ]
+        },
+        "6-basico": {
+          "title": "Temas a Evaluar - 6° Básico",
+          "topics": [
+            { "order": 1, "title": "Operaciones con fracciones y decimales", "description": "Multiplicación y división de fracciones; operatoria decimal" },
+            { "order": 2, "title": "Razones y proporciones", "description": "Razones, tasas, proporciones directas y regla de tres" },
+            { "order": 3, "title": "Geometría", "description": "Área de paralelogramos, trapecios y círculos; volumen de prismas" },
+            { "order": 4, "title": "Estadística", "description": "Diagramas de puntos, mediana y moda" },
+            { "order": 5, "title": "Álgebra", "description": "Ecuaciones de dos pasos y expresiones algebraicas" }
+          ]
+        },
+        "7-basico": {
+          "title": "Temas a Evaluar - 7° Básico",
+          "topics": [
+            { "order": 1, "title": "Números enteros", "description": "Operaciones con números negativos y valor absoluto" },
+            { "order": 2, "title": "Álgebra básica", "description": "Expresiones algebraicas, reducción de términos y ecuaciones lineales" },
+            { "order": 3, "title": "Proporcionalidad", "description": "Proporcionalidad directa e inversa; porcentajes aplicados" },
+            { "order": 4, "title": "Geometría", "description": "Ángulos entre paralelas, congruencia de triángulos y teorema de Pitágoras introductorio" },
+            { "order": 5, "title": "Estadística y probabilidad", "description": "Diagramas de tallo y hojas, probabilidad de eventos simples" }
+          ]
+        },
+        "8-basico": {
+          "title": "Temas a Evaluar - 8° Básico",
+          "topics": [
+            { "order": 1, "title": "Álgebra", "description": "Productos notables, factorización y ecuaciones lineales con fracciones" },
+            { "order": 2, "title": "Ecuaciones e inecuaciones", "description": "Sistemas de ecuaciones lineales (2×2) e inecuaciones de primer grado" },
+            { "order": 3, "title": "Geometría", "description": "Teorema de Pitágoras, semejanza de triángulos y transformaciones" },
+            { "order": 4, "title": "Funciones", "description": "Concepto de función, dominio, recorrido y función lineal" },
+            { "order": 5, "title": "Probabilidad y estadística", "description": "Probabilidad teórica, diagrama de árbol y medidas de dispersión" }
+          ]
+        },
+        "1-medio": {
+          "title": "Temas a Evaluar - 1° Medio",
+          "topics": [
+            { "order": 1, "title": "Números reales", "description": "Números racionales e irracionales, potencias y raíces" },
+            { "order": 2, "title": "Álgebra", "description": "Factorización avanzada, fracciones algebraicas y ecuaciones cuadráticas" },
+            { "order": 3, "title": "Funciones lineales", "description": "Pendiente, ecuación de la recta, gráficos e intersecciones" },
+            { "order": 4, "title": "Geometría", "description": "Circunferencia, ángulos inscritos y centrales, áreas de figuras compuestas" },
+            { "order": 5, "title": "Estadística", "description": "Medidas de tendencia central, dispersión y gráficos estadísticos" }
+          ]
+        },
+        "2-medio": {
+          "title": "Temas a Evaluar - 2° Medio",
+          "topics": [
+            { "order": 1, "title": "Funciones cuadráticas", "description": "Parábola, vértice, eje de simetría e intersecciones con los ejes" },
+            { "order": 2, "title": "Sistemas de ecuaciones", "description": "Resolución por sustitución, igualación y método gráfico" },
+            { "order": 3, "title": "Trigonometría", "description": "Razones trigonométricas en el triángulo rectángulo (seno, coseno, tangente)" },
+            { "order": 4, "title": "Geometría analítica", "description": "Distancia entre puntos, punto medio y ecuación de la recta en el plano" },
+            { "order": 5, "title": "Probabilidad", "description": "Probabilidad condicional, eventos independientes y regla multiplicativa" }
+          ]
+        },
+        "3-medio": {
+          "title": "Temas a Evaluar - 3° Medio",
+          "topics": [
+            { "order": 1, "title": "Funciones exponenciales y logarítmicas", "description": "Propiedades, gráficos y ecuaciones exponenciales" },
+            { "order": 2, "title": "Trigonometría", "description": "Funciones trigonométricas, identidades fundamentales y ecuaciones" },
+            { "order": 3, "title": "Geometría del espacio", "description": "Volúmenes y áreas de cuerpos geométricos (prismas, cilindros, conos y esferas)" },
+            { "order": 4, "title": "Estadística inferencial", "description": "Muestreo, distribución normal introductoria e intervalos de confianza" },
+            { "order": 5, "title": "Límites y continuidad", "description": "Concepto intuitivo de límite, cálculo de límites y continuidad de funciones" }
+          ]
+        },
+        "4-medio": {
+          "title": "Temas a Evaluar - 4° Medio",
+          "topics": [
+            { "order": 1, "title": "Derivadas", "description": "Concepto de derivada, reglas de derivación y aplicaciones (máximos, mínimos, tasas de cambio)" },
+            { "order": 2, "title": "Integrales", "description": "Integral indefinida, métodos básicos de integración y aplicaciones de área bajo la curva" },
+            { "order": 3, "title": "Probabilidad avanzada", "description": "Distribuciones discretas, valor esperado y varianza" },
+            { "order": 4, "title": "Geometría analítica avanzada", "description": "Cónicas (circunferencia, elipse, parábola e hipérbola)" },
+            { "order": 5, "title": "Modelamiento matemático", "description": "Modelar situaciones reales con funciones, ecuaciones y sistemas" }
+          ]
+        }
+      },
+      "examDatesTitle": "Fecha de Examen",
+      "examDatesDescription": "Fechas y horarios programados para el examen de Matemática.",
+      "availableDates": [
+        {
+          "id": "math-2025-08-14-0900",
+          "date": "2025-08-14",
+          "dayLabel": "jueves, 14 de agosto de 2025",
+          "startTime": "09:00",
+          "endTime": "10:20",
+          "location": "Sala A-101",
+          "durationLabel": "1h 20min",
+          "durationMinutes": 80
+        }
+      ]
+    },
+    "language": {
+      "id": "language",
+      "name": "Lenguaje",
+      "description": "Evaluación de comprensión lectora y expresión escrita",
+      "durationLabel": "1h 20min",
+      "durationMinutes": 80,
+      "questions": 31,
+      "minimumScore": 60,
+      "minimumScoreLabel": "60%",
+      "instructionsTitle": "Instrucciones del Examen",
+      "instructions": [
+        "Presentarse 30 minutos antes del examen",
+        "Traer lápiz y goma",
+        "Se evaluará comprensión lectora y redacción",
+        "El examen tiene una duración máxima de 80 minutos"
+      ],
+      "levelSelector": {
+        "title": "Selecciona tu Nivel Educativo",
+        "description": "Los temas del examen se adaptan según tu nivel educativo actual."
+      },
+      "topicsByLevel": {
+        "prekinder": {
+          "title": "Temas a Evaluar - Prekínder",
+          "topics": [
+            { "order": 1, "title": "Conciencia fonológica", "description": "Reconocimiento de sonidos iniciales, rimas y sílabas" },
+            { "order": 2, "title": "Reconocimiento de letras", "description": "Identificación de vocales y consonantes frecuentes" },
+            { "order": 3, "title": "Vocabulario básico", "description": "Nombrar objetos cotidianos, colores, animales y familia" },
+            { "order": 4, "title": "Comprensión oral", "description": "Escuchar cuentos cortos y responder preguntas simples" },
+            { "order": 5, "title": "Expresión oral", "description": "Describir imágenes y narrar experiencias cotidianas" }
+          ]
+        },
+        "kinder": {
+          "title": "Temas a Evaluar - Kínder",
+          "topics": [
+            { "order": 1, "title": "Lectura inicial", "description": "Lectura de palabras simples y frases cortas" },
+            { "order": 2, "title": "Escritura de letras y palabras", "description": "Escritura legible de vocales, consonantes y palabras conocidas" },
+            { "order": 3, "title": "Vocabulario", "description": "Ampliación del vocabulario con categorías temáticas" },
+            { "order": 4, "title": "Comprensión de textos cortos", "description": "Identificar personajes, acciones y secuencia en relatos breves" },
+            { "order": 5, "title": "Expresión oral", "description": "Relatar experiencias con secuencia lógica y vocabulario adecuado" }
+          ]
+        },
+        "1-basico": {
+          "title": "Temas a Evaluar - 1° Básico",
+          "topics": [
+            { "order": 1, "title": "Lectura comprensiva", "description": "Lectura fluida de textos breves narrativos e informativos" },
+            { "order": 2, "title": "Escritura de oraciones", "description": "Redacción de oraciones completas con mayúscula y punto" },
+            { "order": 3, "title": "Vocabulario", "description": "Sinónimos simples y palabras en contexto" },
+            { "order": 4, "title": "Gramática básica", "description": "Sustantivos, adjetivos y artículos" },
+            { "order": 5, "title": "Expresión escrita", "description": "Escritura de párrafos cortos descriptivos y narrativos" }
+          ]
+        },
+        "2-basico": {
+          "title": "Temas a Evaluar - 2° Básico",
+          "topics": [
+            { "order": 1, "title": "Comprensión lectora", "description": "Identificar idea principal, detalles y secuencia en textos narrativos" },
+            { "order": 2, "title": "Producción de textos", "description": "Escritura de cuentos breves con inicio, desarrollo y desenlace" },
+            { "order": 3, "title": "Gramática", "description": "Verbos en presente, pasado y futuro; concordancia sujeto-verbo" },
+            { "order": 4, "title": "Ortografía", "description": "Uso de mayúsculas, punto, coma y signos de interrogación/exclamación" },
+            { "order": 5, "title": "Vocabulario contextual", "description": "Deducir significados de palabras desconocidas por contexto" }
+          ]
+        },
+        "3-basico": {
+          "title": "Temas a Evaluar - 3° Básico",
+          "topics": [
+            { "order": 1, "title": "Comprensión lectora", "description": "Textos narrativos, poéticos e informativos; inferencias simples" },
+            { "order": 2, "title": "Textos narrativos", "description": "Identificar narrador, personajes, ambiente y conflicto" },
+            { "order": 3, "title": "Gramática", "description": "Pronombres personales, adverbios y tiempos verbales compuestos" },
+            { "order": 4, "title": "Ortografía", "description": "Reglas de acentuación (agudas, graves, esdrújulas)" },
+            { "order": 5, "title": "Vocabulario", "description": "Familias de palabras, prefijos y sufijos básicos" }
+          ]
+        },
+        "4-basico": {
+          "title": "Temas a Evaluar - 4° Básico",
+          "topics": [
+            { "order": 1, "title": "Comprensión lectora", "description": "Textos literarios y no literarios; inferencias y opiniones fundamentadas" },
+            { "order": 2, "title": "Producción de textos", "description": "Escritura de cartas, noticias e informes breves" },
+            { "order": 3, "title": "Gramática", "description": "Sujeto y predicado, complementos directos e indirectos" },
+            { "order": 4, "title": "Ortografía", "description": "Uso de b/v, c/s/z, h; reglas de acentuación" },
+            { "order": 5, "title": "Vocabulario contextual", "description": "Sinónimos, antónimos y uso de diccionario" }
+          ]
+        },
+        "5-basico": {
+          "title": "Temas a Evaluar - 5° Básico",
+          "topics": [
+            { "order": 1, "title": "Comprensión lectora", "description": "Análisis de textos informativos, literarios y publicitarios" },
+            { "order": 2, "title": "Textos informativos y literarios", "description": "Diferenciar hechos de opiniones; elementos del género narrativo" },
+            { "order": 3, "title": "Gramática", "description": "Oraciones simples y compuestas, conectores básicos" },
+            { "order": 4, "title": "Producción textual", "description": "Escritura de textos expositivos y narrativos estructurados" },
+            { "order": 5, "title": "Vocabulario", "description": "Palabras polisémicas, homófonas y campo semántico" }
+          ]
+        },
+        "6-basico": {
+          "title": "Temas a Evaluar - 6° Básico",
+          "topics": [
+            { "order": 1, "title": "Análisis textual", "description": "Análisis de estructura y propósito comunicativo de distintos géneros" },
+            { "order": 2, "title": "Producción de textos", "description": "Ensayos breves, reseñas y textos argumentativos simples" },
+            { "order": 3, "title": "Gramática avanzada", "description": "Oraciones subordinadas, uso de pronombres relativos y preposiciones" },
+            { "order": 4, "title": "Ortografía", "description": "Uso de signos de puntuación avanzados (punto y coma, dos puntos, guión)" },
+            { "order": 5, "title": "Vocabulario contextual", "description": "Lenguaje figurado, modismos y expresiones idiomáticas" }
+          ]
+        },
+        "7-basico": {
+          "title": "Temas a Evaluar - 7° Básico",
+          "topics": [
+            { "order": 1, "title": "Análisis literario", "description": "Géneros literarios (narrativo, lírico, dramático); figuras literarias básicas" },
+            { "order": 2, "title": "Textos argumentativos", "description": "Identificar tesis, argumentos y contraargumentos" },
+            { "order": 3, "title": "Gramática", "description": "Oraciones complejas, coherencia y cohesión textual" },
+            { "order": 4, "title": "Producción textual", "description": "Redacción de textos argumentativos y expositivos con estructura clara" },
+            { "order": 5, "title": "Vocabulario", "description": "Raíces grecolatinas, denotación y connotación" }
+          ]
+        },
+        "8-basico": {
+          "title": "Temas a Evaluar - 8° Básico",
+          "topics": [
+            { "order": 1, "title": "Comprensión lectora avanzada", "description": "Lectura crítica de textos literarios y no literarios" },
+            { "order": 2, "title": "Textos argumentativos", "description": "Análisis de columnas de opinión, editoriales y discursos" },
+            { "order": 3, "title": "Análisis literario", "description": "Contexto de producción, intertextualidad y recursos estilísticos" },
+            { "order": 4, "title": "Gramática", "description": "Modos verbales (indicativo, subjuntivo, imperativo), voz activa y pasiva" },
+            { "order": 5, "title": "Redacción", "description": "Escritura de ensayos breves con introducción, desarrollo y conclusión" }
+          ]
+        },
+        "1-medio": {
+          "title": "Temas a Evaluar - 1° Medio",
+          "topics": [
+            { "order": 1, "title": "Literatura", "description": "Narrativa chilena y latinoamericana; análisis de obras y autores representativos" },
+            { "order": 2, "title": "Análisis textual", "description": "Estructura argumentativa, recursos retóricos y falacias" },
+            { "order": 3, "title": "Argumentación", "description": "Construcción de argumentos sólidos con evidencia y razonamiento lógico" },
+            { "order": 4, "title": "Gramática avanzada", "description": "Uso normativo del idioma, registro formal e informal" },
+            { "order": 5, "title": "Producción textual", "description": "Textos académicos, informes de lectura y reseñas críticas" }
+          ]
+        },
+        "2-medio": {
+          "title": "Temas a Evaluar - 2° Medio",
+          "topics": [
+            { "order": 1, "title": "Literatura hispanoamericana", "description": "Movimientos literarios: romanticismo, realismo, naturalismo y vanguardias" },
+            { "order": 2, "title": "Ensayo", "description": "Lectura y escritura de ensayos con estructura argumentativa formal" },
+            { "order": 3, "title": "Análisis crítico", "description": "Evaluación de fuentes, sesgo y perspectivas en textos informativos" },
+            { "order": 4, "title": "Gramática", "description": "Normativa avanzada, vicios del lenguaje y estilo" },
+            { "order": 5, "title": "Redacción formal", "description": "Escritura de informes, artículos y textos con citas y referencias" }
+          ]
+        },
+        "3-medio": {
+          "title": "Temas a Evaluar - 3° Medio",
+          "topics": [
+            { "order": 1, "title": "Literatura universal", "description": "Análisis de obras clásicas y contemporáneas de la literatura mundial" },
+            { "order": 2, "title": "Textos argumentativos complejos", "description": "Análisis de discursos políticos, ensayos filosóficos y textos académicos" },
+            { "order": 3, "title": "Análisis crítico", "description": "Interpretación de subtexto, ironía, sátira y recursos literarios avanzados" },
+            { "order": 4, "title": "Investigación", "description": "Métodos de investigación bibliográfica, citación y elaboración de bibliografía" },
+            { "order": 5, "title": "Expresión formal", "description": "Oratoria, debates estructurados y comunicación efectiva" }
+          ]
+        },
+        "4-medio": {
+          "title": "Temas a Evaluar - 4° Medio",
+          "topics": [
+            { "order": 1, "title": "Literatura contemporánea", "description": "Tendencias actuales, narrativa posmoderna y literatura chilena reciente" },
+            { "order": 2, "title": "Ensayo académico", "description": "Redacción de ensayos con rigor académico, tesis fundamentada y aparato crítico" },
+            { "order": 3, "title": "Análisis crítico avanzado", "description": "Lectura hermenéutica, análisis semiótico y perspectivas interdisciplinarias" },
+            { "order": 4, "title": "Investigación", "description": "Diseño de proyectos de investigación, metodología y presentación de resultados" },
+            { "order": 5, "title": "Comunicación formal", "description": "Presentaciones orales académicas, ponencias y participación en foros" }
+          ]
+        }
+      },
+      "examDatesTitle": "Fecha de Examen",
+      "examDatesDescription": "Fechas y horarios programados para el examen de Lenguaje.",
+      "availableDates": [
+        {
+          "id": "language-2025-08-15-1100",
+          "date": "2025-08-15",
+          "dayLabel": "viernes, 15 de agosto de 2025",
+          "startTime": "11:00",
+          "endTime": "12:20",
+          "location": "Sala B-201",
+          "durationLabel": "1h 20min",
+          "durationMinutes": 80
+        }
+      ]
+    },
+    "english": {
+      "id": "english",
+      "name": "Inglés",
+      "description": "Evaluación de conocimientos del idioma inglés",
+      "durationLabel": "1h 20min",
+      "durationMinutes": 80,
+      "questions": 31,
+      "minimumScore": 60,
+      "minimumScoreLabel": "60%",
+      "instructionsTitle": "Instrucciones del Examen",
+      "instructions": [
+        "Presentarse 30 minutos antes del examen",
+        "Traer diccionario inglés-español",
+        "Se evaluará gramática y vocabulario",
+        "El examen tiene una duración máxima de 80 minutos"
+      ],
+      "levelSelector": {
+        "title": "Selecciona tu Nivel Educativo",
+        "description": "Los temas del examen se adaptan según tu nivel educativo actual."
+      },
+      "topicsByLevel": {
+        "prekinder": {
+          "title": "Temas a Evaluar - Prekínder",
+          "topics": [
+            { "order": 1, "title": "Greetings and farewells", "description": "Saludos básicos: hello, goodbye, good morning" },
+            { "order": 2, "title": "Colors and numbers", "description": "Colores primarios y números del 1 al 10 en inglés" },
+            { "order": 3, "title": "Animals", "description": "Vocabulario de animales domésticos y de granja" },
+            { "order": 4, "title": "Classroom objects", "description": "Identificar objetos del aula: book, pencil, eraser" },
+            { "order": 5, "title": "Songs and rhymes", "description": "Comprensión de canciones y rimas infantiles en inglés" }
+          ]
+        },
+        "kinder": {
+          "title": "Temas a Evaluar - Kínder",
+          "topics": [
+            { "order": 1, "title": "Vocabulary: family and body", "description": "Miembros de la familia y partes del cuerpo en inglés" },
+            { "order": 2, "title": "Basic expressions", "description": "What's your name? How are you? I like... I don't like..." },
+            { "order": 3, "title": "Phonics", "description": "Sonidos de las letras del alfabeto en inglés" },
+            { "order": 4, "title": "Listening comprehension", "description": "Seguir instrucciones simples en inglés (stand up, sit down, open)" },
+            { "order": 5, "title": "Food and clothes", "description": "Vocabulario de alimentos y prendas de vestir básicas" }
+          ]
+        },
+        "1-basico": {
+          "title": "Temas a Evaluar - 1° Básico",
+          "topics": [
+            { "order": 1, "title": "Vocabulary: daily life", "description": "Días de la semana, meses, estaciones y clima" },
+            { "order": 2, "title": "Simple sentences", "description": "Oraciones con I am, I have, I like, I can" },
+            { "order": 3, "title": "Reading", "description": "Lectura de textos muy cortos con imágenes de apoyo" },
+            { "order": 4, "title": "Writing", "description": "Escritura de palabras y oraciones simples copiadas y guiadas" },
+            { "order": 5, "title": "Listening", "description": "Comprensión de instrucciones y diálogos cortos" }
+          ]
+        },
+        "2-basico": {
+          "title": "Temas a Evaluar - 2° Básico",
+          "topics": [
+            { "order": 1, "title": "Vocabulary: places and actions", "description": "Lugares (school, park, house) y verbos de acción comunes" },
+            { "order": 2, "title": "Simple Present", "description": "Oraciones afirmativas y negativas en presente simple" },
+            { "order": 3, "title": "Reading comprehension", "description": "Lectura de historias cortas con preguntas de comprensión" },
+            { "order": 4, "title": "Writing", "description": "Escritura de oraciones y párrafos cortos descriptivos" },
+            { "order": 5, "title": "Listening comprehension", "description": "Comprender diálogos y relatos breves" }
+          ]
+        },
+        "3-basico": {
+          "title": "Temas a Evaluar - 3° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar basics", "description": "Present Simple (afirmativo, negativo, interrogativo), There is/are" },
+            { "order": 2, "title": "Vocabulary: hobbies and sports", "description": "Pasatiempos, deportes y actividades de tiempo libre" },
+            { "order": 3, "title": "Reading", "description": "Comprensión de textos narrativos y descriptivos breves" },
+            { "order": 4, "title": "Writing", "description": "Escribir sobre actividades diarias y preferencias personales" },
+            { "order": 5, "title": "Oral expression", "description": "Presentarse, describir rutinas y hacer preguntas simples" }
+          ]
+        },
+        "4-basico": {
+          "title": "Temas a Evaluar - 4° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Present Continuous, can/can't, prepositions of place" },
+            { "order": 2, "title": "Vocabulary", "description": "Profesiones, medios de transporte, comidas y bebidas" },
+            { "order": 3, "title": "Reading comprehension", "description": "Textos informativos cortos, menús, afiches e invitaciones" },
+            { "order": 4, "title": "Written production", "description": "Escribir descripciones de personas, lugares y eventos" },
+            { "order": 5, "title": "Oral expression", "description": "Diálogos guiados sobre temas cotidianos" }
+          ]
+        },
+        "5-basico": {
+          "title": "Temas a Evaluar - 5° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Past Simple (regular and irregular verbs), comparatives" },
+            { "order": 2, "title": "Vocabulary", "description": "Viajes, países, culturas y vocabulario temático ampliado" },
+            { "order": 3, "title": "Reading comprehension", "description": "Textos narrativos, correos electrónicos y artículos breves" },
+            { "order": 4, "title": "Written production", "description": "Relatos de experiencias pasadas y descripciones comparativas" },
+            { "order": 5, "title": "Oral expression", "description": "Narrar eventos pasados y expresar opiniones simples" }
+          ]
+        },
+        "6-basico": {
+          "title": "Temas a Evaluar - 6° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Future with will and going to, superlatives, adverbs of frequency" },
+            { "order": 2, "title": "Vocabulary", "description": "Tecnología, medio ambiente, salud y bienestar" },
+            { "order": 3, "title": "Reading comprehension", "description": "Artículos informativos, biografías y textos instructivos" },
+            { "order": 4, "title": "Written production", "description": "Planes futuros, predicciones y textos de opinión breves" },
+            { "order": 5, "title": "Oral expression", "description": "Presentaciones cortas y debates simples sobre temas familiares" }
+          ]
+        },
+        "7-basico": {
+          "title": "Temas a Evaluar - 7° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Present Perfect Simple, used to, relative clauses" },
+            { "order": 2, "title": "Vocabulary", "description": "Medios de comunicación, redes sociales, entretenimiento" },
+            { "order": 3, "title": "Reading comprehension", "description": "Textos periodísticos, reseñas y textos argumentativos simples" },
+            { "order": 4, "title": "Written production", "description": "Reseñas, correos formales e informales, narrativas personales" },
+            { "order": 5, "title": "Oral expression", "description": "Expresar experiencias de vida, acuerdos y desacuerdos" }
+          ]
+        },
+        "8-basico": {
+          "title": "Temas a Evaluar - 8° Básico",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Past Perfect, conditionals (zero and first), passive voice introduction" },
+            { "order": 2, "title": "Vocabulary", "description": "Ciencia, problemas sociales, emociones y phrasal verbs comunes" },
+            { "order": 3, "title": "Reading comprehension", "description": "Textos académicos, entrevistas y artículos de opinión" },
+            { "order": 4, "title": "Written production", "description": "Ensayos de opinión, cartas formales y textos expositivos" },
+            { "order": 5, "title": "Conversation", "description": "Debates estructurados y role-playing en contextos variados" }
+          ]
+        },
+        "1-medio": {
+          "title": "Temas a Evaluar - 1° Medio",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Second Conditional, reported speech (statements), modal verbs (must, should, might)" },
+            { "order": 2, "title": "Vocabulary", "description": "Vocabulario académico, collocations y expresiones idiomáticas frecuentes" },
+            { "order": 3, "title": "Reading comprehension", "description": "Textos literarios adaptados, ensayos y textos científicos" },
+            { "order": 4, "title": "Writing", "description": "Textos argumentativos, reviews y reportes estructurados" },
+            { "order": 5, "title": "Oral expression", "description": "Presentaciones orales, discusión de temas globales y defensa de opiniones" }
+          ]
+        },
+        "2-medio": {
+          "title": "Temas a Evaluar - 2° Medio",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Third Conditional, reported speech (questions), passive voice (all tenses)" },
+            { "order": 2, "title": "Vocabulary", "description": "Vocabulario académico avanzado, word formation y false friends" },
+            { "order": 3, "title": "Reading comprehension", "description": "Literatura original simplificada, textos de investigación y artículos de prensa" },
+            { "order": 4, "title": "Writing", "description": "Ensayos formales, propuestas y textos comparativos" },
+            { "order": 5, "title": "Oral expression", "description": "Debates formales, ponencias breves y análisis oral de textos" }
+          ]
+        },
+        "3-medio": {
+          "title": "Temas a Evaluar - 3° Medio",
+          "topics": [
+            { "order": 1, "title": "Grammar", "description": "Mixed conditionals, advanced tense review, cleft sentences" },
+            { "order": 2, "title": "Academic vocabulary", "description": "Vocabulario especializado por áreas (ciencias, humanidades, tecnología)" },
+            { "order": 3, "title": "Text analysis", "description": "Análisis crítico de textos literarios y no literarios en inglés" },
+            { "order": 4, "title": "Formal writing", "description": "Ensayos académicos con citas, cover letters y textos de investigación" },
+            { "order": 5, "title": "Oral expression", "description": "Simulaciones de entrevistas, mesas redondas y exposiciones académicas" }
+          ]
+        },
+        "4-medio": {
+          "title": "Temas a Evaluar - 4° Medio",
+          "topics": [
+            { "order": 1, "title": "Advanced grammar", "description": "Inversions, emphasis structures, advanced connectors and discourse markers" },
+            { "order": 2, "title": "Academic vocabulary", "description": "Registro académico, terminología de exámenes internacionales (FCE/CAE)" },
+            { "order": 3, "title": "Critical text analysis", "description": "Análisis de textos literarios originales, editoriales y papers académicos" },
+            { "order": 4, "title": "Academic essay", "description": "Ensayos de opinión y discursivos con estructura avanzada y referencias" },
+            { "order": 5, "title": "Formal communication", "description": "Presentaciones académicas, negociación y comunicación profesional" }
+          ]
+        }
+      },
+      "examDatesTitle": "Fecha de Examen",
+      "examDatesDescription": "Fechas y horarios programados para el examen de Inglés.",
+      "availableDates": [
+        {
+          "id": "english-2025-08-16-1400",
+          "date": "2025-08-16",
+          "dayLabel": "sábado, 16 de agosto de 2025",
+          "startTime": "14:00",
+          "endTime": "15:20",
+          "location": "Sala C-301",
+          "durationLabel": "1h 20min",
+          "durationMinutes": 80
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@ import ProfessorLoginPage from './pages/ProfessorLoginPage';
 import ApoderadoLogin from './pages/ApoderadoLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedAdminRoute from './components/auth/ProtectedAdminRoute';
+import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/ProcessActiveGuard';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
@@ -42,7 +43,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/profesor" element={<ProfessorLoginPage />} />
+        <Route path="/profesor" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />

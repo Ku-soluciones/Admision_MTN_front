@@ -172,3 +172,4 @@ vulnerability-report.*
 .gstack/
 skills-lock.json
 docs/
+.env*

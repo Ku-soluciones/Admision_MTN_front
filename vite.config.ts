@@ -1,6 +1,61 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import type { Connect } from 'vite';
+import { createClient } from '@vercel/flags-core';
+
+/**
+ * Middleware que simula las Edge Functions de /api/flags/* en desarrollo local.
+ * Lee Vercel Flags mediante FLAGS. FLAGS_SECRET sólo sirve para overrides,
+ * no para obtener el valor configurado del flag.
+ */
+function flagsDevMiddleware(env: Record<string, string>): Connect.NextHandleFunction {
+  const flagsSdkKey = env.FLAGS || process.env.FLAGS;
+  const flagsClientPromise = flagsSdkKey
+    ? (async () => {
+        const client = createClient(flagsSdkKey);
+        await client.initialize();
+        return client;
+      })()
+    : null;
+
+  return async (req, res, next) => {
+    // Solo interceptar rutas /api/flags/*
+    if (!req.url?.startsWith('/api/flags/')) {
+      return next();
+    }
+
+    const flagKey = req.url.replace('/api/flags/', '').split('?')[0];
+
+    if (!flagKey || flagKey === '') {
+      return next();
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+
+    try {
+      if (flagsClientPromise) {
+        const flagsClient = await flagsClientPromise;
+        const result = await flagsClient.evaluate<boolean>(flagKey, false);
+        const enabled = Boolean(result.value);
+        console.log(`[Flags Dev] "${flagKey}" (Vercel Flags) → ${enabled}`);
+        res.end(JSON.stringify({ enabled, source: 'vercel-flags' }));
+        return;
+      }
+
+      console.warn(
+        `[Flags Dev] FLAGS no está configurado. FLAGS_SECRET no permite evaluar "${flagKey}". ` +
+        `Flag "${flagKey}" → false (dev default)`,
+      );
+      res.end(JSON.stringify({ enabled: false, source: 'default' }));
+    } catch (error) {
+      console.error(`[Flags Dev] Error evaluando flag "${flagKey}":`, error);
+      res.end(JSON.stringify({ enabled: false, source: 'default' }));
+    }
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const envRoot = __dirname;
@@ -50,7 +105,15 @@ export default defineConfig(({ mode }) => {
     css: {
       devSourcemap: mode === 'development',
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'flags-dev-middleware',
+        configureServer(server) {
+          server.middlewares.use(flagsDevMiddleware(env));
+        },
+      },
+    ],
     json: {
       stringify: false,
       namedExports: true,

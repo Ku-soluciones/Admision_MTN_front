@@ -6,6 +6,7 @@ import InterviewModule from './pages/InterviewModule';
 import CalendarNotifications from './pages/CalendarNotifications';
 import FamilyInterviewPage from './pages/FamilyInterviewPage';
 import ProtectedProfessorRoute from './components/auth/ProtectedProfessorRoute';
+import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/ProcessActiveGuard';
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from '../coordinator/context/AuthContext';
 import Header from '../coordinator/components/layout/Header';
@@ -32,7 +33,7 @@ function App() {
                 <Routes>
 
         <Route path="/" element={<Navigate to="/entrevistas" replace />} />
-        <Route path="/profesor/login" element={<ProfessorLoginPage />} />
+        <Route path="/profesor/login" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/entrevistas" element={<ProtectedProfessorRoute><InterviewModule /></ProtectedProfessorRoute>} />
         <Route path="/calendario" element={<ProtectedProfessorRoute><CalendarNotifications /></ProtectedProfessorRoute>} />
         <Route path="/profesor/entrevista-familiar/:evaluationId" element={<ProtectedProfessorRoute><FamilyInterviewPage /></ProtectedProfessorRoute>} />
