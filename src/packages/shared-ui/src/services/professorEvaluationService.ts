@@ -6,6 +6,7 @@ export interface ProfessorEvaluation {
     evaluationType: EvaluationType;
     status: EvaluationStatus;
     applicationId: number;
+    application_id?: number;
     studentId?: number;
     studentName: string;
     studentGrade: string;
@@ -25,9 +26,40 @@ export interface ProfessorEvaluation {
     evaluatorName?: string;
     evaluatorSubject?: string;
     application?: {
+        id?: number;
         student?: {
+            id?: number;
+            firstName?: string;
+            paternalLastName?: string;
+            maternalLastName?: string;
+            lastName?: string;
             birthDate?: string;
+            gradeApplied?: string;
+            grade?: string;
             currentSchool?: string;
+            email?: string;
+            address?: string;
+            additionalNotes?: string;
+            gender?: string;
+        };
+        father?: {
+            id?: number;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+        };
+        mother?: {
+            id?: number;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+        };
+        guardian?: {
+            id?: number;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+            relationship?: string;
         };
     };
     evaluator?: {
@@ -67,35 +99,9 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
-            // Mapear evaluaciones
-            let mappedEvaluations = this.mapToProfessorEvaluations(evaluations);
-
-            // Enriquecer evaluaciones con datos faltantes en paralelo
-            mappedEvaluations = await Promise.all(
-                mappedEvaluations.map(async (evaluation) => {
-                    if (evaluation.applicationId && (!evaluation.studentName || !evaluation.studentBirthDate)) {
-                        try {
-                            const appResponse = await api.get(`/v1/applications/${evaluation.applicationId}`);
-                            const application = appResponse.data?.data || appResponse.data;
-
-                            if (application?.student) {
-                                const originalEval = evaluations.find((e: any) =>
-                                    (e.id || e.evaluationId) === evaluation.id
-                                );
-                                return this.mapToProfessorEvaluation({
-                                    ...originalEval,
-                                    application: application
-                                });
-                            }
-                        } catch (appError: any) {
-                            // Log silenciosamente y continuar con datos parciales
-                        }
-                    }
-                    return evaluation;
-                })
-            );
-
-            return mappedEvaluations;
+            // El BFF ahora devuelve la application embebida, no es necesario
+            // hacer llamadas secundarias a /v1/applications.
+            return this.mapToProfessorEvaluations(evaluations);
 
         } catch (error: any) {
 
@@ -121,35 +127,9 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
-            // Mapear evaluaciones
-            let mappedEvaluations = this.mapToProfessorEvaluations(evaluations);
-
-            // Enriquecer evaluaciones con datos faltantes en paralelo
-            mappedEvaluations = await Promise.all(
-                mappedEvaluations.map(async (evaluation) => {
-                    if (evaluation.applicationId && (!evaluation.studentName || !evaluation.studentBirthDate)) {
-                        try {
-                            const appResponse = await api.get(`/v1/applications/${evaluation.applicationId}`);
-                            const application = appResponse.data?.data || appResponse.data;
-
-                            if (application?.student) {
-                                const originalEval = evaluations.find((e: any) =>
-                                    (e.id || e.evaluationId) === evaluation.id
-                                );
-                                return this.mapToProfessorEvaluation({
-                                    ...originalEval,
-                                    application: application
-                                });
-                            }
-                        } catch (appError: any) {
-                            // Log silenciosamente y continuar con datos parciales
-                        }
-                    }
-                    return evaluation;
-                })
-            );
-
-            return mappedEvaluations;
+            // El BFF ahora devuelve la application embebida, no es necesario
+            // hacer llamadas secundarias a /v1/applications.
+            return this.mapToProfessorEvaluations(evaluations);
 
         } catch (error: any) {
 
@@ -234,28 +214,9 @@ class ProfessorEvaluationService {
             // Handle response wrapper: {success, data}
             const evaluation = response.data?.data || response.data;
 
-            let enrichedEvaluation = this.mapToProfessorEvaluation(evaluation);
-
-            // Enriquecer con datos de la aplicación si faltan datos del estudiante
-            if (enrichedEvaluation.applicationId && (!enrichedEvaluation.studentName || !enrichedEvaluation.studentBirthDate)) {
-                try {
-                    const applicationResponse = await api.get(`/v1/applications/${enrichedEvaluation.applicationId}`);
-                    const application = applicationResponse.data?.data || applicationResponse.data;
-
-                    if (application?.student) {
-                        // Re-mapear con datos enriquecidos
-                        enrichedEvaluation = this.mapToProfessorEvaluation({
-                            ...evaluation,
-                            application: application
-                        });
-                    }
-                } catch (appError: any) {
-                    console.warn(`Could not enrich evaluation with application data:`, appError);
-                    // Continuar con los datos que tenemos
-                }
-            }
-
-            return enrichedEvaluation;
+            // El BFF ahora devuelve la application embebida, no es necesario
+            // hacer llamadas secundarias a /v1/applications.
+            return this.mapToProfessorEvaluation(evaluation);
 
         } catch (error: any) {
 
@@ -283,6 +244,7 @@ class ProfessorEvaluationService {
             evaluationType: apiEvaluation.evaluationType || apiEvaluation.type || apiEvaluation.evaluation_type,
             status: apiEvaluation.status || EvaluationStatus.PENDING,
             applicationId: apiEvaluation.applicationId || apiEvaluation.application_id || apiEvaluation.application?.id,
+            application_id: apiEvaluation.application_id || apiEvaluation.applicationId || apiEvaluation.application?.id,
             studentId: this.getStudentId(apiEvaluation),
             studentName: this.getStudentName(apiEvaluation),
             studentGrade: this.getStudentGrade(apiEvaluation),

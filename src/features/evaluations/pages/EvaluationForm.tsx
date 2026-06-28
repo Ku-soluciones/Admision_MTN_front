@@ -299,31 +299,22 @@ const EvaluationForm: React.FC = () => {
   const loadStudentHistory = async () => {
     if (!evaluation?.application_id) return;
 
+    const studentId = (evaluation as any)?.application?.student?.id;
+    if (!studentId) return;
+
     try {
       setLoadingHistory(true);
 
-      // First get the student_id from the application
-      const appResponse = await fetch(`${getApiBaseUrl()}/v1/applications/${evaluation.application_id}`, {
+      // Now get the history
+      const historyResponse = await fetch(`${getApiBaseUrl()}/v1/evaluations/student/${studentId}/history`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
       });
 
-      if (appResponse.ok) {
-        const appData = await appResponse.json();
-        const studentId = appData.student_id;
-
-        // Now get the history
-        const historyResponse = await fetch(`${getApiBaseUrl()}/v1/evaluations/student/${studentId}/history`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-          }
-        });
-
-        if (historyResponse.ok) {
-          const historyData = await historyResponse.json();
-          setStudentHistory(historyData.evaluations || []);
-        }
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        setStudentHistory(historyData.evaluations || []);
       }
     } catch (error) {
     } finally {

@@ -135,8 +135,8 @@ const CycleDirectorReportForm: React.FC = () => {
                         entryCourse
                     };
 
-                    // Cargar información completa del estudiante desde la aplicación
-                    const studentInfo = await loadStudentInfo(directorEvaluation.applicationId);
+                    // Cargar información completa del estudiante desde la aplicación embebida
+                    const studentInfo = loadStudentInfo(directorEvaluation.application);
 
                     // Combinar ambos conjuntos de datos - studentInfo primero para que evaluationData lo sobrescriba
                     setReportData(prev => ({
@@ -170,53 +170,33 @@ const CycleDirectorReportForm: React.FC = () => {
         loadEvaluationData();
     }, [evaluationId]); // SOLO evaluationId como dependencia
 
-    const loadStudentInfo = async (applicationId: number): Promise<Partial<CycleDirectorReportData>> => {
-        try {
+    const loadStudentInfo = (application: any): Partial<CycleDirectorReportData> => {
+        if (application && application.student) {
+            const student = application.student;
 
-            // Obtener la aplicación completa que incluye todos los datos del estudiante
-            const response = await api.get(`/v1/applications/${applicationId}`);
-            const data = response.data;
-            const application = data.data || data;
-
-
-            if (application && application.student) {
-                const student = application.student;
-
-
-                // Calcular edad si hay fecha de nacimiento
-                let age = '';
-                if (student.birthDate) {
-                    const birthDate = new Date(student.birthDate);
-                    const today = new Date();
-                    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-                    const monthDiff = today.getMonth() - birthDate.getMonth();
-                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                        calculatedAge--;
-                    }
-                    age = `${calculatedAge} años`;
+            // Calcular edad si hay fecha de nacimiento
+            let age = '';
+            if (student.birthDate) {
+                const birthDate = new Date(student.birthDate);
+                const today = new Date();
+                let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    calculatedAge--;
                 }
-
-                const studentInfo = {
-                    studentName: `${student.firstName} ${student.paternalLastName || student.lastName || ''} ${student.maternalLastName || ''}`.trim(),
-                    birthDate: student.birthDate ? student.birthDate.split('T')[0] : '',
-                    age: age,
-                    currentSchool: student.currentSchool || '',
-                    gradeApplied: student.gradeApplied || ''
-                };
-
-                return studentInfo;
+                age = `${calculatedAge} años`;
             }
 
-            return {};
-
-        } catch (error) {
-            addNotification({
-                type: 'warning',
-                title: 'Atención',
-                message: 'No se pudo cargar la información completa del estudiante. Por favor, completa los campos manualmente.'
-            });
-            return {};
+            return {
+                studentName: `${student.firstName} ${student.paternalLastName || student.lastName || ''} ${student.maternalLastName || ''}`.trim(),
+                birthDate: student.birthDate ? student.birthDate.split('T')[0] : '',
+                age: age,
+                currentSchool: student.currentSchool || '',
+                gradeApplied: student.gradeApplied || ''
+            };
         }
+
+        return {};
     };
 
     const loadSubjectEvaluations = async (applicationId: number) => {
