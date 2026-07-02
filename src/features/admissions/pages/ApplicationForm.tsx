@@ -12,6 +12,7 @@ import { CheckCircleIcon, LogoIcon, UploadIcon } from '../../admin/components/ic
 import { useApplications, useNotifications } from '../../admin/context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { educationalLevelsForForm as educationalLevels } from '../../admin/services/staticData';
+import { gradeAvailabilityService } from '../../../packages/shared-ui/src/services/gradeAvailabilityService';
 import { appUrls } from '../../admin/utils/appUrls';
 import { applicationService } from '../services/applicationService';
 import { checkStudentRutExists } from '../services/studentService';
@@ -139,6 +140,39 @@ const ApplicationForm: React.FC = () => {
 
     // Flag to indicate if user is adding another child (skip family data steps)
     const [isAddingAnotherChild, setIsAddingAnotherChild] = useState(false);
+
+    // Estado para disponibilidad de vacantes
+    const [gradeOptionsWithAvailability, setGradeOptionsWithAvailability] = useState(educationalLevels.map(level => ({
+        value: level.value,
+        label: level.label,
+        disabled: false
+    })));
+
+    // Cargar disponibilidad de vacantes al montar
+    useEffect(() => {
+        const fetchAvailability = async () => {
+            try {
+                const available = await gradeAvailabilityService.getAvailable();
+                // Normalizar: remover guiones bajos para comparar (backend usa "1_BASICO", frontend usa "1BASICO")
+                const availableGrades = new Set(
+                    available
+                        .filter((g: any) => g.hasVacancy === true)
+                        .map((g: any) => g.gradeLevel.replace(/_/g, '').toUpperCase())
+                );
+                setGradeOptionsWithAvailability(
+                    educationalLevels.map(level => ({
+                        value: level.value,
+                        label: level.label,
+                        disabled: !availableGrades.has(level.value.toUpperCase().replace(/_/g, ''))
+                    }))
+                );
+            } catch (error) {
+                // Si falla, mostrar todos como disponibles
+                console.warn('No se pudo obtener disponibilidad de vacantes');
+            }
+        };
+        fetchAvailability();
+    }, []);
 
     // Estado para el modal de errores
     const [showErrorModal, setShowErrorModal] = useState(false);
@@ -1918,7 +1952,7 @@ const ApplicationForm: React.FC = () => {
                         <Select
                             id="grade"
                             label="Nivel al que postula"
-                            options={gradeOptions}
+                            options={gradeOptionsWithAvailability}
                             isRequired
                             value={data.grade || ''}
                             onChange={(e) => updateField('grade', e.target.value)}

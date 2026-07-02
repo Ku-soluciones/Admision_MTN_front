@@ -6,17 +6,18 @@ import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon, LogoIcon } from '../components/icons/Icons';
-import { 
+import GradeAvailabilityManager from '../components/gradeAvailability/GradeAvailabilityManager';
+import {
   FiFileText,
   FiUsers,
   FiBarChart2,
-  FiFile, 
-  FiKey, 
-  FiMail, 
-  FiAlertTriangle, 
-  FiCheckCircle, 
-  FiXCircle, 
-  FiRefreshCw, 
+  FiFile,
+  FiKey,
+  FiMail,
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiXCircle,
+  FiRefreshCw,
   FiEdit,
   FiUser,
   FiBookOpen,
@@ -33,7 +34,8 @@ import {
   FiInfo,
   FiCheck,
   FiX,
-  FiSearch
+  FiSearch,
+  FiGrid
 } from 'react-icons/fi';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import { CreateUserRequest, UserRole, User } from '../types/user';
@@ -71,13 +73,14 @@ import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 
 const sections = [
-  { key: 'metricas',      label: 'Métricas de Postulantes',  icon: BarChartIcon },
+  { key: 'metricas',      label: 'Métricas de Postulantes',   icon: BarChartIcon },
   { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: FileTextIcon },
   { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: CheckCircleIcon },
   { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: ClockIcon },
-  { key: 'calendario',    label: 'Calendario Global',        icon: DashboardIcon },
-  { key: 'usuarios',      label: 'Gestión de Usuarios',      icon: UsersIcon },
-  { key: 'configuracion', label: 'Configuración',            icon: UserIcon },
+  { key: 'calendario',    label: 'Calendario Global',         icon: DashboardIcon },
+  { key: 'usuarios',       label: 'Gestión de Usuarios',      icon: UsersIcon },
+  { key: 'vacantes',       label: 'Disponibilidad de Vacantes', icon: FiGrid },
+  { key: 'configuracion', label: 'Configuración',             icon: UserIcon },
 ];
 
 interface SidebarContentProps {
@@ -551,6 +554,21 @@ Esta acción:
           </div>
         );
 
+      case 'vacantes':
+        return (
+          <div className="space-y-6">
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Vacantes</p>
+                  <h1 className="mt-1 text-lg font-bold text-gray-950">Disponibilidad de Vacantes por Nivel</h1>
+                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Configura qué niveles tienen vacantes disponibles para los postulantes</p>
+                </div>
+              </div>
+            </section>
+            <GradeAvailabilityManager />
+          </div>
+        );
 
       case 'dashboard':
         return (

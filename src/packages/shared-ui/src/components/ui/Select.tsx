@@ -3,6 +3,7 @@ import React from 'react';
 interface SelectOption {
     value: string;
     label: string;
+    disabled?: boolean;
 }
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -42,8 +43,8 @@ const Select: React.FC<SelectProps> = ({
             >
                 <option value="">{placeholder}</option>
                 {options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
+                    <option key={option.value} value={option.value} disabled={option.disabled}>
+                        {option.label}{option.disabled ? ' (Sin vacantes)' : ''}
                     </option>
                 ))}
             </select>
