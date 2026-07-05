@@ -25,7 +25,7 @@ import {
     getStorageKey,
     BASE_STORAGE_KEYS,
     authStore,
-    createRefreshQueue,
+    runSharedRefresh,
     extractAuthErrorCode,
     isAccessExpired,
     isSessionTerminal,
@@ -106,31 +106,13 @@ async function resolveAccessTokenForRequest(): Promise<string | null> {
     );
 }
 
-// Cola compartida: garantiza un único POST /v1/auth/refresh aunque
-// múltiples requests reciban 401 simultáneamente. NGINX enruta `/v1/auth/*`
-// hacia el BFF; los nuevos endpoints `/api/auth/*` se incorporarán cuando el
-// gateway los exponga.
-const refreshQueue = createRefreshQueue({
-    refresh: async () => {
-        const baseUrl = getApiBaseUrl();
-        const { data } = await axios.post(
-            `${baseUrl}/v1/auth/refresh`,
-            null,
-            { withCredentials: true, headers: { Accept: 'application/json' } },
-        );
-        if (!data?.token || typeof data.expiresIn !== 'number') {
-            throw new Error('Respuesta de refresh inválida');
-        }
-        authStore.updateAccessToken(data.token, data.expiresIn, data.user ?? undefined);
-        emitAuthEvent({ type: 'refresh-succeeded', expiresIn: data.expiresIn });
-        return data.token as string;
-    },
-    onFailure: (err) => {
-        authStore.clear();
-        const status = (err as any)?.response?.status;
-        emitAuthEvent({ type: 'refresh-failed', status, reason: 'reactive' });
-    },
-});
+// Cola compartida: el refresh proactivo (timer) y el reactivo (interceptor)
+// usan la misma instancia para garantizar que NUNCA haya dos POST
+// /v1/auth/refresh simultáneos. Eso evita que el backend detecte "reuso" del
+// refresh token y revoque la sesión.
+const refreshQueue = {
+    run: runSharedRefresh,
+};
 
 // Interceptor para agregar el token de autenticación y CSRF token
 api.interceptors.request.use(
@@ -271,7 +253,7 @@ api.interceptors.response.use(
                 return Promise.reject(error);
             }
             original.headers = original.headers ?? {};
-            original.headers.Authorization = `Bearer ${newToken}`;
+            original.headers.Authorization = `Bearer ${newToken.token}`;
             return api.request(original);
         }
 

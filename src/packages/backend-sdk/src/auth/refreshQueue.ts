@@ -22,25 +22,25 @@
  *     return http(original);
  *   }
  */
-export interface RefreshQueueHandle {
-  /** Devuelve el nuevo access token, o null si el refresh falló. */
-  run(): Promise<string | null>;
+export interface RefreshQueueHandle<T> {
+  /** Devuelve el resultado del refresh, o null si el refresh falló. */
+  run(): Promise<T | null>;
   /** Indica si hay un refresh en curso. */
   isRefreshing(): boolean;
 }
 
-export interface CreateRefreshQueueOptions {
+export interface CreateRefreshQueueOptions<T> {
   /**
    * Llama al endpoint de refresh. Debe propagar errores para que la cola los
    * procese (no devolver null en éxito).
    */
-  refresh: () => Promise<string>;
+  refresh: () => Promise<T>;
   /** Callback cuando el refresh falla — limpiar store, redirigir a login, etc. */
   onFailure?: (error: unknown) => void;
 }
 
-export function createRefreshQueue(options: CreateRefreshQueueOptions): RefreshQueueHandle {
-  let refreshing: Promise<string | null> | null = null;
+export function createRefreshQueue<T>(options: CreateRefreshQueueOptions<T>): RefreshQueueHandle<T> {
+  let refreshing: Promise<T | null> | null = null;
 
   return {
     isRefreshing: () => Boolean(refreshing),
@@ -48,7 +48,7 @@ export function createRefreshQueue(options: CreateRefreshQueueOptions): RefreshQ
       if (!refreshing) {
         refreshing = options
           .refresh()
-          .then((token) => token)
+          .then((value) => value)
           .catch((err) => {
             options.onFailure?.(err);
             return null;

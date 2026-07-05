@@ -19,6 +19,7 @@ import {
   authStore,
   cancelScheduledRefresh,
   scheduleRefresh,
+  runSharedRefresh,
 } from '../../../backend-sdk/src/index';
 import { useAuthBootstrap, purgeLegacyAuthStorage } from '../hooks/auth/useAuthBootstrap';
 import { buildUserFromBff, setAdminCompat } from '../hooks/auth/helpers';
@@ -115,10 +116,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const linkFirebaseAccount = useCallback(async () => {
     await authService.linkFirebaseAccount();
     try {
-      const res = await api.post('/v1/auth/refresh');
-      if (res.data?.token && res.data?.expiresIn) {
-        authStore.updateAccessToken(res.data.token, res.data.expiresIn, res.data.user);
-        scheduleRefresh(res.data.expiresIn);
+      const result = await runSharedRefresh();
+      if (result) {
+        authStore.updateAccessToken(result.token, result.expiresIn, result.user);
+        scheduleRefresh(result.expiresIn);
       }
     } catch { /* el banner se ocultará porque firebaseLinked=true */ }
   }, []);

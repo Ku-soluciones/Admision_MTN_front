@@ -8,6 +8,7 @@
  */
 import { authStore } from './store';
 import { emitAuthEvent } from './events';
+import { runSharedRefresh } from './sharedRefreshQueue';
 
 /** Lee una variable VITE_* desde import.meta.env o globalThis sin romper en
  *  entornos donde `import.meta` no está disponible (tests, CommonJS). */
@@ -28,8 +29,11 @@ export interface ScheduleRefreshOptions {
    * Función que ejecuta la llamada de refresh y devuelve el nuevo access token
    * + `expiresIn`. Debe usar el mismo cliente HTTP que la app (con
    * `withCredentials: true`) para que la cookie del refresh se envíe.
+   * Si no se proporciona, se usa la cola de refresh compartida
+   * (`runSharedRefresh`) para evitar que el timer proactivo compita con el
+   * interceptor reactivo.
    */
-  refresh: () => Promise<{ token: string; expiresIn: number; user?: any; firebaseLinked?: boolean } | null>;
+  refresh?: () => Promise<{ token: string; expiresIn: number; user?: any; firebaseLinked?: boolean } | null>;
   /** Callback cuando el refresh falla — típicamente forzar logout/redirect. */
   onFailure?: (error: unknown) => void;
   /** Segundos de anticipación con respecto al exp del access. Default 60. */
@@ -73,7 +77,8 @@ export function scheduleRefresh(expiresIn: number, options?: ScheduleRefreshOpti
 
   const timer = setTimeout(async () => {
     try {
-      const result = await currentOptions.refresh();
+      const refreshFn = currentOptions.refresh ?? runSharedRefresh;
+      const result = await refreshFn();
       if (!result) {
         cancelScheduledRefresh();
         emitAuthEvent({ type: 'refresh-failed', reason: 'proactive-null' });
@@ -88,7 +93,11 @@ export function scheduleRefresh(expiresIn: number, options?: ScheduleRefreshOpti
       scheduleRefresh(result.expiresIn);
     } catch (err) {
       cancelScheduledRefresh();
-      authStore.clear();
+      // No limpiamos el store aquí: un refresh proactivo puede fallar por
+      // desfase de reloj, 401 transitorio en /v1/auth/refresh, etc. Si la
+      // sesión realmente murió, el interceptor reactivo manejará el siguiente
+      // 401 y forzará logout. Limpiar el store desde el timer proactivo
+      // mata la sesión prematuramente y provoca redirecciones inesperadas.
       emitAuthEvent({ type: 'refresh-failed', reason: 'proactive-throw' });
       currentOptions.onFailure?.(err);
     }

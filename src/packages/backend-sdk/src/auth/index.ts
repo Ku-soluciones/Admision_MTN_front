@@ -12,5 +12,6 @@ export * from './scheduleRefresh';
 export * from './broadcast';
 export * from './bootstrap';
 export * from './refreshQueue';
+export * from './sharedRefreshQueue';
 export * from './useSessionTimeout';
 export * from './events';

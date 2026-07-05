@@ -119,16 +119,11 @@ class ProfessorAuthService {
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
             });
-            scheduleRefresh(data.expiresIn, {
-                refresh: async () => {
-                    const r = await api.post('/v1/auth/refresh');
-                    const rd = r.data || {};
-                    return rd.token && typeof rd.expiresIn === 'number'
-                        ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
-                        : null;
-                },
-                onFailure: () => { authStore.clear(); },
-            });
+            // Usamos la cola de refresh compartida para evitar que el timer
+            // proactivo y el interceptor reactivo ejecuten dos refresh
+            // simultáneos y el backend detecte "reuso" del refresh token.
+            // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
+            scheduleRefresh(data.expiresIn);
             broadcastLogin(data.token, data.expiresIn, data.user, data.firebaseLinked);
         }
     }

@@ -170,19 +170,13 @@ function adoptSession(data: AuthResponse): void {
         permissions: data.permissions ?? [],
     });
 
-    // Programar refresh proactivo.
-    scheduleRefresh(data.expiresIn, {
-        refresh: async () => {
-            const res = await api.post(ENDPOINTS.refresh);
-            const r = res.data || {};
-            return r.token && typeof r.expiresIn === 'number'
-                ? { token: r.token, expiresIn: r.expiresIn, user: r.user, firebaseLinked: r.firebaseLinked }
-                : null;
-        },
-        onFailure: () => {
-            authStore.clear();
-        },
-    });
+    // Programar refresh proactivo. No pasamos una función refresh propia:
+    // usamos la cola compartida del backend-sdk para que el timer proactivo
+    // y el interceptor reactivo nunca ejecuten dos POST /v1/auth/refresh a la
+    // vez (lo que el backend detectaría como "reuso" y revocaría la sesión).
+    // No pasamos onFailure: un refresh proactivo que falla no debe cerrar la
+    // sesión; el interceptor reactivo manejará un 401 posterior si es necesario.
+    scheduleRefresh(data.expiresIn);
 
     broadcastLogin(data.token, data.expiresIn, data.user, data.firebaseLinked);
 }

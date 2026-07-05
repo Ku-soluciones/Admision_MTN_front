@@ -53,6 +53,7 @@ import {
   scheduleRefresh,
   purgeLegacyAuthStorage,
   exchangeFirebaseToken,
+  runSharedRefresh,
 } from '../../../../backend-sdk/src/index';
 import type { AuthUser } from './types';
 import { buildUserFromBff, setAdminCompat } from './helpers';
@@ -189,16 +190,9 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
               });
-              scheduleRefresh(data.expiresIn, {
-                refresh: async () => {
-                  const rr = await api.post('/v1/auth/refresh');
-                  const rd = rr.data || {};
-                  return rd.token && typeof rd.expiresIn === 'number'
-                    ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
-                    : null;
-                },
-                onFailure: () => { authStore.clear(); },
-              });
+              // Cola compartida: evita refresh simultáneo con el interceptor.
+              // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
+              scheduleRefresh(data.expiresIn);
               if (!cancelled && data.user) {
                 const userData = buildUserFromBff(data.user);
                 setAdminCompat(userData, data.token, data.user?.subject);
@@ -222,16 +216,10 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
       return () => { cancelled = true; };
     }
 
-    // Flujo normal: rehidratar desde refresh cookie.
+    // Flujo normal: rehidratar desde refresh cookie usando la cola compartida
+    // para evitar que el bootstrap compita con el interceptor reactivo.
     bootstrapAuth({
-      refresh: async () => {
-        try {
-          const res = await api.post('/v1/auth/refresh');
-          return res.data?.token ? res.data : null;
-        } catch {
-          return null;
-        }
-      },
+      refresh: async () => runSharedRefresh(),
       // El admin NO limpia store en fallo (deja que Firebase rehidrate).
       ...(clearStoreOnRefreshFailure
         ? { onRefreshFailure: () => { authStore.clear(); } }
@@ -304,16 +292,9 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
               });
-              scheduleRefresh(data.expiresIn, {
-                refresh: async () => {
-                  const rr = await api.post('/v1/auth/refresh');
-                  const rd = rr.data || {};
-                  return rd.token && typeof rd.expiresIn === 'number'
-                    ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
-                    : null;
-                },
-                onFailure: () => { authStore.clear(); },
-              });
+              // Cola compartida: evita refresh simultáneo con el interceptor.
+              // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
+              scheduleRefresh(data.expiresIn);
               response = { data: { success: true, user: data.user, firebaseLinked: data.firebaseLinked } };
             }
           } catch (err: any) {

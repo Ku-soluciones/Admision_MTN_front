@@ -47,13 +47,10 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
       permissions: data.permissions,
     });
     if (options.schedule !== false) {
-      scheduleRefresh(data.expiresIn, {
-        refresh: async () => {
-          const r = await options.refresh();
-          return r ? { token: r.token, expiresIn: r.expiresIn, user: r.user, firebaseLinked: r.firebaseLinked } : null;
-        },
-        onFailure: options.onRefreshFailure,
-      });
+      // Cola compartida: el refresh proactivo no debe pasar un callback
+      // onFailure que limpie el store; el interceptor reactivo decide qué
+      // hacer si la sesión realmente expiró.
+      scheduleRefresh(data.expiresIn);
     }
     return true;
   } catch (err) {
@@ -95,20 +92,9 @@ export async function exchangeFirebaseToken(
     });
     
     if (schedule) {
-      scheduleRefresh(data.expiresIn, {
-        refresh: async () => {
-          try {
-            const rr = await api.post('/v1/auth/refresh');
-            const rd = rr.data || {};
-            return rd.token && typeof rd.expiresIn === 'number'
-              ? { token: rd.token, expiresIn: rd.expiresIn, user: rd.user, firebaseLinked: rd.firebaseLinked }
-              : null;
-          } catch {
-            return null;
-          }
-        },
-        onFailure: () => { authStore.clear(); },
-      });
+      // Cola compartida: evita refresh simultáneo con el interceptor.
+      // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
+      scheduleRefresh(data.expiresIn);
     }
     
     return {
