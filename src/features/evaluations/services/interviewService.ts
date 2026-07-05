@@ -1,6 +1,7 @@
 import api from '../../admin/services/api';
 import axios, { AxiosInstance } from 'axios';
 import { getApiBaseUrl } from '../../admin/config/api.config';
+import { authStore, BASE_STORAGE_KEYS, getStorageKey } from '../../../packages/backend-sdk/src/index';
 
 // Create a clean axios instance WITHOUT interceptors for interview deletion
 const cleanAxios: AxiosInstance = axios.create({
@@ -9,6 +10,16 @@ const cleanAxios: AxiosInstance = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+function getAccessToken(): string | null {
+  return (
+    authStore.getValidAccessToken() ||
+    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN)) ||
+    localStorage.getItem(BASE_STORAGE_KEYS.AUTH_TOKEN) ||
+    localStorage.getItem(BASE_STORAGE_KEYS.PROFESSOR_TOKEN)
+  );
+}
 import {
   Interview,
   InterviewStatus,
@@ -387,7 +398,7 @@ class InterviewService {
   async deleteInterview(id: number): Promise<void> {
     // Use clean axios instance WITHOUT interceptors
     // Backend DELETE endpoint does NOT require CSRF validation
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('professor_token');
+    const token = getAccessToken();
 
 
     await cleanAxios.delete(`${this.baseUrl}/${id}`, {

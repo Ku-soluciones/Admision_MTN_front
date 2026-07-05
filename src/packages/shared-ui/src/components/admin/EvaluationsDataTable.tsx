@@ -6,9 +6,21 @@ import Button from '../ui/Button';
 import { FiEdit, FiEye, FiDownload, FiCalendar, FiFileText, FiUser, FiCheckCircle, FiClock, FiAlertCircle, FiStar, FiBookOpen } from 'react-icons/fi';
 import { useDataTable } from '../../hooks/useDataTable';
 import { dataService, EvaluationData } from '../../services/dataService';
+import { authStore, BASE_STORAGE_KEYS, getStorageKey } from '../../../../backend-sdk/src/index';
 
 // Usar el tipo centralizado
 type Evaluation = EvaluationData;
+
+function getAuthorizationHeaders(): HeadersInit {
+    const token =
+        authStore.getValidAccessToken() ||
+        localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+        localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN)) ||
+        localStorage.getItem(BASE_STORAGE_KEYS.AUTH_TOKEN) ||
+        localStorage.getItem(BASE_STORAGE_KEYS.PROFESSOR_TOKEN);
+
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 interface EvaluationsDataTableProps {
     onViewEvaluation?: (evaluation: Evaluation) => void;
@@ -46,9 +58,7 @@ const EvaluationsDataTable: React.FC<EvaluationsDataTableProps> = ({
         const fetchStats = async () => {
             try {
                 const response = await fetch(`${getApiBaseUrl()}/api/evaluations/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                    }
+                    headers: getAuthorizationHeaders()
                 });
                 const data = await response.json();
                 if (data.success) {

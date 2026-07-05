@@ -9,6 +9,7 @@
  */
 import { authStore } from './store';
 import { emitAuthEvent } from './events';
+import { broadcastRefresh } from './broadcast';
 import { createRefreshQueue } from './refreshQueue';
 
 const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
@@ -37,6 +38,33 @@ function resolveRefreshUrl(): string {
   return `${trimTrailingSlash(baseUrl)}${REFRESH_PATH}`;
 }
 
+function resolveEnvironmentFromHost(): string {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return host === 'localhost' || host === '127.0.0.1' ? 'development' : 'production';
+}
+
+function storageKey(baseKey: string): string {
+  return `${baseKey}__${resolveEnvironmentFromHost()}`;
+}
+
+function persistAccessToken(token: string, role?: string): void {
+  if (typeof localStorage === 'undefined') return;
+
+  const normalizedRole = String(role || '').toUpperCase();
+  const isStaff =
+    normalizedRole !== '' &&
+    normalizedRole !== 'APODERADO' &&
+    normalizedRole !== 'GUARDIAN';
+
+  localStorage.setItem(storageKey('auth_token'), token);
+  if (isStaff) {
+    localStorage.setItem(storageKey('professor_token'), token);
+    localStorage.setItem('professor_token', token);
+  } else {
+    localStorage.setItem('auth_token', token);
+  }
+}
+
 export interface SharedRefreshResult {
   token: string;
   expiresIn: number;
@@ -62,9 +90,11 @@ async function doRefresh(): Promise<SharedRefreshResult> {
   }
 
   authStore.updateAccessToken(data.token, data.expiresIn, data.user ?? undefined);
+  persistAccessToken(data.token, data.user?.role);
   if (typeof data.firebaseLinked === 'boolean') {
     authStore.setFirebaseLinked(data.firebaseLinked);
   }
+  broadcastRefresh(data.token, data.expiresIn);
   emitAuthEvent({ type: 'refresh-succeeded', expiresIn: data.expiresIn });
   return {
     token: data.token as string,

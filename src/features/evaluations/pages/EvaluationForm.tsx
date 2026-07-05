@@ -8,6 +8,7 @@ import Badge from '../../admin/components/ui/Badge';
 import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
 import { FiSave, FiArrowLeft, FiCheckCircle, FiPaperclip, FiDownload, FiTrash2, FiUpload, FiClock } from 'react-icons/fi';
 import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
+import { authStore, BASE_STORAGE_KEYS, getStorageKey } from '../../../packages/backend-sdk/src/index';
 
 interface EvaluationData {
   id: number;
@@ -25,6 +26,17 @@ interface EvaluationData {
   evaluator_name: string;
   created_at: string;
   updated_at: string;
+}
+
+function getAuthorizationHeaders(): HeadersInit {
+  const token =
+    authStore.getValidAccessToken() ||
+    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN)) ||
+    localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)) ||
+    localStorage.getItem(BASE_STORAGE_KEYS.PROFESSOR_TOKEN) ||
+    localStorage.getItem(BASE_STORAGE_KEYS.AUTH_TOKEN);
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 const EvaluationForm: React.FC = () => {
@@ -82,9 +94,7 @@ const EvaluationForm: React.FC = () => {
 
     try {
       const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/interview`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-        }
+        headers: getAuthorizationHeaders()
       });
 
       if (response.ok) {
@@ -216,9 +226,7 @@ const EvaluationForm: React.FC = () => {
     try {
       setLoadingAttachments(true);
       const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/attachments`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-        }
+        headers: getAuthorizationHeaders()
       });
 
       if (response.ok) {
@@ -244,9 +252,7 @@ const EvaluationForm: React.FC = () => {
       setUploadingFile(true);
       const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/attachments`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-        },
+        headers: getAuthorizationHeaders(),
         body: formData
       });
 
@@ -277,9 +283,7 @@ const EvaluationForm: React.FC = () => {
     try {
       const response = await fetch(`${getApiBaseUrl()}/api/evaluations/attachments/${confirmDeleteId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-        }
+        headers: getAuthorizationHeaders()
       });
 
       if (response.ok) {
@@ -307,9 +311,7 @@ const EvaluationForm: React.FC = () => {
 
       // Now get the history
       const historyResponse = await fetch(`${getApiBaseUrl()}/api/evaluations/student/${studentId}/history`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
-        }
+        headers: getAuthorizationHeaders()
       });
 
       if (historyResponse.ok) {
