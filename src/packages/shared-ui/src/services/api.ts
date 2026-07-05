@@ -150,7 +150,8 @@ api.interceptors.request.use(
 );
 
 function redirectToLoginWithReason(reason: string): void {
-    const currentPath = window.location.pathname;
+    const hashRoute = window.location.hash?.replace(/^#/, '');
+    const currentPath = hashRoute || window.location.pathname;
     const isLoginPage = currentPath.includes('/login') || currentPath === '/';
     if (isLoginPage) return;
     emitAuthEvent({ type: 'expired', route: currentPath });
@@ -164,7 +165,9 @@ function redirectToLoginWithReason(reason: string): void {
             (window as any).__authNavHandled = false;
             return;
         }
-        const target = currentPath.includes('/admin') || currentPath.includes('/profesor')
+        const target = currentPath.includes('/profesor')
+            ? `/profesor/login?reason=${reason}`
+            : currentPath.includes('/admin')
             ? `/admin/login?reason=${reason}`
             : `/login?reason=${reason}`;
         window.location.href = target;
