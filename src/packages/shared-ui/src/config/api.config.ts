@@ -10,8 +10,21 @@
  * - Production: VITE_API_BASE_URL=https://admitia-nginx.up.railway.app
  */
 
+const LOCAL_API_BASE_URL = 'http://localhost:8081';
+const STAGING_API_BASE_URL = 'https://admitia-nginx-staging.up.railway.app';
+const PRODUCTION_API_BASE_URL = 'https://admitia-nginx.up.railway.app';
+
+function resolveRuntimeApiBaseUrl(): string {
+  if (typeof window === 'undefined') return LOCAL_API_BASE_URL;
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return import.meta.env.VITE_API_BASE_URL || LOCAL_API_BASE_URL;
+  if (host.includes('staging') || host.includes('dev.') || host.includes('.dev.')) return STAGING_API_BASE_URL;
+  return import.meta.env.VITE_API_BASE_URL || PRODUCTION_API_BASE_URL;
+}
+
 export function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+  return resolveRuntimeApiBaseUrl();
 }
 
 export function apiPath(path: string): string {
