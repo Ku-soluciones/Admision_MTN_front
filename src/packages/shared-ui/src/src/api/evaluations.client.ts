@@ -15,7 +15,7 @@ import type {
 } from './evaluations.types';
 
 export class EvaluationsClient {
-  private readonly basePath = '/v1/evaluations';
+  private readonly basePath = '/api/evaluations';
 
   /**
    * Get all evaluations with optional filtering and pagination

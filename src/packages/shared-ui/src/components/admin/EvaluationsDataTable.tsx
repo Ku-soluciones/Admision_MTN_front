@@ -45,7 +45,7 @@ const EvaluationsDataTable: React.FC<EvaluationsDataTableProps> = ({
     React.useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/stats`, {
+                const response = await fetch(`${getApiBaseUrl()}/api/evaluations/stats`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
                     }

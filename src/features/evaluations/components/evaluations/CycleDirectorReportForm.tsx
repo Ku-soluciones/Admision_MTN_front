@@ -203,7 +203,7 @@ const CycleDirectorReportForm: React.FC = () => {
         try {
 
             // Obtener todas las evaluaciones de esta aplicación desde el backend
-            const response = await api.get(`/v1/evaluations?applicationId=${applicationId}`);
+            const response = await api.get(`/api/evaluations?applicationId=${applicationId}`);
             const data = response.data;
             const allEvaluations = data.data || data;
 

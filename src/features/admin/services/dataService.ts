@@ -106,7 +106,7 @@ class DataService {
         try {
             
             // Intentar cargar desde endpoint específico
-            const response = await api.get(`/v1/evaluations`, {
+            const response = await api.get(`/api/evaluations`, {
                 params: { page, size }
             });
 

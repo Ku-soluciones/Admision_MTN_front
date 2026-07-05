@@ -58,7 +58,7 @@ export function unwrapBffData<T>(body: unknown): T {
   return body as T;
 }
 
-/** Normaliza GET /v1/evaluations cuando el BFF devuelve `{ success, data, content, count }`. */
+/** Normaliza GET /api/evaluations cuando el BFF devuelve `{ success, data, content, count }`. */
 export function evaluationsToPaginated<T>(body: Record<string, unknown>): PaginatedResponse<T> {
   const content = (
     Array.isArray(body.content) ? body.content : Array.isArray(body.data) ? body.data : []

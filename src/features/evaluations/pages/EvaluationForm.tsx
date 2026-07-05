@@ -81,7 +81,7 @@ const EvaluationForm: React.FC = () => {
     if (!evaluationId) return;
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/interview`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/interview`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -215,7 +215,7 @@ const EvaluationForm: React.FC = () => {
 
     try {
       setLoadingAttachments(true);
-      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/attachments`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/attachments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -242,7 +242,7 @@ const EvaluationForm: React.FC = () => {
 
     try {
       setUploadingFile(true);
-      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/${evaluationId}/attachments`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/evaluations/${evaluationId}/attachments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
@@ -275,7 +275,7 @@ const EvaluationForm: React.FC = () => {
     if (confirmDeleteId == null) return;
     setDeletingAttachment(true);
     try {
-      const response = await fetch(`${getApiBaseUrl()}/v1/evaluations/attachments/${confirmDeleteId}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/evaluations/attachments/${confirmDeleteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
@@ -306,7 +306,7 @@ const EvaluationForm: React.FC = () => {
       setLoadingHistory(true);
 
       // Now get the history
-      const historyResponse = await fetch(`${getApiBaseUrl()}/v1/evaluations/student/${studentId}/history`, {
+      const historyResponse = await fetch(`${getApiBaseUrl()}/api/evaluations/student/${studentId}/history`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('professor_token') || localStorage.getItem('auth_token')}`
         }
@@ -797,7 +797,7 @@ const EvaluationForm: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                       <a
-                        href={`${getApiBaseUrl()}/v1/evaluations/attachments/${attachment.id}/download`}
+                        href={`${getApiBaseUrl()}/api/evaluations/attachments/${attachment.id}/download`}
                         download
                         target="_blank"
                         rel="noopener noreferrer"

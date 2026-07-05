@@ -9,14 +9,14 @@ class FamilyInterviewService {
 
     /**
      * Get interview template for specific grade
-     * GET /v1/evaluations/family-interview-template/:grade
+     * GET /api/evaluations/family-interview-template/:grade
      * @param grade - Student's applied grade (e.g., "PRE_KINDER", "5_BASICO", "IV_MEDIO")
      * @returns Filtered template with only applicable questions for that grade
      */
     async getTemplateForGrade(grade: string): Promise<any> {
         try {
 
-            const response = await api.get(`/v1/evaluations/family-interview-template/${grade}`);
+            const response = await api.get(`/api/evaluations/family-interview-template/${grade}`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -35,7 +35,7 @@ class FamilyInterviewService {
 
     /**
      * Get saved interview data for an evaluation
-     * GET /v1/evaluations/:evaluationId/family-interview-data
+     * GET /api/evaluations/:evaluationId/family-interview-data
      * @param evaluationId - Evaluation ID
      * @returns Saved interview responses and score
      */
@@ -45,7 +45,7 @@ class FamilyInterviewService {
     }> {
         try {
 
-            const response = await api.get(`/v1/evaluations/${evaluationId}/family-interview-data`);
+            const response = await api.get(`/api/evaluations/${evaluationId}/family-interview-data`);
 
             if (response.data.success) {
                 return {
@@ -67,7 +67,7 @@ class FamilyInterviewService {
 
     /**
      * Save interview responses
-     * PUT /v1/evaluations/:evaluationId/family-interview-data
+     * PUT /api/evaluations/:evaluationId/family-interview-data
      * @param evaluationId - Evaluation ID
      * @param interviewData - Complete interview responses
      * @returns Saved data with calculated score
@@ -83,7 +83,7 @@ class FamilyInterviewService {
         try {
 
             const response = await api.put(
-                `/v1/evaluations/${evaluationId}/family-interview-data`,
+                `/api/evaluations/${evaluationId}/family-interview-data`,
                 { interviewData }
             );
 

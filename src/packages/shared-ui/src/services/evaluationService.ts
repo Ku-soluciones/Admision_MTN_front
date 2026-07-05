@@ -319,12 +319,12 @@ class EvaluationService {
 
     /**
      * Obtener todas las evaluaciones (para administradores)
-     * GET /v1/evaluations
+     * GET /api/evaluations
      */
     async getAllEvaluations(): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get('/v1/evaluations');
+            const response = await api.get('/api/evaluations');
 
             if (response.data.success) {
                 // 
@@ -343,12 +343,12 @@ class EvaluationService {
 
     /**
      * Obtener una evaluación por ID con detalles completos
-     * GET /v1/evaluations/:evaluationId
+     * GET /api/evaluations/:evaluationId
      */
     async getEvaluationById(evaluationId: number): Promise<Evaluation> {
         try {
 
-            const response = await api.get(`/v1/evaluations/${evaluationId}`);
+            const response = await api.get(`/api/evaluations/${evaluationId}`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -366,12 +366,12 @@ class EvaluationService {
 
     /**
      * Obtener evaluaciones por application_id
-     * GET /v1/evaluations/application/:applicationId
+     * GET /api/evaluations/application/:applicationId
      */
     async getEvaluationsByApplicationId(applicationId: number): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/application/${applicationId}`);
+            const response = await api.get(`/api/evaluations/application/${applicationId}`);
 
             // Backend returns { success: true, data: [...] }
             const evaluations = response.data.data || response.data;
@@ -389,7 +389,7 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Obtener estadísticas de evaluaciones
-     * GET /v1/evaluations/statistics
+     * GET /api/evaluations/statistics
      */
     async getEvaluationStatistics(): Promise<{
         total: number;
@@ -399,7 +399,7 @@ class EvaluationService {
     }> {
         try {
 
-            const response = await api.get('/v1/evaluations/statistics');
+            const response = await api.get('/api/evaluations/statistics');
 
             if (response.data.success) {
                 return response.data.data;
@@ -417,12 +417,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Obtener asignaciones activas (PENDING, IN_PROGRESS)
-     * GET /v1/evaluations/assignments
+     * GET /api/evaluations/assignments
      */
     async getActiveAssignments(): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get('/v1/evaluations/assignments');
+            const response = await api.get('/api/evaluations/assignments');
 
             if (response.data.success) {
                 return response.data.data;
@@ -440,7 +440,7 @@ class EvaluationService {
 
     /**
      * NUEVO: Exportar evaluaciones a JSON o CSV
-     * GET /v1/evaluations/export?status=X&type=Y&format=csv
+     * GET /api/evaluations/export?status=X&type=Y&format=csv
      */
     async exportEvaluations(filters?: {
         status?: string;
@@ -454,7 +454,7 @@ class EvaluationService {
             if (filters?.type) params.append('type', filters.type);
             if (filters?.format) params.append('format', filters.format);
 
-            const response = await api.get(`/v1/evaluations/export?${params.toString()}`, {
+            const response = await api.get(`/api/evaluations/export?${params.toString()}`, {
                 responseType: filters?.format === 'csv' ? 'blob' : 'json'
             });
 
@@ -470,13 +470,13 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Obtener evaluaciones por evaluador
-     * GET /v1/evaluations/evaluator/:evaluatorId
+     * GET /api/evaluations/evaluator/:evaluatorId
      * (antes: getMyEvaluations - endpoint incorrecto)
      */
     async getEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}`);
+            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}`);
 
             if (response.data.success) {
                 // 
@@ -495,13 +495,13 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Obtener evaluaciones pendientes de un evaluador
-     * GET /v1/evaluations/evaluator/:id/pending
+     * GET /api/evaluations/evaluator/:id/pending
      * (antes: getMyPendingEvaluations - endpoint incorrecto)
      */
     async getPendingEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/pending`);
+            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}/pending`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -519,12 +519,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Obtener evaluaciones completadas de un evaluador
-     * GET /v1/evaluations/evaluator/:id/completed
+     * GET /api/evaluations/evaluator/:id/completed
      */
     async getCompletedEvaluationsByEvaluator(evaluatorId: number): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/evaluator/${evaluatorId}/completed`);
+            const response = await api.get(`/api/evaluations/evaluator/${evaluatorId}/completed`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -542,12 +542,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Filtrar evaluaciones por tipo
-     * GET /v1/evaluations/type/:type
+     * GET /api/evaluations/type/:type
      */
     async getEvaluationsByType(type: EvaluationType): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/type/${type}`);
+            const response = await api.get(`/api/evaluations/type/${type}`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -565,12 +565,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Filtrar evaluaciones por materia
-     * GET /v1/evaluations/subject/:subject
+     * GET /api/evaluations/subject/:subject
      */
     async getEvaluationsBySubject(subject: 'LANGUAGE' | 'MATHEMATICS' | 'ENGLISH'): Promise<Evaluation[]> {
         try {
 
-            const response = await api.get(`/v1/evaluations/subject/${subject}`);
+            const response = await api.get(`/api/evaluations/subject/${subject}`);
 
             if (response.data.success) {
                 return response.data.data;
@@ -588,12 +588,12 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Actualizar una evaluación
-     * PUT /v1/evaluations/:id
+     * PUT /api/evaluations/:id
      */
     async updateEvaluation(evaluationId: number, evaluationData: Partial<Evaluation>): Promise<Evaluation> {
         try {
 
-            const response = await api.put(`/v1/evaluations/${evaluationId}`, evaluationData);
+            const response = await api.put(`/api/evaluations/${evaluationId}`, evaluationData);
 
             if (response.data.success) {
                 return response.data.data;
@@ -611,7 +611,7 @@ class EvaluationService {
 
     /**
      * NUEVO: Marcar evaluación como completada
-     * POST /v1/evaluations/:id/complete
+     * POST /api/evaluations/:id/complete
      */
     async completeEvaluation(
         evaluationId: number,
@@ -623,7 +623,7 @@ class EvaluationService {
     ): Promise<Evaluation> {
         try {
 
-            const response = await api.post(`/v1/evaluations/${evaluationId}/complete`, data);
+            const response = await api.post(`/api/evaluations/${evaluationId}/complete`, data);
 
             if (response.data.success) {
                 return response.data.data;
@@ -641,7 +641,7 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Asignar evaluación a evaluador
-     * POST /v1/evaluations/:id/assign
+     * POST /api/evaluations/:id/assign
      * (antes: reassignEvaluation con PUT - endpoint incorrecto)
      */
     async assignEvaluation(
@@ -651,7 +651,7 @@ class EvaluationService {
     ): Promise<Evaluation> {
         try {
 
-            const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
+            const response = await api.post(`/api/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
                 evaluationDate
             });
@@ -672,12 +672,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Reprogramar evaluación
-     * POST /v1/evaluations/:id/reschedule
+     * POST /api/evaluations/:id/reschedule
      */
     async rescheduleEvaluation(evaluationId: number, evaluationDate: string): Promise<Evaluation> {
         try {
 
-            const response = await api.post(`/v1/evaluations/${evaluationId}/reschedule`, {
+            const response = await api.post(`/api/evaluations/${evaluationId}/reschedule`, {
                 evaluationDate
             });
 
@@ -697,12 +697,12 @@ class EvaluationService {
 
     /**
      * NUEVO: Cancelar evaluación
-     * POST /v1/evaluations/:id/cancel
+     * POST /api/evaluations/:id/cancel
      */
     async cancelEvaluation(evaluationId: number, reason?: string): Promise<Evaluation> {
         try {
 
-            const response = await api.post(`/v1/evaluations/${evaluationId}/cancel`, {
+            const response = await api.post(`/api/evaluations/${evaluationId}/cancel`, {
                 reason
             });
 
@@ -722,7 +722,7 @@ class EvaluationService {
 
     /**
      * CORREGIDO: Asignar evaluaciones en lote
-     * POST /v1/evaluations/bulk/assign
+     * POST /api/evaluations/bulk/assign
      * PARÁMETROS CORREGIDOS: evaluationIds (no applicationIds), evaluatorId, evaluationDate
      */
     async assignBulkEvaluations(
@@ -736,7 +736,7 @@ class EvaluationService {
     }> {
         try {
 
-            const response = await api.post('/v1/evaluations/bulk/assign', {
+            const response = await api.post('/api/evaluations/bulk/assign', {
                 evaluationIds,
                 evaluatorId,
                 evaluationDate
@@ -758,8 +758,8 @@ class EvaluationService {
 
     /**
      * NUEVO: Crear y asignar evaluación específica (flujo de 2 pasos)
-     * Paso 1: Crear evaluación con POST /v1/evaluations
-     * Paso 2: Asignar evaluación con POST /v1/evaluations/:id/assign
+     * Paso 1: Crear evaluación con POST /api/evaluations
+     * Paso 2: Asignar evaluación con POST /api/evaluations/:id/assign
      *
      * Este método es útil para el dashboard de admin cuando se asignan evaluadores a estudiantes.
      */
@@ -771,7 +771,7 @@ class EvaluationService {
         try {
 
             // Paso 1: Crear la evaluación con el evaluatorId
-            const createResponse = await api.post('/v1/evaluations', {
+            const createResponse = await api.post('/api/evaluations', {
                 applicationId: Number(applicationId), // Asegurar que sea número
                 evaluatorId: Number(evaluatorId), // ID del evaluador asignado
                 evaluationType,
@@ -789,7 +789,7 @@ class EvaluationService {
 
 
             // Paso 2: Asignar al evaluador
-            const assignResponse = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
+            const assignResponse = await api.post(`/api/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
                 evaluationDate: new Date().toISOString().split('T')[0],
             });
@@ -802,7 +802,7 @@ class EvaluationService {
 
     /**
      * Reasignar evaluación a otro evaluador SIN crear nueva fila.
-     * Usa POST /v1/evaluations/:id/assign con el evaluationId existente.
+     * Usa POST /api/evaluations/:id/assign con el evaluationId existente.
      * Esto sobrescribe el evaluador en el registro ya existente.
      */
     async reassignEvaluation(
@@ -810,7 +810,7 @@ class EvaluationService {
         evaluatorId: number
     ): Promise<Evaluation> {
         try {
-            const response = await api.post(`/v1/evaluations/${evaluationId}/assign`, {
+            const response = await api.post(`/api/evaluations/${evaluationId}/assign`, {
                 evaluatorId,
                 evaluationDate: new Date().toISOString().split('T')[0],
             });
