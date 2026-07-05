@@ -196,6 +196,9 @@ api.interceptors.response.use(
             || error.response?.data?.message
             || '',
         );
+        const emptyForbidden =
+            status === 403 &&
+            (error.response?.data == null || error.response?.data === '');
         const probe = isProbeEndpoint(url);
         // Los endpoints de auth (refresh, logout, login) son sondas implícitas:
         // un 401 en ellos significa "no hay sesión activa", no "tu sesión expiró".
@@ -234,8 +237,11 @@ api.interceptors.response.use(
         }
 
         // Refresh reactivo con cola para 401 por access expirado.
+        // Compatibilidad: Spring Security anterior devolvía 403 sin body cuando
+        // un Bearer válido ya no tenía active_session; ese caso es recuperable
+        // con refresh igual que un 401 UNAUTHORIZED.
         if (
-            isAccessExpired(status, code) &&
+            (isAccessExpired(status, code) || emptyForbidden) &&
             !original._retry &&
             !isAuthEndpoint(url) &&
             !isPublicRoute(url)
