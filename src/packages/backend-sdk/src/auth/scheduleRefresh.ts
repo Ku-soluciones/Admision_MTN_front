@@ -67,8 +67,7 @@ function setOptions(options: ScheduleRefreshOptions | null): void {
 
 export function scheduleRefresh(expiresIn: number, options?: ScheduleRefreshOptions): void {
   if (options) setOptions(options);
-  const currentOptions = getOptions();
-  if (!currentOptions) return;
+  const currentOptions = getOptions() ?? {};
 
   cancelScheduledRefresh();
 

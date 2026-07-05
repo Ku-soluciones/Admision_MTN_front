@@ -11,7 +11,31 @@ import { authStore } from './store';
 import { emitAuthEvent } from './events';
 import { createRefreshQueue } from './refreshQueue';
 
-const REFRESH_URL = '/v1/auth/refresh';
+const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
+const REFRESH_PATH = '/v1/auth/refresh';
+
+function readEnv(key: string): string | undefined {
+  try {
+    const meta: any = (Function('return import.meta')() as any) ?? {};
+    return meta?.env?.[key];
+  } catch {
+    return undefined;
+  }
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function resolveRefreshUrl(): string {
+  const baseUrl =
+    readEnv('VITE_AUTH_BASE_URL') ||
+    readEnv('VITE_API_BASE_URL') ||
+    readEnv('VITE_API_URL') ||
+    DEFAULT_AUTH_BASE_URL;
+
+  return `${trimTrailingSlash(baseUrl)}${REFRESH_PATH}`;
+}
 
 export interface SharedRefreshResult {
   token: string;
@@ -21,7 +45,7 @@ export interface SharedRefreshResult {
 }
 
 async function doRefresh(): Promise<SharedRefreshResult> {
-  const response = await fetch(REFRESH_URL, {
+  const response = await fetch(resolveRefreshUrl(), {
     method: 'POST',
     credentials: 'include',
     headers: { Accept: 'application/json' },
