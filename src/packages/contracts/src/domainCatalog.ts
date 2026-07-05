@@ -44,7 +44,7 @@ export const domainCatalog: DomainOwnership[] = [
       {
         service: 'services/authService.ts',
         responsibilities: ['Firebase login', 'Firebase register', 'Check email'],
-        endpoints: ['/v1/auth/firebase-login', '/v1/auth/firebase-register', '/v1/auth/check-email'],
+        endpoints: ['/api/auth/firebase-login', '/api/auth/firebase-register', '/api/auth/check-email'],
       },
       {
         service: 'services/evaluationService.ts',
@@ -102,7 +102,7 @@ export const domainCatalog: DomainOwnership[] = [
       {
         service: 'services/professorAuthService.ts',
         responsibilities: ['Login legacy profesor', 'Perfil del profesor actual'],
-        endpoints: ['/v1/auth/login', '/v1/users/me'],
+        endpoints: ['/api/auth/login', '/v1/users/me'],
       },
       {
         service: 'services/evaluationService.ts',

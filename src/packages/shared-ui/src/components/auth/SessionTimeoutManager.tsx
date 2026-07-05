@@ -10,7 +10,7 @@
  *   - Inicia los timers de `useSessionTimeout` (inactividad + hard-cap).
  *   - A los N segundos antes de expirar (`VITE_SESSION_WARN_BEFORE_SEC`,
  *     default 60), muestra `<SessionWarningModal />`.
- *   - Si el usuario clickea "Seguir trabajando", llama a `/v1/auth/check`
+ *   - Si el usuario clickea "Seguir trabajando", llama a `/api/auth/check`
  *     (request idempotente, no destructivo) para resetear `expiresAt` via
  *     refresh proactivo si corresponde, y cierra el modal.
  *   - Si pasa el tiempo sin acción, se ejecuta `onExpire`: limpiamos el
@@ -20,7 +20,7 @@
  *
  * Riesgo: 0 — el componente sólo lee `authStore`, no llama auth APIs
  * que puedan cambiar contratos. La llamada en "Seguir trabajando" usa
- * el endpoint sonda `/v1/auth/check` que ya existe.
+ * el endpoint sonda `/api/auth/check` que ya existe.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -91,7 +91,7 @@ const SessionTimeoutManagerInner: React.FC<Required<SessionTimeoutManagerProps>>
     // de `api.ts` programa refresh proactivo si el access está por
     // caducar. No tocamos /auth/refresh directamente para no acoplar
     // este componente al contrato del refresh.
-    try { await api.get('/v1/auth/check'); } catch { /* silencioso */ }
+    try { await api.get('/api/auth/check'); } catch { /* silencioso */ }
   }, []);
 
   const handleLogoutFromModal = useCallback(() => {

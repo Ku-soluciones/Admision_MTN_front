@@ -38,7 +38,7 @@ class GuardianService {
    *
    * Flujo (replicando el auto-registro de apoderado, sin tocar el backend desplegado):
    * 1. Crea el usuario en Firebase Auth con instancia secundaria (no afecta admin).
-   * 2. Llama a `POST /v1/auth/firebase-register` con el idToken — ese endpoint ya
+   * 2. Llama a `POST /api/auth/firebase-register` con el idToken — ese endpoint ya
    *    enlaza `firebase_uid` y guarda `password='FIREBASE_MANAGED'` como APODERADO.
    * 3. Cierra la sesión secundaria.
    *
@@ -91,7 +91,7 @@ class GuardianService {
     //      - El browser NO acepta el `Set-Cookie` del nuevo usuario.
     //    Así, la sesión del admin queda intacta.
     try {
-      const response = await fetch(`${getApiBaseUrl()}/v1/auth/firebase-register`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/firebase-register`, {
         method: 'POST',
         credentials: 'omit',
         headers: {

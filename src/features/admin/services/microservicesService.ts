@@ -13,7 +13,7 @@ const GATEWAY_HEALTH_URL = `${MICROSERVICES_GATEWAY_URL}/health`;
 const GATEWAY_STATUS_URL = `${MICROSERVICES_GATEWAY_URL}/gateway/status`;
 const USER_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/users`; // A través del API Gateway
 const APPLICATION_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/applications`;
-const AUTH_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/v1/auth`;
+const AUTH_SERVICE_URL = `${MICROSERVICES_GATEWAY_URL}/api/auth`;
 
 export interface MicroserviceStatus {
   service: string;
@@ -152,7 +152,7 @@ export class MicroservicesService {
       version: '1.0.0',
       architecture: 'microservices',
       description: 'User Management Microservice (Node.js)',
-      endpoints: ['/v1/users', '/v1/auth', '/v1/users/health']
+      endpoints: ['/v1/users', '/api/auth', '/v1/users/health']
     });
 
     services.push({

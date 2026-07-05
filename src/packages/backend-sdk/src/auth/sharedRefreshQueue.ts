@@ -1,6 +1,6 @@
 /**
  * Cola de refresh compartida entre el interceptor reactivo y el timer
- * proactivo. Centraliza la llamada a POST /v1/auth/refresh para que sólo
+ * proactivo. Centraliza la llamada a POST /api/auth/refresh para que sólo
  * UNA petición de refresh esté en vuelo a la vez, evitando que el backend
  * detecte "reuso" de refresh token y revoque la sesión por seguridad.
  *
@@ -13,7 +13,7 @@ import { broadcastRefresh } from './broadcast';
 import { createRefreshQueue } from './refreshQueue';
 
 const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
-const REFRESH_PATH = '/v1/auth/refresh';
+const REFRESH_PATH = '/api/auth/refresh';
 const STAGING_AUTH_BASE_URL = 'https://admitia-nginx-staging.up.railway.app';
 const PRODUCTION_AUTH_BASE_URL = 'https://admitia-nginx.up.railway.app';
 

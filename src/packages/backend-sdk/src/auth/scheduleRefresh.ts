@@ -93,7 +93,7 @@ export function scheduleRefresh(expiresIn: number, options?: ScheduleRefreshOpti
     } catch (err) {
       cancelScheduledRefresh();
       // No limpiamos el store aquí: un refresh proactivo puede fallar por
-      // desfase de reloj, 401 transitorio en /v1/auth/refresh, etc. Si la
+      // desfase de reloj, 401 transitorio en /api/auth/refresh, etc. Si la
       // sesión realmente murió, el interceptor reactivo manejará el siguiente
       // 401 y forzará logout. Limpiar el store desde el timer proactivo
       // mata la sesión prematuramente y provoca redirecciones inesperadas.

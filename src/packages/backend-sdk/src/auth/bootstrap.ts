@@ -74,7 +74,7 @@ export async function exchangeFirebaseToken(
   schedule: boolean = true
 ): Promise<{ token: string; expiresIn: number; user?: any; firebaseLinked?: boolean } | null> {
   try {
-    const res = await api.post('/v1/auth/firebase-login', { idToken: firebaseToken });
+    const res = await api.post('/api/auth/firebase-login', { idToken: firebaseToken });
     const data = res.data;
     
     if (!data?.token || typeof data.expiresIn !== 'number') {

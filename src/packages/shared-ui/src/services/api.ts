@@ -5,13 +5,13 @@
  * BFF tras SECURITY_TOKENS.md):
  *
  *  1. `withCredentials: true` para que la cookie HttpOnly del refresh viaje en
- *     cada llamada a `/v1/auth/*` (NGINX enruta esta familia hacia el BFF).
+ *     cada llamada a `/api/auth/*` (NGINX enruta esta familia hacia el BFF).
  *  2. El access token se lee del `authStore` (memoria). Si todavía no hay
  *     sesión hidratada, se hace fallback a `localStorage` por compatibilidad
  *     transicional con flujos antiguos de Firebase `onAuthStateChanged`.
  *  3. Refresh reactivo con cola: si llega un 401 con `TOKEN_EXPIRED` /
  *     `UNAUTHORIZED` en una request normal, una sola llamada a
- *     `/v1/auth/refresh` es disparada y todas las requests en vuelo se
+ *     `/api/auth/refresh` es disparada y todas las requests en vuelo se
  *     reintentan con el nuevo token.
  *  4. Códigos terminales (`SESSION_REVOKED`, `SESSION_EXPIRED`,
  *     `REFRESH_INVALID`, `SESSION_INVALIDATED`) limpian la sesión y
@@ -108,7 +108,7 @@ async function resolveAccessTokenForRequest(): Promise<string | null> {
 
 // Cola compartida: el refresh proactivo (timer) y el reactivo (interceptor)
 // usan la misma instancia para garantizar que NUNCA haya dos POST
-// /v1/auth/refresh simultáneos. Eso evita que el backend detecte "reuso" del
+// /api/auth/refresh simultáneos. Eso evita que el backend detecte "reuso" del
 // refresh token y revoque la sesión.
 const refreshQueue = {
     run: runSharedRefresh,

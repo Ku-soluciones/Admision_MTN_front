@@ -51,7 +51,7 @@ class ProfessorAuthService {
         try {
             const credential = await signInWithEmailAndPassword(firebaseAuth, request.email, request.password);
             const idToken = await credential.user.getIdToken();
-            const response = await api.post('/v1/auth/firebase-login', {
+            const response = await api.post('/api/auth/firebase-login', {
                 idToken,
                 portalType: 'STAFF',
             });
@@ -81,7 +81,7 @@ class ProfessorAuthService {
 
     private async legacyLogin(request: ProfessorLoginRequest): Promise<ProfessorAuthResponse> {
         try {
-            const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
+            const response = await api.post('/api/auth/login', { ...request, portalType: 'STAFF' });
             this.persistSession(response.data);
             return response.data;
         } catch (error: any) {
@@ -169,7 +169,7 @@ class ProfessorAuthService {
     }
     
     async logout() {
-        try { await api.post('/v1/auth/logout'); } catch { /* idempotente */ }
+        try { await api.post('/api/auth/logout'); } catch { /* idempotente */ }
         authStore.clear();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));

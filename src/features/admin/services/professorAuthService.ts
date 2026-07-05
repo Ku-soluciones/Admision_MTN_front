@@ -37,7 +37,7 @@ class ProfessorAuthService {
         try {
 
             // Send credentials directly over HTTPS (no RSA encryption)
-            const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
+            const response = await api.post('/api/auth/login', { ...request, portalType: 'STAFF' });
             const data = response.data;
 
 
@@ -133,7 +133,7 @@ class ProfessorAuthService {
     }
     
     async logout() {
-        try { await api.post('/v1/auth/logout'); } catch { /* idempotente */ }
+        try { await api.post('/api/auth/logout'); } catch { /* idempotente */ }
         authStore.clear();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));

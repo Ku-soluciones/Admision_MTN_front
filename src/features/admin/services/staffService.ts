@@ -100,7 +100,7 @@ class StaffService {
    *
    * Flujo (replicando el registro de apoderado, sin tocar el backend desplegado):
    * 1. Crea el usuario en Firebase Auth con instancia secundaria (no afecta admin).
-   * 2. Llama a `POST /v1/auth/firebase-register` con el idToken — ese endpoint
+   * 2. Llama a `POST /api/auth/firebase-register` con el idToken — ese endpoint
    *    YA enlaza `firebase_uid` y guarda `password='FIREBASE_MANAGED'` en BD,
    *    pero SIEMPRE como APODERADO.
    * 3. Si el role objetivo no es APODERADO, hace `PUT /v1/users/{id}` para
@@ -155,7 +155,7 @@ class StaffService {
     //    Usamos publicApi para evitar inyectar el token del admin en este request.
     let createdUserId: number | undefined;
     try {
-      const registerResp = await publicApi.post<any>('/v1/auth/firebase-register', {
+      const registerResp = await publicApi.post<any>('/api/auth/firebase-register', {
         idToken,
         firstName: userData.firstName,
         lastName: userData.lastName,

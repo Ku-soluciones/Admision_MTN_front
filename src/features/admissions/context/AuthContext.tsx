@@ -7,7 +7,7 @@
  *     antes de que React monte, para que el módulo de Firebase no
  *     restaure sesión vieja por su `onAuthStateChanged` automático.
  *   - `legacyIdTokenExchange='firebase-login'`: intercambio directo del
- *     idToken legacy vía `/v1/auth/firebase-login` (manteniendo el
+ *     idToken legacy vía `/api/auth/firebase-login` (manteniendo el
  *     comportamiento previo).
  *   - Logout y cross-tab redirigen a `/apoderado-login`.
  *

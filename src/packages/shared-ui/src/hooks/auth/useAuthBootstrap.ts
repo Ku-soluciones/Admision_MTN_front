@@ -4,7 +4,7 @@
  * Encapsula los 4 `useEffect` que estaban duplicados en cada
  * `AuthContext.tsx` (admin, admissions, student, shared-ui):
  *
- *   1. Rehidratación al montar: pide /v1/auth/refresh para recuperar
+ *   1. Rehidratación al montar: pide /api/auth/refresh para recuperar
  *      la sesión si la cookie HttpOnly del refresh sigue viva. Si hay
  *      un idToken legacy en localStorage, lo intercambia.
  *   2. Listener Firebase: persistencia por-origen del SDK + intercambio
@@ -26,7 +26,7 @@
  *   - `legacyIdTokenExchange`: estrategia para el idToken Firebase
  *     persistido en `AUTH_TOKEN` (transición):
  *     - 'sdk-helper'    → usa `exchangeFirebaseToken()` del SDK (admin, student).
- *     - 'firebase-login'→ usa `api.post('/v1/auth/firebase-login', { idToken })` (admissions).
+ *     - 'firebase-login'→ usa `api.post('/api/auth/firebase-login', { idToken })` (admissions).
  *     - 'none'          → no intenta intercambio (shared-ui).
  *
  *   - `clearStoreOnRefreshFailure`: si false (admin), NO limpia el store
@@ -178,7 +178,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
             }
           } else {
             // 'firebase-login': llamada directa, como en admissions previo.
-            const res = await api.post('/v1/auth/firebase-login', { idToken: storedAccessToken });
+            const res = await api.post('/api/auth/firebase-login', { idToken: storedAccessToken });
             const data = res.data;
             if (data?.token && typeof data.expiresIn === 'number') {
               authStore.setSession({
@@ -204,7 +204,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
           firebaseLoginExchangeFailed = true;
         }
         // Comportamiento previo de admissions: si el intercambio directo
-        // /v1/auth/firebase-login falló, descartar el idToken Firebase
+        // /api/auth/firebase-login falló, descartar el idToken Firebase
         // persistido para no reintentar en futuros bootstraps.
         if (firebaseLoginExchangeFailed && legacyIdTokenExchange === 'firebase-login') {
           try { localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN)); } catch { /* no-op */ }
@@ -280,7 +280,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
           const idToken = await firebaseUser.getIdToken(/* forceRefresh */ false);
           let response: any = null;
           try {
-            const r = await api.post('/v1/auth/firebase-login', { idToken });
+            const r = await api.post('/api/auth/firebase-login', { idToken });
             const data = r.data;
             if (data?.token && typeof data.expiresIn === 'number') {
               authStore.setSession({
@@ -353,7 +353,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
         const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         if (existingToken) {
           try {
-            const response = await api.get('/v1/auth/check');
+            const response = await api.get('/api/auth/check');
             if (response.data?.success && response.data?.user) {
               const userData = buildUserFromBff(response.data.user);
               localStorage.setItem(

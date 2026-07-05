@@ -95,26 +95,20 @@ export interface AuthResponse {
 /**
  * Endpoints de auth.
  *
- * NGINX expone `/v1/auth/*` (legacy en el sentido del roadmap, pero ACTIVO en
- * staging y prod). Los `/api/auth/*` son los nuevos endpoints planificados
- * tras SECURITY_TOKENS.md y se habilitarán cuando el gateway los enrute.
- *
- * Por eso usamos `/v1/auth/*` como ruta primaria y `/api/auth/*` como upgrade
- * opcional. `tryNewApiFirst` se puede activar por env (`VITE_AUTH_TRY_NEW_API`)
- * cuando el BFF los exponga; mientras esté en false (default), evitamos el 404
- * ruidoso en cada login.
+ * El BFF declara auth bajo `/api/auth/*` y emite la cookie de refresh con
+ * `Path=/api/auth`; por eso el frontend debe usar este mismo namespace.
  */
 const ENDPOINTS = {
-    login: '/v1/auth/login',
-    firebaseLogin: '/v1/auth/firebase-login',
-    register: '/v1/auth/register',
-    firebaseRegister: '/v1/auth/firebase-register',
-    refresh: '/v1/auth/refresh',
-    logout: '/v1/auth/logout',
-    check: '/v1/auth/check',
-    firebaseLink: '/v1/auth/firebase/link',
-    firebaseSendVerification: '/v1/auth/firebase/send-verification-email',
-    checkEmail: '/v1/auth/check-email',
+    login: '/api/auth/login',
+    firebaseLogin: '/api/auth/firebase-login',
+    register: '/api/auth/register',
+    firebaseRegister: '/api/auth/firebase-register',
+    refresh: '/api/auth/refresh',
+    logout: '/api/auth/logout',
+    check: '/api/auth/check',
+    firebaseLink: '/api/auth/firebase/link',
+    firebaseSendVerification: '/api/auth/firebase/send-verification-email',
+    checkEmail: '/api/auth/check-email',
 } as const;
 
 const NEW_API = {
@@ -172,7 +166,7 @@ function adoptSession(data: AuthResponse): void {
 
     // Programar refresh proactivo. No pasamos una función refresh propia:
     // usamos la cola compartida del backend-sdk para que el timer proactivo
-    // y el interceptor reactivo nunca ejecuten dos POST /v1/auth/refresh a la
+    // y el interceptor reactivo nunca ejecuten dos POST /api/auth/refresh a la
     // vez (lo que el backend detectaría como "reuso" y revocaría la sesión).
     // No pasamos onFailure: un refresh proactivo que falla no debe cerrar la
     // sesión; el interceptor reactivo manejará un 401 posterior si es necesario.
@@ -193,7 +187,7 @@ class AuthService {
 
             // 2. Llamar al BFF. El nuevo contrato acepta `firebaseIdToken` como
             //    parte del body para enlazar/validar el UID en el mismo paso.
-            //    Por defecto va a `/v1/auth/firebase-login` (NGINX); si el
+            //    Por defecto va a `/api/auth/firebase-login` (NGINX); si el
             //    flag VITE_AUTH_TRY_NEW_API=true se intenta primero
             //    `/api/auth/firebase-login`.
             const data = await postAuth<AuthResponse>(
@@ -384,7 +378,7 @@ class AuthService {
 export const authService = new AuthService();
 
 // Nota: previamente este módulo registraba un listener `beforeunload` que
-// disparaba `navigator.sendBeacon(/v1/auth/logout)` "best-effort" al cerrar la
+// disparaba `navigator.sendBeacon(/api/auth/logout)` "best-effort" al cerrar la
 // pestaña. Se removió porque también se ejecutaba en cada F5 / navegación
 // interna, revocando la cookie HttpOnly de refresh server-side; el siguiente
 // load fallaba en `bootstrapAuth()` y mandaba al usuario a /login. El cierre

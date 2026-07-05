@@ -41,7 +41,7 @@ class StaffService {
    * Replica el flujo del auto-registro de apoderado para garantizar enlace
    * con Firebase y password='FIREBASE_MANAGED' en BD:
    *   1. Crea el usuario en Firebase Auth (instancia secundaria, no afecta admin).
-   *   2. Llama POST /v1/auth/firebase-register con idToken → graba firebase_uid +
+   *   2. Llama POST /api/auth/firebase-register con idToken → graba firebase_uid +
    *      password='FIREBASE_MANAGED' en BD (siempre como APODERADO).
    *   3. PUT /v1/users/{id} para promover al rol real (TEACHER, COORDINATOR, etc.)
    *      y completar subject/educationalLevel. Este update NO toca password ni
@@ -98,7 +98,7 @@ class StaffService {
     //    Bearer del admin en la petición.
     let createdUserId: number | undefined;
     try {
-      const response = await fetch(`${getApiBaseUrl()}/v1/auth/firebase-register`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/firebase-register`, {
         method: 'POST',
         credentials: 'omit',
         headers: {

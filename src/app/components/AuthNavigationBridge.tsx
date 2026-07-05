@@ -73,7 +73,7 @@ export function AuthNavigationBridge(): null {
 
       // Guard: si nunca hubo sesión activa durante la vida de este
       // bridge, ignoramos. Cubre el caso del bootstrap de un usuario
-      // no-logueado (POST /v1/auth/refresh → 401 REFRESH_INVALID).
+      // no-logueado (POST /api/auth/refresh → 401 REFRESH_INVALID).
       if (!hadSessionRef.current) return;
 
       // Si ya estamos en una login page, no naveguemos otra vez (loop).
