@@ -26,13 +26,22 @@ function trimTrailingSlash(value: string): string {
 }
 
 function resolveRefreshUrl(): string {
+  const runtimeBaseUrl = resolveRuntimeAuthBaseUrl();
   const baseUrl =
+    shouldForceRuntimeAuthBaseUrl() ? runtimeBaseUrl :
     readEnv('VITE_AUTH_BASE_URL') ||
     readEnv('VITE_API_BASE_URL') ||
     readEnv('VITE_API_URL') ||
-    resolveRuntimeAuthBaseUrl();
+    runtimeBaseUrl;
 
   return `${trimTrailingSlash(baseUrl)}${REFRESH_PATH}`;
+}
+
+function shouldForceRuntimeAuthBaseUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const host = window.location.hostname;
+  return host.includes('staging') || host.includes('dev.') || host.includes('.dev.');
 }
 
 function resolveRuntimeAuthBaseUrl(): string {
