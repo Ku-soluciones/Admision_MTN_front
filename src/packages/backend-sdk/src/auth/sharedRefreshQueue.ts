@@ -14,14 +14,11 @@ import { createRefreshQueue } from './refreshQueue';
 
 const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
 const REFRESH_PATH = '/v1/auth/refresh';
+const STAGING_AUTH_BASE_URL = 'https://admitia-nginx-staging.up.railway.app';
+const PRODUCTION_AUTH_BASE_URL = 'https://admitia-nginx.up.railway.app';
 
 function readEnv(key: string): string | undefined {
-  try {
-    const meta: any = (Function('return import.meta')() as any) ?? {};
-    return meta?.env?.[key];
-  } catch {
-    return undefined;
-  }
+  return (import.meta as any).env?.[key];
 }
 
 function trimTrailingSlash(value: string): string {
@@ -33,9 +30,18 @@ function resolveRefreshUrl(): string {
     readEnv('VITE_AUTH_BASE_URL') ||
     readEnv('VITE_API_BASE_URL') ||
     readEnv('VITE_API_URL') ||
-    DEFAULT_AUTH_BASE_URL;
+    resolveRuntimeAuthBaseUrl();
 
   return `${trimTrailingSlash(baseUrl)}${REFRESH_PATH}`;
+}
+
+function resolveRuntimeAuthBaseUrl(): string {
+  if (typeof window === 'undefined') return DEFAULT_AUTH_BASE_URL;
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return DEFAULT_AUTH_BASE_URL;
+  if (host.includes('staging') || host.includes('dev.') || host.includes('.dev.')) return STAGING_AUTH_BASE_URL;
+  return PRODUCTION_AUTH_BASE_URL;
 }
 
 function resolveEnvironmentFromHost(): string {
