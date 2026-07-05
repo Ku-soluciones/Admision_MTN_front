@@ -58,6 +58,7 @@ interface SidebarNavProps {
     onSectionChange: (key: string) => void;
     onShowLogout: () => void;
     interviews: Interview[];
+    badgeCount?: number;
     onNavigate?: () => void;
 }
 
@@ -67,6 +68,7 @@ const SidebarNav = React.memo(function SidebarNav({
     onSectionChange,
     onShowLogout,
     interviews,
+    badgeCount,
     onNavigate,
 }: SidebarNavProps) {
     return (
@@ -79,7 +81,7 @@ const SidebarNav = React.memo(function SidebarNav({
             <nav className="space-y-2 flex-1" aria-label="Menú de navegación del profesor">
                 {sections.map((section) => {
                     const IconComponent = section.icon;
-                    const showBadge = section.key === 'entrevistas' && interviews.length > 0;
+                    const showBadge = section.key === 'entrevistas' && (badgeCount ?? interviews.length) > 0;
                     return (
                         <button
                             key={section.key}
@@ -96,7 +98,7 @@ const SidebarNav = React.memo(function SidebarNav({
                             <span className="flex-1">{section.label}</span>
                             {showBadge && (
                                 <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                    {interviews.length}
+                                    {badgeCount ?? interviews.length}
                                 </span>
                             )}
                         </button>
@@ -805,6 +807,7 @@ const ProfessorDashboard: React.FC = () => {
         // Filtrar entrevistas por tipo
         const familyInterviews = interviews.filter(i => i.type === 'FAMILY');
         const directorInterviews = interviews.filter(i => i.type === 'CYCLE_DIRECTOR');
+        const directorReports = evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
 
         return (
             <div className="space-y-6">
@@ -883,7 +886,7 @@ const ProfessorDashboard: React.FC = () => {
                                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                             }`}
                                         >
-                                            Informes Finales
+                                            Informes Finales ({directorReports.length})
                                         </button>
                                     )}
                                 </nav>
@@ -893,67 +896,111 @@ const ProfessorDashboard: React.FC = () => {
                             {activeInterviewTab === 'informes' && currentProfessor?.role === 'CYCLE_DIRECTOR' ? (
                                 <div className="space-y-6">
                                     {/* Informes Finales - CYCLE_DIRECTOR_REPORT */}
+                                    {/* Arriba: Todos los informes con botón Realizar/Modificar */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                            <FileTextIcon className="w-5 h-5 mr-2" />
-                                            Informes Finales de Director de Ciclo
+                                            <ClockIcon className="w-5 h-5 mr-2" />
+                                            Informes ({directorReports.length})
                                         </h3>
-                                        <p className="text-sm text-gray-600 mb-4">
-                                            Crear informes integrales basados en los 3 exámenes académicos (Lenguaje, Matemática, Inglés)
-                                        </p>
-
-                                        {/* Filtrar evaluaciones de tipo CYCLE_DIRECTOR_REPORT */}
-                                        {(() => {
-                                            const directorReports = evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
-
-                                            return directorReports.length === 0 ? (
-                                                <div className="text-center py-8 bg-gray-50 border border-gray-200 rounded-lg">
-                                                    <FileTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                                    <p className="text-sm text-gray-500">No hay informes finales asignados actualmente</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {directorReports.map(report => (
-                                                        <div key={report.id} className="border border-gray-200 bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex-1">
-                                                                    <h4 className="font-bold text-azul-monte-tabor">
-                                                                        {report.studentName}
-                                                                    </h4>
-                                                                    <p className="text-sm text-gris-piedra">
-                                                                        Aplicación #{report.applicationId}
-                                                                    </p>
-                                                                    <div className="text-xs text-gray-600 mt-1">
-                                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                                            report.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                                            report.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                                            'bg-blue-100 text-blue-800'
-                                                                        }`}>
-                                                                            {report.status === 'COMPLETED' ? 'Completado' :
-                                                                             report.status === 'IN_PROGRESS' ? 'En Progreso' :
-                                                                             'Pendiente'}
-                                                                        </span>
-                                                                    </div>
+                                        {directorReports.length === 0 ? (
+                                            <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <p className="text-sm text-blue-600">No hay informes asignados</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {directorReports.map(report => (
+                                                    <div key={report.id} className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-bold text-azul-monte-tabor">
+                                                                    {report.studentName}
+                                                                </h4>
+                                                                <p className="text-sm text-gris-piedra">
+                                                                    Aplicación #{report.applicationId}
+                                                                </p>
+                                                                <div className="text-xs text-gray-600 mt-1">
+                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                        report.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                                                        report.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        'bg-blue-100 text-blue-800'
+                                                                    }`}>
+                                                                        {report.status === 'COMPLETED' ? 'Completado' :
+                                                                         report.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                                                                    </span>
                                                                 </div>
-                                                                <div className="flex items-center space-x-2">
-                                                                    <button
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                <Badge
+                                                                    variant={report.status === 'COMPLETED' ? 'success' : 'info'}
+                                                                    size="sm"
+                                                                >
+                                                                    {report.status === 'COMPLETED' ? 'Completado' :
+                                                                     report.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                                                                </Badge>
+                                                                <div className="flex gap-2 mt-2">
+                                                                    <Button
+                                                                        variant="primary"
+                                                                        size="sm"
                                                                         onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
-                                                                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                                                                            report.status === 'COMPLETED'
-                                                                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                                                : 'bg-azul-monte-tabor text-white hover:bg-blue-700'
-                                                                        }`}
                                                                     >
-                                                                        {report.status === 'COMPLETED' ? 'Ver Informe' : 'Completar Informe'}
-                                                                    </button>
+                                                                        {report.status === 'COMPLETED' ? 'Modificar' : 'Completar Informe'}
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
+                                                                    >
+                                                                        Ver
+                                                                    </Button>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            );
-                                        })()}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {/* Abajo: Informes ya realizados (completados) - sección verde */}
+                                    {directorReports.filter(r => r.status === 'COMPLETED').length > 0 && (
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                                <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
+                                                Informes Completados ({directorReports.filter(r => r.status === 'COMPLETED').length})
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {directorReports.filter(r => r.status === 'COMPLETED').map(report => (
+                                                    <div key={report.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-bold text-azul-monte-tabor">
+                                                                    {report.studentName}
+                                                                </h4>
+                                                                <p className="text-sm text-gris-piedra">
+                                                                    Aplicación #{report.applicationId}
+                                                                </p>
+                                                                <div className="text-xs text-gray-600 mt-1">
+                                                                    <Badge variant="success" size="sm">Completado</Badge>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                <Badge variant="success" size="sm">Completado</Badge>
+                                                                <div className="flex gap-2 mt-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
+                                                                    >
+                                                                        Ver Informe
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-6">
@@ -1811,6 +1858,7 @@ const ProfessorDashboard: React.FC = () => {
                     onSectionChange={setActiveSection}
                     onShowLogout={() => setShowLogoutConfirm(true)}
                     interviews={interviews}
+                    badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
                     onNavigate={() => setIsSidebarOpen(false)}
                 />
             </div>
@@ -1824,6 +1872,7 @@ const ProfessorDashboard: React.FC = () => {
                         onSectionChange={setActiveSection}
                         onShowLogout={() => setShowLogoutConfirm(true)}
                         interviews={interviews}
+                        badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
                     />
                 </aside>
 

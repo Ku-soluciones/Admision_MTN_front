@@ -311,7 +311,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                 newWindow.document.write(`
                     <html>
                         <head>
-                            <title>Pauta Entrevista - Examen de Admisión 2026</title>
+                            <title>Pauta Entrevista - Examen de Admisión ${new Date().getFullYear() + 1}</title>
                             <style>
                                 body { font-family: Arial, sans-serif; margin: 20px; }
                                 .header { text-align: center; margin-bottom: 30px; }
@@ -395,7 +395,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                             PAUTA ENTREVISTA
                         </h1>
                         <h2 className="text-xl font-bold text-azul-monte-tabor">
-                            EXAMEN DE ADMISIÓN 2026
+                            EXAMEN DE ADMISIÓN {new Date().getFullYear() + 1}
                         </h2>
                     </div>
 
@@ -748,7 +748,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                         <p>
                             {currentProfessor?.role === 'PSYCHOLOGIST' ? 'Psicólogo' : 'Director de Ciclo'}: {currentProfessor?.firstName} {currentProfessor?.lastName}
                         </p>
-                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión 2025</p>
+                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {new Date().getFullYear() + 1}</p>
                     </div>
                 </Card>
             </div>
