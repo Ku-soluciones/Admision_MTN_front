@@ -1,23 +1,25 @@
 import React from 'react';
-import { FiChevronLeft, FiChevronRight, FiRotateCcw } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiRefreshCw, FiRotateCcw } from 'react-icons/fi';
 import { CommandCenterViewMode, VIEW_LABELS } from './dashboardTypes';
 
 interface RangeSelectorProps {
   viewMode: CommandCenterViewMode;
-  rangeLabel: string;
+  isLoading: boolean;
   onViewModeChange: (viewMode: CommandCenterViewMode) => void;
   onPrevious: () => void;
   onNext: () => void;
   onToday: () => void;
+  onRefresh: () => void;
 }
 
 const RangeSelector: React.FC<RangeSelectorProps> = ({
   viewMode,
-  rangeLabel,
+  isLoading,
   onViewModeChange,
   onPrevious,
   onNext,
-  onToday
+  onToday,
+  onRefresh
 }) => {
   const modes = Object.keys(VIEW_LABELS) as CommandCenterViewMode[];
 
@@ -32,8 +34,8 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
             aria-pressed={viewMode === mode}
             className={`min-h-11 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100 ${
               viewMode === mode
-                ? 'bg-dorado-nazaret text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                ? 'bg-white text-gray-900 shadow-md ring-1 ring-gray-300'
+                : 'text-gray-400 hover:text-gray-700'
             }`}
           >
             {VIEW_LABELS[mode]}
@@ -50,9 +52,6 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
         >
           <FiChevronLeft aria-hidden="true" />
         </button>
-        <div className="flex min-h-11 min-w-[220px] items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-800">
-          {rangeLabel}
-        </div>
         <button
           type="button"
           onClick={onNext}
@@ -68,6 +67,16 @@ const RangeSelector: React.FC<RangeSelectorProps> = ({
         >
           <FiRotateCcw className="h-4 w-4" aria-hidden="true" />
           Hoy
+        </button>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isLoading}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+          aria-label="Actualizar"
+        >
+          <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          Actualizar
         </button>
       </div>
     </div>

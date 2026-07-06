@@ -19,6 +19,7 @@ import InterviewTooltip from './InterviewTooltip';
 interface WeeklyTimelineProps {
   days: WeeklyOverviewDay[];
   viewMode: CommandCenterViewMode;
+  rangeLabel: string;
   filterByInterviewer: number | null;
   onSlotClick: (date: string, time: string, availableInterviewers: InterviewerInfo[]) => void;
   onInterviewClick: (interview: WeeklyOverviewScheduledInterview) => void;
@@ -61,6 +62,7 @@ interface TooltipState {
 const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
   days,
   viewMode,
+  rangeLabel,
   filterByInterviewer,
   onSlotClick,
   onInterviewClick
@@ -158,7 +160,10 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
     <section className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Timeline semanal</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Timeline semanal</h3>
+            {viewMode !== 'day' && <span className="text-sm font-semibold text-gray-600">{rangeLabel}</span>}
+          </div>
           <p className="text-xs text-gray-500">Bloques de 60 minutos: solidos agendados, punteados disponibles</p>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-gray-500">

@@ -66,11 +66,16 @@ const getRangeForMode = (anchorDate: Date, viewMode: CommandCenterViewMode): { s
 };
 
 const formatRangeLabel = (startDate: string, endDate: string, viewMode: CommandCenterViewMode): string => {
-  const formatter = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' });
-  const start = formatter.format(new Date(`${startDate}T00:00:00`));
-  const end = formatter.format(new Date(`${endDate}T00:00:00`));
-  const prefix = viewMode === 'day' ? 'Dia' : viewMode === 'month' ? 'Mes' : viewMode === '2weeks' ? '2 semanas' : 'Semana';
-  return `${prefix} ${start} - ${end}`;
+  if (viewMode === 'day') return '';
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  if (sameMonth) {
+    const month = new Intl.DateTimeFormat('es-CL', { month: 'long' }).format(start);
+    return `${start.getDate()} - ${end.getDate()} de ${month}`;
+  }
+  const fmt = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' });
+  return `${fmt.format(start)} - ${fmt.format(end)}`;
 };
 
 const filterOverview = (overview: WeeklyOverviewResponse, searchTerm: string): WeeklyOverviewResponse => {
@@ -415,7 +420,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario Global</p>
             <h2 className="mt-1 text-lg font-bold text-gray-950">Centro operativo de entrevistas</h2>
             <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
-              {surface === 'operations' ? rangeLabel : 'Calendario mensual de entrevistas'}
+              {surface === 'operations' ? 'Vista operativa de entrevistas' : 'Calendario mensual de entrevistas'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -444,16 +449,6 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             >
               <FiCalendar className="h-4 w-4" aria-hidden="true" />
               Calendario
-            </button>
-            <button
-              type="button"
-              onClick={loadOverview}
-              disabled={isLoading}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-              aria-label="Actualizar centro operativo"
-            >
-              <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              Actualizar
             </button>
           </div>
         </div>
@@ -493,11 +488,12 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           <div className="grid gap-3 xl:grid-cols-[minmax(520px,1fr)_minmax(260px,360px)]">
             <RangeSelector
               viewMode={viewMode}
-              rangeLabel={rangeLabel}
+              isLoading={isLoading}
               onViewModeChange={setViewMode}
               onPrevious={() => moveRange(-1)}
               onNext={() => moveRange(1)}
               onToday={() => setAnchorDate(new Date())}
+              onRefresh={loadOverview}
             />
             <label className="relative block">
               <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
@@ -512,6 +508,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           <WeeklyTimeline
             days={visibleOverview.days}
             viewMode={viewMode}
+            rangeLabel={rangeLabel}
             filterByInterviewer={filterByInterviewer}
             onSlotClick={handleSlotClick}
             onInterviewClick={(interview) => onNavigateToInterviews?.(interview.id)}
