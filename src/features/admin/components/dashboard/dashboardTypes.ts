@@ -58,9 +58,9 @@ export const getPrimaryOperationalInterview = (
 );
 
 export const VIEW_LABELS: Record<CommandCenterViewMode, string> = {
-  day: 'Dia',
+  day: 'Día',
   week: 'Semana',
-  '2weeks': '2 Sem',
+  '2weeks': '2 Semanas',
   month: 'Mes'
 };
 

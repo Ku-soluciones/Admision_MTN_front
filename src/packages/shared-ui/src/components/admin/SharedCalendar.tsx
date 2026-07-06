@@ -24,7 +24,11 @@ import {
   FiFilter,
   FiEye,
   FiPlus,
-  FiRefreshCw
+  FiRefreshCw,
+  FiRotateCcw,
+  FiCheckCircle,
+  FiGrid,
+  FiCalendar as FiCalendarIcon
 } from 'react-icons/fi';
 import {
   Interview,
@@ -41,7 +45,7 @@ import {
 import interviewService from '../../services/interviewService';
 import { userService } from '../../services/userService';
 
-const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DAYS_OF_WEEK = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -373,68 +377,79 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header del calendario */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Calendario de Entrevistas
-          </h2>
-          
-          <div className="flex space-x-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateMonth('prev')}
-            >
-              <FiChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigateMonth('next')}
-            >
-              <FiChevronRight className="w-4 h-4" />
-            </Button>
+      {/* Resumen operativo */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {[
+          { label: 'Total', value: summary.total, Icon: FiGrid, className: 'border-gray-200 bg-gray-50 text-gray-600' },
+          { label: 'Programadas', value: summary.byStatus[InterviewStatus.SCHEDULED] || 0, Icon: FiCalendarIcon, className: 'border-blue-200 bg-blue-50 text-blue-700' },
+          { label: 'Completadas', value: summary.byStatus[InterviewStatus.COMPLETED] || 0, Icon: FiCheckCircle, className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+        ].map(({ label, value, Icon, className }) => (
+          <div key={label} className={`min-w-[132px] flex items-center gap-2 rounded-lg border px-3 py-2 ${className}`}>
+            <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+            <span className="text-xs font-semibold">{label}</span>
+            <span className="ml-auto text-lg font-bold leading-none">{value}</span>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
+        ))}
+      </div>
+
+      {/* Controles del calendario */}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
-            Hoy
-          </Button>
+            <FiFilter className="h-4 w-4" />
+            Filtros
+          </button>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigateMonth('prev')}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            aria-label="Mes anterior"
           >
-            <FiFilter className="w-4 h-4 mr-2" />
-            Filtros
-          </Button>
-          
-          {showCreateButton && onCreateInterview && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onCreateInterview(new Date(), '09:00')}
-            >
-              <FiPlus className="w-4 h-4 mr-2" />
-              Nueva Entrevista
-            </Button>
-          )}
-          
-          <Button
-            variant="outline"
-            size="sm"
+            <FiChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateMonth('next')}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            aria-label="Mes siguiente"
+          >
+            <FiChevronRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={goToToday}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          >
+            <FiRotateCcw className="h-4 w-4" />
+            Hoy
+          </button>
+          <button
+            type="button"
             onClick={loadCalendarData}
             disabled={isLoading}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+            aria-label="Actualizar"
           >
-            <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+            <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+          {showCreateButton && onCreateInterview && (
+            <button
+              type="button"
+              onClick={() => onCreateInterview(new Date(), '09:00')}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-300"
+            >
+              <FiPlus className="h-4 w-4" />
+              Nueva Entrevista
+            </button>
+          )}
         </div>
       </div>
 
@@ -542,38 +557,26 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
         </div>
       )}
 
-      {/* Resumen y título del mes */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-        <h3 className="text-lg font-medium text-gray-900">
-          {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h3>
-        
-        <div className="flex items-center space-x-4 text-sm text-gray-600">
-          <span>Total: {summary.total}</span>
-          <span>Programadas: {summary.byStatus[InterviewStatus.SCHEDULED] || 0}</span>
-          <span>Completadas: {summary.byStatus[InterviewStatus.COMPLETED] || 0}</span>
-        </div>
-      </div>
-
-      {/* Leyenda de colores */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        {Object.entries(INTERVIEW_CONFIG.COLORS).map(([status, color]) => (
-          <div key={status} className="flex items-center space-x-1">
-            <div
-              className="w-3 h-3 rounded"
-              style={{ backgroundColor: color }}
-            ></div>
-            <span>{INTERVIEW_STATUS_LABELS[status as InterviewStatus]}</span>
-          </div>
-        ))}
-        <div className="flex items-center space-x-1">
-          <div className="w-3 h-3 rounded bg-red-500"></div>
-          <span>Conflictos de horario</span>
-        </div>
-      </div>
-
       {/* Calendario principal */}
-      <Card className="overflow-hidden">
+      <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-2 p-4 md:flex-row md:items-end md:justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">
+            {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h3>
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+            {Object.entries(INTERVIEW_CONFIG.COLORS).map(([status, color]) => (
+              <span key={status} className="inline-flex items-center gap-1">
+                <span className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
+                {INTERVIEW_STATUS_LABELS[status as InterviewStatus]}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1">
+              <span className="h-3 w-3 rounded bg-red-500" />
+              Conflictos de horario
+            </span>
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner size="lg" />
@@ -581,21 +584,21 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
         ) : (
           <>
             {/* Días de la semana */}
-            <div className="grid grid-cols-7 bg-gray-50">
+            <div className="grid grid-cols-7 gap-2 p-2">
               {DAYS_OF_WEEK.map(day => (
-                <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 border-r border-b border-gray-200">
-                  {day}
+                <div key={day} className="rounded-lg bg-gray-50 px-3 py-2 text-center">
+                  <p className="text-sm font-bold text-gray-900">{day}</p>
                 </div>
               ))}
             </div>
-            
+
             {/* Días del mes */}
             <div className="grid grid-cols-7">
               {calendarDays.map((day, index) => renderCalendarDay(day, index))}
             </div>
           </>
         )}
-      </Card>
+      </section>
 
       {/* Modal de detalles de entrevista */}
       <Modal isOpen={showDetails} onClose={() => setShowDetails(false)} size="xl" showCloseButton={false}>
