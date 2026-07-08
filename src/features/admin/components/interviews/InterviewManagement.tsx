@@ -91,7 +91,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Modos esenciales + vista de estudiantes
-  const [viewMode, setViewMode] = useState<'students' | 'table' | 'calendar'>('students');
   
   // Estados para la vista de estudiantes
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -540,47 +539,6 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Entrevistas</h1>
             <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Centro de evaluación de candidatos</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMode('students')}
-              aria-pressed={viewMode === 'students'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                viewMode === 'students'
-                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-              }`}
-            >
-              <FiUser className="h-4 w-4" aria-hidden="true" />
-              Estudiantes
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              aria-pressed={viewMode === 'table'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                viewMode === 'table'
-                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-              }`}
-            >
-              <FiFilter className="h-4 w-4" aria-hidden="true" />
-              Lista
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('calendar')}
-              aria-pressed={viewMode === 'calendar'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                viewMode === 'calendar'
-                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-              }`}
-            >
-              <FiCalendar className="h-4 w-4" aria-hidden="true" />
-              Calendario
-            </button>
-          </div>
         </div>
       </section>
 
@@ -743,53 +701,20 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
         </Card>
       ) : (
         <>
-          {viewMode === 'students' && (
-            selectedStudentId ? (
-              <StudentDetailView
-                applicationId={selectedStudentId}
-                studentName={selectedStudentName}
-                onBack={handleBackToStudentList}
-                onScheduleInterview={handleScheduleInterviewForStudent}
-                onViewInterview={handleOpenInterview}
-                onEditInterview={handleEditInterview}
-                refreshKey={refreshKey}
-              />
-            ) : (
-              <StudentListView
-                onStudentSelect={handleStudentSelect}
-              />
-            )
-          )}
-
-          {viewMode === 'table' && (
-            <Card className="p-6">
-              <InterviewTable
-                key={`table-${refreshKey}`}
-                interviews={interviews}
-                isLoading={isLoading}
-                onEdit={handleEditInterview}
-                onComplete={handleCompleteInterview}
-                onCancel={handleCancelInterview}
-                onReschedule={handleRescheduleInterview}
-                onView={handleOpenInterview}
-                onSendNotification={handleSendNotification}
-                onSendReminder={handleSendReminder}
-                onRelease={handleReleaseInterview}
-              />
-            </Card>
-          )}
-
-          {viewMode === 'calendar' && (
-            <Card className="p-6">
-              <InterviewCalendar
-                key={`calendar-${refreshKey}`}
-                interviews={interviews}
-                onSelectEvent={handleOpenInterview}
-                onSelectSlot={(slotInfo) => {
-                  handleCreateInterview();
-                }}
-              />
-            </Card>
+          {selectedStudentId ? (
+            <StudentDetailView
+              applicationId={selectedStudentId}
+              studentName={selectedStudentName}
+              onBack={handleBackToStudentList}
+              onScheduleInterview={handleScheduleInterviewForStudent}
+              onViewInterview={handleOpenInterview}
+              onEditInterview={handleEditInterview}
+              refreshKey={refreshKey}
+            />
+          ) : (
+            <StudentListView
+              onStudentSelect={handleStudentSelect}
+            />
           )}
         </>
       )}
