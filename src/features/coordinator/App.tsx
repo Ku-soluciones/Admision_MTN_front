@@ -10,7 +10,6 @@ import AdvancedSearchView from '../admin/src/components/coordinator/AdvancedSear
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
-import Footer from '../admissions/components/layout/Footer';
 import ToastContainer from '../admin/components/ui/ToastContainer';
 import GlobalToastHost from '../admin/components/ui/GlobalToastHost';
 import { ErrorBoundary } from '../admin/components/ErrorBoundary';
@@ -44,7 +43,6 @@ function App() {
                 </Routes>
               </Suspense>
             </main>
-            <Footer />
             <ToastContainer />
             <GlobalToastHost />
           </div>
