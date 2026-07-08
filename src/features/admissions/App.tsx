@@ -1,6 +1,6 @@
 import React from 'react';
 import { Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ApplicationForm from './pages/ApplicationForm';
 import ComplementaryApplicationForm from '../admin/pages/ComplementaryApplicationForm';
@@ -29,6 +29,9 @@ const LoadingFallback = () => (
 );
 
 function App() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/apoderado/login';
+
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -48,7 +51,7 @@ function App() {
                 </Routes>
               </Suspense>
             </main>
-            <Footer />
+            {!isLoginPage && <Footer />}
             <ToastContainer />
             <GlobalToastHost />
           </div>

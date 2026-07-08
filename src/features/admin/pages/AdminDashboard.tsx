@@ -833,7 +833,7 @@ Esta acción:
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       {/* Overlay global de carga */}
       {isPageLoading && (
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
@@ -844,7 +844,7 @@ Esta acción:
         </div>
       )}
       {/* Mobile top bar */}
-      <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between z-30">
         <div>
           <h1 className="text-lg font-bold text-azul-monte-tabor">Panel Admin</h1>
           <p className="text-xs text-gris-piedra">{user?.firstName} {user?.lastName}</p>
@@ -890,9 +890,9 @@ Esta acción:
         />
       </div>
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="w-64 bg-white shadow-md min-h-screen flex-col hidden md:flex sticky top-0 self-start h-screen overflow-y-auto">
+        <aside className="w-64 bg-white shadow-md flex-col hidden md:flex overflow-y-auto">
           <SidebarContent
             user={user}
             activeSection={activeSection}
@@ -903,7 +903,7 @@ Esta acción:
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 min-w-0" role="main" aria-label="Contenido principal del dashboard">
+        <main className="flex-1 p-4 sm:p-6 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard">
           {renderSection()}
         </main>
       </div>

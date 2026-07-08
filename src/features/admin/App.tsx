@@ -9,7 +9,6 @@ import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/Pro
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -51,7 +50,6 @@ function App() {
                 </Routes>
               </Suspense>
             </main>
-            <Footer />
             <ToastContainer />
             <GlobalToastHost />
           </div>
