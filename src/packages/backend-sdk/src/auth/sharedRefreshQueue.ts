@@ -4,13 +4,19 @@
  * UNA petición de refresh esté en vuelo a la vez, evitando que el backend
  * detecte "reuso" de refresh token y revoque la sesión por seguridad.
  *
- * Usa fetch directamente con credentials: 'include' para que la cookie
- * HttpOnly del refresh viaje automáticamente.
+ * Usa fetch con credentials: 'include' para que la cookie HttpOnly viaje
+ * automáticamente. Si el navegador bloquea la cookie cross-site, adjunta el
+ * refresh fallback que el BFF ya acepta en el body durante la transición.
  */
 import { authStore } from './store';
 import { emitAuthEvent } from './events';
 import { broadcastRefresh } from './broadcast';
 import { createRefreshQueue } from './refreshQueue';
+import {
+  clearRefreshTokenFallback,
+  persistRefreshTokenFallback,
+  readRefreshTokenFallback,
+} from './refreshTokenFallback';
 
 const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
 const REFRESH_PATH = '/api/auth/refresh';
@@ -88,14 +94,22 @@ export interface SharedRefreshResult {
 }
 
 async function doRefresh(): Promise<SharedRefreshResult> {
+  const fallbackRefreshToken = readRefreshTokenFallback();
   const response = await fetch(resolveRefreshUrl(), {
     method: 'POST',
     credentials: 'include',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      ...(fallbackRefreshToken ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: fallbackRefreshToken ? JSON.stringify({ refreshToken: fallbackRefreshToken }) : undefined,
   });
 
   if (!response.ok) {
     const body = await response.text();
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      clearRefreshTokenFallback();
+    }
     throw new Error(`Refresh failed: ${response.status} ${body}`);
   }
 
@@ -105,6 +119,7 @@ async function doRefresh(): Promise<SharedRefreshResult> {
   }
 
   authStore.updateAccessToken(data.token, data.expiresIn, data.user ?? undefined);
+  persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
   persistAccessToken(data.token, data.user?.role);
   if (typeof data.firebaseLinked === 'boolean') {
     authStore.setFirebaseLinked(data.firebaseLinked);

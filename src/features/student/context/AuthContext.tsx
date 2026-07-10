@@ -43,13 +43,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     firebaseAuth: auth,
     hasFirebaseConfig,
     legacyIdTokenExchange: 'sdk-helper',
+    portalType: 'GUARDIAN',
     crossTabLogoutRedirectUrl: (reason) => `/#/examenes?reason=${reason}`,
   });
 
   const login = async (email: string, password: string, _role: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, portalType: 'GUARDIAN' });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);
@@ -150,4 +151,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

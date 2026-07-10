@@ -1,5 +1,10 @@
 import React from 'react';
 import { useProcessActiveTeacher } from '../../../../shared-utils/src/hooks/useProcessActiveTeacher';
+import {
+  authStore,
+  getStorageKey,
+  BASE_STORAGE_KEYS,
+} from '../../../../backend-sdk/src/index';
 
 interface ProcessActiveGuardProps {
   children: React.ReactNode;
@@ -16,6 +21,12 @@ interface ProcessActiveGuardProps {
  */
 const ProcessActiveGuard: React.FC<ProcessActiveGuardProps> = ({ children, fallback }) => {
   const { isProcessActive, isLoading } = useProcessActiveTeacher();
+  const hasStaffSession = Boolean(authStore.getValidAccessToken())
+    || (typeof window !== 'undefined' && Boolean(localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN))));
+
+  if (hasStaffSession) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
@@ -62,5 +73,4 @@ const ProcessActiveGuard: React.FC<ProcessActiveGuardProps> = ({ children, fallb
 };
 
 export default ProcessActiveGuard;
-
 

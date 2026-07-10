@@ -15,3 +15,4 @@ export * from './refreshQueue';
 export * from './sharedRefreshQueue';
 export * from './useSessionTimeout';
 export * from './events';
+export * from './refreshTokenFallback';

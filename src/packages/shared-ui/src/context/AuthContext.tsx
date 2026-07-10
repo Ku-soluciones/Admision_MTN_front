@@ -31,19 +31,34 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 (function bootstrapStorageOnce() { purgeLegacyAuthStorage(); })();
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const portalType = (() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (
+      path.startsWith('/profesor') ||
+      path.startsWith('/entrevistas') ||
+      path.startsWith('/calendario') ||
+      path.startsWith('/coordinador') ||
+      path.startsWith('/reportes')
+    ) {
+      return 'STAFF' as const;
+    }
+    return 'GUARDIAN' as const;
+  })();
+
   const { user, setUser, isLoading, setIsLoading, firebaseLinked } = useAuthBootstrap({
     api,
     firebaseAuth: auth,
     hasFirebaseConfig,
     // shared-ui: sin doble bandera, sin fresh, sin intercambio legacy.
     legacyIdTokenExchange: 'none',
+    portalType,
     crossTabLogoutRedirectUrl: (reason) => `/apoderado-login?reason=${reason}`,
   });
 
   const login = async (email: string, password: string, _role: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, portalType });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);
@@ -145,4 +160,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

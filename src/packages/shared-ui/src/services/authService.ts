@@ -6,7 +6,7 @@
  *  - El BFF devuelve { token, expiresIn, refreshToken (cookie HttpOnly),
  *    refreshExpiresIn, absoluteSessionSeconds, firebaseLinked, user, … }.
  *  - El access token vive sólo en memoria (`authStore`). El refresh viaja
- *    por cookie HttpOnly.
+ *    por cookie HttpOnly, con fallback transicional por body para cross-site.
  *  - El login con email/password puede entregar también `firebaseIdToken`
  *    para que el BFF enlace `firebase_uid` en el mismo flujo.
  */
@@ -30,6 +30,8 @@ import {
     broadcastLogin,
     broadcastLogout,
     clearAllSessions,
+    persistRefreshTokenFallback,
+    clearRefreshTokenFallback,
 } from '../../../backend-sdk/src/index';
 
 // El módulo Firebase exporta `auth` como `Auth | null` (el null aparece si
@@ -79,6 +81,8 @@ export interface AuthResponse {
     token?: string;
     expiresIn?: number;
     absoluteSessionSeconds?: number;
+    refreshToken?: string;
+    refreshExpiresIn?: number;
     firebaseLinked?: boolean;
     sessionId?: string | null;
     permissions?: string[];
@@ -163,6 +167,7 @@ function adoptSession(data: AuthResponse): void {
         sessionId: data.sessionId ?? null,
         permissions: data.permissions ?? [],
     });
+    persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
 
     // Programar refresh proactivo. No pasamos una función refresh propia:
     // usamos la cola compartida del backend-sdk para que el timer proactivo
@@ -367,6 +372,7 @@ class AuthService {
         try { await signOut(auth); } catch { /* no-op */ }
 
         authStore.clear();
+        clearRefreshTokenFallback();
         // Limpieza exhaustiva: cubre todas las claves de rol y todos los
         // sufijos de entorno (no sólo el actual). Reemplaza al cleanup
         // parcial anterior, que dejaba residuos al cambiar de env local.
