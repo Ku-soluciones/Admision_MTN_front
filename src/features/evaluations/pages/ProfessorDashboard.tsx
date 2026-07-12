@@ -45,6 +45,7 @@ import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../package
 
 const baseSections = [
     { key: 'dashboard',    label: 'Dashboard General',        icon: DashboardIcon },
+    { key: 'examenes',    label: 'Mis Exámenes',             icon: FileTextIcon },
     { key: 'entrevistas',  label: 'Mis Entrevistas',          icon: UsersIcon },
     { key: 'estudiantes',  label: 'Mis Estudiantes',          icon: UsersIcon },
     { key: 'horarios',     label: 'Mis Horarios',             icon: ClockIcon },
@@ -173,9 +174,51 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para el tab activo en la sección de evaluaciones
     const [activeEvaluationTab, setActiveEvaluationTab] = useState<'academicas' | 'psicologicas' | 'familiares'>('psicologicas');
 
-    // Estado para el tab activo en la sección de entrevistas
-    const [activeInterviewTab, setActiveInterviewTab] = useState<'familiares' | 'director_ciclo' | 'informes'>('familiares');
+    // Estado para el tab activo en la sección de entrevistas - dinámico según asignaciones
+    const [activeInterviewTab, setActiveInterviewTab] = useState<string>('familiares');
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    // Determinar qué tabs de entrevistas mostrar según las evaluaciones asignadas
+    const interviewTabs = useMemo(() => {
+        const tabs: { key: string; label: string; count: number }[] = [];
+
+        // Entrevistas Familiares
+        const familyCount = interviews.filter(i => i.type === 'FAMILY').length;
+        if (familyCount > 0 || evaluations.some(e => e.evaluationType === 'FAMILY_INTERVIEW')) {
+            tabs.push({ key: 'familiares', label: 'Entrevistas Familiares', count: familyCount });
+        }
+
+        // Entrevistas Director de Ciclo
+        const directorCount = interviews.filter(i => i.type === 'CYCLE_DIRECTOR').length;
+        if (directorCount > 0 || evaluations.some(e => e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
+            tabs.push({ key: 'director_ciclo', label: 'Entrevistas Director de Ciclo', count: directorCount });
+        }
+
+        // Entrevistas Psicológicas (para psicólogos)
+        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL').length;
+        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW')) {
+            tabs.push({ key: 'psicologicas', label: 'Entrevistas Psicológicas', count: psychoCount });
+        }
+
+        // Informes Finales (solo para Directores de Ciclo)
+        const reportsCount = evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length;
+        if (currentProfessor?.role === 'CYCLE_DIRECTOR' && reportsCount > 0) {
+            tabs.push({ key: 'informes', label: 'Informes Finales', count: reportsCount });
+        }
+
+        return tabs;
+    }, [interviews, evaluations, currentProfessor?.role]);
+
+    // Efecto para mantener el tab activo válido cuando cambian los datos
+    useEffect(() => {
+        if (interviewTabs.length > 0) {
+            // Si el tab actual no existe en los tabs disponibles, seleccionar el primero
+            const currentTabExists = interviewTabs.some(t => t.key === activeInterviewTab);
+            if (!currentTabExists) {
+                setActiveInterviewTab(interviewTabs[0].key);
+            }
+        }
+    }, [interviewTabs]);
 
     // Determinar tab inicial basado en las evaluaciones disponibles
     useEffect(() => {
@@ -554,6 +597,64 @@ const ProfessorDashboard: React.FC = () => {
     );
 
     const renderEvaluaciones = () => {
+
+        // Helper para obtener la URL de navegación según tipo de evaluación
+        const getEvaluationUrl = (evaluation: ProfessorEvaluation): string => {
+            switch (evaluation.evaluationType) {
+                case 'MATHEMATICS_EXAM':
+                case 'LANGUAGE_EXAM':
+                case 'ENGLISH_EXAM':
+                    return `/profesor/informe/${evaluation.id}`;
+                case 'FAMILY_INTERVIEW':
+                    return `/profesor/entrevista-familiar/${evaluation.id}`;
+                case 'CYCLE_DIRECTOR_INTERVIEW':
+                    return `/cycle-director-interview/${evaluation.id}`;
+                case 'PSYCHOLOGICAL_INTERVIEW':
+                    return `/psychological-interview/${evaluation.id}`;
+                case 'CYCLE_DIRECTOR_REPORT':
+                    return `/profesor/informe-director/${evaluation.id}`;
+                default:
+                    return `/profesor/informe/${evaluation.id}`;
+            }
+        };
+
+        // Helper para obtener el label del botón
+        const getButtonLabel = (evaluation: ProfessorEvaluation): string => {
+            if (evaluation.status === EvaluationStatus.COMPLETED) {
+                return 'Modificar';
+            }
+            switch (evaluation.evaluationType) {
+                case 'MATHEMATICS_EXAM':
+                case 'LANGUAGE_EXAM':
+                case 'ENGLISH_EXAM':
+                    return 'Realizar Examen';
+                case 'FAMILY_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'CYCLE_DIRECTOR_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'PSYCHOLOGICAL_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'CYCLE_DIRECTOR_REPORT':
+                    return 'Completar Informe';
+                default:
+                    return 'Completar';
+            }
+        };
+
+        // Helper para obtener el tipo de evaluación (label corto)
+        const getEvaluationTypeShort = (type: EvaluationType): string => {
+            switch (type) {
+                case EvaluationType.MATHEMATICS_EXAM: return 'Matemática';
+                case EvaluationType.LANGUAGE_EXAM: return 'Lenguaje';
+                case EvaluationType.ENGLISH_EXAM: return 'Inglés';
+                case EvaluationType.PSYCHOLOGICAL_INTERVIEW: return 'Psicológica';
+                case EvaluationType.CYCLE_DIRECTOR_INTERVIEW: return 'Director de Ciclo';
+                case EvaluationType.CYCLE_DIRECTOR_REPORT: return 'Informe Director';
+                case EvaluationType.FAMILY_INTERVIEW: return 'Familiar';
+                default: return type;
+            }
+        };
+
         // Filtrar evaluaciones por tipo
         const academicEvaluations = evaluations.filter(e =>
             ['MATHEMATICS_EXAM', 'LANGUAGE_EXAM', 'ENGLISH_EXAM'].includes(e.evaluationType)
@@ -578,107 +679,90 @@ const ProfessorDashboard: React.FC = () => {
             activeEvaluationTab === 'psicologicas' ? psychologicalEvaluations :
             familyEvaluations;
 
-        // Columnas simplificadas para entrevistas/informes
-        const simpleColumns = [
-            {
-                key: 'student' as keyof ProfessorEvaluation,
-                header: 'Nombre Estudiante',
-                render: (value: any, evaluation: ProfessorEvaluation) => (
-                    <p className="font-semibold">{evaluation.studentName}</p>
-                )
-            },
-            {
-                key: 'studentRut' as keyof ProfessorEvaluation,
-                header: 'RUT',
-                render: (value: any, evaluation: ProfessorEvaluation) => (
-                    <p className="text-sm">{evaluation.studentRut || '-'}</p>
-                )
-            },
-            {
-                key: 'status' as keyof ProfessorEvaluation,
-                header: 'Estado',
-                render: (status: EvaluationStatus) => getEvaluationStatusBadge(status)
-            }
-        ];
+        // Separar en pendientes y completadas
+        const pendingEvaluations = currentEvaluations.filter(e => e.status !== EvaluationStatus.COMPLETED);
+        const completedEvaluations = currentEvaluations.filter(e => e.status === EvaluationStatus.COMPLETED);
 
-        // Columnas completas para exámenes académicos
-        const baseColumns = [
-            {
-                key: 'student' as keyof ProfessorEvaluation,
-                header: 'Estudiante',
-                render: (value: any, evaluation: ProfessorEvaluation) => (
-                    <div>
-                        <p className="font-semibold">{evaluation.studentName}</p>
-                        <p className="text-sm text-gris-piedra">{evaluation.studentGrade}</p>
-                    </div>
-                )
-            },
-            {
-                key: 'evaluationType' as keyof ProfessorEvaluation,
-                header: 'Tipo de Evaluación',
-                render: (type: EvaluationType) => getEvaluationTypeLabel(type)
-            },
-            {
-                key: 'scheduledDate' as keyof ProfessorEvaluation,
-                header: 'Fecha Programada',
-                render: (date: string) => date ? new Date(date).toLocaleDateString('es-CL') : '-'
-            },
-            {
-                key: 'status' as keyof ProfessorEvaluation,
-                header: 'Estado',
-                render: (status: EvaluationStatus) => getEvaluationStatusBadge(status)
-            }
-        ];
+        // Ordenar: pendientes por fecha (próximas primero), completadas por fecha (más recientes primero)
+        const sortByDate = (arr: ProfessorEvaluation[], ascending: boolean = false) => {
+            return [...arr].sort((a, b) => {
+                const dateA = new Date(a.scheduledDate || a.completedDate || 0);
+                const dateB = new Date(b.scheduledDate || b.completedDate || 0);
+                return ascending ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+            });
+        };
 
-        // Columna de porcentaje solo para exámenes académicos
-        const scoreColumn = {
-            key: 'score' as keyof ProfessorEvaluation,
-            header: 'Porcentaje',
-            render: (score: number, evaluation: ProfessorEvaluation) => {
-                if (!score) return '-';
+        const sortedPending = sortByDate(pendingEvaluations, true);
+        const sortedCompleted = sortByDate(completedEvaluations, false);
+
+        // Obtener label del tab activo
+        const getTabLabel = () => {
+            switch (activeEvaluationTab) {
+                case 'academicas': return 'Exámenes';
+                case 'psicologicas': return 'Entrevistas Psicológicas';
+                case 'familiares': return 'Entrevistas Familiares';
+                default: return '';
+            }
+        };
+
+        // Renderizar una tarjeta de evaluación
+        const renderEvaluationCard = (evaluation: ProfessorEvaluation) => {
+            const isCompleted = evaluation.status === EvaluationStatus.COMPLETED;
+            const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
+            const borderColor = isCompleted ? 'border-green-200' : 'border-blue-200';
+
+            // Calcular porcentaje si existe score
+            let scoreDisplay = null;
+            if (evaluation.score !== undefined && evaluation.score !== null) {
                 const maxScore = evaluation.maxScore || 100;
-                const percentage = Math.round((score / maxScore) * 100);
-                return `${percentage}%`;
+                const percentage = Math.round((evaluation.score / maxScore) * 100);
+                scoreDisplay = `${percentage}%`;
             }
-        };
 
-        // Columna de acciones
-        const actionsColumn = {
-            key: 'actions' as keyof ProfessorEvaluation,
-            header: 'Acciones',
-            render: (value: any, evaluation: ProfessorEvaluation) => (
-                <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => navigate(
-                        evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
-                            ? `/cycle-director-interview/${evaluation.id}`
-                            : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                            ? `/psychological-interview/${evaluation.id}`
-                            : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
-                            ? `/profesor/informe-director/${evaluation.id}`
-                            : evaluation.evaluationType === 'FAMILY_INTERVIEW'
-                            ? `/profesor/entrevista-familiar/${evaluation.id}`
-                            : `/profesor/informe/${evaluation.id}`
-                    )}
-                >
-                    {evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
-                        ? (evaluation.status === EvaluationStatus.COMPLETED ? "Ver Entrevista" : "Crear Entrevista")
-                        : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                        ? (evaluation.status === EvaluationStatus.COMPLETED ? "Ver Entrevista" : "Crear Entrevista")
-                        : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
-                        ? (evaluation.status === EvaluationStatus.COMPLETED ? "Ver Informe" : "Completar Informe")
-                        : evaluation.evaluationType === 'FAMILY_INTERVIEW'
-                        ? (evaluation.status === EvaluationStatus.COMPLETED ? "Ver Entrevista" : "Crear Entrevista")
-                        : (evaluation.status === EvaluationStatus.COMPLETED ? "Ver Informe" : "Completar Informe")}
-                </Button>
-            )
+            return (
+                <div key={evaluation.id} className={`border ${borderColor} ${bgColor} rounded-lg p-4 hover:shadow-md transition-shadow`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h4 className="font-bold text-azul-monte-tabor">
+                                {evaluation.studentName}
+                            </h4>
+                            <p className="text-sm text-gris-piedra">
+                                {evaluation.studentGrade}
+                            </p>
+                            <div className="text-xs text-gray-600 mt-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        isCompleted ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                        {getEvaluationTypeShort(evaluation.evaluationType)}
+                                    </span>
+                                    {scoreDisplay && (
+                                        <span className="font-semibold text-azul-monte-tabor">
+                                            {scoreDisplay}
+                                        </span>
+                                    )}
+                                </div>
+                                {evaluation.scheduledDate && !isCompleted && (
+                                    <div>Fecha: {new Date(evaluation.scheduledDate).toLocaleDateString('es-CL')}</div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                            <Badge variant={isCompleted ? 'success' : 'info'} size="sm">
+                                {isCompleted ? 'Completado' : evaluation.status === EvaluationStatus.IN_PROGRESS ? 'En Progreso' : 'Pendiente'}
+                            </Badge>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => navigate(getEvaluationUrl(evaluation))}
+                            >
+                                {getButtonLabel(evaluation)}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
         };
-
-        // Determinar qué columnas mostrar según el tab activo
-        const evaluationColumns = activeEvaluationTab === 'academicas'
-            ? [...baseColumns, scoreColumn, actionsColumn]  // Exámenes académicos: info completa
-            : [...simpleColumns, actionsColumn];             // Entrevistas/informes: solo nombre, RUT, estado
 
         return (
             <Card className="p-6">
@@ -737,15 +821,37 @@ const ProfessorDashboard: React.FC = () => {
                         <p className="text-gris-piedra mt-2">Cargando evaluaciones...</p>
                     </div>
                 ) : (
-                    <Table
-                        data={currentEvaluations}
-                        columns={evaluationColumns}
-                        emptyMessage={`No hay evaluaciones ${
-                            activeEvaluationTab === 'academicas' ? 'académicas' :
-                            activeEvaluationTab === 'psicologicas' ? 'psicológicas/director' :
-                            'familiares'
-                        } asignadas`}
-                    />
+                    <div className="space-y-6">
+                        {/* Pendientes */}
+                        <div>
+                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                <ClockIcon className="w-5 h-5 mr-2" />
+                                {getTabLabel()} Pendientes ({sortedPending.length})
+                            </h3>
+                            {sortedPending.length === 0 ? (
+                                <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm text-blue-600">No hay {getTabLabel().toLowerCase()} pendientes</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {sortedPending.map(renderEvaluationCard)}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Completadas */}
+                        {sortedCompleted.length > 0 && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                    <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
+                                    {getTabLabel()} Completadas ({sortedCompleted.length})
+                                </h3>
+                                <div className="space-y-3">
+                                    {sortedCompleted.map(renderEvaluationCard)}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
             </Card>
         );
@@ -770,44 +876,194 @@ const ProfessorDashboard: React.FC = () => {
     };
 
     const renderEntrevistas = () => {
-        // Separate interviews by status
-        const upcomingInterviews = interviews.filter(
-            i => i.status === InterviewStatus.SCHEDULED || i.status === InterviewStatus.CONFIRMED
-        ).sort((a, b) => {
-            const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime}`);
-            const dateB = new Date(`${b.scheduledDate}T${b.scheduledTime}`);
-            return dateA.getTime() - dateB.getTime();
-        });
 
-        // Use helper function to check if evaluation is completed
-        const completedInterviews = interviews.filter(
-            i => isInterviewCompleted(i)
-        ).sort((a, b) => {
-            const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime}`);
-            const dateB = new Date(`${b.scheduledDate}T${b.scheduledTime}`);
-            return dateB.getTime() - dateA.getTime(); // Most recent first
-        });
-
-        // DEBUG: Log interview counts
-
-        const getStatusColor = (status: InterviewStatus): 'success' | 'warning' | 'info' | 'error' => {
-            switch (status) {
-                case InterviewStatus.COMPLETED:
-                    return 'success';
-                case InterviewStatus.SCHEDULED:
-                case InterviewStatus.CONFIRMED:
-                    return 'info';
-                case InterviewStatus.CANCELLED:
-                    return 'error';
-                default:
-                    return 'warning';
+        // Helper function to get the correct evaluation type for a tab
+        const getEvaluationTypeForTab = (tabKey: string): string | null => {
+            switch (tabKey) {
+                case 'familiares': return 'FAMILY_INTERVIEW';
+                case 'director_ciclo': return 'CYCLE_DIRECTOR_INTERVIEW';
+                case 'psicologicas': return 'PSYCHOLOGICAL_INTERVIEW';
+                case 'informes': return 'CYCLE_DIRECTOR_REPORT';
+                default: return null;
             }
         };
 
-        // Filtrar entrevistas por tipo
-        const familyInterviews = interviews.filter(i => i.type === 'FAMILY');
-        const directorInterviews = interviews.filter(i => i.type === 'CYCLE_DIRECTOR');
-        const directorReports = evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
+        // Helper function to get the correct interview type for a tab
+        const getInterviewTypeForTab = (tabKey: string): string | null => {
+            switch (tabKey) {
+                case 'familiares': return 'FAMILY';
+                case 'director_ciclo': return 'CYCLE_DIRECTOR';
+                case 'psicologicas': return 'PSYCHOLOGICAL';
+                default: return null;
+            }
+        };
+
+        // Helper function to get the URL for an evaluation
+        const getEvaluationUrl = (evaluation: ProfessorEvaluation): string => {
+            switch (evaluation.evaluationType) {
+                case 'FAMILY_INTERVIEW':
+                    return `/profesor/entrevista-familiar/${evaluation.id}`;
+                case 'CYCLE_DIRECTOR_INTERVIEW':
+                    return `/cycle-director-interview/${evaluation.id}`;
+                case 'PSYCHOLOGICAL_INTERVIEW':
+                    return `/psychological-interview/${evaluation.id}`;
+                case 'CYCLE_DIRECTOR_REPORT':
+                    return `/profesor/informe-director/${evaluation.id}`;
+                default:
+                    return `/profesor/informe/${evaluation.id}`;
+            }
+        };
+
+        // Helper function to get the button label for an evaluation
+        const getButtonLabel = (evaluation: ProfessorEvaluation): string => {
+            if (evaluation.status === EvaluationStatus.COMPLETED) {
+                return 'Modificar';
+            }
+            switch (evaluation.evaluationType) {
+                case 'FAMILY_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'CYCLE_DIRECTOR_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'PSYCHOLOGICAL_INTERVIEW':
+                    return 'Realizar Entrevista';
+                case 'CYCLE_DIRECTOR_REPORT':
+                    return 'Completar Informe';
+                default:
+                    return 'Completar';
+            }
+        };
+
+        // Get data for the current tab
+        const getTabData = () => {
+            const evalType = getEvaluationTypeForTab(activeInterviewTab);
+            const intType = getInterviewTypeForTab(activeInterviewTab);
+
+            if (activeInterviewTab === 'informes') {
+                // For informes, use evaluations directly
+                return evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
+            } else {
+                // For interviews, filter interviews by type
+                return interviews.filter(i => i.type === intType);
+            }
+        };
+
+        // Separate data into pending and completed
+        const tabData = getTabData();
+
+        // For interviews, use the isInterviewCompleted helper; for reports, use status directly
+        const pendingData = activeInterviewTab === 'informes'
+            ? tabData.filter((d: any) => d.status !== 'COMPLETED')
+            : (tabData as Interview[]).filter(i => !isInterviewCompleted(i));
+
+        const completedData = activeInterviewTab === 'informes'
+            ? tabData.filter((d: any) => d.status === 'COMPLETED')
+            : (tabData as Interview[]).filter(i => isInterviewCompleted(i));
+
+        // Get tab label
+        const currentTab = interviewTabs.find(t => t.key === activeInterviewTab);
+        const tabLabel = currentTab?.label.replace('Entrevistas ', '').replace('Informes ', '') || '';
+
+        // Render a single card
+        const renderCard = (item: any, isInterview: boolean, isPending: boolean) => {
+            const evaluation = isInterview ? null : item;
+            const interview = isInterview ? item : null;
+
+            const studentName = evaluation?.studentName || interview?.studentName || 'Sin nombre';
+            const applicationId = evaluation?.applicationId || interview?.applicationId || 0;
+            const status = evaluation?.status || (isInterview ? (isInterviewCompleted(interview) ? 'COMPLETED' : 'PENDING') : 'PENDING');
+            const isCompleted = status === 'COMPLETED';
+
+            // Get the evaluation to navigate
+            const getEvaluationToUse = async () => {
+                if (!isInterview) return evaluation;
+
+                // For interviews, find the matching evaluation
+                const expectedEvalType = getEvaluationTypeForTab(activeInterviewTab);
+                const matchingEval = evaluations.find(e =>
+                    e.applicationId === interview.applicationId &&
+                    e.evaluationType === expectedEvalType
+                );
+                return matchingEval || evaluation;
+            };
+
+            const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
+            const borderColor = isCompleted ? 'border-green-200' : 'border-blue-200';
+
+            return (
+                <div key={item.id} className={`border ${borderColor} ${bgColor} rounded-lg p-4 hover:shadow-md transition-shadow`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h4 className="font-bold text-azul-monte-tabor">
+                                {studentName}
+                            </h4>
+                            <p className="text-sm text-gris-piedra">
+                                Aplicación #{applicationId}
+                            </p>
+                            {isInterview && interview && (
+                                <div className="text-xs text-gray-600 mt-1 space-y-1">
+                                    <div>{(() => {
+                                        const [year, month, day] = interview.scheduledDate.split('-');
+                                        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                        return date.toLocaleDateString('es-CL', {
+                                            weekday: 'long',
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric'
+                                        });
+                                    })()}</div>
+                                    <div>{interview.scheduledTime} ({interview.duration} min)</div>
+                                    {interview.location && <div>{interview.location}</div>}
+                                    {interview.secondInterviewerName ? (
+                                        <div>Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
+                                    ) : (
+                                        <div>Entrevistador: {interview.interviewerName}</div>
+                                    )}
+                                </div>
+                            )}
+                            <div className="text-xs text-gray-600 mt-1">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    isCompleted ? 'bg-green-100 text-green-800' :
+                                    status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-blue-100 text-blue-800'
+                                }`}>
+                                    {isCompleted ? 'Completado' :
+                                     status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                            <Badge variant={isCompleted ? 'success' : 'info'} size="sm">
+                                {isCompleted ? 'Completado' :
+                                 status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                            </Badge>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={async () => {
+                                    const evalToUse = await getEvaluationToUse();
+                                    if (evalToUse) {
+                                        navigate(getEvaluationUrl(evalToUse));
+                                    }
+                                }}
+                            >
+                                {isCompleted ? 'Modificar' :
+                                 activeInterviewTab === 'informes' ? 'Completar Informe' : 'Realizar'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Sort data by date (most recent first for completed, soonest first for pending)
+        const sortByDate = (a: any, b: any, ascending: boolean = false) => {
+            const dateA = new Date(`${a.scheduledDate || a.completedDate || a.scheduledAt}`);
+            const dateB = new Date(`${b.scheduledDate || b.completedDate || b.scheduledAt}`);
+            return ascending ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+        };
+
+        const sortedPending = [...pendingData].sort((a, b) => sortByDate(a, b, true));
+        const sortedCompleted = [...completedData].sort((a, b) => sortByDate(a, b, false));
 
         return (
             <div className="space-y-6">
@@ -818,7 +1074,6 @@ const ProfessorDashboard: React.FC = () => {
                             💬 Mis Entrevistas e Informes
                         </h2>
                         <div className="flex items-center gap-2">
-                            {/* Acceso rápido a horarios */}
                             {currentProfessor?.role !== 'TEACHER' && (
                                 <Button
                                     onClick={() => setActiveSection('horarios')}
@@ -830,11 +1085,8 @@ const ProfessorDashboard: React.FC = () => {
                                     <span className="hidden sm:inline">Gestionar Horarios</span>
                                 </Button>
                             )}
-                            {/* Botón de recarga manual */}
                             <Button
-                                onClick={() => {
-                                    setRefreshKey(prev => prev + 1);
-                                }}
+                                onClick={() => setRefreshKey(prev => prev + 1)}
                                 variant="outline"
                                 size="sm"
                                 className="flex items-center gap-2"
@@ -853,356 +1105,59 @@ const ProfessorDashboard: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Tabs de navegación */}
-                            <div className="border-b border-gray-200 mb-6">
-                                <nav className="flex space-x-8">
-                                    <button
-                                        onClick={() => setActiveInterviewTab('familiares')}
-                                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                            activeInterviewTab === 'familiares'
-                                                ? 'border-azul-monte-tabor text-azul-monte-tabor'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        Entrevistas Familiares ({familyInterviews.length})
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveInterviewTab('director_ciclo')}
-                                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                            activeInterviewTab === 'director_ciclo'
-                                                ? 'border-azul-monte-tabor text-azul-monte-tabor'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        Entrevistas Director de Ciclo ({directorInterviews.length})
-                                    </button>
-                                    {/* Solo mostrar Informes Finales para Directores de Ciclo */}
-                                    {currentProfessor?.role === 'CYCLE_DIRECTOR' && (
-                                        <button
-                                            onClick={() => setActiveInterviewTab('informes')}
-                                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                                activeInterviewTab === 'informes'
-                                                    ? 'border-azul-monte-tabor text-azul-monte-tabor'
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            Informes Finales ({directorReports.length})
-                                        </button>
-                                    )}
-                                </nav>
-                            </div>
+                            {/* Tabs de navegación dinámicos */}
+                            {interviewTabs.length > 0 && (
+                                <div className="border-b border-gray-200 mb-6">
+                                    <nav className="flex space-x-8">
+                                        {interviewTabs.map(tab => (
+                                            <button
+                                                key={tab.key}
+                                                onClick={() => setActiveInterviewTab(tab.key)}
+                                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                                    activeInterviewTab === tab.key
+                                                        ? 'border-azul-monte-tabor text-azul-monte-tabor'
+                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {tab.label} ({tab.count})
+                                            </button>
+                                        ))}
+                                    </nav>
+                                </div>
+                            )}
 
-                            {/* Contenido según tab activo */}
-                            {activeInterviewTab === 'informes' && currentProfessor?.role === 'CYCLE_DIRECTOR' ? (
-                                <div className="space-y-6">
-                                    {/* Informes Finales - CYCLE_DIRECTOR_REPORT */}
-                                    {/* Arriba: Todos los informes con botón Realizar/Modificar */}
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                            <ClockIcon className="w-5 h-5 mr-2" />
-                                            Informes ({directorReports.length})
-                                        </h3>
-                                        {directorReports.length === 0 ? (
-                                            <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                                <p className="text-sm text-blue-600">No hay informes asignados</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {directorReports.map(report => (
-                                                    <div key={report.id} className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex-1">
-                                                                <h4 className="font-bold text-azul-monte-tabor">
-                                                                    {report.studentName}
-                                                                </h4>
-                                                                <p className="text-sm text-gris-piedra">
-                                                                    Aplicación #{report.applicationId}
-                                                                </p>
-                                                                <div className="text-xs text-gray-600 mt-1">
-                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                                        report.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                                        report.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                                        'bg-blue-100 text-blue-800'
-                                                                    }`}>
-                                                                        {report.status === 'COMPLETED' ? 'Completado' :
-                                                                         report.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col items-end gap-2">
-                                                                <Badge
-                                                                    variant={report.status === 'COMPLETED' ? 'success' : 'info'}
-                                                                    size="sm"
-                                                                >
-                                                                    {report.status === 'COMPLETED' ? 'Completado' :
-                                                                     report.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
-                                                                </Badge>
-                                                                <Button
-                                                                    variant="primary"
-                                                                    size="sm"
-                                                                    onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
-                                                                >
-                                                                    {report.status === 'COMPLETED' ? 'Modificar' : 'Completar Informe'}
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Abajo: Informes ya realizados (completados) - sección verde */}
-                                    {directorReports.filter(r => r.status === 'COMPLETED').length > 0 && (
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                                <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
-                                                Informes Completados ({directorReports.filter(r => r.status === 'COMPLETED').length})
-                                            </h3>
-                                            <div className="space-y-3">
-                                                {directorReports.filter(r => r.status === 'COMPLETED').map(report => (
-                                                    <div key={report.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex-1">
-                                                                <h4 className="font-bold text-azul-monte-tabor">
-                                                                    {report.studentName}
-                                                                </h4>
-                                                                <p className="text-sm text-gris-piedra">
-                                                                    Aplicación #{report.applicationId}
-                                                                </p>
-                                                                <div className="text-xs text-gray-600 mt-1">
-                                                                    <Badge variant="success" size="sm">Completado</Badge>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col items-end gap-2">
-                                                                <Badge variant="success" size="sm">Completado</Badge>
-                                                                <div className="flex gap-2 mt-2">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
-                                                                    >
-                                                                        Ver Informe
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                            {/* Contenido unificado */}
+                            <div className="space-y-6">
+                                {/* Pendientes */}
+                                <div>
+                                    <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                        <ClockIcon className="w-5 h-5 mr-2" />
+                                        {tabLabel} Pendientes ({sortedPending.length})
+                                    </h3>
+                                    {sortedPending.length === 0 ? (
+                                        <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-sm text-blue-600">No hay {tabLabel.toLowerCase()} pendientes</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {sortedPending.map(item => renderCard(item, activeInterviewTab !== 'informes', true))}
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                <div className="space-y-6">
-                            {/* Upcoming Interviews - Filtradas por tab activo */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                    <ClockIcon className="w-5 h-5 mr-2" />
-                                    {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Programadas ({upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
-                                </h3>
-                                {upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length === 0 ? (
-                                    <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                        <p className="text-sm text-blue-600">No hay entrevistas programadas próximamente</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {upcomingInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).map(interview => (
-                                            <div key={interview.id} className="border border-blue-200 bg-blue-50 rounded-lg p-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-azul-monte-tabor">
-                                                            {interview.studentName}
-                                                        </h4>
-                                                        <p className="text-sm text-gris-piedra">
-                                                            Tipo: {INTERVIEW_TYPE_LABELS[interview.type as InterviewType] || interview.type}
-                                                        </p>
-                                                        <div className="text-xs text-gray-600 mt-1 space-y-1">
-                                                            <div>{(() => {
-                                                                // Parse date in local timezone to avoid offset issues
-                                                                const [year, month, day] = interview.scheduledDate.split('-');
-                                                                const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                                                                return date.toLocaleDateString('es-CL', {
-                                                                    weekday: 'long',
-                                                                    day: 'numeric',
-                                                                    month: 'long',
-                                                                    year: 'numeric'
-                                                                });
-                                                            })()}</div>
-                                                            <div>{interview.scheduledTime} ({interview.duration} min)</div>
-                                                            {interview.location && <div>{interview.location}</div>}
-                                                            {/* Show both interviewers if there's a second one, otherwise just show the main interviewer */}
-                                                            {interview.secondInterviewerName ? (
-                                                                <div>Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
-                                                            ) : (
-                                                                <div>Entrevistador: {interview.interviewerName}</div>
-                                                            )}
-                                                            {interview.notes && (
-                                                                <div className="mt-2 pt-2 border-t border-gray-200">
-                                                                    <div className="font-medium text-gray-700">Notas/Enlaces:</div>
-                                                                    <div className="text-gray-600 whitespace-pre-wrap break-words">
-                                                                        {interview.notes}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-2">
-                                                        <Badge variant={getStatusColor(interview.status)} size="sm">
-                                                            {INTERVIEW_STATUS_LABELS[interview.status]}
-                                                        </Badge>
-                                                        <div className="flex gap-2 mt-2">
-                                                            <Button
-                                                                variant="primary"
-                                                                size="sm"
-                                                                onClick={async () => {
 
-                                                                    // Buscar evaluación existente
-                                                                    try {
-                                                                        const evals = await professorEvaluationService.getMyEvaluations();
-
-                                                                        // Determinar qué tipo de evaluación buscar según el tipo de entrevista
-                                                                        const expectedEvalType =
-                                                                            interview.type === 'CYCLE_DIRECTOR' ? 'CYCLE_DIRECTOR_INTERVIEW' :
-                                                                            interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
-                                                                            'PSYCHOLOGICAL_INTERVIEW';
-
-
-                                                                        // Buscar evaluación que coincida con applicationId y tipo
-                                                                        const matchingEval = evals.find(e => {
-                                                                            const matches = e.applicationId === interview.applicationId && e.evaluationType === expectedEvalType;
-                                                                            if (e.applicationId === interview.applicationId) {
-                                                                            }
-                                                                            return matches;
-                                                                        });
-
-                                                                        if (matchingEval) {
-
-                                                                            // Navegar al formulario correspondiente según el tipo de evaluación
-                                                                            if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
-                                                                                navigate(`/cycle-director-interview/${matchingEval.id}`);
-                                                                            } else if (matchingEval.evaluationType === 'PSYCHOLOGICAL_INTERVIEW') {
-                                                                                navigate(`/psychological-interview/${matchingEval.id}`);
-                                                                            } else if (matchingEval.evaluationType === 'FAMILY_INTERVIEW') {
-                                                                                navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
-                                                                            } else {
-                                                                                notify.error(`Tipo de evaluación no soportado: ${matchingEval.evaluationType}`);
-                                                                            }
-                                                                        } else {
-                                                                            notify.error('Esta entrevista aún no tiene una evaluación asignada. Por favor, contacta al administrador para que te asigne esta evaluación.');
-                                                                        }
-                                                                    } catch (error) {
-                                                                        notify.error('Error al buscar la evaluación asociada');
-                                                                    }
-                                                                }}
-                                                            >
-                                                                {isInterviewCompleted(interview) ? 'Modificar' : 'Realizar'}
-                                                            </Button>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    // TODO: Navigate to interview details modal
-                                                                    notify.info(`Detalles de entrevista — Estudiante: ${interview.studentName} | Fecha: ${interview.scheduledDate} ${interview.scheduledTime} | Tipo: ${INTERVIEW_TYPE_LABELS[interview.type as InterviewType]}`);
-                                                                }}
-                                                            >
-                                                                Ver
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                {/* Completadas */}
+                                {sortedCompleted.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                            <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
+                                            {tabLabel} Completadas ({sortedCompleted.length})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {sortedCompleted.map(item => renderCard(item, activeInterviewTab !== 'informes', false))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Completed Interviews - Filtradas por tab activo */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                    <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
-                                    {activeInterviewTab === 'familiares' ? 'Entrevistas Familiares' : 'Entrevistas Director de Ciclo'} Realizadas ({completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length})
-                                </h3>
-                                {completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).length === 0 ? (
-                                    <div className="text-center py-4 bg-green-50 border border-green-200 rounded-lg">
-                                        <p className="text-sm text-green-600">Aún no has completado ninguna entrevista de este tipo</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {completedInterviews.filter(i => i.type === (activeInterviewTab === 'familiares' ? 'FAMILY' : 'CYCLE_DIRECTOR')).map(interview => (
-                                            <div key={interview.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-azul-monte-tabor">
-                                                            {interview.studentName}
-                                                        </h4>
-                                                        <p className="text-sm text-gris-piedra">
-                                                            Tipo: {INTERVIEW_TYPE_LABELS[interview.type as InterviewType] || interview.type}
-                                                        </p>
-                                                        <div className="text-xs text-gray-600 mt-1">
-                                                            Realizada el {(() => {
-                                                                const [y, m, d] = interview.scheduledDate.split('-');
-                                                                return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).toLocaleDateString('es-CL', {
-                                                                    day: 'numeric', month: 'long', year: 'numeric'
-                                                                });
-                                                            })()} a las {interview.scheduledTime}
-                                                        </div>
-                                                        {interview.secondInterviewerName && (
-                                                            <div className="text-xs text-gray-600">Con: {interview.secondInterviewerName}</div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-2">
-                                                        <Badge variant="success" size="sm">
-                                                            Realizada
-                                                        </Badge>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={async () => {
-
-                                                                try {
-                                                                    const evals = await professorEvaluationService.getMyEvaluations();
-
-                                                                    // Determinar qué tipo de evaluación buscar según el tipo de entrevista
-                                                                    const expectedEvalType =
-                                                                        interview.type === 'CYCLE_DIRECTOR' ? 'CYCLE_DIRECTOR_INTERVIEW' :
-                                                                        interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
-                                                                        'PSYCHOLOGICAL_INTERVIEW';
-
-                                                                    const matchingEval = evals.find(e =>
-                                                                        e.applicationId === interview.applicationId &&
-                                                                        e.evaluationType === expectedEvalType
-                                                                    );
-
-                                                                    if (matchingEval) {
-
-                                                                        // Navegar al formulario correspondiente según el tipo de evaluación
-                                                                        if (matchingEval.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW') {
-                                                                            navigate(`/cycle-director-interview/${matchingEval.id}`);
-                                                                        } else if (matchingEval.evaluationType === 'PSYCHOLOGICAL_INTERVIEW') {
-                                                                            navigate(`/psychological-interview/${matchingEval.id}`);
-                                                                        } else if (matchingEval.evaluationType === 'FAMILY_INTERVIEW') {
-                                                                            navigate(`/profesor/entrevista-familiar/${matchingEval.id}`);
-                                                                        }
-                                                                    } else {
-                                                                        notify.error(`No se encontró la evaluación de tipo "${expectedEvalType}" asociada a esta entrevista.`);
-                                                                    }
-                                                                } catch (error) {
-                                                                    notify.error('Error al cargar los resultados');
-                                                                }
-                                                            }}
-                                                        >
-                                                            Ver Resultados
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
                         </>
                     )}
                 </Card>
@@ -1662,11 +1617,19 @@ const ProfessorDashboard: React.FC = () => {
     };
 
 
+    // Efecto para cambiar al tab de exámenes cuando se selecciona "Mis Exámenes" del menú
+    useEffect(() => {
+        if (activeSection === 'examenes') {
+            setActiveEvaluationTab('academicas');
+        }
+    }, [activeSection]);
+
     const renderSection = () => {
-        
+
         switch (activeSection) {
             case 'dashboard':
                 return renderDashboard();
+            case 'examenes':
             case 'evaluaciones':
                 return renderEvaluaciones();
             case 'entrevistas':
