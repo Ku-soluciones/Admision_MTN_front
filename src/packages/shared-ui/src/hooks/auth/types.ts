@@ -45,5 +45,5 @@ export interface AuthContextType {
 
 export interface AuthProviderProps {
   children: ReactNode;
+  portalType?: 'ADMIN' | 'STAFF' | 'GUARDIAN';
 }
-

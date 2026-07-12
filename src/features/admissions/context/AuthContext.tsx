@@ -28,7 +28,6 @@ import {
 } from '../../../packages/backend-sdk/src/index';
 import {
   useAuthBootstrap,
-  purgeLegacyAuthStorage,
 } from '../../../packages/shared-ui/src/hooks/auth/useAuthBootstrap';
 import {
   buildUserFromBff,
@@ -87,14 +86,14 @@ const wipeLocalAuthArtifacts = (): void => {
   } catch { /* no-op */ }
 };
 
-// IIFE al cargar el módulo: si fresh, wipe; si no, purga legacy estándar.
+// IIFE al cargar el módulo: sólo una navegación explícita `fresh=1` puede
+// borrar sesión. Cargar otro feature nunca debe destruir credenciales activas.
 (function bootstrapStorageOnce() {
   if (__freshSessionRequested) {
     wipeLocalAuthArtifacts();
     try { authStore.clear(); } catch { /* no-op */ }
     return;
   }
-  purgeLegacyAuthStorage();
 })();
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

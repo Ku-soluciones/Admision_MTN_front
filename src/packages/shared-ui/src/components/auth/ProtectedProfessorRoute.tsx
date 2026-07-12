@@ -29,11 +29,7 @@
  */
 import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import {
-  useAuthStore,
-  getStorageKey,
-  BASE_STORAGE_KEYS,
-} from '../../../../backend-sdk/src/index';
+import { useAuthStore } from '../../../../backend-sdk/src/index';
 import { isStaffRole } from '../../hooks/auth/roles';
 
 export interface ProtectedProfessorRouteProps {
@@ -44,32 +40,6 @@ export interface ProtectedProfessorRouteProps {
   loginPath?: string;
   /** Spinner / placeholder durante bootstrap si no hay fast-path. */
   loadingFallback?: ReactNode;
-}
-
-interface LegacyProfessorSnapshot {
-  hasToken: boolean;
-  isValid: boolean;
-}
-
-function readLegacyProfessorSnapshot(): LegacyProfessorSnapshot {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return { hasToken: false, isValid: false };
-  }
-  try {
-    const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-    const raw =
-      localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR))
-      || localStorage.getItem('currentProfessor');
-    if (!raw) return { hasToken: Boolean(professorToken), isValid: false };
-    const data = JSON.parse(raw);
-    const isValid =
-      Boolean(data?.id)
-      && Boolean(data?.email)
-      && isStaffRole(data?.role);
-    return { hasToken: Boolean(professorToken), isValid };
-  } catch {
-    return { hasToken: false, isValid: false };
-  }
 }
 
 const DefaultSpinner: React.FC = () => (
@@ -93,27 +63,16 @@ const ProtectedProfessorRoute: React.FC<ProtectedProfessorRouteProps> = ({
   const storeToken = useAuthStore((s) => s.accessToken);
   const storeRoleOk = Boolean(storeToken) && isStaffRole(storeUser?.role as string | undefined);
 
-  // Durante el bootstrap, evitamos el flash de spinner si hay rastro
-  // confiable de sesión profesor en localStorage (professor_token +
-  // currentProfessor con role válido). Después del bootstrap, esto se
-  // ignora y sólo cuenta el store.
+  // Nunca montar contenido protegido con snapshots persistidos: pueden estar
+  // vencidos y provocan el patrón pantalla → 401 → login.
   if (isLoading) {
     if (storeRoleOk) return <>{children}</>;
-    const legacy = readLegacyProfessorSnapshot();
-    if (legacy.hasToken && legacy.isValid) return <>{children}</>;
     return <>{loadingFallback ?? <DefaultSpinner />}</>;
   }
 
   // Post-bootstrap: sólo el store cuenta. Cualquier `currentProfessor`
   // en localStorage sin sesión BFF activa se ignora.
   if (storeRoleOk) return <>{children}</>;
-
-  // Limpieza defensiva del JSON spoofable para que no quede ruido tras
-  // un guard fallido (el verdadero token ya lo limpia el interceptor).
-  try {
-    localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));
-    localStorage.removeItem('currentProfessor');
-  } catch { /* no-op */ }
 
   return <Navigate to={loginPath} replace />;
 };

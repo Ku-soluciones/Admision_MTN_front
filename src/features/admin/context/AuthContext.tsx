@@ -31,7 +31,6 @@ import {
 } from '../../../packages/backend-sdk/src/index';
 import {
   useAuthBootstrap,
-  purgeLegacyAuthStorage,
 } from '../../../packages/shared-ui/src/hooks/auth/useAuthBootstrap';
 import {
   buildUserFromBff,
@@ -44,9 +43,6 @@ import type {
 } from '../../../packages/shared-ui/src/hooks/auth/types';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Limpieza de claves históricas al cargar el módulo.
-(function bootstrapStorageOnce() { purgeLegacyAuthStorage(); })();
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { user, setUser, isLoading, setIsLoading, firebaseLinked } = useAuthBootstrap({
@@ -168,4 +164,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

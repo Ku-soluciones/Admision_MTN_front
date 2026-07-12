@@ -21,17 +21,14 @@ import {
   scheduleRefresh,
   runSharedRefresh,
 } from '../../../backend-sdk/src/index';
-import { useAuthBootstrap, purgeLegacyAuthStorage } from '../hooks/auth/useAuthBootstrap';
+import { useAuthBootstrap } from '../hooks/auth/useAuthBootstrap';
 import { buildUserFromBff, setAdminCompat } from '../hooks/auth/helpers';
 import type { AuthContextType, AuthProviderProps, AuthUser } from '../hooks/auth/types';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Limpieza de claves históricas al cargar el módulo.
-(function bootstrapStorageOnce() { purgeLegacyAuthStorage(); })();
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const portalType = (() => {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children, portalType: explicitPortalType }) => {
+  const portalType = explicitPortalType ?? (() => {
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     if (
       path.startsWith('/profesor') ||
@@ -49,16 +46,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     api,
     firebaseAuth: auth,
     hasFirebaseConfig,
-    // shared-ui: sin doble bandera, sin fresh, sin intercambio legacy.
+    // Toda ruta protegida espera ambas fuentes de rehidratación. Así el
+    // guard nunca decide con un estado intermedio durante F5 o navegación.
+    waitForFirebase: true,
+    clearStoreOnRefreshFailure: false,
     legacyIdTokenExchange: 'none',
     portalType,
     crossTabLogoutRedirectUrl: (reason) => `/apoderado-login?reason=${reason}`,
   });
 
-  const login = async (email: string, password: string, _role: string) => {
+  const login = async (email: string, password: string, requestedRole: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password, portalType });
+      const normalizedRequestedRole = String(requestedRole || '').toUpperCase();
+      const loginPortal = normalizedRequestedRole === 'ADMIN'
+        ? 'ADMIN'
+        : normalizedRequestedRole === 'FAMILIA' || normalizedRequestedRole === 'APODERADO'
+          ? 'GUARDIAN'
+          : portalType;
+      const response = await authService.login({ email, password, portalType: loginPortal });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);

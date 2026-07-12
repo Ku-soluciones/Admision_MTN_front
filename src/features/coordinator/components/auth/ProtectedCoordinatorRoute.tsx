@@ -5,39 +5,28 @@
 
 import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
+import { useAuth } from '../../context/AuthContext';
 
 interface ProtectedCoordinatorRouteProps {
   children: ReactNode;
 }
 
 const ProtectedCoordinatorRoute: React.FC<ProtectedCoordinatorRouteProps> = ({ children }) => {
-  // Verificar autenticación - revisar múltiples posibles tokens
-  const authToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
-  const adminToken = localStorage.getItem('admin_token');
-  const professorToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
+  const { user, isAuthenticated, isLoading } = useAuth();
 
-  // Verificar múltiples ubicaciones de usuario en localStorage
-  const userStr = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER)) ||
-                  localStorage.getItem('user') ||
-                  localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
-
-  // Si hay un token de autenticación
-  const isAuthenticated = !!(authToken || adminToken || professorToken);
-
-  // Verificar si el usuario tiene rol de ADMIN o COORDINATOR
-  let hasPermission = false;
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      const allowedRoles = ['ADMIN', 'COORDINATOR', 'CYCLE_DIRECTOR'];
-      hasPermission = allowedRoles.includes(user.role?.toUpperCase());
-    } catch (e) {
-    }
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-blanco-pureza">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-azul-monte-tabor" />
+      </div>
+    );
   }
 
+  const allowedRoles = ['ADMIN', 'COORDINATOR', 'CYCLE_DIRECTOR'];
+  const hasPermission = Boolean(user?.role && allowedRoles.includes(user.role.toUpperCase()));
+
   // Si no está autenticado, redirigir al login
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 

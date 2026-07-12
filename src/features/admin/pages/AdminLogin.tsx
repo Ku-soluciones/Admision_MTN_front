@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/AppContext';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { authStore } from '../../../packages/backend-sdk/src/index';
 import SessionExpiryBanner from '../../../packages/shared-ui/src/components/auth/SessionExpiryBanner';
 
 const AdminLogin: React.FC = () => {
@@ -35,12 +35,10 @@ const AdminLogin: React.FC = () => {
         try {
             await login(email, password, 'ADMIN');
 
-            const storedKey = getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER);
-            const storedUser = JSON.parse(localStorage.getItem(storedKey) || 'null');
+            const storedUser = authStore.getState().user;
 
             if (!storedUser || storedUser.role !== 'ADMIN') {
-                localStorage.removeItem(storedKey);
-                localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+                authStore.clear();
                 const msg = 'Su cuenta no tiene acceso al panel de administración. Use el portal correspondiente a su rol.';
                 setError(msg);
                 addNotification({ type: 'error', title: 'Acceso denegado', message: msg });

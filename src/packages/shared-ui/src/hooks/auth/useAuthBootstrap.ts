@@ -422,10 +422,10 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
     const off = onCrossTabLogout((reason) => {
       cancelScheduledRefresh();
       setUser(null);
-      if (!window.location.pathname.includes('/login')) {
-        const safeReason = reason ?? 'other-tab';
-        window.location.assign(crossTabLogoutRedirectUrl(safeReason));
-      }
+      // `broadcast.ts` ya emitió cross-tab-logout. AuthNavigationBridge es
+      // el único dueño de la navegación, evitando competir con un hard reload.
+      void reason;
+      void crossTabLogoutRedirectUrl;
     });
     return off;
   // eslint-disable-next-line react-hooks/exhaustive-deps

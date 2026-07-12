@@ -14,6 +14,7 @@ import {
     evaluatePasswordStrength,
 } from '../../../packages/shared-ui/src/services/passwordService';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
+import { authStore } from '../../../packages/backend-sdk/src/index';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
 const blockClipboardProps = {
@@ -151,13 +152,12 @@ const ApoderadoLogin: React.FC = () => {
             await login(email, password, 'apoderado');
 
             // Verificar que el rol sea APODERADO
-            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
-            if (storedUser && storedUser.role !== 'APODERADO') {
+            const authenticatedRole = String(authStore.getState().user?.role || '').toUpperCase();
+            if (authenticatedRole !== 'APODERADO') {
                 const msg = 'Esta cuenta no corresponde a un apoderado. Use el portal de profesores.';
                 setError(msg);
                 addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                authStore.clear();
                 setIsLoading(false);
                 return;
             }

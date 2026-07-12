@@ -23,7 +23,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <AuthProvider portalType="ADMIN">
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
             {!isPortalPage && <Header />}
