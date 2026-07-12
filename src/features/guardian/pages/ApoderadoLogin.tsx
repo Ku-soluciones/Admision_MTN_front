@@ -294,7 +294,7 @@ const ApoderadoLogin: React.FC = () => {
                     <Card className="p-5 sm:p-8">
                         <div className="text-center">
                             <div className="flex justify-center mb-8">
-                                <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                                <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
                             </div>
                             <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                                 Proceso No Disponible
@@ -330,7 +330,7 @@ const ApoderadoLogin: React.FC = () => {
                     {/* Header */}
                     <div className="text-center">
                         <div className="flex justify-center mb-8">
-                            <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                            <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
                         </div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                             {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}

@@ -9,7 +9,6 @@ import ProtectedProfessorRoute from './components/auth/ProtectedProfessorRoute';
 import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/ProcessActiveGuard';
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from '../coordinator/context/AuthContext';
-import Header from '../coordinator/components/layout/Header';
 import ToastContainer from '../admin/components/ui/ToastContainer';
 import GlobalToastHost from '../admin/components/ui/GlobalToastHost';
 import { ErrorBoundary } from '../admin/components/ErrorBoundary';
@@ -26,7 +25,6 @@ function App() {
       <AuthProvider>
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
-            <Header />
             <main className="flex-grow overflow-x-hidden">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>

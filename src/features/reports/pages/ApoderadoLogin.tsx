@@ -112,7 +112,7 @@ const ApoderadoLogin: React.FC = () => {
                 {/* Header */}
                 <div className="text-center">
                     <div className="flex justify-center mb-8">
-                        <LogoIcon className="w-32 h-32" />
+                        <LogoIcon className="w-20 h-20" />
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-bold text-azul-monte-tabor">
                         {showRegister ? 'Crear Cuenta para Postular' : 'Acceso de Apoderados'}
