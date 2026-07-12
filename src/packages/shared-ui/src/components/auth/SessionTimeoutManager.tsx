@@ -68,7 +68,7 @@ const SessionTimeoutManagerInner: React.FC<Required<SessionTimeoutManagerProps>>
     emitAuthEvent({ type: 'idle-expire', cause: 'inactivity' });
     try { authStore.clear(); } catch { /* no-op */ }
     try { broadcastLogout('expired'); } catch { /* no-op */ }
-    // AuthNavigationBridge procesa idle-expire y navega dentro del HashRouter.
+    // AuthNavigationBridge procesa idle-expire y navega dentro del router SPA.
   }, []);
 
   // Wire de los timers (inactividad + hard-cap absoluto).

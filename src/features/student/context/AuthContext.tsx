@@ -2,7 +2,7 @@
  * AuthContext (student) — portal de estudiantes / exámenes.
  *
  * `legacyIdTokenExchange='sdk-helper'` (igual que admin).
- * Logout y cross-tab redirigen a `/#/examenes`.
+ * Logout y cross-tab redirigen a `/examenes`.
  *
  * Antes este archivo tenía 412 líneas; ahora ~140.
  */
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearStoreOnRefreshFailure: false,
     legacyIdTokenExchange: 'sdk-helper',
     portalType: 'GUARDIAN',
-    crossTabLogoutRedirectUrl: (reason) => `/#/examenes?reason=${reason}`,
+    crossTabLogoutRedirectUrl: (reason) => `/examenes?reason=${reason}`,
   });
 
   const login = async (email: string, password: string, _role: string) => {
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       BASE_STORAGE_KEYS.AUTHENTICATED_USER,
     ].forEach((k) => { try { localStorage.removeItem(getStorageKey(k)); } catch { /* no-op */ } });
     setUser(null);
-    window.location.href = '/#/examenes';
+    window.location.href = '/examenes';
   }, [setUser]);
 
   const linkFirebaseAccount = useCallback(async () => {

@@ -64,7 +64,9 @@ export default defineConfig(({ mode }) => {
   return {
     root: __dirname,
     envDir: envRoot,
-    base: './',
+    // BrowserRouter requiere assets absolutos: una ruta relativa haría que
+    // /profesor/login busque el bundle en /profesor/assets y falle al recargar.
+    base: '/',
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

@@ -34,23 +34,26 @@
     </script>
 </head>
 <body class="bg-gray-100">
-    <!-- HashRouter redirect bridge ──────────────────────────────────
-         Los HTTP 302 del BFF no preservan el fragmento "#" en la URL.
-         Cuando el navegador llega a /interview/confirmation-result?params,
-         este script se ejecuta ANTES de cargar React/Vite y redirige a
-         /#/interview/confirmation-result?params para que HashRouter lo procese.
-    ───────────────────────────────────────────────────────────────── -->
+    <!-- Compatibilidad con URLs históricas de HashRouter.
+         Se ejecuta antes de React y normaliza tanto /#/admin como
+         /login#/admin a /admin, preservando query params antiguos. -->
     <script>
       (function () {
-        var hashRedirectPaths = ['/interview/confirmation-result'];
-        var p = window.location.pathname;
-        // Normalizar: quitar trailing slash para comparar
-        if (p.length > 1 && p.charAt(p.length - 1) === '/') p = p.slice(0, -1);
-        if (hashRedirectPaths.indexOf(p) !== -1) {
-          window.location.replace(
-            window.location.origin + '/#' + p + window.location.search
-          );
-        }
+        if (!window.location.hash || window.location.hash.indexOf('#/') !== 0) return;
+
+        var legacyRoute = new URL(window.location.hash.slice(1), window.location.origin);
+        var oldParams = new URLSearchParams(window.location.search);
+        var routeParams = new URLSearchParams(legacyRoute.search);
+        oldParams.forEach(function (value, key) {
+          if (!routeParams.has(key)) routeParams.append(key, value);
+        });
+
+        var query = routeParams.toString();
+        window.history.replaceState(
+          null,
+          '',
+          legacyRoute.pathname + (query ? '?' + query : '')
+        );
       })();
     </script>
     <div id="root"></div>

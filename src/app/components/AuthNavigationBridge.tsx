@@ -7,7 +7,7 @@
  * que descarta formularios en curso, pierde estado React y reinstancia
  * Firebase/QueryClient innecesariamente.
  *
- * Este componente vive dentro del `HashRouter` (en `AppProviders`) y, al
+ * Este componente vive dentro del router SPA (en `AppProviders`) y, al
  * recibir un evento de pérdida de sesión, ejecuta una navegación SPA con
  * `react-router-dom`, preservando `state.from` para post-login redirect.
  *

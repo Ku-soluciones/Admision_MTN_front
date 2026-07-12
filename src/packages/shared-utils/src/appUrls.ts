@@ -1,30 +1,30 @@
-const buildHashUrl = (hashPath: string) => {
-  const normalizedPath = hashPath.startsWith('/') ? hashPath : `/${hashPath}`;
+const buildAppUrl = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
   if (typeof window === 'undefined') {
-    return `#${normalizedPath}`;
+    return normalizedPath;
   }
 
-  return `${window.location.origin}${window.location.pathname}#${normalizedPath}`;
+  return `${window.location.origin}${normalizedPath}`;
 };
 
 export const appUrls = {
-  home: buildHashUrl('/'),
-  admissions: buildHashUrl('/postulacion'),
-  freshAdmissions: `${buildHashUrl('/postulacion').replace('#', '?fresh=1#')}`,
-  admissionsComplementary: buildHashUrl('/postulacion/complementaria'),
-  guardianLogin: buildHashUrl('/apoderado/login'),
-  guardianRegister: `${buildHashUrl('/apoderado/login').replace('#', '?register=1#')}`,
-  guardianDashboard: buildHashUrl('/familia'),
-  studentExams: buildHashUrl('/examenes'),
-  professorLogin: buildHashUrl('/profesor/login'),
-  professorDashboard: buildHashUrl('/profesor'),
-  adminLogin: buildHashUrl('/login'),
-  adminDashboard: buildHashUrl('/admin'),
-  interviews: buildHashUrl('/entrevistas'),
-  calendar: buildHashUrl('/calendario'),
-  reports: buildHashUrl('/reportes'),
-  coordinator: buildHashUrl('/coordinador'),
-  coordinatorTrends: buildHashUrl('/coordinador/tendencias'),
-  coordinatorSearch: buildHashUrl('/coordinador/busqueda'),
+  home: buildAppUrl('/'),
+  admissions: buildAppUrl('/postulacion'),
+  freshAdmissions: `${buildAppUrl('/postulacion')}?fresh=1`,
+  admissionsComplementary: buildAppUrl('/postulacion/complementaria'),
+  guardianLogin: buildAppUrl('/apoderado/login'),
+  guardianRegister: `${buildAppUrl('/apoderado/login')}?register=1`,
+  guardianDashboard: buildAppUrl('/familia'),
+  studentExams: buildAppUrl('/examenes'),
+  professorLogin: buildAppUrl('/profesor/login'),
+  professorDashboard: buildAppUrl('/profesor'),
+  adminLogin: buildAppUrl('/login'),
+  adminDashboard: buildAppUrl('/admin'),
+  interviews: buildAppUrl('/entrevistas'),
+  calendar: buildAppUrl('/calendario'),
+  reports: buildAppUrl('/reportes'),
+  coordinator: buildAppUrl('/coordinador'),
+  coordinatorTrends: buildAppUrl('/coordinador/tendencias'),
+  coordinatorSearch: buildAppUrl('/coordinador/busqueda'),
 };

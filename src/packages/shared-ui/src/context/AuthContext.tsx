@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, portalType
       BASE_STORAGE_KEYS.AUTHENTICATED_USER,
     ].forEach((k) => { try { localStorage.removeItem(getStorageKey(k)); } catch { /* no-op */ } });
     setUser(null);
-    window.location.href = '/apoderado-login';
+    window.location.href = '/apoderado/login';
   }, [setUser]);
 
   const linkFirebaseAccount = useCallback(async () => {

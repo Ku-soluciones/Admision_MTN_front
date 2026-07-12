@@ -62,7 +62,7 @@ const ProtectedCoordinatorRoute: React.FC<ProtectedCoordinatorRouteProps> = ({ c
               Volver Atrás
             </button>
             <a
-              href="/#/admin"
+              href="/admin"
               className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
             >
               Ir al Dashboard Principal

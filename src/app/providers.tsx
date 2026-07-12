@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { HashRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import SessionTimeoutManager from '../packages/shared-ui/src/components/auth/SessionTimeoutManager';
 import { AuthNavigationBridge } from './components/AuthNavigationBridge';
 
@@ -18,7 +18,7 @@ const queryClient = new QueryClient({
 export function AppProviders({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
-      <HashRouter>
+      <BrowserRouter>
         {/* Bridge SPA-nav: convierte eventos de auth (expired/terminal/
             cross-tab-logout/idle-expire) en navegación SPA con useNavigate,
             evitando full reload y preservando state.from para post-login. */}
@@ -27,7 +27,7 @@ export function AppProviders({ children }: PropsWithChildren) {
             cuando hay sesión activa (lee authStore). Sin sesión es no-op. */}
         <SessionTimeoutManager />
         {children}
-      </HashRouter>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
