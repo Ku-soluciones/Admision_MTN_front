@@ -70,6 +70,7 @@ export const BASE_STORAGE_KEYS = {
   PROFESSOR_USER: 'professor_user',
   CURRENT_PROFESSOR: 'currentProfessor',
   APODERADO_USER: 'apoderado_user',
+  REFRESH_FALLBACK: 'admitia_refresh_fallback',
 } as const;
 
 /** @deprecated Use getStorageKey(BASE_STORAGE_KEYS.X) instead */
@@ -208,6 +209,8 @@ export function clearAllSessions(storage: Pick<Storage, 'removeItem'> = window.l
   storage.removeItem('currentUser');
   storage.removeItem('currentApoderado');
   storage.removeItem('mtn_auth_state');
+  removeKeyAllEnvs(BASE_STORAGE_KEYS.REFRESH_FALLBACK, storage);
+  storage.removeItem('refreshToken');
 }
 
 export function buildAuthHeaders(storage: Pick<Storage, 'getItem'> = window.localStorage): HeadersInit {

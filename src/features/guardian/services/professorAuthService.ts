@@ -1,5 +1,13 @@
 import api from '../../admin/services/api';
-import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
+import {
+    getStorageKey,
+    BASE_STORAGE_KEYS,
+    authStore,
+    scheduleRefresh,
+    broadcastLogin,
+    persistRefreshTokenFallback,
+    clearRefreshTokenFallback,
+} from '../../../packages/backend-sdk/src/index';
 // RSA encryption removed - credentials sent over HTTPS only
 // import encryptionService from '../../admin/services/encryptionService';
 
@@ -66,6 +74,7 @@ class ProfessorAuthService {
                     sessionId: data.sessionId ?? null,
                     permissions: data.permissions ?? [],
                 });
+                persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
                 // Cola compartida: evita refresh simultáneo con el interceptor.
                 // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
                 scheduleRefresh(data.expiresIn);
@@ -135,6 +144,7 @@ class ProfessorAuthService {
     async logout() {
         try { await api.post('/api/auth/logout'); } catch { /* idempotente */ }
         authStore.clear();
+        clearRefreshTokenFallback();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));

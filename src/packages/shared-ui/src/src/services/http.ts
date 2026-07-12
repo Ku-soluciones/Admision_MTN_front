@@ -13,7 +13,17 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import { getApiBaseUrl } from '../../config/api.config';
-import { authStore, getStorageKey, BASE_STORAGE_KEYS } from '../../../../backend-sdk/src/index';
+import {
+  authStore,
+  getStorageKey,
+  BASE_STORAGE_KEYS,
+  runSharedRefresh,
+  extractAuthErrorCode,
+  isAccessExpired,
+  isSessionTerminal,
+  clearRefreshTokenFallback,
+  emitAuthEvent,
+} from '../../../../backend-sdk/src/index';
 
 class HttpClient {
   private axiosInstance: AxiosInstance;
@@ -35,6 +45,7 @@ class HttpClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      withCredentials: true,
     });
 
     // Configure retry logic with exponential backoff
@@ -121,7 +132,7 @@ class HttpClient {
         }
         return response;
       },
-      (error: AxiosError) => {
+      async (error: AxiosError) => {
         this.metrics.errorCount++;
         const startTime = (error.config as any)?.startTime;
         if (startTime) {
@@ -129,6 +140,30 @@ class HttpClient {
           this.metrics.responseTime.push(responseTime);
           // Error logging removed for security
         }
+        const status = error.response?.status;
+        const code = extractAuthErrorCode(error.response?.data);
+        const config = error.config as any;
+
+        if (status === 401 && isSessionTerminal(code)) {
+          authStore.clear();
+          clearRefreshTokenFallback();
+          emitAuthEvent({ type: 'terminal', code, status });
+          return Promise.reject(error);
+        }
+
+        if (isAccessExpired(status, code) && config && !config._authRetry) {
+          config._authRetry = true;
+          const refreshed = await runSharedRefresh();
+          if (refreshed) {
+            config.headers = config.headers ?? {};
+            config.headers.Authorization = `Bearer ${refreshed.token}`;
+            return this.axiosInstance.request(config);
+          }
+          authStore.clear();
+          clearRefreshTokenFallback();
+          emitAuthEvent({ type: 'expired', route: window.location.pathname });
+        }
+
         return Promise.reject(error);
       }
     );

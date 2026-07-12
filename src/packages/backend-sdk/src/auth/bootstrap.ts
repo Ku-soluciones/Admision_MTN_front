@@ -8,6 +8,7 @@
  */
 import { authStore } from './store';
 import { scheduleRefresh } from './scheduleRefresh';
+import { clearRefreshTokenFallback, persistRefreshTokenFallback } from './refreshTokenFallback';
 
 export interface BootstrapOptions {
   /**
@@ -23,6 +24,8 @@ export interface BootstrapOptions {
     firebaseLinked?: boolean;
     sessionId?: string | null;
     permissions?: string[];
+    refreshToken?: string;
+    refreshExpiresIn?: number;
   } | null>;
   /** Callback de logout cuando el refresh falla — para programar el timer reactivo. */
   onRefreshFailure?: (error: unknown) => void;
@@ -35,6 +38,7 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
     const data = await options.refresh();
     if (!data || !data.token) {
       authStore.clear();
+      clearRefreshTokenFallback();
       return false;
     }
     authStore.setSession({
@@ -46,6 +50,7 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
       sessionId: data.sessionId,
       permissions: data.permissions,
     });
+    persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
     if (options.schedule !== false) {
       // Cola compartida: el refresh proactivo no debe pasar un callback
       // onFailure que limpie el store; el interceptor reactivo decide qué
@@ -55,6 +60,7 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
     return true;
   } catch (err) {
     authStore.clear();
+    clearRefreshTokenFallback();
     options.onRefreshFailure?.(err);
     return false;
   }
@@ -71,10 +77,14 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
 export async function exchangeFirebaseToken(
   firebaseToken: string,
   api: { post: (url: string, data?: any) => Promise<any> },
-  schedule: boolean = true
+  schedule: boolean = true,
+  portalType?: 'ADMIN' | 'STAFF' | 'GUARDIAN',
 ): Promise<{ token: string; expiresIn: number; user?: any; firebaseLinked?: boolean } | null> {
   try {
-    const res = await api.post('/api/auth/firebase-login', { idToken: firebaseToken });
+    const res = await api.post('/api/auth/firebase-login', {
+      idToken: firebaseToken,
+      ...(portalType ? { portalType } : {}),
+    });
     const data = res.data;
     
     if (!data?.token || typeof data.expiresIn !== 'number') {
@@ -90,6 +100,7 @@ export async function exchangeFirebaseToken(
       sessionId: data.sessionId ?? null,
       permissions: data.permissions ?? [],
     });
+    persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
     
     if (schedule) {
       // Cola compartida: evita refresh simultáneo con el interceptor.

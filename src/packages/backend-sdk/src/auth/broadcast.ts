@@ -12,6 +12,7 @@
  */
 import { authStore } from './store';
 import { emitAuthEvent } from './events';
+import { clearRefreshTokenFallback } from './refreshTokenFallback';
 
 const CHANNEL_NAME = 'admitia-auth';
 
@@ -94,6 +95,7 @@ function handleMessage(raw: AuthMessage | undefined): void {
       break;
     case 'LOGOUT':
       authStore.clear();
+      clearRefreshTokenFallback();
       emitAuthEvent({ type: 'cross-tab-logout', reason: msg.reason });
       // Notificar a todos los callbacks registrados
       onLogoutCallbacks.forEach(cb => {
@@ -136,4 +138,3 @@ export function closeAuthChannel(): void {
   try { channel?.close(); } catch { /* no-op */ }
   channel = null;
 }
-

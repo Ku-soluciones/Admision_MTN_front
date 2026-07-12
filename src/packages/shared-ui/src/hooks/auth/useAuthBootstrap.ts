@@ -54,11 +54,14 @@ import {
   purgeLegacyAuthStorage,
   exchangeFirebaseToken,
   runSharedRefresh,
+  persistRefreshTokenFallback,
+  clearRefreshTokenFallback,
 } from '../../../../backend-sdk/src/index';
 import type { AuthUser } from './types';
 import { buildUserFromBff, setAdminCompat } from './helpers';
 
 export type LegacyIdTokenExchangeStrategy = 'sdk-helper' | 'firebase-login' | 'none';
+export type AuthPortalType = 'ADMIN' | 'STAFF' | 'GUARDIAN';
 
 export interface UseAuthBootstrapOptions {
   /** Cliente axios con `withCredentials: true` configurado para llamar al BFF. */
@@ -98,6 +101,8 @@ export interface UseAuthBootstrapOptions {
    * pestaña hace logout. Recibe el `reason` ya escapado.
    */
   crossTabLogoutRedirectUrl: (reason: string) => string;
+  /** Portal que se envía al BFF al intercambiar Firebase por sesión BFF. */
+  portalType?: AuthPortalType;
 }
 
 export interface UseAuthBootstrapResult {
@@ -119,6 +124,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
     legacyIdTokenExchange = 'none',
     clearStoreOnRefreshFailure = true,
     crossTabLogoutRedirectUrl,
+    portalType,
   } = options;
 
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -139,6 +145,22 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
     try { return Boolean(isFreshSessionRequested?.()); } catch { return false; }
   };
 
+  const resolvePortalType = (): AuthPortalType => {
+    if (portalType) return portalType;
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (
+      path.startsWith('/profesor') ||
+      path.startsWith('/entrevistas') ||
+      path.startsWith('/calendario') ||
+      path.startsWith('/coordinador') ||
+      path.startsWith('/reportes')
+    ) {
+      return 'STAFF';
+    }
+    if (path.startsWith('/admin') || path === '/login') return 'ADMIN';
+    return 'GUARDIAN';
+  };
+
   // Cuando ambos terminan (modo waitForFirebase), recién bajamos isLoading.
   useEffect(() => {
     if (!waitForFirebase) return;
@@ -152,6 +174,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
     // Modo fresh (admissions): saltarse toda la rehidratación.
     if (isFreshHelper()) {
       try { authStore.clear(); } catch { /* no-op */ }
+      try { clearRefreshTokenFallback(); } catch { /* no-op */ }
       setUser(null);
       setIsLoading(false);
       if (waitForFirebase) setBootstrapDone(true);
@@ -170,7 +193,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
         let firebaseLoginExchangeFailed = false;
         try {
           if (legacyIdTokenExchange === 'sdk-helper') {
-            const session = await exchangeFirebaseToken(storedAccessToken, api);
+            const session = await exchangeFirebaseToken(storedAccessToken, api, true, resolvePortalType());
             if (session && !cancelled) {
               const userData = buildUserFromBff(session.user);
               setAdminCompat(userData, session.token, session.user?.subject);
@@ -178,7 +201,10 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
             }
           } else {
             // 'firebase-login': llamada directa, como en admissions previo.
-            const res = await api.post('/api/auth/firebase-login', { idToken: storedAccessToken });
+            const res = await api.post('/api/auth/firebase-login', {
+              idToken: storedAccessToken,
+              portalType: resolvePortalType(),
+            });
             const data = res.data;
             if (data?.token && typeof data.expiresIn === 'number') {
               authStore.setSession({
@@ -190,6 +216,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
               });
+              persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
               // Cola compartida: evita refresh simultáneo con el interceptor.
               // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
               scheduleRefresh(data.expiresIn);
@@ -222,7 +249,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
       refresh: async () => runSharedRefresh(),
       // El admin NO limpia store en fallo (deja que Firebase rehidrate).
       ...(clearStoreOnRefreshFailure
-        ? { onRefreshFailure: () => { authStore.clear(); } }
+        ? { onRefreshFailure: () => { authStore.clear(); clearRefreshTokenFallback(); } }
         : {}),
     }).then((ok) => {
       if (cancelled) return;
@@ -256,6 +283,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
         if (isFreshHelper()) {
           try { await firebaseAuthSignOut(firebaseAuth); } catch { /* no-op */ }
           try { authStore.clear(); } catch { /* no-op */ }
+          try { clearRefreshTokenFallback(); } catch { /* no-op */ }
           setUser(null);
           if (waitForFirebase) setFirebaseDone(true);
           else setIsLoading(false);
@@ -280,7 +308,10 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
           const idToken = await firebaseUser.getIdToken(/* forceRefresh */ false);
           let response: any = null;
           try {
-            const r = await api.post('/api/auth/firebase-login', { idToken });
+            const r = await api.post('/api/auth/firebase-login', {
+              idToken,
+              portalType: resolvePortalType(),
+            });
             const data = r.data;
             if (data?.token && typeof data.expiresIn === 'number') {
               authStore.setSession({
@@ -292,6 +323,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
               });
+              persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
               // Cola compartida: evita refresh simultáneo con el interceptor.
               // No onFailure: un refresh proactivo fallido no debe cerrar la sesión.
               scheduleRefresh(data.expiresIn);
@@ -390,10 +422,10 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
     const off = onCrossTabLogout((reason) => {
       cancelScheduledRefresh();
       setUser(null);
-      if (!window.location.pathname.includes('/login')) {
-        const safeReason = reason ?? 'other-tab';
-        window.location.assign(crossTabLogoutRedirectUrl(safeReason));
-      }
+      // `broadcast.ts` ya emitió cross-tab-logout. AuthNavigationBridge es
+      // el único dueño de la navegación, evitando competir con un hard reload.
+      void reason;
+      void crossTabLogoutRedirectUrl;
     });
     return off;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,5 +451,3 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
 // en su IIFE al cargar el módulo. (No se puede hacer side-effect en
 // el hook porque depende del feature.)
 export { purgeLegacyAuthStorage };
-
-

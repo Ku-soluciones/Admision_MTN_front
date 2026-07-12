@@ -52,12 +52,6 @@ function readEnvNumber(key: string, fallback: number): number {
   }
 }
 
-function getCurrentReasonRoute(): string {
-  const path = window.location.pathname;
-  const isAdmin = path.includes('/admin') || path.includes('/profesor');
-  return isAdmin ? '/admin/login?reason=expired' : '/login?reason=expired';
-}
-
 const SessionTimeoutManagerInner: React.FC<Required<SessionTimeoutManagerProps>> = ({
   inactivityMinutes,
   warnBeforeSeconds,
@@ -74,9 +68,7 @@ const SessionTimeoutManagerInner: React.FC<Required<SessionTimeoutManagerProps>>
     emitAuthEvent({ type: 'idle-expire', cause: 'inactivity' });
     try { authStore.clear(); } catch { /* no-op */ }
     try { broadcastLogout('expired'); } catch { /* no-op */ }
-    if (typeof window !== 'undefined') {
-      window.location.href = getCurrentReasonRoute();
-    }
+    // AuthNavigationBridge procesa idle-expire y navega dentro del router SPA.
   }, []);
 
   // Wire de los timers (inactividad + hard-cap absoluto).
@@ -125,4 +117,3 @@ const SessionTimeoutManager: React.FC<SessionTimeoutManagerProps> = ({
 };
 
 export default SessionTimeoutManager;
-

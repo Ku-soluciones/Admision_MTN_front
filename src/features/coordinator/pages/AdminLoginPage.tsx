@@ -6,6 +6,7 @@ import Input from '../../admissions/components/ui/Input';
 import Button from '../../admin/components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../../admin/context/AppContext';
+import { authStore } from '../../../packages/backend-sdk/src/index';
 
 const LoginPage: React.FC = () => {
     const [userType, setUserType] = useState<'familia' | 'admin'>('familia');
@@ -68,15 +69,13 @@ const LoginPage: React.FC = () => {
                             await login(email, password, userType);
 
                             // Verificar que el rol coincida con el tipo de portal seleccionado
-                            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
-                            const role = storedUser?.role || '';
+                            const role = String(authStore.getState().user?.role || '').toUpperCase();
 
                             if (userType === 'admin' && role === 'APODERADO') {
                                 const msg = 'Esta cuenta no tiene acceso al panel administrativo.';
                                 setLoginError(msg);
                                 addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                                localStorage.removeItem('auth_token');
-                                localStorage.removeItem('authenticated_user');
+                                authStore.clear();
                                 return;
                             }
 
@@ -84,8 +83,7 @@ const LoginPage: React.FC = () => {
                                 const msg = 'Esta cuenta es de personal del colegio. Use el portal de profesores.';
                                 setLoginError(msg);
                                 addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                                localStorage.removeItem('auth_token');
-                                localStorage.removeItem('authenticated_user');
+                                authStore.clear();
                                 return;
                             }
 

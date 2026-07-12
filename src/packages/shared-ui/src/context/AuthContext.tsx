@@ -21,29 +21,50 @@ import {
   scheduleRefresh,
   runSharedRefresh,
 } from '../../../backend-sdk/src/index';
-import { useAuthBootstrap, purgeLegacyAuthStorage } from '../hooks/auth/useAuthBootstrap';
+import { useAuthBootstrap } from '../hooks/auth/useAuthBootstrap';
 import { buildUserFromBff, setAdminCompat } from '../hooks/auth/helpers';
 import type { AuthContextType, AuthProviderProps, AuthUser } from '../hooks/auth/types';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Limpieza de claves históricas al cargar el módulo.
-(function bootstrapStorageOnce() { purgeLegacyAuthStorage(); })();
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children, portalType: explicitPortalType }) => {
+  const portalType = explicitPortalType ?? (() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (
+      path.startsWith('/profesor') ||
+      path.startsWith('/entrevistas') ||
+      path.startsWith('/calendario') ||
+      path.startsWith('/coordinador') ||
+      path.startsWith('/reportes')
+    ) {
+      return 'STAFF' as const;
+    }
+    return 'GUARDIAN' as const;
+  })();
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { user, setUser, isLoading, setIsLoading, firebaseLinked } = useAuthBootstrap({
     api,
     firebaseAuth: auth,
     hasFirebaseConfig,
-    // shared-ui: sin doble bandera, sin fresh, sin intercambio legacy.
+    // Toda ruta protegida espera ambas fuentes de rehidratación. Así el
+    // guard nunca decide con un estado intermedio durante F5 o navegación.
+    waitForFirebase: true,
+    clearStoreOnRefreshFailure: false,
     legacyIdTokenExchange: 'none',
+    portalType,
     crossTabLogoutRedirectUrl: (reason) => `/apoderado-login?reason=${reason}`,
   });
 
-  const login = async (email: string, password: string, _role: string) => {
+  const login = async (email: string, password: string, requestedRole: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
+      const normalizedRequestedRole = String(requestedRole || '').toUpperCase();
+      const loginPortal = normalizedRequestedRole === 'ADMIN'
+        ? 'ADMIN'
+        : normalizedRequestedRole === 'FAMILIA' || normalizedRequestedRole === 'APODERADO'
+          ? 'GUARDIAN'
+          : portalType;
+      const response = await authService.login({ email, password, portalType: loginPortal });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);
@@ -110,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       BASE_STORAGE_KEYS.AUTHENTICATED_USER,
     ].forEach((k) => { try { localStorage.removeItem(getStorageKey(k)); } catch { /* no-op */ } });
     setUser(null);
-    window.location.href = '/apoderado-login';
+    window.location.href = '/apoderado/login';
   }, [setUser]);
 
   const linkFirebaseAccount = useCallback(async () => {
@@ -145,4 +166,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

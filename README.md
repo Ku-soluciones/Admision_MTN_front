@@ -37,22 +37,22 @@ npm run preview
 La app local corre en:
 
 ```text
-http://localhost:5200/#/
+http://localhost:5200/
 ```
 
 ## Rutas Principales
 
-- `/#/`
-- `/#/postulacion`
-- `/#/apoderado/login`
-- `/#/familia`
-- `/#/examenes`
-- `/#/profesor/login`
-- `/#/profesor`
-- `/#/entrevistas`
-- `/#/admin`
-- `/#/reportes`
-- `/#/coordinador`
+- `/`
+- `/postulacion`
+- `/apoderado/login`
+- `/familia`
+- `/examenes`
+- `/profesor/login`
+- `/profesor`
+- `/entrevistas`
+- `/admin`
+- `/reportes`
+- `/coordinador`
 
 ## Reglas De Trabajo
 

@@ -2,8 +2,8 @@
  * authStore — store de sesión en memoria.
  *
  * Reemplaza al uso anterior de localStorage para el access token. El refresh
- * vive exclusivamente en la cookie HttpOnly del BFF, así que no se persiste
- * nada de eso aquí.
+ * viaja principalmente en la cookie HttpOnly del BFF. El fallback transicional
+ * para navegadores/proxies cross-site vive fuera de este store.
  *
  * Se implementa como un singleton "vanilla" (sin Zustand) para no agregar
  * dependencias al paquete. Cada app puede envolverlo en `useSyncExternalStore`
@@ -172,6 +172,7 @@ export function purgeLegacyAuthStorage(preserveLegacyKeys: string[] = []): void 
     'professor_user',
     'apoderado_user',
     'currentProfessor',
+    'admitia_refresh_fallback',
   ];
   const envSuffixes = [
     'development', 'staging', 'sta', 'production',

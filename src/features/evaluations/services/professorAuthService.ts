@@ -1,5 +1,13 @@
 import api from '../../admin/services/api';
-import { getStorageKey, BASE_STORAGE_KEYS, authStore, scheduleRefresh, broadcastLogin } from '../../../packages/backend-sdk/src/index';
+import {
+    getStorageKey,
+    BASE_STORAGE_KEYS,
+    authStore,
+    scheduleRefresh,
+    broadcastLogin,
+    persistRefreshTokenFallback,
+    clearRefreshTokenFallback,
+} from '../../../packages/backend-sdk/src/index';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth as firebaseAuth } from '../../admin/src/lib/firebase';
 // RSA encryption removed - credentials sent over HTTPS only
@@ -119,6 +127,7 @@ class ProfessorAuthService {
                 sessionId: data.sessionId ?? null,
                 permissions: data.permissions ?? [],
             });
+            persistRefreshTokenFallback(data.refreshToken, data.refreshExpiresIn);
             // Usamos la cola de refresh compartida para evitar que el timer
             // proactivo y el interceptor reactivo ejecuten dos refresh
             // simultáneos y el backend detecte "reuso" del refresh token.
@@ -171,6 +180,7 @@ class ProfessorAuthService {
     async logout() {
         try { await api.post('/api/auth/logout'); } catch { /* idempotente */ }
         authStore.clear();
+        clearRefreshTokenFallback();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER));
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR));

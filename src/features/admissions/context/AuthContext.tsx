@@ -28,7 +28,6 @@ import {
 } from '../../../packages/backend-sdk/src/index';
 import {
   useAuthBootstrap,
-  purgeLegacyAuthStorage,
 } from '../../../packages/shared-ui/src/hooks/auth/useAuthBootstrap';
 import {
   buildUserFromBff,
@@ -87,14 +86,14 @@ const wipeLocalAuthArtifacts = (): void => {
   } catch { /* no-op */ }
 };
 
-// IIFE al cargar el módulo: si fresh, wipe; si no, purga legacy estándar.
+// IIFE al cargar el módulo: sólo una navegación explícita `fresh=1` puede
+// borrar sesión. Cargar otro feature nunca debe destruir credenciales activas.
 (function bootstrapStorageOnce() {
   if (__freshSessionRequested) {
     wipeLocalAuthArtifacts();
     try { authStore.clear(); } catch { /* no-op */ }
     return;
   }
-  purgeLegacyAuthStorage();
 })();
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -107,13 +106,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     respectFreshSession: true,
     isFreshSessionRequested: wasFreshSessionRequested,
     legacyIdTokenExchange: 'firebase-login',
+    portalType: 'GUARDIAN',
     crossTabLogoutRedirectUrl: (reason) => `/apoderado-login?reason=${reason}`,
   });
 
   const login = async (email: string, password: string, _role: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, portalType: 'GUARDIAN' });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);
@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       BASE_STORAGE_KEYS.AUTHENTICATED_USER,
     ].forEach((k) => { try { localStorage.removeItem(getStorageKey(k)); } catch { /* no-op */ } });
     setUser(null);
-    window.location.href = '/apoderado-login';
+    window.location.href = '/apoderado/login';
   }, [setUser]);
 
   const linkFirebaseAccount = useCallback(async () => {
@@ -214,4 +214,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

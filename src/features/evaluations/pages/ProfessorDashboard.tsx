@@ -1768,9 +1768,9 @@ const ProfessorDashboard: React.FC = () => {
     };
 
     return (
-        <div className="bg-gray-50 min-h-screen">
+        <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
             {/* Mobile top bar */}
-            <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+            <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between z-30">
                 <div>
                     <span className="font-bold text-azul-monte-tabor">Portal Profesores</span>
                     <p className="text-gris-piedra text-xs">Sistema de Evaluaciones</p>
@@ -1817,9 +1817,9 @@ const ProfessorDashboard: React.FC = () => {
                 />
             </div>
 
-            <div className="flex">
+            <div className="flex flex-1 overflow-hidden">
                 {/* Desktop Sidebar */}
-                <aside className="w-64 bg-white shadow-md min-h-screen p-6 hidden md:flex flex-col sticky top-0 self-start h-screen overflow-y-auto">
+                <aside className="w-64 bg-white shadow-md p-6 hidden md:flex flex-col overflow-y-auto">
                     <SidebarNav
                         sections={sections}
                         activeSection={activeSection}
@@ -1831,7 +1831,7 @@ const ProfessorDashboard: React.FC = () => {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 sm:p-8 min-w-0" role="main" aria-label="Contenido principal del dashboard del profesor">
+                <main className="flex-1 p-4 sm:p-8 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard del profesor">
                     {renderSection()}
                 </main>
             </div>

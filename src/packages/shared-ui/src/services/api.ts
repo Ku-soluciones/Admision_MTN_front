@@ -32,6 +32,7 @@ import {
     reasonFromCode,
     broadcastLogout,
     emitAuthEvent,
+    clearRefreshTokenFallback,
 } from '../../../backend-sdk/src/index';
 
 const api = axios.create({
@@ -47,9 +48,12 @@ const isPublicRoute = (url: string): boolean => {
     const publicSegments = [
         '/auth/login',
         '/auth/register',
+        '/auth/firebase-login',
+        '/auth/firebase-register',
         '/auth/refresh',
         '/auth/public-key',
         '/auth/csrf-token',
+        '/auth/check-email',
         '/email/',
         '/usuario-auth/',
         '/public/',
@@ -63,7 +67,12 @@ const isPublicRoute = (url: string): boolean => {
 };
 
 const isAuthEndpoint = (url: string): boolean =>
-    url.includes('/auth/refresh') || url.includes('/auth/logout') || url.includes('/auth/login');
+    url.includes('/auth/refresh')
+    || url.includes('/auth/logout')
+    || url.includes('/auth/login')
+    || url.includes('/auth/register')
+    || url.includes('/auth/firebase-login')
+    || url.includes('/auth/firebase-register');
 
 /**
  * Endpoints "sonda" que se llaman para descubrir si hay sesión activa. Si
@@ -224,6 +233,7 @@ api.interceptors.response.use(
         // desde aquí. Sólo limpiamos el estado local en silencio.
         if (status === 401 && isSessionTerminal(code)) {
             authStore.clear();
+            clearRefreshTokenFallback();
             clearLegacyStorage();
             csrfService.clearToken();
             // Sólo notificamos (bridge SPA-nav + otras pestañas) cuando
@@ -253,6 +263,7 @@ api.interceptors.response.use(
             const newToken = await refreshQueue.run();
             if (!newToken) {
                 authStore.clear();
+                clearRefreshTokenFallback();
                 clearLegacyStorage();
                 if (!probe && !isAuthProbe) {
                     // emit + redirect (idem que arriba: sólo cuando vamos
@@ -272,6 +283,7 @@ api.interceptors.response.use(
             // que invalide la sesión actual. El AuthContext decide qué hacer.
             if (!isAuthProbe) {
                 authStore.clear();
+                clearRefreshTokenFallback();
                 clearLegacyStorage();
                 if (!probe) redirectToLoginWithReason('expired');
             }

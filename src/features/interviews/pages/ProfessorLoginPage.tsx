@@ -8,6 +8,7 @@ import { useFormValidation } from '../../admin/hooks/useFormValidation';
 import { useNotifications } from '../../admin/context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../../coordinator/context/AuthContext';
+import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -48,6 +49,7 @@ const ProfessorLoginPage: React.FC = () => {
         setIsLoggingIn(true);
 
         try {
+            clearOtherSessions('professor');
             
             // Usar el servicio de autenticación real
             const response = await professorAuthService.login({
@@ -74,16 +76,19 @@ const ProfessorLoginPage: React.FC = () => {
                     }
                     
                     // Guardar información del profesor en localStorage para compatibilidad
-                    localStorage.setItem('currentProfessor', JSON.stringify({
+                    const professorSnapshot = {
                         id: respId,
                         firstName: respFirstName,
                         lastName: respLastName,
                         email: respEmail,
+                        role: respRole,
                         subject: respSubject,
                         subjects: getSubjectsByRole(respRole),
                         assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
-                        isAdmin: respRole === 'ADMIN'
-                    }));
+                        isAdmin: respRole === 'ADMIN',
+                    };
+                    localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(professorSnapshot));
+                    localStorage.setItem('currentProfessor', JSON.stringify(professorSnapshot));
 
                     addNotification({
                         type: 'success',

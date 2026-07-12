@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../../coordinator/context/AuthContext';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 
 interface ProtectedApoderadoRouteProps {
     children: React.ReactNode;
@@ -11,17 +10,6 @@ const ProtectedApoderadoRoute: React.FC<ProtectedApoderadoRouteProps> = ({ child
     const { user, isAuthenticated, isLoading } = useAuth();
 
     if (isLoading) {
-        const cached = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER));
-        if (cached) {
-            try {
-                const parsed = JSON.parse(cached);
-                if (parsed?.role === 'APODERADO') {
-                    return <>{children}</>;
-                }
-            } catch {
-                // cache malformado — mostrar spinner
-            }
-        }
         return (
             <div className="flex min-h-screen items-center justify-center bg-white">
                 <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-azul-monte-tabor" />

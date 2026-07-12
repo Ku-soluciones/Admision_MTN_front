@@ -4,10 +4,19 @@
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { oidcService } from './oidcService';
 import { getApiBaseUrl } from '../config/api.config';
 import { csrfService } from './csrfService';
-import { getStorageKey, BASE_STORAGE_KEYS } from '../../../backend-sdk/src/index';
+import {
+  getStorageKey,
+  BASE_STORAGE_KEYS,
+  authStore,
+  runSharedRefresh,
+  extractAuthErrorCode,
+  isAccessExpired,
+  isSessionTerminal,
+  clearRefreshTokenFallback,
+  emitAuthEvent,
+} from '../../../backend-sdk/src/index';
 import { notify } from '../utils/notify';
 
 // Tipos
@@ -59,6 +68,9 @@ class HttpClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      // La sesión persistente vive en la cookie HttpOnly de refresh del BFF.
+      // Sin credentials este cliente no puede recuperarse al expirar el JWT.
+      withCredentials: true,
     });
 
     this.setupInterceptors();
@@ -150,17 +162,17 @@ class HttpClient {
 
   private async getAccessToken(): Promise<string | null> {
     try {
-      // Primero intentar obtener el token de usuario regular (apoderado)
-      let token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+      // La fuente de verdad es el store en memoria. localStorage se conserva
+      // sólo como compatibilidad para flujos antiguos todavía no migrados.
+      let token = authStore.getValidAccessToken(0);
+
+      if (!token) {
+        token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
+      }
 
       // Si no hay token de usuario regular, intentar con token de profesor
       if (!token) {
         token = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
-      }
-
-      // Si aún no hay token, intentar OIDC como fallback
-      if (!token) {
-        token = oidcService.getAccessToken();
       }
 
       return token;
@@ -180,7 +192,7 @@ class HttpClient {
     return sanitized;
   }
 
-  private async handleError(error: AxiosError): Promise<never> {
+  private async handleError(error: AxiosError): Promise<any> {
     const correlationId = (error.config as any)?.correlationId as string;
     
     // Actualizar métricas de error
@@ -196,9 +208,12 @@ class HttpClient {
       return this.retryRequest(error);
     }
 
-    // Mapear errores específicos
+    // Los consumidores de este cliente pueden disparar varias peticiones en
+    // paralelo. Todas comparten la misma cola de refresh que el cliente BFF
+    // principal, por lo que sólo existe un POST /auth/refresh en vuelo.
     if (error.response?.status === 401) {
-      await this.handle401Error(error);
+      const recovered = await this.handle401Error(error);
+      if (recovered) return recovered;
     } else if (error.response?.status === 403) {
       this.handle403Error(error);
     }
@@ -242,42 +257,46 @@ class HttpClient {
     return this.client.request(config);
   }
 
-  private async handle401Error(error: AxiosError): Promise<void> {
-    // Check if this is a session invalidation (user logged in from another device/tab)
+  private async handle401Error(error: AxiosError): Promise<AxiosResponse | null> {
     const errorData = error.response?.data as any;
-    if (errorData?.code === 'SESSION_INVALIDATED') {
+    const code = extractAuthErrorCode(errorData);
+    const config = error.config as any;
 
-      // Clear ALL tokens
+    if (isSessionTerminal(code)) {
+      authStore.clear();
+      clearRefreshTokenFallback();
+
       localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
       localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));
       sessionStorage.clear();
 
-      // Show alert to user
-      notify.error('Tu sesión ha sido cerrada porque iniciaste sesión en otro dispositivo o pestaña.');
-
-      // Redirect to login
-      this.redirectToLogin();
-      return;
-    }
-
-    // For other 401 errors, try to renew token
-    try {
-      const newUser = await oidcService.renewToken();
-
-      if (!newUser) {
-        this.redirectToLogin();
+      if (code === 'SESSION_INVALIDATED') {
+        notify.error('Tu sesión ha sido cerrada porque iniciaste sesión en otro dispositivo o pestaña.');
       }
-    } catch (renewError) {
-      this.redirectToLogin();
+      emitAuthEvent({ type: 'terminal', code, status: 401 });
+      return null;
     }
+
+    if (isAccessExpired(401, code) && config && !config._authRetry) {
+      config._authRetry = true;
+      const refreshed = await runSharedRefresh();
+      if (refreshed) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${refreshed.token}`;
+        return this.client.request(config);
+      }
+    }
+
+    authStore.clear();
+    clearRefreshTokenFallback();
+    emitAuthEvent({ type: 'expired', route: window.location.pathname });
+    return null;
   }
 
   private handle403Error(error: AxiosError): void {
-
-    // Mostrar página de acceso denegado
-    if (window.location.pathname !== '/unauthorized') {
-      window.location.href = '/unauthorized';
-    }
+    // Un 403 es autorización de negocio, no pérdida de sesión. El caller
+    // muestra el mensaje correspondiente sin recargar ni cambiar de módulo.
+    void error;
   }
 
   private redirectToLogin(): void {

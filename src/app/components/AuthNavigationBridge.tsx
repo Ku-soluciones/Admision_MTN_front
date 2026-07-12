@@ -7,7 +7,7 @@
  * que descarta formularios en curso, pierde estado React y reinstancia
  * Firebase/QueryClient innecesariamente.
  *
- * Este componente vive dentro del `HashRouter` (en `AppProviders`) y, al
+ * Este componente vive dentro del router SPA (en `AppProviders`) y, al
  * recibir un evento de pérdida de sesión, ejecuta una navegación SPA con
  * `react-router-dom`, preservando `state.from` para post-login redirect.
  *
@@ -22,11 +22,13 @@ import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { onAuthEvent, authStore } from '../../packages/backend-sdk/src/auth';
 
-const ADMIN_PATH_HINTS = ['/admin', '/profesor', '/coordinador'] as const;
-
 function resolveLoginTarget(pathname: string, reason: string): string {
-  const isAdminLike = ADMIN_PATH_HINTS.some((p) => pathname.includes(p));
-  const base = isAdminLike ? '/admin/login' : '/login';
+  const base = pathname.startsWith('/admin') ? '/admin/login'
+    : pathname.startsWith('/profesor') || pathname.startsWith('/entrevistas') || pathname.startsWith('/calendario')
+      ? '/profesor/login'
+      : pathname.startsWith('/familia') || pathname.startsWith('/dashboard-apoderado') || pathname.startsWith('/postulacion')
+        ? '/apoderado/login'
+        : '/login';
   return `${base}?reason=${encodeURIComponent(reason)}`;
 }
 
@@ -100,4 +102,3 @@ export function AuthNavigationBridge(): null {
 }
 
 export default AuthNavigationBridge;
-

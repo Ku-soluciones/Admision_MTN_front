@@ -8,7 +8,6 @@ import ProtectedApoderadoRoute from './components/auth/ProtectedApoderadoRoute';
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from '../coordinator/context/AuthContext';
 import Header from '../coordinator/components/layout/Header';
-import Footer from '../admissions/components/layout/Footer';
 import ToastContainer from '../admin/components/ui/ToastContainer';
 import GlobalToastHost from '../admin/components/ui/GlobalToastHost';
 import { ErrorBoundary } from '../admin/components/ErrorBoundary';
@@ -27,7 +26,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <AuthProvider portalType="GUARDIAN">
         <AppProvider>
           <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800">
             {!isLoginPage && !isDashboard && !isConfirmationResult && <Header />}
@@ -45,7 +44,6 @@ function App() {
                 </Routes>
               </Suspense>
             </main>
-            {!isConfirmationResult && <Footer />}
             <ToastContainer />
             <GlobalToastHost />
           </div>

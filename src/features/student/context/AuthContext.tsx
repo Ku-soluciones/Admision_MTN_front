@@ -2,7 +2,7 @@
  * AuthContext (student) — portal de estudiantes / exámenes.
  *
  * `legacyIdTokenExchange='sdk-helper'` (igual que admin).
- * Logout y cross-tab redirigen a `/#/examenes`.
+ * Logout y cross-tab redirigen a `/examenes`.
  *
  * Antes este archivo tenía 412 líneas; ahora ~140.
  */
@@ -20,7 +20,6 @@ import {
 } from '../../../packages/backend-sdk/src/index';
 import {
   useAuthBootstrap,
-  purgeLegacyAuthStorage,
 } from '../../../packages/shared-ui/src/hooks/auth/useAuthBootstrap';
 import {
   buildUserFromBff,
@@ -34,22 +33,22 @@ import type {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Limpieza de claves históricas al cargar el módulo.
-(function bootstrapStorageOnce() { purgeLegacyAuthStorage(); })();
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { user, setUser, isLoading, setIsLoading, firebaseLinked } = useAuthBootstrap({
     api,
     firebaseAuth: auth,
     hasFirebaseConfig,
+    waitForFirebase: true,
+    clearStoreOnRefreshFailure: false,
     legacyIdTokenExchange: 'sdk-helper',
-    crossTabLogoutRedirectUrl: (reason) => `/#/examenes?reason=${reason}`,
+    portalType: 'GUARDIAN',
+    crossTabLogoutRedirectUrl: (reason) => `/examenes?reason=${reason}`,
   });
 
   const login = async (email: string, password: string, _role: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, portalType: 'GUARDIAN' });
       const u = response.user;
       if (response.success && u) {
         const userData = buildUserFromBff(u);
@@ -115,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       BASE_STORAGE_KEYS.AUTHENTICATED_USER,
     ].forEach((k) => { try { localStorage.removeItem(getStorageKey(k)); } catch { /* no-op */ } });
     setUser(null);
-    window.location.href = '/#/examenes';
+    window.location.href = '/examenes';
   }, [setUser]);
 
   const linkFirebaseAccount = useCallback(async () => {
@@ -150,4 +149,3 @@ export const useAuth = (): AuthContextType => {
   }
   return ctx;
 };
-

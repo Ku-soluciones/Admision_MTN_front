@@ -14,6 +14,7 @@ import {
     evaluatePasswordStrength,
 } from '../../../packages/shared-ui/src/services/passwordService';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
+import { authStore } from '../../../packages/backend-sdk/src/index';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
 const blockClipboardProps = {
@@ -151,13 +152,12 @@ const ApoderadoLogin: React.FC = () => {
             await login(email, password, 'apoderado');
 
             // Verificar que el rol sea APODERADO
-            const storedUser = JSON.parse(localStorage.getItem('authenticated_user') || 'null');
-            if (storedUser && storedUser.role !== 'APODERADO') {
+            const authenticatedRole = String(authStore.getState().user?.role || '').toUpperCase();
+            if (authenticatedRole !== 'APODERADO') {
                 const msg = 'Esta cuenta no corresponde a un apoderado. Use el portal de profesores.';
                 setError(msg);
                 addNotification({ type: 'error', title: 'Acceso denegado', message: msg });
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('authenticated_user');
+                authStore.clear();
                 setIsLoading(false);
                 return;
             }
@@ -294,7 +294,7 @@ const ApoderadoLogin: React.FC = () => {
                     <Card className="p-5 sm:p-8">
                         <div className="text-center">
                             <div className="flex justify-center mb-8">
-                                <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                                <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
                             </div>
                             <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                                 Proceso No Disponible
@@ -330,7 +330,7 @@ const ApoderadoLogin: React.FC = () => {
                     {/* Header */}
                     <div className="text-center">
                         <div className="flex justify-center mb-8">
-                            <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-24" />
+                            <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
                         </div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
                             {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}
