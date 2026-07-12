@@ -789,9 +789,9 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
 const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="relative group/tip inline-flex">
     {children}
-    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
+    <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
       {label}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800" />
     </div>
   </div>
 );
@@ -985,7 +985,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
                   </td>
 
                   {/* Estado / Acción — cross-fade */}
-                  <td className="px-4 py-3 relative overflow-hidden" style={{ minWidth: 180 }}>
+                  <td className="px-4 py-3 relative" style={{ minWidth: 180 }}>
                     {/* Badge de estado — se va al seleccionar */}
                     <div
                       className="absolute inset-y-0 left-4 right-4 flex items-center transition-all duration-300"
