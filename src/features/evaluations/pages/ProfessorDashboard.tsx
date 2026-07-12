@@ -937,22 +937,13 @@ const ProfessorDashboard: React.FC = () => {
                                                                     {report.status === 'COMPLETED' ? 'Completado' :
                                                                      report.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                                                                 </Badge>
-                                                                <div className="flex gap-2 mt-2">
-                                                                    <Button
-                                                                        variant="primary"
-                                                                        size="sm"
-                                                                        onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
-                                                                    >
-                                                                        {report.status === 'COMPLETED' ? 'Modificar' : 'Completar Informe'}
-                                                                    </Button>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
-                                                                    >
-                                                                        Ver
-                                                                    </Button>
-                                                                </div>
+                                                                <Button
+                                                                    variant="primary"
+                                                                    size="sm"
+                                                                    onClick={() => navigate(`/profesor/informe-director/${report.id}`)}
+                                                                >
+                                                                    {report.status === 'COMPLETED' ? 'Modificar' : 'Completar Informe'}
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     </div>
