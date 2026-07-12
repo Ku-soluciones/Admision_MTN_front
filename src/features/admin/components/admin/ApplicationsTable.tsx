@@ -240,7 +240,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                   </td>
 
                   {/* Fecha / Acciones — cross-fade */}
-                  <td className="px-4 py-3 relative overflow-hidden" style={{ minWidth: 180 }}>
+                  <td className="px-4 py-3 relative" style={{ minWidth: 180 }}>
                     {/* Fecha — se va al seleccionar */}
                     <div
                       className="absolute inset-y-0 left-4 right-4 flex items-center transition-all duration-300"

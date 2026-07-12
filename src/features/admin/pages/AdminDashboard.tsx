@@ -556,16 +556,12 @@ Esta acción:
 
       case 'vacantes':
         return (
-          <div className="space-y-6">
-            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Vacantes</p>
-                  <h1 className="mt-1 text-lg font-bold text-gray-950">Disponibilidad de Vacantes por Nivel</h1>
-                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Configura qué niveles tienen vacantes disponibles para los postulantes</p>
-                </div>
-              </div>
-            </section>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Vacantes</p>
+              <h1 className="mt-0.5 text-lg font-bold text-gray-950">Disponibilidad de Vacantes por Nivel</h1>
+              <p className="mt-0.5 text-sm text-gray-500">Configura qué niveles tienen vacantes disponibles para los postulantes</p>
+            </div>
             <GradeAvailabilityManager />
           </div>
         );
@@ -584,58 +580,60 @@ Esta acción:
 
       case 'evaluaciones':
         return (
-          <div className="space-y-6">
-            {/* Header CalGlobal-style */}
-            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Evaluaciones</p>
-                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Evaluaciones</h1>
-                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Administra y supervisa las evaluaciones del proceso de admisión</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEvaluationSubsection('management')}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                      evaluationSubsection === 'management'
-                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-                    }`}
-                  >
-                    <FiList className="h-4 w-4" aria-hidden="true" />
-                    Gestión de Evaluaciones
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEvaluationSubsection('reports')}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
-                      evaluationSubsection === 'reports'
-                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
-                    }`}
-                  >
-                    <FiFile className="h-4 w-4" aria-hidden="true" />
-                    Informes y Reportes
-                  </button>
+          <div className="space-y-4">
+            {/* Encabezado con título y pestañas, unificado con el contenido */}
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 px-5 py-4">
+                <div className="flex flex-col gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Evaluaciones</p>
+                    <h1 className="mt-0.5 text-lg font-bold text-gray-950">Gestión de Evaluaciones</h1>
+                    <p className="mt-0.5 text-sm text-gray-500">Administra y supervisa las evaluaciones del proceso de admisión</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEvaluationSubsection('management')}
+                      className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                        evaluationSubsection === 'management'
+                          ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                      }`}
+                    >
+                      <FiList className="h-4 w-4" aria-hidden="true" />
+                      Gestión de Evaluaciones
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEvaluationSubsection('reports')}
+                      className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                        evaluationSubsection === 'reports'
+                          ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                      }`}
+                    >
+                      <FiFile className="h-4 w-4" aria-hidden="true" />
+                      Informes y Reportes
+                    </button>
+                  </div>
                 </div>
               </div>
-            </section>
-
-            {/* Render appropriate subsection */}
-            {evaluationSubsection === 'management' ? (
-              <EvaluationManagement
-                applications={applications}
-                onRefresh={loadApplications}
-                onAssign={handleAssignEvaluator}
-                hideHeader
-              />
-            ) : (
-              <EvaluationReports
-                applications={applications}
-                onRefresh={loadApplications}
-              />
-            )}
+              <div className="p-5">
+                {evaluationSubsection === 'management' ? (
+                  <EvaluationManagement
+                    applications={applications}
+                    onRefresh={loadApplications}
+                    onAssign={handleAssignEvaluator}
+                    hideHeader
+                  />
+                ) : (
+                  <EvaluationReports
+                    applications={applications}
+                    onRefresh={loadApplications}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         );
 
@@ -662,14 +660,14 @@ Esta acción:
           : applicationsToFilter.filter(app => app.status === statusFilter);
 
         return (
-          <div className="space-y-6">
-            {/* Header CalGlobal-style */}
-            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            {/* Encabezado con título, estadísticas y acciones */}
+            <div className="border-b border-gray-200 px-5 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Postulaciones</p>
-                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Postulaciones</h1>
-                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
+                  <h1 className="mt-0.5 text-lg font-bold text-gray-950">Gestión de Postulaciones</h1>
+                  <p className="mt-0.5 text-sm text-gray-500">
                     Mostrando {filteredApplications.length} de {adminApplications.length} postulaciones
                     {statusFilter !== 'all' && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
@@ -678,66 +676,62 @@ Esta acción:
                     )}
                   </p>
                 </div>
-              </div>
-            </section>
-
-            {/* Estadísticas + Actualizar */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-2" aria-label="Resumen de postulaciones">
-                <div className="min-w-[132px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
-                  <div className="flex items-center gap-2">
-                    <FiFileText className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    <p className="min-w-0 truncate text-xs font-semibold">Total Activas</p>
-                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.length}</p>
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <div className="flex flex-wrap gap-2" aria-label="Resumen de postulaciones">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-700">
+                      <div className="flex items-center gap-1.5">
+                        <FiFileText className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        <span className="text-xs font-semibold">Total Activas</span>
+                        <span className="ml-1 text-base font-bold leading-none">{applicationsToFilter.length}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">
+                      <div className="flex items-center gap-1.5">
+                        <FiClock className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        <span className="text-xs font-semibold">Nuevas</span>
+                        <span className="ml-1 text-base font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700">
+                      <div className="flex items-center gap-1.5">
+                        <FiCheckCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        <span className="text-xs font-semibold">Aceptadas</span>
+                        <span className="ml-1 text-base font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-purple-700">
+                      <div className="flex items-center gap-1.5">
+                        <FiUsers className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        <span className="text-xs font-semibold">En Revisión</span>
+                        <span className="ml-1 text-base font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="min-w-[100px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-                  <div className="flex items-center gap-2">
-                    <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    <p className="min-w-0 truncate text-xs font-semibold">Nuevas</p>
-                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
-                  </div>
-                </div>
-                <div className="min-w-[116px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-                  <div className="flex items-center gap-2">
-                    <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    <p className="min-w-0 truncate text-xs font-semibold">Aceptadas</p>
-                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
-                  </div>
-                </div>
-                <div className="min-w-[116px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
-                  <div className="flex items-center gap-2">
-                    <FiUsers className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    <p className="min-w-0 truncate text-xs font-semibold">En Revisión</p>
-                    <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {statusFilter !== 'all' && (
+                  {statusFilter !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter('all')}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      <FiX className="h-4 w-4" aria-hidden="true" />
+                      Limpiar Filtro
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setStatusFilter('all')}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    onClick={loadAdminApplications}
+                    disabled={isLoadingAdminApplications}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
                   >
-                    <FiX className="h-4 w-4" aria-hidden="true" />
-                    Limpiar Filtro
+                    <FiRefreshCw className={`h-4 w-4 ${isLoadingAdminApplications ? 'animate-spin' : ''}`} aria-hidden="true" />
+                    Actualizar
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={loadAdminApplications}
-                  disabled={isLoadingAdminApplications}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-                >
-                  <FiRefreshCw className={`h-4 w-4 ${isLoadingAdminApplications ? 'animate-spin' : ''}`} aria-hidden="true" />
-                  Actualizar
-                </button>
+                </div>
               </div>
             </div>
 
             {/* Tabla de postulaciones */}
-            <Card className="p-6">
+            <div className="p-5">
               <ApplicationsTable
                 applications={filteredApplications}
                 isLoading={isLoadingAdminApplications}
@@ -745,26 +739,26 @@ Esta acción:
                 onArchive={confirmArchive}
                 onDecision={(application) => setDecisionModal({ show: true, application })}
               />
-            </Card>
+            </div>
           </div>
         );
 
       case 'usuarios':
         return (
-          <div className="space-y-6">
-            {/* Header CalGlobal-style */}
-            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            {/* Encabezado con título y pestañas, unificado con el contenido */}
+            <div className="border-b border-gray-200 px-5 py-4">
+              <div className="flex flex-col gap-2">
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
-                  <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
-                  <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Administra el personal del colegio y apoderados</p>
+                  <h1 className="mt-0.5 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
+                  <p className="mt-0.5 text-sm text-gray-500">Administra el personal del colegio y apoderados</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setUserSubsection('staff')}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
                       userSubsection === 'staff'
                         ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
                         : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
@@ -776,7 +770,7 @@ Esta acción:
                   <button
                     type="button"
                     onClick={() => setUserSubsection('guardians')}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
                       userSubsection === 'guardians'
                         ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
                         : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
@@ -787,14 +781,15 @@ Esta acción:
                   </button>
                 </div>
               </div>
-            </section>
-
-            {/* Render appropriate subsection */}
-            {userSubsection === 'staff' ? (
-              <StaffManagement hideHeader />
-            ) : (
-              <GuardianManagement hideHeader />
-            )}
+            </div>
+            {/* Contenido de la subsección */}
+            <div className="p-5">
+              {userSubsection === 'staff' ? (
+                <StaffManagement hideHeader />
+              ) : (
+                <GuardianManagement hideHeader />
+              )}
+            </div>
           </div>
         );
 
