@@ -254,7 +254,7 @@ const AdmissionReportForm: React.FC = () => {
                 newWindow.document.write(`
                     <html>
                         <head>
-                            <title>Informe de Admisión 2025 - ${reportData.subject}</title>
+                            <title>Informe de Admisión 2027 - ${reportData.subject}</title>
                             <style>
                                 body { font-family: Arial, sans-serif; margin: 20px; }
                                 .header { text-align: center; margin-bottom: 30px; }
@@ -307,7 +307,7 @@ const AdmissionReportForm: React.FC = () => {
                     
                     <div className="flex justify-between items-center">
                         <h1 className="text-2xl font-bold text-azul-monte-tabor">
-                            Informe de Admisión 2025
+                            Informe de Admisión 2027
                         </h1>
                         <div className="flex gap-3">
                             <Button
@@ -335,7 +335,7 @@ const AdmissionReportForm: React.FC = () => {
                     {/* Encabezado del informe */}
                     <div className="text-center mb-8 pb-4 border-b-4 border-azul-monte-tabor">
                         <h1 className="text-3xl font-bold text-azul-monte-tabor mb-2">
-                            INFORME ADMISIÓN 2026
+                            INFORME ADMISIÓN 2027
                         </h1>
                         <h2 className="text-xl font-semibold text-gris-piedra">
                             {reportData.subject}
@@ -676,7 +676,7 @@ const AdmissionReportForm: React.FC = () => {
                     <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
                         <p>Fecha de evaluación: {new Date().toLocaleDateString('es-CL')}</p>
                         <p>Evaluador: {reportData.evaluatorName}</p>
-                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión 2025</p>
+                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión 2027</p>
                     </div>
                 </Card>
             </div>

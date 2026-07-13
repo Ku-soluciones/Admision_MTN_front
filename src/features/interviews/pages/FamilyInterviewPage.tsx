@@ -246,18 +246,18 @@ const FamilyInterviewPage: React.FC = () => {
               <h3 className="font-semibold text-azul-monte-tabor">Padre</h3>
               <div>
                 <label className="text-sm font-medium text-gris-piedra">Nombre</label>
-                <p className="text-lg">{evaluation.father?.name || 'No registrado'}</p>
+                <p className="text-lg">{evaluation.application?.father?.fullName || 'No registrado'}</p>
               </div>
-              {evaluation.father?.email && (
+              {evaluation.application?.father?.email && (
                 <div>
                   <label className="text-sm font-medium text-gris-piedra">Email</label>
-                  <p className="text-lg">{evaluation.father.email}</p>
+                  <p className="text-lg">{evaluation.application.father.email}</p>
                 </div>
               )}
-              {evaluation.father?.phone && (
+              {evaluation.application?.father?.phone && (
                 <div>
                   <label className="text-sm font-medium text-gris-piedra">Teléfono</label>
-                  <p className="text-lg">{evaluation.father.phone}</p>
+                  <p className="text-lg">{evaluation.application.father.phone}</p>
                 </div>
               )}
             </div>
@@ -267,18 +267,18 @@ const FamilyInterviewPage: React.FC = () => {
               <h3 className="font-semibold text-azul-monte-tabor">Madre</h3>
               <div>
                 <label className="text-sm font-medium text-gris-piedra">Nombre</label>
-                <p className="text-lg">{evaluation.mother?.name || 'No registrado'}</p>
+                <p className="text-lg">{evaluation.application?.mother?.fullName || 'No registrado'}</p>
               </div>
-              {evaluation.mother?.email && (
+              {evaluation.application?.mother?.email && (
                 <div>
                   <label className="text-sm font-medium text-gris-piedra">Email</label>
-                  <p className="text-lg">{evaluation.mother.email}</p>
+                  <p className="text-lg">{evaluation.application.mother.email}</p>
                 </div>
               )}
-              {evaluation.mother?.phone && (
+              {evaluation.application?.mother?.phone && (
                 <div>
                   <label className="text-sm font-medium text-gris-piedra">Teléfono</label>
-                  <p className="text-lg">{evaluation.mother.phone}</p>
+                  <p className="text-lg">{evaluation.application.mother.phone}</p>
                 </div>
               )}
             </div>
