@@ -368,12 +368,17 @@ const ProfessorDashboard: React.FC = () => {
         window.location.href = appUrls.home;
     };
 
-    // Filtrar secciones según el rol - TEACHER no ve "Mis Entrevistas" ni "Mis Horarios"
+    // Filtrar secciones según el rol
     const filteredSections = baseSections.filter(section => {
+        // TEACHER no ve "Mis Entrevistas" ni "Mis Horarios"
         if (currentProfessor?.role === 'TEACHER') {
             if (section.key === 'entrevistas' || section.key === 'horarios') {
                 return false;
             }
+        }
+        // Solo TEACHER ve "Mis Exámenes" (no CYCLE_DIRECTOR, PSYCHOLOGIST, INTERVIEWER, etc.)
+        if (section.key === 'examenes' && currentProfessor?.role !== 'TEACHER') {
+            return false;
         }
         return true;
     });
@@ -1017,6 +1022,9 @@ const ProfessorDashboard: React.FC = () => {
                                         <div>Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
                                     ) : (
                                         <div>Entrevistador: {interview.interviewerName}</div>
+                                    )}
+                                    {activeInterviewTab === 'familiares' && interview.parentNames && (
+                                        <div className="font-medium mt-1">Padres: {interview.parentNames}</div>
                                     )}
                                 </div>
                             )}

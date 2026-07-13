@@ -201,16 +201,16 @@ const CycleDirectorReportForm: React.FC = () => {
 
     const loadSubjectEvaluations = async (applicationId: number) => {
         try {
-
             // Obtener todas las evaluaciones de esta aplicación desde el backend
             const response = await api.get(`/api/evaluations?applicationId=${applicationId}`);
             const data = response.data;
             const allEvaluations = data.data || data;
 
-
-            // Filtrar solo las evaluaciones académicas completadas
+            // Filtrar solo las evaluaciones académicas completadas de ESTA aplicación
+            // IMPORTANTE: el backend usa 'type' no 'evaluationType'
             const subjectEvals = allEvaluations.filter((evalItem: any) =>
-                ['MATHEMATICS_EXAM', 'LANGUAGE_EXAM', 'ENGLISH_EXAM'].includes(evalItem.evaluationType) &&
+                evalItem.applicationId === applicationId &&
+                ['MATHEMATICS_EXAM', 'LANGUAGE_EXAM', 'ENGLISH_EXAM'].includes(evalItem.type) &&
                 evalItem.status === 'COMPLETED'
             );
 
@@ -218,12 +218,12 @@ const CycleDirectorReportForm: React.FC = () => {
             const mappedEvals = subjectEvals.map((evalItem: any) => ({
                 id: evalItem.id,
                 applicationId: evalItem.applicationId,
-                evaluationType: evalItem.evaluationType,
+                evaluationType: evalItem.type, // Usar 'type' del backend
                 status: evalItem.status,
                 score: evalItem.score,
-                maxScore: evalItem.maxScore || getMaxScoreForType(evalItem.evaluationType),
+                maxScore: evalItem.maxScore || getMaxScoreForType(evalItem.type),
                 observations: evalItem.observations || '',
-                recommendations: evalItem.recommendations || '',
+                recommendations: evalItem.recommendations || evalItem.observations || '',
                 strengths: evalItem.strengths || '',
                 areasForImprovement: evalItem.areasForImprovement || '',
                 studentName: evalItem.student ? `${evalItem.student.firstName} ${evalItem.student.lastName}` : '',
@@ -231,7 +231,6 @@ const CycleDirectorReportForm: React.FC = () => {
             }));
 
             setSubjectEvaluations(mappedEvals as any);
-
         } catch (error) {
             addNotification({
                 type: 'warning',
@@ -246,6 +245,7 @@ const CycleDirectorReportForm: React.FC = () => {
         const evaluationTypes = ['MATHEMATICS_EXAM', 'LANGUAGE_EXAM', 'ENGLISH_EXAM'];
 
         return subjects.map((subject, index) => {
+            // Buscar por evaluationType (que ahora viene del mapeo como 'type')
             const evaluation = subjectEvaluations.find(evalItem =>
                 evalItem.evaluationType === evaluationTypes[index]
             );
@@ -477,7 +477,7 @@ const CycleDirectorReportForm: React.FC = () => {
                                 <Input
                                     value={reportData.gradeApplied}
                                     onChange={(e) => updateReportData('gradeApplied', e.target.value)}
-                                    placeholder="Ej: 1º Básico 2025"
+                                    placeholder="Ej: 1º Básico 2027"
                                 />
                             </div>
                         </div>
