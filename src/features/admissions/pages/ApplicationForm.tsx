@@ -19,6 +19,7 @@ import { checkStudentRutExists } from '../services/studentService';
 import { isValidRut, RUT_ERROR_MESSAGES } from '../../../packages/shared-ui/src/utils/rutUtils';
 import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
+import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -56,23 +57,26 @@ const schoolOptions = [
     { value: 'FEMALE', label: 'Femenino' }
 ];
 
-const documentTypes = [
-    { key: 'BIRTH_CERTIFICATE', label: 'Certificado de Nacimiento', required: true },
-    { key: 'GRADES_2023', label: 'Certificado de Estudios 2023 (si aplica)', required: true },
-    { key: 'GRADES_2024', label: 'Certificado de Estudios 2024', required: true },
-    { key: 'GRADES_2025_SEMESTER_1', label: 'Certificado de Estudios primer semestre 2025', required: true },
-    { key: 'PERSONALITY_REPORT_2024', label: 'Informe de Personalidad 2024', required: false },
-    { key: 'PERSONALITY_REPORT_2025_SEMESTER_1', label: 'Informe de Personalidad primer semestre 2025', required: false },
-    { key: 'STUDENT_PHOTO', label: 'Fotografía del Postulante', required: false },
-    { key: 'BAPTISM_CERTIFICATE', label: 'Certificado de Bautismo', required: false },
-    { key: 'PREVIOUS_SCHOOL_REPORT', label: 'Informe de Jardín/Colegio Anterior', required: false },
-    { key: 'MEDICAL_CERTIFICATE', label: 'Certificado Médico', required: false },
-    { key: 'PSYCHOLOGICAL_REPORT', label: 'Informe Psicológico (si aplica)', required: false }
-];
+// Documentos con labels dinámicos basados en el año ACTUAL
+const getDocumentTypesConfig = () => {
+    const currentYear = new Date().getFullYear();
+    const year1 = currentYear - 1;
+    const year2 = currentYear - 2;
+
+    return [
+        { key: DocumentType.BIRTH_CERTIFICATE, label: 'Certificado de Nacimiento', required: true },
+        { key: DocumentType.GRADES_YEAR_2, label: `Certificado de Estudios ${year2}`, required: true },
+        { key: DocumentType.GRADES_YEAR_1, label: `Certificado de Estudios ${year1}`, required: true },
+        { key: DocumentType.GRADES_SEMESTER_1, label: `Certificado de Estudios ${currentYear} - Primer Semestre`, required: true },
+        { key: DocumentType.PERSONALITY_YEAR_1, label: `Informe de Personalidad ${year1}`, required: false },
+        { key: DocumentType.PERSONALITY_SEMESTER_1, label: `Informe de Personalidad ${currentYear} - Primer Semestre`, required: false },
+        { key: DocumentType.MEDICAL_CERTIFICATE, label: 'Certificado Médico', required: false },
+        { key: DocumentType.PSYCHOLOGICAL_REPORT, label: 'Informe Psicológico (si aplica)', required: false }
+    ];
+};
 
 const getDocumentLabel = (documentType: string): string => {
-    const doc = documentTypes.find(d => d.key === documentType);
-    return doc ? doc.label : documentType;
+    return getDocumentTypeLabel(documentType as DocumentType);
 };
 
 
@@ -2450,7 +2454,7 @@ const ApplicationForm: React.FC = () => {
                                     <div className="mb-6">
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Obligatorios</h4>
                                         <div className="space-y-3">
-                                            {documentTypes.filter(doc => doc.required).map(doc => (
+                                            {getDocumentTypesConfig().filter(doc => doc.required).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg bg-red-50">
                                                     <label className="font-medium">
                                                         {doc.label} <span className="text-rojo-sagrado">*</span>
@@ -2478,7 +2482,7 @@ const ApplicationForm: React.FC = () => {
                                     <div>
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Opcionales</h4>
                                         <div className="space-y-3">
-                                            {documentTypes.filter(doc => !doc.required).map(doc => (
+                                            {getDocumentTypesConfig().filter(doc => !doc.required).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg">
                                                     <label className="font-medium">{doc.label}</label>
                                                     <div className="flex items-center gap-2">

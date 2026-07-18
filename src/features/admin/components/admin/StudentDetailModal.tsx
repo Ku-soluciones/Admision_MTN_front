@@ -1441,6 +1441,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     // Helper function to classify academic documents (grades only)
     const isAcademicDocument = (doc: any): boolean => {
         const academicTypes = [
+            // Nuevos tipos
+            DocumentType.GRADES_YEAR_2,
+            DocumentType.GRADES_YEAR_1,
+            DocumentType.GRADES_SEMESTER_1,
+            // Tipos antiguos para backward compatibility
             DocumentType.GRADES_2023,
             DocumentType.GRADES_2024,
             DocumentType.GRADES_2025_SEMESTER_1

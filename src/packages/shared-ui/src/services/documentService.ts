@@ -31,22 +31,32 @@ export interface UploadResponse {
     document?: DocumentResponse;
 }
 
-export const DOCUMENT_TYPES = {
-    // Documentos obligatorios
-    BIRTH_CERTIFICATE: 'Certificado de Nacimiento',
-    GRADES_2023: 'Notas 2023',
-    GRADES_2024: 'Notas 2024',
-    GRADES_2025_SEMESTER_1: 'Notas 1er Semestre 2025',
-    PERSONALITY_REPORT_2024: 'Informe de Personalidad 2024',
-    PERSONALITY_REPORT_2025_SEMESTER_1: 'Informe de Personalidad 1er Semestre 2025',
-    
-    // Documentos opcionales
-    STUDENT_PHOTO: 'Foto del Estudiante',
-    BAPTISM_CERTIFICATE: 'Certificado de Bautismo',
-    PREVIOUS_SCHOOL_REPORT: 'Informe Colegio Anterior',
-    MEDICAL_CERTIFICATE: 'Certificado Médico',
-    PSYCHOLOGICAL_REPORT: 'Informe Psicológico'
-} as const;
+// Usar los tipos dinámicos del archivo de tipos
+import { getDocumentTypeLabel, getTargetYear } from '../types/document';
+
+// DOCUMENT_TYPES ahora usa labels dinámicos basados en año actual
+export const getDocumentTypesWithLabels = () => {
+    const currentYear = new Date().getFullYear();
+    const year1 = currentYear - 1;
+    const year2 = currentYear - 2;
+
+    return {
+        // Documentos obligatorios
+        BIRTH_CERTIFICATE: 'Certificado de Nacimiento',
+        GRADES_YEAR_2: `Notas ${year2}`,
+        GRADES_YEAR_1: `Notas ${year1}`,
+        GRADES_SEMESTER_1: `Notas ${currentYear} - Primer Semestre`,
+
+        // Documentos opcionales
+        PERSONALITY_YEAR_1: `Informe de Personalidad ${year1}`,
+        PERSONALITY_SEMESTER_1: `Informe de Personalidad ${currentYear} - Primer Semestre`,
+        MEDICAL_CERTIFICATE: 'Certificado Médico',
+        PSYCHOLOGICAL_REPORT: 'Informe Psicológico'
+    };
+};
+
+// Para compatibilidad hacia atrás
+export const DOCUMENT_TYPES = getDocumentTypesWithLabels();
 
 export const ALLOWED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -353,13 +363,18 @@ class DocumentService {
                     error: 'La foto del estudiante debe ser una imagen (JPG, PNG)'
                 };
             }
-            
+
             if (file.size > 2 * 1024 * 1024) { // 2MB para fotos
                 warnings.push('La foto es bastante grande. Se recomienda una imagen más pequeña para mejor rendimiento.');
             }
         }
 
-        if ([DocumentType.GRADES_2023, DocumentType.GRADES_2024, DocumentType.GRADES_2025_SEMESTER_1].includes(documentType)) {
+        // Validación para tipos de notas (nuevos y antiguos para backward compatibility)
+        const gradesTypes = [
+            DocumentType.GRADES_2023, DocumentType.GRADES_2024, DocumentType.GRADES_2025_SEMESTER_1,
+            DocumentType.GRADES_YEAR_2, DocumentType.GRADES_YEAR_1, DocumentType.GRADES_SEMESTER_1
+        ];
+        if (gradesTypes.includes(documentType)) {
             if (file.type !== 'application/pdf') {
                 warnings.push('Se recomienda que las notas estén en formato PDF para mejor legibilidad.');
             }
@@ -371,8 +386,12 @@ class DocumentService {
         };
     }
 
-    // Crear datos mock para desarrollo
+    // Crear datos mock para desarrollo (usa tipos nuevos)
     createMockDocuments(applicationId: number): Document[] {
+        const targetYear = getTargetYear();
+        const year1 = targetYear - 1;
+        const year2 = targetYear - 2;
+
         return [
             {
                 id: 1,
@@ -388,25 +407,37 @@ class DocumentService {
             },
             {
                 id: 2,
-                fileName: 'notas_2024_juan_perez.pdf',
-                originalName: 'Notas 2024 - Juan Pérez.pdf',
-                filePath: '/uploads/documents/notas_2024_1.pdf',
+                fileName: `notas_${year1}_juan_perez.pdf`,
+                originalName: `Notas ${year1} - Juan Pérez.pdf`,
+                filePath: '/uploads/documents/notas_1.pdf',
                 fileSize: 512000,
                 contentType: 'application/pdf',
-                documentType: DocumentType.GRADES_2024,
+                documentType: DocumentType.GRADES_YEAR_1,
                 isRequired: true,
                 createdAt: new Date().toISOString(),
                 applicationId
             },
             {
                 id: 3,
-                fileName: 'foto_juan_perez.jpg',
-                originalName: 'Foto Juan Pérez.jpg',
-                filePath: '/uploads/documents/foto_1.jpg',
-                fileSize: 156780,
-                contentType: 'image/jpeg',
-                documentType: DocumentType.STUDENT_PHOTO,
-                isRequired: false,
+                fileName: `notas_${year2}_juan_perez.pdf`,
+                originalName: `Notas ${year2} - Juan Pérez.pdf`,
+                filePath: '/uploads/documents/notas_2.pdf',
+                fileSize: 512000,
+                contentType: 'application/pdf',
+                documentType: DocumentType.GRADES_YEAR_2,
+                isRequired: true,
+                createdAt: new Date().toISOString(),
+                applicationId
+            },
+            {
+                id: 4,
+                fileName: `notas_${targetYear}_sem1_juan_perez.pdf`,
+                originalName: `Notas ${targetYear} Semestre 1 - Juan Pérez.pdf`,
+                filePath: '/uploads/documents/notas_sem1.pdf',
+                fileSize: 512000,
+                contentType: 'application/pdf',
+                documentType: DocumentType.GRADES_SEMESTER_1,
+                isRequired: true,
                 createdAt: new Date().toISOString(),
                 applicationId
             }
