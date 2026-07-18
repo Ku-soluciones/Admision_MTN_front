@@ -3,9 +3,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Card from '../../../admin/components/ui/Card';
 import Button from '../../../admin/components/ui/Button';
 import Input from '../../../admissions/components/ui/Input';
+import TextArea from '../../../admin/components/ui/TextArea';
+import StepWizard from '../../../admin/components/ui/StepWizard';
 import { ArrowLeftIcon, SaveIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
 import { useNotifications } from '../../../admin/context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
+import { useAutoSave } from '../../../../packages/shared-ui/src/hooks/useAutoSave';
+import ConfirmDialog from '../../../admissions/components/ui/ConfirmDialog';
+
+// Define wizard steps
+const WIZARD_STEPS = [
+    { id: 'estudiante', title: 'Estudiante' },
+    { id: 'antecedentes', title: 'Antecedentes' },
+    { id: 'familia', title: 'Familia' },
+    { id: 'escolar', title: 'Escolar' },
+    { id: 'expectativas', title: 'Expectativas' },
+    { id: 'observaciones', title: 'Observaciones' }
+];
 
 interface CycleDirectorInterviewData {
     // Datos básicos del estudiante (auto-rellenados)
@@ -107,6 +121,22 @@ const CycleDirectorInterviewForm: React.FC = () => {
         const storedProfessor = localStorage.getItem('currentProfessor');
         return storedProfessor ? JSON.parse(storedProfessor) : null;
     });
+
+    // Auto-save draft to localStorage
+    const autoSave = useAutoSave({
+        key: `cycle_director_interview_${evaluationId}`,
+        data: interviewData,
+        interval: 30000, // 30 seconds
+        enabled: !isLoading && !isSubmitting
+    });
+
+    // Draft restoration dialog
+    const [showDraftDialog, setShowDraftDialog] = useState(false);
+    const [draftRestored, setDraftRestored] = useState(false);
+
+    // Wizard step state
+    const [currentStep, setCurrentStep] = useState(WIZARD_STEPS[0].id);
+    const [isComplete, setIsComplete] = useState(false);
 
     useEffect(() => {
         const loadEvaluation = async () => {
@@ -216,6 +246,40 @@ const CycleDirectorInterviewForm: React.FC = () => {
         }
     }, [isLoading, loadError]); // NO incluir addNotification aquí tampoco
 
+    // Effect para detectar y ofrecer restaurar borrador
+    useEffect(() => {
+        if (!isLoading && evaluation && !draftRestored && autoSave.hasDraft) {
+            setShowDraftDialog(true);
+        }
+    }, [isLoading, evaluation, autoSave.hasDraft, draftRestored]);
+
+    // Restaurar borrador
+    const handleRestoreDraft = () => {
+        const savedData = autoSave.restoreDraft();
+        if (savedData) {
+            // Solo restaurar campos editables, mantener datos del estudiante
+            const { studentName, birthDate, age, currentSchool, gradeApplied, ...editableFields } = savedData as CycleDirectorInterviewData;
+            setInterviewData(prev => ({
+                ...prev,
+                ...editableFields
+            }));
+            setDraftRestored(true);
+            addNotification({
+                type: 'success',
+                title: 'Borrador restaurado',
+                message: 'Se recuperó tu trabajo anterior'
+            });
+        }
+        setShowDraftDialog(false);
+    };
+
+    // Descartar borrador
+    const handleDiscardDraft = () => {
+        autoSave.clearDraft();
+        setDraftRestored(true);
+        setShowDraftDialog(false);
+    };
+
     const updateInterviewData = (field: keyof CycleDirectorInterviewData, value: string) => {
         setInterviewData(prev => ({
             ...prev,
@@ -280,14 +344,18 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
 
             
             await professorEvaluationService.updateEvaluation(evaluation.id, updatedEvaluation);
-            
+
+            // Clear draft after successful save
+            autoSave.clearDraft();
+
+            setIsComplete(true);
             addNotification({
                 type: 'success',
                 title: 'Entrevista guardada',
                 message: 'La entrevista del Director de Ciclo ha sido guardada exitosamente'
             });
-            
-            // Navegar de regreso al dashboard después de guardar exitosamente
+
+            // Navigate back to dashboard after successful save
             setTimeout(() => {
                 navigate('/profesor');
             }, 1500);
@@ -312,16 +380,24 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                     <html>
                         <head>
                             <title>Pauta Entrevista - Examen de Admisión ${new Date().getFullYear() + 1}</title>
+                            <link rel="preconnect" href="https://fonts.googleapis.com">
+                            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                            <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
                             <style>
-                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                :root {
+                                    --azul-monte-tabor: #1e3a8a;
+                                    --dorado-nazaret: #f59e0b;
+                                    --gris-piedra: #6b7280;
+                                }
+                                body { font-family: 'Montserrat', sans-serif; margin: 20px; color: #1f2937; }
                                 .header { text-align: center; margin-bottom: 30px; }
                                 .section { margin-bottom: 30px; page-break-inside: avoid; }
-                                .section-title { font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+                                .section-title { font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid var(--azul-monte-tabor); padding-bottom: 5px; color: var(--azul-monte-tabor); }
                                 .field { margin-bottom: 15px; }
-                                .field-label { font-weight: bold; margin-bottom: 5px; display: block; }
+                                .field-label { font-weight: 600; margin-bottom: 5px; display: block; color: var(--gris-piedra); }
                                 textarea, input { border: none; outline: none; font-family: inherit; width: 100%; min-height: 20px; }
                                 .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-                                .question { font-style: italic; margin-bottom: 10px; color: #444; }
+                                .question { font-style: italic; margin-bottom: 10px; color: var(--gris-piedra); }
                                 @media print { .no-print { display: none; } }
                             </style>
                         </head>
@@ -362,10 +438,23 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                         Volver al Dashboard
                     </button>
                     
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-azul-monte-tabor">
-                            Pauta Entrevista - Director de Ciclo
-                        </h1>
+                    <div className="flex justify-between items-center flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-azul-monte-tabor">
+                                Pauta Entrevista - Director de Ciclo
+                            </h1>
+                            {/* Auto-save indicator */}
+                            {autoSave.lastSaved && !autoSave.isSaving && (
+                                <p className="text-xs text-gris-piedra mt-1">
+                                    ✓ Guardado automáticamente hace {Math.round((Date.now() - autoSave.lastSaved.getTime()) / 1000)}s
+                                </p>
+                            )}
+                            {autoSave.isSaving && (
+                                <p className="text-xs text-dorado-nazaret mt-1">
+                                    Guardando...
+                                </p>
+                            )}
+                        </div>
                         <div className="flex gap-3 no-print">
                             <Button
                                 variant="outline"
@@ -390,7 +479,7 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                 {/* Formulario de entrevista */}
                 <Card className="p-8" id="interview-form">
                     {/* Encabezado del formulario */}
-                    <div className="text-center mb-8 header">
+                    <div className="text-center mb-6 header">
                         <h1 className="text-2xl font-bold text-azul-monte-tabor mb-2">
                             PAUTA ENTREVISTA
                         </h1>
@@ -399,348 +488,322 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                         </h2>
                     </div>
 
-                    {/* Información del estudiante */}
-                    <div className="student-info mb-8">
-                        <div className="space-y-4">
-                            <div className="field">
-                                <label className="field-label">
-                                    Nombre <span className="text-xs text-gray-500">(desde postulación)</span>
-                                </label>
-                                <div className="px-3 py-2 font-medium text-gray-900">
-                                    {interviewData.studentName || 'Se obtiene automáticamente desde la postulación'}
+                    {/* Wizard */}
+                    <StepWizard
+                        steps={WIZARD_STEPS}
+                        currentStep={currentStep}
+                        onStepChange={setCurrentStep}
+                        onComplete={handleSave}
+                        isComplete={isComplete}
+                    >
+                        {/* Step 1: Estudiante */}
+                        {currentStep === 'estudiante' && (
+                            <div className="space-y-6">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                    <p className="text-sm text-blue-800">
+                                        Los datos del estudiante se completan automáticamente desde la postulación.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Nombre</label>
+                                            <div className="px-3 py-2 font-medium text-gray-900 bg-gray-100 rounded-lg">
+                                                {interviewData.studentName || 'No disponible'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Fecha de nacimiento</label>
+                                            <div className="px-3 py-2 text-gray-900 bg-gray-100 rounded-lg">
+                                                {interviewData.birthDate ? new Date(interviewData.birthDate).toLocaleDateString('es-CL') : 'No disponible'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Edad</label>
+                                            <div className="px-3 py-2 font-medium text-azul-monte-tabor bg-blue-50 rounded-lg">
+                                                {interviewData.age ? `${interviewData.age} años` : 'No disponible'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Colegio actual</label>
+                                            <div className="px-3 py-2 text-gray-900 bg-gray-100 rounded-lg">
+                                                {interviewData.currentSchool || 'No disponible'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-500 mb-1">Curso al que postula</label>
+                                            <div className="px-3 py-2 font-medium text-azul-monte-tabor bg-blue-50 rounded-lg">
+                                                {interviewData.gradeApplied || 'No disponible'}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div className="field">
-                                <label className="field-label">
-                                    Fecha de nacimiento <span className="text-xs text-gray-500">(desde postulación)</span>
-                                </label>
-                                <Input
-                                    type="date"
-                                    value={interviewData.birthDate}
-                                    readOnly
-                                    className="bg-gray-50"
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <label className="field-label">
-                                    Edad <span className="text-xs text-gray-500">(calculada automáticamente)</span>
-                                </label>
-                                <Input
-                                    value={interviewData.age ? `${interviewData.age} años` : ''}
-                                    readOnly
-                                    className="bg-gray-50 font-medium"
-                                    placeholder="Se calcula desde fecha de nacimiento"
-                                />
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div className="field">
-                                <label className="field-label">
-                                    Colegio actual <span className="text-xs text-gray-500">(desde postulación)</span>
-                                </label>
-                                <div className="px-3 py-2 text-gray-900">
-                                    {interviewData.currentSchool || 'Se obtiene automáticamente desde la postulación'}
+                        )}
+
+                        {/* Step 2: Antecedentes */}
+                        {currentStep === 'antecedentes' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="field-label">Antecedentes relevantes</label>
+                                    <p className="text-xs text-gray-500 mb-2">Información relevante sobre el estudiante que deba conocer antes de la entrevista.</p>
+                                    <textarea
+                                        rows={5}
+                                        value={interviewData.relevantBackground}
+                                        onChange={(e) => updateInterviewData('relevantBackground', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Ej: repitencia, cambios de colegio, situación familiar especial, etc."
+                                    />
                                 </div>
                             </div>
-                            
-                            <div className="field">
-                                <label className="field-label">
-                                    Curso al que postula <span className="text-xs text-gray-500">(desde postulación)</span>
-                                </label>
-                                <div className="px-3 py-2 text-gray-900">
-                                    {interviewData.gradeApplied || 'Se obtiene automáticamente desde la postulación'}
+                        )}
+
+                        {/* Step 3: Familia */}
+                        {currentStep === 'familia' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="question mb-2">Cuéntame de tu familia: ¿Quiénes se llevan mejor?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.familyDescription}
+                                        onChange={(e) => updateInterviewData('familyDescription', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Descripción de la dinámica familiar..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué cosas te gusta hacer con tu familia?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.familyActivities}
+                                        onChange={(e) => updateInterviewData('familyActivities', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Actividades familiares..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">Si tus papás se enojan por algo contigo ¿Qué pasa?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.parentalDiscipline}
+                                        onChange={(e) => updateInterviewData('parentalDiscipline', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Manejo de disciplina parental..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Cómo viven la vida espiritual en tu familia?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.spiritualLife}
+                                        onChange={(e) => updateInterviewData('spiritualLife', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Vida espiritual familiar..."
+                                    />
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                        )}
 
-                    {/* Antecedentes relevantes */}
-                    <div className="section mb-8">
-                        <h2 className="section-title">Antecedentes relevantes</h2>
-                        <div className="field">
-                            <textarea
-                                rows={4}
-                                value={interviewData.relevantBackground}
-                                onChange={(e) => updateInterviewData('relevantBackground', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                placeholder="Información relevante sobre el estudiante..."
-                            />
-                        </div>
-                    </div>
+                        {/* Step 4: Escolar */}
+                        {currentStep === 'escolar' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="question mb-2">¿Cómo es tu colegio actual?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.currentSchoolDescription}
+                                        onChange={(e) => updateInterviewData('currentSchoolDescription', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Descripción del colegio actual..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué te gusta de tu colegio? ¿Qué no te gusta tanto?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.schoolLikesAndDislikes}
+                                        onChange={(e) => updateInterviewData('schoolLikesAndDislikes', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Gustos y disgustos del colegio actual..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Cómo te llevas con tus compañeros? ¿Qué piensan ellos de ti?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.peerRelationships}
+                                        onChange={(e) => updateInterviewData('peerRelationships', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Relaciones con compañeros..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué asignaturas son las que más/menos te gustan?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.subjectPreferences}
+                                        onChange={(e) => updateInterviewData('subjectPreferences', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Preferencias de asignaturas..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué piensan tus profesoras de ti?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.teacherOpinions}
+                                        onChange={(e) => updateInterviewData('teacherOpinions', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Opinión de los profesores..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Por qué te cambias de colegio?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.schoolChangeReason}
+                                        onChange={(e) => updateInterviewData('schoolChangeReason', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Razones para el cambio de colegio..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Te gusta hacer trabajos en grupos? ¿Por qué?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.groupWorkPreference}
+                                        onChange={(e) => updateInterviewData('groupWorkPreference', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Preferencias sobre trabajo en grupo..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">Historia de relaciones sociales</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.socialHistory}
+                                        onChange={(e) => updateInterviewData('socialHistory', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Historia de relaciones sociales..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Cómo te describirías a ti mismo/a?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.selfDescription}
+                                        onChange={(e) => updateInterviewData('selfDescription', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Autodescripción..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué cosas te hacen sentir feliz/triste/enojado/asustado?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.emotionalTriggers}
+                                        onChange={(e) => updateInterviewData('emotionalTriggers', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Disparadores emocionales..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">Si tuvieras una varita mágica que te concediera 3 deseos ¿qué le pedirías?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.magicWishes}
+                                        onChange={(e) => updateInterviewData('magicWishes', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Tres deseos mágicos..."
+                                    />
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Área Familiar */}
-                    <div className="section mb-8">
-                        <h2 className="section-title">Área Familiar</h2>
-                        
-                        <div className="space-y-6">
-                            <div className="field">
-                                <div className="question">Cuéntame de tu familia: ¿Quiénes se llevan mejor?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.familyDescription}
-                                    onChange={(e) => updateInterviewData('familyDescription', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Descripción de la dinámica familiar..."
-                                />
+                        {/* Step 5: Expectativas */}
+                        {currentStep === 'expectativas' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="question mb-2">¿Qué sabes de este Colegio?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.schoolKnowledge}
+                                        onChange={(e) => updateInterviewData('schoolKnowledge', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Conocimiento sobre el colegio..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué puedes aportar tú a este Colegio?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.personalContribution}
+                                        onChange={(e) => updateInterviewData('personalContribution', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Aporte personal al colegio..."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="question mb-2">¿Qué no te gustaría que pasara en este cambio de colegio?</div>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.changeConcerns}
+                                        onChange={(e) => updateInterviewData('changeConcerns', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Preocupaciones sobre el cambio..."
+                                    />
+                                </div>
                             </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué cosas te gusta hacer con tu familia?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.familyActivities}
-                                    onChange={(e) => updateInterviewData('familyActivities', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Actividades familiares..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">Si tus papás se enojan por algo contigo ¿Qué pasa?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.parentalDiscipline}
-                                    onChange={(e) => updateInterviewData('parentalDiscipline', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Manejo de disciplina parental..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Cómo viven la vida espiritual en tu familia?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.spiritualLife}
-                                    onChange={(e) => updateInterviewData('spiritualLife', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Vida espiritual familiar..."
-                                />
-                            </div>
-                        </div>
-                    </div>
+                        )}
 
-                    {/* Área Integración/Adaptación al Colegio */}
-                    <div className="section mb-8">
-                        <h2 className="section-title">Área Integración / Adaptación al Colegio</h2>
-                        <p className="text-sm text-gray-600 mb-4">(vinculaciones y relación con la autoridad)</p>
-                        
-                        <div className="space-y-6">
-                            <div className="field">
-                                <div className="question">¿Cómo es tu colegio actual?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.currentSchoolDescription}
-                                    onChange={(e) => updateInterviewData('currentSchoolDescription', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Descripción del colegio actual..."
-                                />
+                        {/* Step 6: Observaciones */}
+                        {currentStep === 'observaciones' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="field-label">Contacto afectivo</label>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.affectiveContact}
+                                        onChange={(e) => updateInterviewData('affectiveContact', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Observaciones sobre el contacto afectivo durante la entrevista..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="field-label">Adaptación a situación entrevista</label>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.interviewAdaptation}
+                                        onChange={(e) => updateInterviewData('interviewAdaptation', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Cómo se adaptó el estudiante a la situación de entrevista..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="field-label">Vocabulario, lenguaje</label>
+                                    <textarea
+                                        rows={3}
+                                        value={interviewData.vocabularyLanguage}
+                                        onChange={(e) => updateInterviewData('vocabularyLanguage', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Observaciones sobre vocabulario y lenguaje del estudiante..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="field-label">Observaciones en el área social/individual</label>
+                                    <textarea
+                                        rows={4}
+                                        value={interviewData.socialIndividualObservations}
+                                        onChange={(e) => updateInterviewData('socialIndividualObservations', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+                                        placeholder="Observaciones generales sobre aspectos sociales e individuales..."
+                                    />
+                                </div>
                             </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué te gusta de tu colegio? ¿Qué no te gusta tanto?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.schoolLikesAndDislikes}
-                                    onChange={(e) => updateInterviewData('schoolLikesAndDislikes', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Gustos y disgustos del colegio actual..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Cómo te llevas con tus compañeros? ¿Qué piensan ellos de ti?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.peerRelationships}
-                                    onChange={(e) => updateInterviewData('peerRelationships', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Relaciones con compañeros..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué asignaturas son las que más/menos te gustan?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.subjectPreferences}
-                                    onChange={(e) => updateInterviewData('subjectPreferences', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Preferencias de asignaturas..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué piensan tus profesoras de ti?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.teacherOpinions}
-                                    onChange={(e) => updateInterviewData('teacherOpinions', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Opinión de los profesores..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Por qué te cambias de colegio?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.schoolChangeReason}
-                                    onChange={(e) => updateInterviewData('schoolChangeReason', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Razones para el cambio de colegio..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Te gusta hacer trabajos en grupos? ¿Por qué?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.groupWorkPreference}
-                                    onChange={(e) => updateInterviewData('groupWorkPreference', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Preferencias sobre trabajo en grupo..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">Historia de relaciones sociales (para los más grandes) ¿Eres una persona de pocos amigos, pero buenos, o eres muy sociable? ¿Cómo ha sido tu historia con los amigos a lo largo del tiempo?</div>
-                                <textarea
-                                    rows={4}
-                                    value={interviewData.socialHistory}
-                                    onChange={(e) => updateInterviewData('socialHistory', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Historia de relaciones sociales..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Cómo te describirías a ti mismo/a? ¿Qué es lo que más te gusta de ti? ¿Cuáles son las cosas que te gustaría seguir trabajando? (para los más grandes)</div>
-                                <textarea
-                                    rows={4}
-                                    value={interviewData.selfDescription}
-                                    onChange={(e) => updateInterviewData('selfDescription', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Autodescripción..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué cosas te hacen sentir feliz/ triste/ enojado/ asustado?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.emotionalTriggers}
-                                    onChange={(e) => updateInterviewData('emotionalTriggers', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Disparadores emocionales..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">Si tuvieras una varita mágica que te concediera 3 deseos ¿qué le pedirías?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.magicWishes}
-                                    onChange={(e) => updateInterviewData('magicWishes', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Tres deseos mágicos..."
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Expectativas del cambio */}
-                    <div className="section mb-8">
-                        <h2 className="section-title">Expectativas del cambio</h2>
-                        
-                        <div className="space-y-6">
-                            <div className="field">
-                                <div className="question">¿Qué sabes de este Colegio?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.schoolKnowledge}
-                                    onChange={(e) => updateInterviewData('schoolKnowledge', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Conocimiento sobre el colegio..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué puedes aportar tú a este Colegio?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.personalContribution}
-                                    onChange={(e) => updateInterviewData('personalContribution', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Aporte personal al colegio..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <div className="question">¿Qué no te gustaría que pasara en este cambio de colegio?</div>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.changeConcerns}
-                                    onChange={(e) => updateInterviewData('changeConcerns', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Preocupaciones sobre el cambio..."
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Observaciones */}
-                    <div className="section mb-8">
-                        <h2 className="section-title">Observaciones</h2>
-                        
-                        <div className="space-y-6">
-                            <div className="field">
-                                <label className="field-label">Contacto afectivo</label>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.affectiveContact}
-                                    onChange={(e) => updateInterviewData('affectiveContact', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Observaciones sobre el contacto afectivo durante la entrevista..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <label className="field-label">Adaptación a situación entrevista</label>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.interviewAdaptation}
-                                    onChange={(e) => updateInterviewData('interviewAdaptation', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Cómo se adaptó el estudiante a la situación de entrevista..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <label className="field-label">Vocabulario, lenguaje</label>
-                                <textarea
-                                    rows={3}
-                                    value={interviewData.vocabularyLanguage}
-                                    onChange={(e) => updateInterviewData('vocabularyLanguage', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Observaciones sobre vocabulario y lenguaje del estudiante..."
-                                />
-                            </div>
-                            
-                            <div className="field">
-                                <label className="field-label">Observaciones en el área social/ individual</label>
-                                <textarea
-                                    rows={4}
-                                    value={interviewData.socialIndividualObservations}
-                                    onChange={(e) => updateInterviewData('socialIndividualObservations', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                    placeholder="Observaciones generales sobre aspectos sociales e individuales..."
-                                />
-                            </div>
-                        </div>
-                    </div>
+                        )}
+                    </StepWizard>
 
                     {/* Información adicional para el pie */}
                     <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
@@ -751,6 +814,18 @@ Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
                         <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {new Date().getFullYear() + 1}</p>
                     </div>
                 </Card>
+
+                {/* Dialog para restaurar borrador */}
+                <ConfirmDialog
+                    isOpen={showDraftDialog}
+                    title="¿Restaurar borrador?"
+                    message="Encontramos un borrador guardado previamente. ¿Deseas continuar donde lo dejaste?"
+                    confirmText="Restaurar borrador"
+                    cancelText="Descartar y comenzar de nuevo"
+                    variant="warning"
+                    onConfirm={handleRestoreDraft}
+                    onClose={handleDiscardDraft}
+                />
             </div>
         </div>
     );

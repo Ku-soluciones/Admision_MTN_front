@@ -255,16 +255,23 @@ const AdmissionReportForm: React.FC = () => {
                     <html>
                         <head>
                             <title>Informe de Admisión 2027 - ${reportData.subject}</title>
+                            <link rel="preconnect" href="https://fonts.googleapis.com">
+                            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                            <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
                             <style>
-                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                :root {
+                                    --azul-monte-tabor: #1e3a8a;
+                                    --gris-piedra: #6b7280;
+                                }
+                                body { font-family: 'Montserrat', sans-serif; margin: 20px; color: #1f2937; }
                                 .header { text-align: center; margin-bottom: 30px; }
                                 .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 10px; margin-bottom: 20px; }
                                 .section { margin-bottom: 30px; }
-                                .section-title { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #000; }
+                                .section-title { font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid var(--azul-monte-tabor); color: var(--azul-monte-tabor); }
                                 .table { width: 100%; border-collapse: collapse; }
-                                .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
+                                .table th, .table td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
                                 .field { margin-bottom: 10px; }
-                                .field-label { font-weight: bold; }
+                                .field-label { font-weight: 600; color: var(--gris-piedra); }
                                 textarea, input { border: none; outline: none; font-family: inherit; }
                             </style>
                         </head>
@@ -343,7 +350,7 @@ const AdmissionReportForm: React.FC = () => {
                     </div>
 
                     {/* Información del estudiante - Vertical */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-8 border-l-4 border-azul-monte-tabor">
+                    <div className="bg-blue-50 rounded-lg p-6 mb-8">
                         <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Información del Estudiante</h3>
                         <div className="space-y-3">
                             <div className="grid grid-cols-3 gap-2 items-center">

@@ -3,9 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Card from '../../../admin/components/ui/Card';
 import Button from '../../../admin/components/ui/Button';
 import Input from '../../../admissions/components/ui/Input';
+import TextArea from '../../../admin/components/ui/TextArea';
+import StepWizard from '../../../admin/components/ui/StepWizard';
 import { ArrowLeftIcon, SaveIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
 import { useNotifications } from '../../../admin/context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
+import { useAutoSave } from '../../../../packages/shared-ui/src/hooks/useAutoSave';
 import api from '../../../admin/services/api';
 
 interface CycleDirectorReportData {
@@ -38,6 +41,13 @@ interface SubjectResult {
     recommendations: string;
 }
 
+const WIZARD_STEPS = [
+    { id: 'student', title: 'Estudiante' },
+    { id: 'antecedentes', title: 'Antecedentes' },
+    { id: 'academico', title: 'Académico' },
+    { id: 'recomendaciones', title: 'Recomendaciones' }
+];
+
 const CycleDirectorReportForm: React.FC = () => {
     const { evaluationId } = useParams<{ evaluationId: string }>();
     const navigate = useNavigate();
@@ -62,6 +72,16 @@ const CycleDirectorReportForm: React.FC = () => {
         academicBackground: '',
         finalDecision: '',
         entryCourse: ''
+    });
+
+    const [currentStep, setCurrentStep] = useState(WIZARD_STEPS[0].id);
+
+    // Auto-guardado cada 30 segundos
+    useAutoSave({
+        key: `cycle-director-report-${evaluationId}`,
+        data: reportData,
+        interval: 30000,
+        enabled: !isLoading
     });
 
     // Obtener profesor actual del localStorage
@@ -344,16 +364,23 @@ const CycleDirectorReportForm: React.FC = () => {
                     <html>
                         <head>
                             <title>Informe Admisión ${new Date().getFullYear() + 1} - Director de Ciclo</title>
+                            <link rel="preconnect" href="https://fonts.googleapis.com">
+                            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                            <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
                             <style>
-                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                :root {
+                                    --azul-monte-tabor: #1e3a8a;
+                                    --gris-piedra: #6b7280;
+                                }
+                                body { font-family: 'Montserrat', sans-serif; margin: 20px; color: #1f2937; }
                                 .header { text-align: center; margin-bottom: 30px; }
                                 .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 10px; margin-bottom: 20px; }
                                 .section { margin-bottom: 30px; }
-                                .section-title { font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 5px; }
+                                .section-title { font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid var(--azul-monte-tabor); padding-bottom: 5px; color: var(--azul-monte-tabor); }
                                 .table { width: 100%; border-collapse: collapse; }
-                                .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
+                                .table th, .table td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
                                 .field { margin-bottom: 15px; }
-                                .field-label { font-weight: bold; margin-bottom: 5px; }
+                                .field-label { font-weight: 600; margin-bottom: 5px; color: var(--gris-piedra); }
                                 textarea, input { border: none; outline: none; font-family: inherit; width: 100%; }
                             </style>
                         </head>
@@ -430,221 +457,177 @@ const CycleDirectorReportForm: React.FC = () => {
                         </h1>
                     </div>
 
-                    {/* Información del estudiante */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre</label>
-                                <Input
-                                    value={reportData.studentName}
-                                    onChange={(e) => updateReportData('studentName', e.target.value)}
-                                    className="font-medium"
-                                    placeholder="Nombre completo del estudiante"
-                                />
+                    <StepWizard
+                        steps={WIZARD_STEPS}
+                        currentStep={currentStep}
+                        onStepChange={setCurrentStep}
+                        onComplete={handleSave}
+                        isComplete={reportData.finalDecision !== ''}
+                    >
+                        {/* Paso 1: Información del estudiante */}
+                        {currentStep === 'student' && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-bold text-azul-monte-tabor border-b-2 border-azul-monte-tabor pb-2">
+                                    INFORMACIÓN DEL ESTUDIANTE
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <Input
+                                        label="Nombre"
+                                        value={reportData.studentName}
+                                        onChange={(e) => updateReportData('studentName', e.target.value)}
+                                        placeholder="Nombre completo del estudiante"
+                                    />
+                                    <Input
+                                        label="Fecha de Nacimiento"
+                                        type="date"
+                                        value={reportData.birthDate}
+                                        onChange={(e) => updateReportData('birthDate', e.target.value)}
+                                    />
+                                    <Input
+                                        label="Edad"
+                                        value={reportData.age}
+                                        onChange={(e) => updateReportData('age', e.target.value)}
+                                        placeholder="Edad en años"
+                                    />
+                                    <Input
+                                        label="Colegio Actual"
+                                        value={reportData.currentSchool}
+                                        onChange={(e) => updateReportData('currentSchool', e.target.value)}
+                                        placeholder="Nombre del colegio actual"
+                                    />
+                                    <Input
+                                        label="Curso al que postula"
+                                        value={reportData.gradeApplied}
+                                        onChange={(e) => updateReportData('gradeApplied', e.target.value)}
+                                        placeholder="Ej: 1º Básico 2027"
+                                    />
+                                </div>
                             </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Fecha de Nacimiento</label>
-                                <Input
-                                    type="date"
-                                    value={reportData.birthDate}
-                                    onChange={(e) => updateReportData('birthDate', e.target.value)}
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Edad</label>
-                                <Input
-                                    value={reportData.age}
-                                    onChange={(e) => updateReportData('age', e.target.value)}
-                                    placeholder="Edad en años"
-                                />
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Colegio Actual</label>
-                                <Input
-                                    value={reportData.currentSchool}
-                                    onChange={(e) => updateReportData('currentSchool', e.target.value)}
-                                    placeholder="Nombre del colegio actual"
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Curso al que postula</label>
-                                <Input
-                                    value={reportData.gradeApplied}
-                                    onChange={(e) => updateReportData('gradeApplied', e.target.value)}
-                                    placeholder="Ej: 1º Básico 2027"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                        )}
 
-                    {/* Antecedentes relevantes */}
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-4 border-b-2 border-azul-monte-tabor pb-2">
-                            ANTECEDENTES RELEVANTES
-                        </h2>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Fortalezas</label>
-                                <textarea
-                                    rows={4}
+                        {/* Paso 2: Antecedentes relevantes */}
+                        {currentStep === 'antecedentes' && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-bold text-azul-monte-tabor border-b-2 border-azul-monte-tabor pb-2">
+                                    ANTECEDENTES RELEVANTES
+                                </h2>
+                                <TextArea
+                                    label="Fortalezas"
                                     value={reportData.strengths}
                                     onChange={(e) => updateReportData('strengths', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     placeholder="Describe las fortalezas observadas..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Dificultades</label>
-                                <textarea
                                     rows={4}
+                                />
+                                <TextArea
+                                    label="Dificultades"
                                     value={reportData.difficulties}
                                     onChange={(e) => updateReportData('difficulties', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     placeholder="Describe las dificultades observadas..."
+                                    rows={4}
                                 />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Adecuación a la entrevista</label>
-                                <textarea
-                                    rows={3}
+                                <TextArea
+                                    label="Adecuación a la entrevista"
                                     value={reportData.interviewAdaptation}
                                     onChange={(e) => updateReportData('interviewAdaptation', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     placeholder="Describe cómo se adaptó el estudiante a la entrevista..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Rasgos sobresalientes</label>
-                                <textarea
                                     rows={3}
+                                />
+                                <TextArea
+                                    label="Rasgos sobresalientes"
                                     value={reportData.outstandingTraits}
                                     onChange={(e) => updateReportData('outstandingTraits', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     placeholder="Menciona rasgos sobresalientes del estudiante..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Familiares</label>
-                                <textarea
                                     rows={3}
+                                />
+                                <TextArea
+                                    label="Familiares"
                                     value={reportData.familyBackground}
                                     onChange={(e) => updateReportData('familyBackground', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     placeholder="Información relevante sobre el contexto familiar..."
+                                    rows={3}
                                 />
                             </div>
-                        </div>
-                    </div>
+                        )}
 
-                    {/* Antecedentes académicos */}
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-4 border-b-2 border-azul-monte-tabor pb-2">
-                            ANTECEDENTES ACADÉMICOS
-                        </h2>
-                        
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Antecedentes relevantes</label>
-                            <textarea
-                                rows={5}
-                                value={reportData.academicBackground}
-                                onChange={(e) => updateReportData('academicBackground', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                placeholder="Describe los antecedentes académicos relevantes del estudiante..."
-                            />
-                        </div>
-                    </div>
+                        {/* Paso 3: Antecedentes académicos */}
+                        {currentStep === 'academico' && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-bold text-azul-monte-tabor border-b-2 border-azul-monte-tabor pb-2">
+                                    ANTECEDENTES ACADÉMICOS
+                                </h2>
+                                <TextArea
+                                    label="Antecedentes relevantes"
+                                    value={reportData.academicBackground}
+                                    onChange={(e) => updateReportData('academicBackground', e.target.value)}
+                                    placeholder="Describe los antecedentes académicos relevantes del estudiante..."
+                                    rows={5}
+                                />
 
-                    {/* Resultados académicos del examen */}
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-4 border-b-2 border-azul-monte-tabor pb-2">
-                            Resultados académicos del examen
-                        </h2>
-                        
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse border border-gray-400">
-                                <thead>
-                                    <tr className="bg-gray-100">
-                                        <th className="border border-gray-400 px-4 py-2 text-left font-bold">ASIGNATURA</th>
-                                        <th className="border border-gray-400 px-4 py-2 text-center font-bold">PORCENTAJE</th>
-                                        <th className="border border-gray-400 px-4 py-2 text-left font-bold">COMENTARIOS</th>
-                                        <th className="border border-gray-400 px-4 py-2 text-left font-bold">ÁREAS A TRABAJAR/ RECOMENDACIONES</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {subjectResults.map((result, index) => (
-                                        <tr key={index}>
-                                            <td className="border border-gray-400 px-4 py-2 font-medium">
-                                                {result.subject}
-                                            </td>
-                                            <td className="border border-gray-400 px-4 py-2 text-center font-semibold text-blue-600">
-                                                {result.percentage > 0 ? `${result.percentage}%` : '-'}
-                                            </td>
-                                            <td className="border border-gray-400 px-4 py-2">
-                                                {result.comments || 'Sin evaluación'}
-                                            </td>
-                                            <td className="border border-gray-400 px-4 py-2">
-                                                {result.recommendations || 'Sin recomendaciones'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                {/* Tabla de resultados académicos */}
+                                <div className="mt-6">
+                                    <h3 className="text-md font-bold text-azul-monte-tabor mb-4">Resultados académicos del examen</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse border border-gray-400">
+                                            <thead>
+                                                <tr className="bg-gray-100">
+                                                    <th className="border border-gray-400 px-4 py-2 text-left font-bold">ASIGNATURA</th>
+                                                    <th className="border border-gray-400 px-4 py-2 text-center font-bold">PORCENTAJE</th>
+                                                    <th className="border border-gray-400 px-4 py-2 text-left font-bold">COMENTARIOS</th>
+                                                    <th className="border border-gray-400 px-4 py-2 text-left font-bold">ÁREAS A TRABAJAR</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {subjectResults.map((result, index) => (
+                                                    <tr key={index}>
+                                                        <td className="border border-gray-400 px-4 py-2 font-medium">
+                                                            {result.subject}
+                                                        </td>
+                                                        <td className="border border-gray-400 px-4 py-2 text-center font-semibold text-blue-600">
+                                                            {result.percentage > 0 ? `${result.percentage}%` : '-'}
+                                                        </td>
+                                                        <td className="border border-gray-400 px-4 py-2">
+                                                            {result.comments || 'Sin evaluación'}
+                                                        </td>
+                                                        <td className="border border-gray-400 px-4 py-2">
+                                                            {result.recommendations || 'Sin recomendaciones'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Información adicional para el pie */}
-                    {/* III. RECOMENDACIONES Section */}
-                    <div className="mt-8">
-                        <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">III. RECOMENDACIONES</h3>
-                        <table className="w-full border-collapse border border-gray-400">
-                            <tbody>
-                                <tr>
-                                    <td className="border border-gray-400 px-4 py-3 bg-gray-100 font-semibold w-1/3">
-                                        1. Aceptación/ No aceptación/ reparos
-                                    </td>
-                                    <td className="border border-gray-400 px-4 py-3">
-                                        <textarea
-                                            value={reportData.finalDecision}
-                                            onChange={(e) => setReportData({ ...reportData, finalDecision: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor min-h-[60px]"
-                                            placeholder="Ingrese la decisión final (Aceptación, No aceptación, Reparos)..."
-                                        />
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="border border-gray-400 px-4 py-3 bg-gray-100 font-semibold w-1/3">
-                                        2. Curso ingreso
-                                    </td>
-                                    <td className="border border-gray-400 px-4 py-3">
-                                        <input
-                                            type="text"
-                                            value={reportData.entryCourse}
-                                            onChange={(e) => setReportData({ ...reportData, entryCourse: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-                                            placeholder="Ej: 1° Básico, 5° Básico, etc."
-                                        />
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                        {/* Paso 4: Recomendaciones */}
+                        {currentStep === 'recomendaciones' && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-bold text-azul-monte-tabor border-b-2 border-azul-monte-tabor pb-2">
+                                    RECOMENDACIONES
+                                </h2>
+                                <TextArea
+                                    label="Aceptación / No aceptación / Reparos"
+                                    value={reportData.finalDecision}
+                                    onChange={(e) => setReportData({ ...reportData, finalDecision: e.target.value })}
+                                    placeholder="Ingrese la decisión final (Aceptación, No aceptación, Reparos)..."
+                                    rows={3}
+                                />
+                                <Input
+                                    label="Curso de ingreso"
+                                    value={reportData.entryCourse}
+                                    onChange={(e) => setReportData({ ...reportData, entryCourse: e.target.value })}
+                                    placeholder="Ej: 1° Básico, 5° Básico, etc."
+                                />
 
-                    <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
-                        <p>Fecha de evaluación: {new Date().toLocaleDateString('es-CL')}</p>
-                        <p>Director de Ciclo: {currentProfessor?.firstName} {currentProfessor?.lastName}</p>
-                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {new Date().getFullYear() + 1}</p>
-                    </div>
+                                <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
+                                    <p>Fecha de evaluación: {new Date().toLocaleDateString('es-CL')}</p>
+                                    <p>Director de Ciclo: {currentProfessor?.firstName} {currentProfessor?.lastName}</p>
+                                    <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {new Date().getFullYear() + 1}</p>
+                                </div>
+                            </div>
+                        )}
+                    </StepWizard>
                 </Card>
             </div>
         </div>
