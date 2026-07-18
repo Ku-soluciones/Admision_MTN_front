@@ -3,6 +3,7 @@ import { FiSave, FiCheck, FiLoader, FiAlertCircle } from 'react-icons/fi';
 import { familyInterviewService } from '../services/familyInterviewService';
 import { fullTemplateData } from '@/src/data/minified_template';
 import { notify } from '../../admin/utils/notify';
+import { useAutoSave } from '../../../packages/shared-ui/src/hooks/useAutoSave';
 
 interface FamilyInterviewFormProps {
   evaluation: any; // Evaluation data with gradeApplied
@@ -24,6 +25,15 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentScore, setCurrentScore] = useState(0);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Auto-guardado cada 30 segundos
+  useAutoSave({
+    key: `family-interview-${evaluation.id}`,
+    data: interviewData,
+    interval: 30000,
+    enabled: !loading && !readonly
+  });
 
   // Load template and existing data when component mounts
   useEffect(() => {
@@ -174,6 +184,8 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       // Save to backend
       const result = await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
 
+      // Actualizar timestamp de guardado
+      setLastSaved(new Date());
 
       // Call parent onSave callback if provided
       // Parent will handle navigation and success message
@@ -225,7 +237,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
 
         {/* Question Statement (if exists) */}
         {question.question && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+          <div className="bg-blue-50 p-3 rounded">
             <p className="text-sm text-gray-700 font-medium">
               Pregunta: {question.question}
             </p>
@@ -234,7 +246,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
 
         {/* Focus/Context (if exists) */}
         {question.focus && (
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
+          <div className="bg-amber-50 p-3 rounded">
             <p className="text-xs font-semibold text-amber-800 mb-1">
               FOCO PARA EL ENTREVISTADOR:
             </p>
@@ -320,10 +332,9 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
       </div>
 
       {/* Presentación Familia Postulante */}
-      <section className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600 p-6 rounded-lg">
-        <h2 className="text-2xl font-bold text-blue-900 mb-4 flex items-center">
-          <span className="mr-2"></span>
-          PRESENTACIÓN FAMILIA POSTULANTE
+      <section className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-6 rounded-lg">
+        <h2 className="text-2xl font-bold text-blue-900 mb-4">
+          Presentación Familia Postulante
         </h2>
         <div className="space-y-3 text-gray-700">
           <div className="flex items-start">
@@ -510,15 +521,20 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         </section>
       )}
 
-      {/* Total Score */}
-      <div className="border-t pt-6">
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg">
-          <h3 className="text-2xl font-bold mb-4">Porcentaje Total</h3>
-          <div className="text-center">
-            <p className="text-5xl font-bold">
-              {currentScore}%
-            </p>
+      {/* Total Score - Profesional y sutil */}
+      <div className="border-t pt-6 mt-6">
+        <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-600">Porcentaje Total</span>
+            {lastSaved && (
+              <span className="text-xs text-gray-400">
+                · Guardado {lastSaved.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
+          <span className="text-2xl font-bold text-azul-monte-tabor">
+            {currentScore}%
+          </span>
         </div>
       </div>
 
