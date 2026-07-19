@@ -1079,7 +1079,7 @@ const ProfessorDashboard: React.FC = () => {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold text-azul-monte-tabor flex items-center">
                             <FiCalendar className="mr-2" />
-                            💬 Mis Entrevistas e Informes
+                             Mis Entrevistas e Informes
                         </h2>
                         <div className="flex items-center gap-2">
                             {currentProfessor?.role !== 'TEACHER' && (
