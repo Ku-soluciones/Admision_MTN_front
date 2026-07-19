@@ -3,11 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Card from '../../../admin/components/ui/Card';
 import Button from '../../../admin/components/ui/Button';
 import Input from '../../../admissions/components/ui/Input';
+import { TextArea } from '../../../../packages/shared-ui/src/components/ui/TextArea';
+import { ConfirmDialog } from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
 import { useNotifications } from '../../../admin/context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
 import { EvaluationType } from '../../../admin/types/evaluation';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
+import { useAutoSave } from '../../../../packages/shared-ui/src/hooks/useAutoSave';
 
 interface AdmissionReportData {
     studentName: string;
@@ -68,6 +71,18 @@ const AdmissionReportForm: React.FC = () => {
         entranceGrade: ''
     });
 
+    // Auto-guardado cada 30 segundos
+    const autoSave = useAutoSave({
+        key: `admission-report-${examId}`,
+        data: reportData,
+        interval: 30000,
+        enabled: !isLoading && !!examId
+    });
+
+    // Confirmation dialog state
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'save' | null>(null);
+
     // Obtener profesor actual del localStorage (con namespace correcto)
     const [currentProfessor] = useState(() => {
         const key = getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR);
@@ -95,36 +110,54 @@ const AdmissionReportForm: React.FC = () => {
                     const birthDate = evaluationData.studentBirthDate;
                     const age = birthDate ? calculateAge(birthDate) : '';
 
-                    // Mapear datos del backend al formato del informe
-                    setReportData(prev => ({
-                        ...prev,
-                        // Datos del estudiante desde el backend
-                        studentName: evaluationData.studentName || '',
-                        gradeApplied: evaluationData.studentGrade || '',
-                        birthDate: birthDate || '',
-                        age: age,
-                        currentSchool: evaluationData.currentSchool || '',
+                    // Intentar restaurar draft guardado
+                    const savedDraft = autoSave.restoreDraft();
 
-                        // Datos del evaluador - usar profesor actual (quien completa el informe)
-                        evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || ''),
+                    if (savedDraft) {
+                        // Usar datos del draft y enriquecer con datos del backend
+                        setReportData(prev => ({
+                            ...savedDraft,
+                            // Siempre actualizar datos del estudiante desde backend
+                            studentName: evaluationData.studentName || savedDraft.studentName || '',
+                            gradeApplied: evaluationData.studentGrade || savedDraft.gradeApplied || '',
+                            birthDate: birthDate || savedDraft.birthDate || '',
+                            age: age || savedDraft.age || '',
+                            currentSchool: evaluationData.currentSchool || savedDraft.currentSchool || '',
+                            // Siempre usar el profesor actual como evaluador
+                            evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || savedDraft.evaluatorName || ''),
+                        }));
+                    } else {
+                        // Mapear datos del backend al formato del informe
+                        setReportData(prev => ({
+                            ...prev,
+                            // Datos del estudiante desde el backend
+                            studentName: evaluationData.studentName || '',
+                            gradeApplied: evaluationData.studentGrade || '',
+                            birthDate: birthDate || '',
+                            age: age,
+                            currentSchool: evaluationData.currentSchool || '',
 
-                        // Datos académicos - usar subject del profesor si está disponible
-                        subject: evaluationData.evaluatorSubject ?
-                            getSubjectName(evaluationData.evaluatorSubject) :
-                            getSubjectName(evaluationData.evaluationType),
-                        score: evaluationData.score || 0,
-                        maxScore: evaluationData.maxScore || defaultMaxScore,
-                        percentage: evaluationData.score && (evaluationData.maxScore || defaultMaxScore) ?
-                            Math.round((evaluationData.score / (evaluationData.maxScore || defaultMaxScore)) * 100) : 0,
+                            // Datos del evaluador - usar profesor actual (quien completa el informe)
+                            evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || ''),
 
-                        // Campos específicos de evaluación - mapeo desde evaluación del profesor
-                        strengths: evaluationData.strengths || '',
-                        difficulties: '', // Campo que completa el director, no auto-poblar
-                        examAdaptation: '', // Campo que completa el director, no auto-poblar
-                        observations: '', // Campo que completa el director, no auto-poblar desde profesor
-                        comments: evaluationData.recommendations || '', // COMENTARIOS ← Recomendaciones del profesor (jorge gangale)
-                        areasToWork: evaluationData.areasForImprovement || '' // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
-                    }));
+                            // Datos académicos - usar subject del profesor si está disponible
+                            subject: evaluationData.evaluatorSubject ?
+                                getSubjectName(evaluationData.evaluatorSubject) :
+                                getSubjectName(evaluationData.evaluationType),
+                            score: evaluationData.score || 0,
+                            maxScore: evaluationData.maxScore || defaultMaxScore,
+                            percentage: evaluationData.score && (evaluationData.maxScore || defaultMaxScore) ?
+                                Math.round((evaluationData.score / (evaluationData.maxScore || defaultMaxScore)) * 100) : 0,
+
+                            // Campos específicos de evaluación - mapeo desde evaluación del profesor
+                            strengths: evaluationData.strengths || '',
+                            difficulties: '', // Campo que completa el director, no auto-poblar
+                            examAdaptation: '', // Campo que completa el director, no auto-poblar
+                            observations: '', // Campo que completa el director, no auto-poblar desde profesor
+                            comments: evaluationData.recommendations || '', // COMENTARIOS ← Recomendaciones del profesor (jorge gangale)
+                            areasToWork: evaluationData.areasForImprovement || '' // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
+                        }));
+                    }
 
                 } else {
                     addNotification({
@@ -133,7 +166,7 @@ const AdmissionReportForm: React.FC = () => {
                         message: 'Evaluación no encontrada'
                     });
                 }
-                
+
             } catch (error: any) {
                 addNotification({
                     type: 'error',
@@ -224,6 +257,9 @@ const AdmissionReportForm: React.FC = () => {
 
             await professorEvaluationService.updateEvaluation(evaluation.id, updatedEvaluation);
 
+            // Limpiar draft después de guardar exitosamente
+            autoSave.clearDraft();
+
             addNotification({
                 type: 'success',
                 title: 'Informe guardado',
@@ -244,6 +280,26 @@ const AdmissionReportForm: React.FC = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSaveClick = () => {
+        // Validar campos requeridos antes de mostrar confirmación
+        if (!reportData.score && reportData.score !== 0) {
+            addNotification({
+                type: 'warning',
+                title: 'Campos requeridos',
+                message: 'Por favor complete el puntaje antes de guardar'
+            });
+            return;
+        }
+        setPendingAction('save');
+        setShowConfirmDialog(true);
+    };
+
+    const handleConfirmSave = async () => {
+        setShowConfirmDialog(false);
+        setPendingAction(null);
+        await handleSave();
     };
 
     const handlePrint = () => {
@@ -313,9 +369,21 @@ const AdmissionReportForm: React.FC = () => {
                     </button>
                     
                     <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-azul-monte-tabor">
-                            Informe de Admisión 2027
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold text-azul-monte-tabor">
+                                Informe de Admisión 2027
+                            </h1>
+                            {autoSave.hasDraft && (
+                                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                                    Borrador guardado
+                                </span>
+                            )}
+                            {autoSave.lastSaved && (
+                                <span className="text-xs text-gray-500">
+                                    Guardado {autoSave.lastSaved.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
+                        </div>
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
@@ -326,7 +394,7 @@ const AdmissionReportForm: React.FC = () => {
                             </Button>
                             <Button
                                 variant="primary"
-                                onClick={handleSave}
+                                onClick={handleSaveClick}
                                 isLoading={isSubmitting}
                                 loadingText="Guardando..."
                                 leftIcon={<SaveIcon className="w-4 h-4" />}
@@ -405,49 +473,37 @@ const AdmissionReportForm: React.FC = () => {
                         </h2>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Fortalezas observadas</label>
-                                <textarea
-                                    rows={3}
-                                    value={reportData.strengths}
-                                    onChange={(e) => updateReportData('strengths', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm"
-                                    placeholder="Ej: Perseverancia, concentración, estrategias organizadas..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Dificultades observadas</label>
-                                <textarea
-                                    rows={3}
-                                    value={reportData.difficulties}
-                                    onChange={(e) => updateReportData('difficulties', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm"
-                                    placeholder="Ej: Frustración, ansiedad, dificultad para organizar..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Adecuación al examen</label>
-                                <textarea
-                                    rows={3}
-                                    value={reportData.examAdaptation}
-                                    onChange={(e) => updateReportData('examAdaptation', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm"
-                                    placeholder="Ej: Comprensión de instrucciones, manejo de tiempos..."
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Observaciones</label>
-                                <textarea
-                                    rows={3}
-                                    value={reportData.observations}
-                                    onChange={(e) => updateReportData('observations', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm"
-                                    placeholder="Observaciones generales sobre el comportamiento y actitud del estudiante..."
-                                />
-                            </div>
+                            <TextArea
+                                label="Fortalezas observadas"
+                                value={reportData.strengths}
+                                onChange={(e) => updateReportData('strengths', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Perseverancia, concentración, estrategias organizadas..."
+                            />
+
+                            <TextArea
+                                label="Dificultades observadas"
+                                value={reportData.difficulties}
+                                onChange={(e) => updateReportData('difficulties', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Frustración, ansiedad, dificultad para organizar..."
+                            />
+
+                            <TextArea
+                                label="Adecuación al examen"
+                                value={reportData.examAdaptation}
+                                onChange={(e) => updateReportData('examAdaptation', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Comprensión de instrucciones, manejo de tiempos..."
+                            />
+
+                            <TextArea
+                                label="Observaciones"
+                                value={reportData.observations}
+                                onChange={(e) => updateReportData('observations', e.target.value)}
+                                rows={3}
+                                placeholder="Observaciones generales sobre el comportamiento y actitud del estudiante..."
+                            />
                         </div>
                     </div>
 
@@ -548,12 +604,13 @@ const AdmissionReportForm: React.FC = () => {
                                     <span className="font-bold text-azul-monte-tabor text-sm">COMENTARIOS</span>
                                     <span className="text-xs text-gray-600 ml-2">(Se llena automáticamente con las recomendaciones del profesor)</span>
                                 </div>
-                                <textarea
-                                    rows={6}
+                                <TextArea
                                     value={reportData.comments}
                                     onChange={(e) => updateReportData('comments', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm resize-y min-h-[100px]"
+                                    rows={4}
                                     placeholder="Comentarios sobre el desempeño del estudiante en el examen..."
+                                    showCharCount
+                                    maxLength={1000}
                                 />
                             </div>
                         </div>
@@ -565,12 +622,13 @@ const AdmissionReportForm: React.FC = () => {
                                     <span className="font-bold text-azul-monte-tabor text-sm">ÁREAS A TRABAJAR / RECOMENDACIONES</span>
                                     <span className="text-xs text-gray-600 ml-2">(Se llena automáticamente con las áreas de mejora del profesor)</span>
                                 </div>
-                                <textarea
-                                    rows={6}
+                                <TextArea
                                     value={reportData.areasToWork}
                                     onChange={(e) => updateReportData('areasToWork', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm resize-y min-h-[100px]"
+                                    rows={4}
                                     placeholder="Áreas a trabajar y recomendaciones para el estudiante..."
+                                    showCharCount
+                                    maxLength={1000}
                                 />
                             </div>
                         </div>
@@ -667,12 +725,13 @@ const AdmissionReportForm: React.FC = () => {
                                     <label className="block text-sm font-bold text-azul-monte-tabor mb-2">
                                         Comentarios y Observaciones Finales
                                     </label>
-                                    <textarea
-                                        rows={5}
+                                    <TextArea
                                         value={reportData.finalRecommendations}
                                         onChange={(e) => updateReportData('finalRecommendations', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor text-sm resize-y min-h-[120px]"
+                                        rows={4}
                                         placeholder="Comentarios adicionales sobre la decisión de admisión, condiciones especiales, seguimiento requerido, etc..."
+                                        showCharCount
+                                        maxLength={500}
                                     />
                                 </div>
                             </div>
@@ -686,6 +745,22 @@ const AdmissionReportForm: React.FC = () => {
                         <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión 2027</p>
                     </div>
                 </Card>
+
+                {/* Diálogo de confirmación para guardar */}
+                <ConfirmDialog
+                    isOpen={showConfirmDialog}
+                    title="Guardar Informe"
+                    message={`¿Está seguro que desea guardar el informe de ${reportData.studentName}? Esta acción marcará la evaluación como completada.`}
+                    confirmText="Sí, guardar"
+                    cancelText="Cancelar"
+                    variant="primary"
+                    onConfirm={handleConfirmSave}
+                    onClose={() => {
+                        setShowConfirmDialog(false);
+                        setPendingAction(null);
+                    }}
+                    isLoading={isSubmitting}
+                />
             </div>
         </div>
     );

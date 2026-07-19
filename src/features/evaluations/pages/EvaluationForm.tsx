@@ -5,10 +5,12 @@ import Card from '../../admin/components/ui/Card';
 import Button from '../../admin/components/ui/Button';
 import Input from '../../admissions/components/ui/Input';
 import Badge from '../../admin/components/ui/Badge';
+import TextArea from '../../admin/components/ui/TextArea';
 import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
-import { FiSave, FiArrowLeft, FiCheckCircle, FiPaperclip, FiDownload, FiTrash2, FiUpload, FiClock } from 'react-icons/fi';
+import { FiSave, FiArrowLeft, FiCheckCircle, FiPaperclip, FiDownload, FiTrash2, FiUpload, FiClock, FiChevronDown, FiChevronRight, FiAlertTriangle } from 'react-icons/fi';
 import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 import { authStore, BASE_STORAGE_KEYS, getStorageKey } from '../../../packages/backend-sdk/src/index';
+import { useAutoSave } from '../../../packages/shared-ui/src/hooks/useAutoSave';
 
 interface EvaluationData {
   id: number;
@@ -49,6 +51,20 @@ const EvaluationForm: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deletingAttachment, setDeletingAttachment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [confirmNoRecommend, setConfirmNoRecommend] = useState(false);
+
+  // Collapsible sections
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    basicInfo: true,
+    personal: true,
+    academic: true,
+    recommendation: true
+  });
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   // Form fields
   const [score, setScore] = useState<number | ''>('');
@@ -81,6 +97,22 @@ const EvaluationForm: React.FC = () => {
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Form data for auto-save
+  const formData = {
+    score, grade, observations, academicReadiness, behavioralAssessment,
+    emotionalMaturity, socialSkills, motivationAssessment, familySupport,
+    integrationPotential, strengths, areasForImprovement, recommendations,
+    finalRecommendation
+  };
+
+  // Auto-guardado cada 30 segundos
+  useAutoSave({
+    key: `evaluation-form-${evaluationId}`,
+    data: formData,
+    interval: 30000,
+    enabled: !loading
+  });
 
   useEffect(() => {
     loadEvaluation();
@@ -174,6 +206,8 @@ const EvaluationForm: React.FC = () => {
       };
 
       await professorEvaluationService.updateEvaluation(parseInt(evaluationId), updateData);
+
+      setLastSaved(new Date());
 
       // Navigate back to dashboard
       navigate('/profesor/dashboard');
@@ -385,6 +419,11 @@ const EvaluationForm: React.FC = () => {
             <h1 className="text-3xl font-bold text-azul-monte-tabor">
               {getEvaluationTypeLabel(evaluation.evaluation_type)}
             </h1>
+            {lastSaved && (
+              <p className="text-xs text-gris-piedra mt-1">
+                Guardado {lastSaved.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
           {evaluation.status === 'COMPLETED' && (
             <Badge variant="success" size="lg">
@@ -547,184 +586,171 @@ const EvaluationForm: React.FC = () => {
           </Card>
 
           {/* Qualitative Observations Section (HU-4) */}
-          <Card className="p-6 space-y-6">
-            <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">
-              Observaciones Cualitativas Detalladas
-            </h2>
-            <p className="text-sm text-gris-piedra mb-4">
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection('basicInfo')}>
+              <h2 className="text-xl font-bold text-azul-monte-tabor">
+                Observaciones Cualitativas Detalladas
+              </h2>
+              {openSections.basicInfo ? <FiChevronDown /> : <FiChevronRight />}
+            </div>
+            <p className="text-sm text-gris-piedra">
               Estas observaciones son confidenciales y serán visibles solo para el comité de admisión
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              {/* Academic Readiness */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Preparación Académica
-                </label>
-                <textarea
-                  value={academicReadiness}
-                  onChange={(e) => setAcademicReadiness(e.target.value)}
-                  placeholder="Evalúe la preparación académica del estudiante..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
+            {openSections.basicInfo && (
+              <>
+                {/* Aspectos Personales */}
+                <div className="border-t pt-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('personal')}
+                    className="flex items-center gap-2 text-left w-full hover:bg-gray-50 p-2 -mx-2 rounded-lg transition-colors"
+                  >
+                    {openSections.personal ? <FiChevronDown className="text-azul-monte-tabor" /> : <FiChevronRight className="text-azul-monte-tabor" />}
+                    <span className="font-semibold text-azul-monte-tabor">Aspectos Personales</span>
+                  </button>
 
-              {/* Behavioral Assessment */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Evaluación Conductual
-                </label>
-                <textarea
-                  value={behavioralAssessment}
-                  onChange={(e) => setBehavioralAssessment(e.target.value)}
-                  placeholder="Describa el comportamiento y actitud del estudiante..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
+                  {openSections.personal && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pl-2">
+                      <TextArea
+                        label="Madurez Emocional"
+                        value={emotionalMaturity}
+                        onChange={(e) => setEmotionalMaturity(e.target.value)}
+                        placeholder="Evalúe la madurez emocional del estudiante..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Habilidades Sociales"
+                        value={socialSkills}
+                        onChange={(e) => setSocialSkills(e.target.value)}
+                        placeholder="Describa las habilidades sociales y de integración..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Motivación y Compromiso"
+                        value={motivationAssessment}
+                        onChange={(e) => setMotivationAssessment(e.target.value)}
+                        placeholder="Evalúe la motivación e interés del estudiante..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Apoyo Familiar"
+                        value={familySupport}
+                        onChange={(e) => setFamilySupport(e.target.value)}
+                        placeholder="Evalúe el nivel de apoyo y compromiso familiar..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Potencial de Integración"
+                        value={integrationPotential}
+                        onChange={(e) => setIntegrationPotential(e.target.value)}
+                        placeholder="Evalúe el potencial del estudiante para integrarse a la comunidad educativa..."
+                        rows={3}
+                        className="sm:col-span-2"
+                      />
+                    </div>
+                  )}
+                </div>
 
-              {/* Emotional Maturity */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Madurez Emocional
-                </label>
-                <textarea
-                  value={emotionalMaturity}
-                  onChange={(e) => setEmotionalMaturity(e.target.value)}
-                  placeholder="Evalúe la madurez emocional del estudiante..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
+                {/* Aspectos Académicos */}
+                <div className="border-t pt-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('academic')}
+                    className="flex items-center gap-2 text-left w-full hover:bg-gray-50 p-2 -mx-2 rounded-lg transition-colors"
+                  >
+                    {openSections.academic ? <FiChevronDown className="text-azul-monte-tabor" /> : <FiChevronRight className="text-azul-monte-tabor" />}
+                    <span className="font-semibold text-azul-monte-tabor">Aspectos Académicos</span>
+                  </button>
 
-              {/* Social Skills */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Habilidades Sociales
-                </label>
-                <textarea
-                  value={socialSkills}
-                  onChange={(e) => setSocialSkills(e.target.value)}
-                  placeholder="Describa las habilidades sociales y de integración..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
+                  {openSections.academic && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pl-2">
+                      <TextArea
+                        label="Preparación Académica"
+                        value={academicReadiness}
+                        onChange={(e) => setAcademicReadiness(e.target.value)}
+                        placeholder="Evalúe la preparación académica del estudiante..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Evaluación Conductual"
+                        value={behavioralAssessment}
+                        onChange={(e) => setBehavioralAssessment(e.target.value)}
+                        placeholder="Describa el comportamiento y actitud del estudiante..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Fortalezas"
+                        value={strengths}
+                        onChange={(e) => setStrengths(e.target.value)}
+                        placeholder="Describa las principales fortalezas del estudiante..."
+                        rows={3}
+                      />
+                      <TextArea
+                        label="Áreas de Mejora"
+                        value={areasForImprovement}
+                        onChange={(e) => setAreasForImprovement(e.target.value)}
+                        placeholder="Identifique áreas específicas que requieren desarrollo..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
 
-              {/* Motivation Assessment */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Motivación y Compromiso
-                </label>
-                <textarea
-                  value={motivationAssessment}
-                  onChange={(e) => setMotivationAssessment(e.target.value)}
-                  placeholder="Evalúe la motivación e interés del estudiante..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
+                {/* Recomendaciones */}
+                <div className="border-t pt-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('recommendation')}
+                    className="flex items-center gap-2 text-left w-full hover:bg-gray-50 p-2 -mx-2 rounded-lg transition-colors"
+                  >
+                    {openSections.recommendation ? <FiChevronDown className="text-azul-monte-tabor" /> : <FiChevronRight className="text-azul-monte-tabor" />}
+                    <span className="font-semibold text-azul-monte-tabor">Recomendación</span>
+                  </button>
 
-              {/* Family Support */}
-              <div>
-                <label className="block text-sm font-medium text-gris-piedra mb-2">
-                  Apoyo Familiar
-                </label>
-                <textarea
-                  value={familySupport}
-                  onChange={(e) => setFamilySupport(e.target.value)}
-                  placeholder="Evalúe el nivel de apoyo y compromiso familiar..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-                />
-              </div>
-            </div>
+                  {openSections.recommendation && (
+                    <div className="space-y-4 mt-3 pl-2">
+                      <TextArea
+                        label="Recomendaciones para el Comité"
+                        value={recommendations}
+                        onChange={(e) => setRecommendations(e.target.value)}
+                        placeholder="Proporcione recomendaciones específicas para la decisión de admisión..."
+                        rows={4}
+                      />
 
-            {/* Integration Potential */}
-            <div>
-              <label className="block text-sm font-medium text-gris-piedra mb-2">
-                Potencial de Integración
-              </label>
-              <textarea
-                value={integrationPotential}
-                onChange={(e) => setIntegrationPotential(e.target.value)}
-                placeholder="Evalúe el potencial del estudiante para integrarse a la comunidad educativa..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-              />
-            </div>
-
-            {/* Strengths */}
-            <div>
-              <label className="block text-sm font-medium text-gris-piedra mb-2">
-                Fortalezas
-              </label>
-              <textarea
-                value={strengths}
-                onChange={(e) => setStrengths(e.target.value)}
-                placeholder="Describa las principales fortalezas del estudiante..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-              />
-            </div>
-
-            {/* Areas for Improvement */}
-            <div>
-              <label className="block text-sm font-medium text-gris-piedra mb-2">
-                Áreas de Mejora
-              </label>
-              <textarea
-                value={areasForImprovement}
-                onChange={(e) => setAreasForImprovement(e.target.value)}
-                placeholder="Identifique áreas específicas que requieren desarrollo..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-              />
-            </div>
-
-            {/* Recommendations */}
-            <div>
-              <label className="block text-sm font-medium text-gris-piedra mb-2">
-                Recomendaciones para el Comité
-              </label>
-              <textarea
-                value={recommendations}
-                onChange={(e) => setRecommendations(e.target.value)}
-                placeholder="Proporcione recomendaciones específicas para la decisión de admisión..."
-                rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent resize-none"
-              />
-            </div>
-
-            {/* Final Recommendation */}
-            <div>
-              <label className="block text-sm font-medium text-gris-piedra mb-2">
-                Recomendación Final
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="finalRecommendation"
-                    checked={finalRecommendation === true}
-                    onChange={() => setFinalRecommendation(true)}
-                    className="w-4 h-4 text-azul-monte-tabor focus:ring-azul-monte-tabor"
-                  />
-                  <span className="text-verde-esperanza font-medium">Recomendar Admisión</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="finalRecommendation"
-                    checked={finalRecommendation === false}
-                    onChange={() => setFinalRecommendation(false)}
-                    className="w-4 h-4 text-red-600 focus:ring-red-600"
-                  />
-                  <span className="text-red-600 font-medium">No Recomendar</span>
-                </label>
-              </div>
-            </div>
+                      {/* Final Recommendation */}
+                      <div>
+                        <label className="block text-sm font-medium text-gris-piedra mb-3">
+                          Recomendación Final
+                        </label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex-1">
+                            <input
+                              type="radio"
+                              name="finalRecommendation"
+                              checked={finalRecommendation === true}
+                              onChange={() => setFinalRecommendation(true)}
+                              className="w-4 h-4 text-azul-monte-tabor focus:ring-azul-monte-tabor"
+                            />
+                            <span className="text-verde-esperanza font-medium">Recomendar Admisión</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer p-3 border border-red-200 rounded-lg hover:bg-red-50 transition-colors flex-1">
+                            <input
+                              type="radio"
+                              name="finalRecommendation"
+                              checked={finalRecommendation === false}
+                              onChange={() => setConfirmNoRecommend(true)}
+                              className="w-4 h-4 text-red-600 focus:ring-red-600"
+                            />
+                            <span className="text-red-600 font-medium">No Recomendar</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </Card>
 
           {/* HU-6: File Attachments Section */}
@@ -950,6 +976,21 @@ const EvaluationForm: React.FC = () => {
         isLoading={deletingAttachment}
         onConfirm={performDeleteAttachment}
         onClose={() => setConfirmDeleteId(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmNoRecommend}
+        title="Confirmar No Recomendar"
+        message="¿Está seguro de marcar esta evaluación como 'No Recomendar'? Esta acción indica que el estudiante no es recomendado para la admisión."
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        variant="danger"
+        icon={<FiAlertTriangle className="w-6 h-6 text-red-600" />}
+        onConfirm={() => {
+          setFinalRecommendation(false);
+          setConfirmNoRecommend(false);
+        }}
+        onClose={() => setConfirmNoRecommend(false)}
       />
     </div>
   );
