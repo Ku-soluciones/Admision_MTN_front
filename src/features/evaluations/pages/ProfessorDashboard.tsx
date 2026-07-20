@@ -27,7 +27,7 @@ import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationSta
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
 import { EvaluationStatus, EvaluationType } from '../../admin/types/evaluation';
-import { FiRefreshCw, FiBarChart2, FiCalendar, FiEye } from 'react-icons/fi';
+import { FiRefreshCw, FiBarChart2, FiCalendar, FiEye, FiClock, FiCheckCircle, FiSearch, FiInfo, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import SimpleAvailabilityCalendar from '../../../packages/shared-ui/src/components/schedule/SimpleAvailabilityCalendar';
 import ChangePasswordButton from '../../admin/src/components/common/ChangePasswordButton';
 import {
@@ -177,6 +177,12 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para el tab activo en la sección de entrevistas - dinámico según asignaciones
     const [activeInterviewTab, setActiveInterviewTab] = useState<string>('familiares');
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    // Estado para la tabla de estudiantes
+    const [studentSearch, setStudentSearch] = useState('');
+    const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
+    const [studentPage, setStudentPage] = useState(1);
+    const studentsPerPage = 10;
 
     // Determinar qué tabs de entrevistas mostrar según las evaluaciones asignadas
     const interviewTabs = useMemo(() => {
@@ -448,49 +454,46 @@ const ProfessorDashboard: React.FC = () => {
 
     const renderDashboard = () => (
         <div className="space-y-6">
-            {/* Welcome Card */}
-            <Card className="p-6 bg-gradient-to-r from-azul-monte-tabor to-blue-700 text-blanco-pureza">
-                <h1 className="text-2xl font-bold mb-2">
-                    Bienvenido/a, {currentProfessor?.firstName} {currentProfessor?.lastName}
-                </h1>
-                <p className="text-blue-100">
-                    Profesor/a de {currentProfessor?.subject ? getSubjectName(currentProfessor.subject) : 'Asignatura no especificada'}
-                </p>
-                <p className="text-blue-100 text-sm mt-1">
-                    Rol: {currentProfessor?.role ? USER_ROLE_LABELS[currentProfessor.role as UserRole] : 'No especificado'}
-                </p>
-            </Card>
+            {/* Header */}
+            <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Dashboard General</p>
+                    <h1 className="mt-1 text-lg font-bold text-gray-950">
+                        Bienvenido/a, {currentProfessor?.firstName} {currentProfessor?.lastName}
+                    </h1>
+                    <p className="mt-0.5 text-sm text-gray-600">
+                        {currentProfessor?.subject ? getSubjectName(currentProfessor.subject) : 'Asignatura no especificada'} · {currentProfessor?.role ? USER_ROLE_LABELS[currentProfessor.role as UserRole] : 'No especificado'}
+                    </p>
+                </div>
+            </section>
 
             {/* Stats Grid - Usando datos reales */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="p-6 text-center">
-                    <FileTextIcon className="w-8 h-8 text-azul-monte-tabor mx-auto mb-3" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                    <FileTextIcon className="w-7 h-7 text-azul-monte-tabor mx-auto mb-2" />
                     <div className="text-2xl font-bold text-azul-monte-tabor">{evaluationStats.total}</div>
                     <div className="text-sm text-gris-piedra">Total Evaluaciones</div>
-                </Card>
-                
-                <Card className="p-6 text-center">
-                    <CheckCircleIcon className="w-8 h-8 text-verde-esperanza mx-auto mb-3" />
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg text-center">
+                    <CheckCircleIcon className="w-7 h-7 text-verde-esperanza mx-auto mb-2" />
                     <div className="text-2xl font-bold text-verde-esperanza">{evaluationStats.completed}</div>
                     <div className="text-sm text-gris-piedra">Completadas</div>
-                </Card>
-                
-                <Card className="p-6 text-center">
-                    <ClockIcon className="w-8 h-8 text-dorado-nazaret mx-auto mb-3" />
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                    <ClockIcon className="w-7 h-7 text-dorado-nazaret mx-auto mb-2" />
                     <div className="text-2xl font-bold text-dorado-nazaret">{evaluationStats.pending + evaluationStats.inProgress}</div>
                     <div className="text-sm text-gris-piedra">Pendientes</div>
-                </Card>
-                
-                <Card className="p-6 text-center">
-                    <UsersIcon className="w-8 h-8 text-azul-monte-tabor mx-auto mb-3" />
-                    <div className="text-2xl font-bold text-azul-monte-tabor">{evaluationStats.averageScore}%</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg text-center">
+                    <UsersIcon className="w-7 h-7 text-purple-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-purple-600">{evaluationStats.averageScore}%</div>
                     <div className="text-sm text-gris-piedra">Promedio General</div>
-                </Card>
+                </div>
             </div>
 
             {/* Evaluaciones Recientes */}
             <Card className="p-6">
-                <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">
+                <h2 className="text-base font-semibold text-gray-900 mb-4">
                     Evaluaciones Recientes
                 </h2>
                 {isLoading ? (
@@ -505,7 +508,7 @@ const ProfessorDashboard: React.FC = () => {
                         {evaluations.slice(0, 5).map((evaluation) => (
                             <div key={evaluation.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                 <div>
-                                    <p className="font-semibold text-azul-monte-tabor">{evaluation.studentName}</p>
+                                    <p className="font-semibold text-gray-900">{evaluation.studentName}</p>
                                     <p className="text-sm text-gris-piedra">
                                         {getEvaluationTypeLabel(evaluation.evaluationType)} - {evaluation.studentGrade}
                                     </p>
@@ -529,29 +532,28 @@ const ProfessorDashboard: React.FC = () => {
                 return (
                     <Card className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-azul-monte-tabor flex items-center gap-2">
-                                <FiCalendar className="w-5 h-5" />
+                            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <FiCalendar className="w-4 h-4 text-gray-500" />
                                 Próximas Entrevistas
                             </h2>
                             <div className="flex gap-2">
                                 {upcoming.length > 0 && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
+                                    <button
+                                        type="button"
                                         onClick={() => setActiveSection('entrevistas')}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     >
                                         Ver todas
-                                    </Button>
+                                    </button>
                                 )}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
+                                <button
+                                    type="button"
                                     onClick={() => setActiveSection('horarios')}
-                                    className="flex items-center gap-1"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                 >
                                     <ClockIcon className="w-3.5 h-3.5" />
                                     Horarios
-                                </Button>
+                                </button>
                             </div>
                         </div>
                         {upcoming.length === 0 ? (
@@ -581,7 +583,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 <span className="text-base font-bold">{d}</span>
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="font-semibold text-sm text-azul-monte-tabor truncate">{interview.studentName}</p>
+                                                <p className="font-semibold text-sm text-gray-900 truncate">{interview.studentName}</p>
                                                 <p className="text-xs text-gris-piedra mt-0.5">
                                                     {interview.scheduledTime} · {interview.duration} min
                                                     {isToday && <span className="ml-1 text-blue-600 font-medium">· Hoy</span>}
@@ -1075,37 +1077,72 @@ const ProfessorDashboard: React.FC = () => {
 
         return (
             <div className="space-y-6">
-                <Card className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold text-azul-monte-tabor flex items-center">
-                            <FiCalendar className="mr-2" />
-                             Mis Entrevistas e Informes
-                        </h2>
-                        <div className="flex items-center gap-2">
-                            {currentProfessor?.role !== 'TEACHER' && (
-                                <Button
-                                    onClick={() => setActiveSection('horarios')}
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2"
-                                >
-                                    <ClockIcon className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Gestionar Horarios</span>
-                                </Button>
+                {/* Header */}
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-4">
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Mis Entrevistas</p>
+                            <h1 className="mt-1 text-lg font-bold text-gray-950">Entrevistas y Evaluaciones</h1>
+                            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Gestiona las entrevistas familiares, de director de ciclo e informes finales que tienes pendientes o ya has completado.</p>
+                        </div>
+                        {interviewTabs.length > 0 && (
+                            <nav className="flex flex-wrap gap-2">
+                                {interviewTabs.map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setActiveInterviewTab(tab.key)}
+                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-green-200 ${
+                                            activeInterviewTab === tab.key
+                                                ? 'bg-green-700 text-white'
+                                                : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {tab.label} ({tab.count})
+                                    </button>
+                                ))}
+                            </nav>
+                        )}
+                    </div>
+                </section>
+
+                {/* Estadísticas rápidas */}
+                {!isLoading && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-azul-monte-tabor">{tabData.length}</div>
+                            <div className="text-sm text-gris-piedra">Total</div>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-dorado-nazaret">{sortedPending.length}</div>
+                            <div className="text-sm text-gris-piedra">Pendientes</div>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-verde-esperanza">{sortedCompleted.length}</div>
+                            <div className="text-sm text-gris-piedra">Completadas</div>
+                            {tabData.length > 0 && (
+                                <div className="text-xs text-gris-piedra">
+                                    ({Math.round((sortedCompleted.length / tabData.length) * 100)}%)
+                                </div>
                             )}
-                            <Button
-                                onClick={() => setRefreshKey(prev => prev + 1)}
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center gap-2"
-                                disabled={isLoading}
-                            >
-                                <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                                <span className="hidden sm:inline">Actualizar</span>
-                            </Button>
                         </div>
                     </div>
+                )}
 
+                {/* Acciones */}
+                <div className="flex flex-wrap justify-end gap-2">
+<button
+                        type="button"
+                        onClick={() => setRefreshKey(prev => prev + 1)}
+                        disabled={isLoading}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                    >
+                        <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+                        Actualizar
+                    </button>
+                </div>
+
+                {/* Contenido */}
+                <Card className="p-6">
                     {isLoading ? (
                         <div className="text-center py-8">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto"></div>
@@ -1113,32 +1150,11 @@ const ProfessorDashboard: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Tabs de navegación dinámicos */}
-                            {interviewTabs.length > 0 && (
-                                <div className="border-b border-gray-200 mb-6">
-                                    <nav className="flex space-x-8">
-                                        {interviewTabs.map(tab => (
-                                            <button
-                                                key={tab.key}
-                                                onClick={() => setActiveInterviewTab(tab.key)}
-                                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                                    activeInterviewTab === tab.key
-                                                        ? 'border-azul-monte-tabor text-azul-monte-tabor'
-                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                                }`}
-                                            >
-                                                {tab.label} ({tab.count})
-                                            </button>
-                                        ))}
-                                    </nav>
-                                </div>
-                            )}
-
                             {/* Contenido unificado */}
                             <div className="space-y-6">
                                 {/* Pendientes */}
                                 <div>
-                                    <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                    <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
                                         <ClockIcon className="w-5 h-5 mr-2" />
                                         {tabLabel} Pendientes ({sortedPending.length})
                                     </h3>
@@ -1156,7 +1172,7 @@ const ProfessorDashboard: React.FC = () => {
                                 {/* Completadas */}
                                 {sortedCompleted.length > 0 && (
                                     <div>
-                                        <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
+                                        <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
                                             <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
                                             {tabLabel} Completadas ({sortedCompleted.length})
                                         </h3>
@@ -1325,24 +1341,175 @@ const ProfessorDashboard: React.FC = () => {
             ? [...baseStudentColumns, averageScoreColumn, actionsStudentColumn]
             : [...baseStudentColumns, actionsStudentColumn];
 
+        const filteredStudents = myStudents.filter(s =>
+            s.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+            s.grade?.toLowerCase().includes(studentSearch.toLowerCase())
+        );
+        const totalPages = Math.max(1, Math.ceil(filteredStudents.length / studentsPerPage));
+        const safePage = Math.min(studentPage, totalPages);
+        const pageStart = (safePage - 1) * studentsPerPage;
+        const paginatedStudents = filteredStudents.slice(pageStart, pageStart + studentsPerPage);
+
         return (
-            <Card className="p-6">
-                <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">
-                    Mis Estudiantes ({myStudents.length})
-                </h2>
-                {isLoading ? (
-                    <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto"></div>
-                        <p className="text-gris-piedra mt-2">Cargando estudiantes...</p>
+            <div className="space-y-6">
+                {/* Header */}
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Mis Estudiantes</p>
+                        <h1 className="mt-1 text-lg font-bold text-gray-950">Listado de Estudiantes Asignados</h1>
+                        <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Revisa el estado y avance de cada estudiante que tienes asignado, accede a sus evaluaciones y gestiona su progreso desde aquí.</p>
                     </div>
-                ) : (
-                    <Table
-                        data={myStudents}
-                        columns={studentColumns}
-                        emptyMessage="No hay estudiantes asignados"
-                    />
-                )}
-            </Card>
+                </section>
+
+                {/* Acciones */}
+                <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setRefreshKey(prev => prev + 1)}
+                        disabled={isLoading}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                    >
+                        <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+                        Actualizar
+                    </button>
+                </div>
+
+                {/* Contenido */}
+                <Card className="overflow-hidden p-0">
+                    {/* Barra de búsqueda */}
+                    <div className="flex items-center gap-4 px-4 py-3 border-b border-gray-100">
+                        <div className="relative flex-1">
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar por nombre, curso..."
+                                value={studentSearch}
+                                onChange={e => { setStudentSearch(e.target.value); setStudentPage(1); }}
+                                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            />
+                        </div>
+                        <span className="text-sm text-gray-500 whitespace-nowrap">{filteredStudents.length} registros</span>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="text-center py-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto"></div>
+                            <p className="text-gris-piedra mt-2 text-sm">Cargando estudiantes...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-100">
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/5">Estudiante</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/6">Estado</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/5">Evaluaciones</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {paginatedStudents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-10 text-center text-sm text-gray-400">
+                                                No hay estudiantes asignados
+                                            </td>
+                                        </tr>
+                                    ) : paginatedStudents.map((student: any) => {
+                                        const total = student.evaluations.length;
+                                        const completed = student.evaluations.filter((e: ProfessorEvaluation) => e.status === EvaluationStatus.COMPLETED).length;
+                                        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                                        const statusLabel = completed === total ? 'Completo' : completed > 0 ? 'Parcial' : 'Pendiente';
+                                        const statusClasses = completed === total
+                                            ? 'bg-green-100 text-green-800'
+                                            : completed > 0
+                                            ? 'bg-blue-100 text-blue-800'
+                                            : 'bg-yellow-100 text-yellow-800';
+
+                                        return (
+                                            <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-4 py-3">
+                                                    <p className="font-semibold text-gray-900">{student.name}</p>
+                                                    <p className="text-xs text-gray-500">{student.grade}</p>
+                                                    {student.currentSchool && (
+                                                        <p className="text-xs text-gray-400">{student.currentSchool}</p>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${statusClasses}`}>
+                                                        {statusLabel}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`font-semibold ${completed === total ? 'text-green-700' : 'text-gray-700'}`}>
+                                                        {completed}/{total}
+                                                    </span>
+                                                    {completed === total ? (
+                                                        <span className="ml-2 text-green-600 text-xs">✓ Completo</span>
+                                                    ) : (
+                                                        <span className="ml-2 text-gray-400 text-xs">Sin completar</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {student.evaluations.map((evaluation: ProfessorEvaluation) => (
+                                                            <Button
+                                                                key={evaluation.id}
+                                                                size="sm"
+                                                                variant={evaluation.status === EvaluationStatus.COMPLETED ? 'outline' : 'primary'}
+                                                                onClick={() => navigate(
+                                                                    evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
+                                                                        ? `/profesor/entrevista-director/${evaluation.id}`
+                                                                        : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
+                                                                        ? `/profesor/entrevista-director/${evaluation.id}`
+                                                                        : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
+                                                                        ? `/profesor/informe-director/${evaluation.id}`
+                                                                        : evaluation.evaluationType === 'FAMILY_INTERVIEW'
+                                                                        ? `/profesor/entrevista-familiar/${evaluation.id}`
+                                                                        : `/profesor/informe/${evaluation.id}`
+                                                                )}
+                                                            >
+                                                                {evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW' || evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW' || evaluation.evaluationType === 'FAMILY_INTERVIEW'
+                                                                    ? (evaluation.status === EvaluationStatus.COMPLETED ? 'Ver Entrevista' : 'Entrevista')
+                                                                    : (evaluation.status === EvaluationStatus.COMPLETED ? 'Ver Informe' : 'Informe')}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+
+                            {/* Paginación */}
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
+                                <span>
+                                    Mostrando {filteredStudents.length === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + studentsPerPage, filteredStudents.length)} de {filteredStudents.length}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs">Por página: {studentsPerPage}</span>
+                                    <span className="text-xs font-semibold text-gray-700">{safePage}/{totalPages}</span>
+                                    <button
+                                        onClick={() => setStudentPage(p => Math.max(1, p - 1))}
+                                        disabled={safePage === 1}
+                                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                    >
+                                        <FiChevronLeft className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setStudentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={safePage === totalPages}
+                                        className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                    >
+                                        <FiChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </Card>
+            </div>
         );
     };
 
@@ -1406,42 +1573,45 @@ const ProfessorDashboard: React.FC = () => {
         return (
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-azul-monte-tabor">
-                        Reportes y Estadísticas
-                    </h2>
-                    <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => window.print()}
-                        >
-                            Imprimir Reporte
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                                // Generar CSV básico
-                                const csvData = evaluations.map(e => 
-                                    `${e.studentName},${e.studentGrade},${getEvaluationTypeLabel(e.evaluationType)},${e.status},${e.score || 'N/A'}`
-                                ).join('\n');
-                                const blob = new Blob([`Estudiante,Grado,Evaluación,Estado,Puntaje\n${csvData}`], { type: 'text/csv' });
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `evaluaciones_${currentProfessor?.firstName}_${new Date().toISOString().split('T')[0]}.csv`;
-                                a.click();
-                            }}
-                        >
-                            Exportar CSV
-                        </Button>
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Reportes y Estadísticas</p>
+                        <h1 className="mt-1 text-lg font-bold text-gray-950">Resumen de tu actividad y evaluaciones asignadas</h1>
+                        <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Consulta el detalle de tus evaluaciones completadas, pendientes y el progreso general de los estudiantes que tienes asignados.</p>
                     </div>
+                </section>
+
+                {/* Acciones */}
+                <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => window.print()}
+                    >
+                        Imprimir Reporte
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                            const csvData = evaluations.map(e =>
+                                `${e.studentName},${e.studentGrade},${getEvaluationTypeLabel(e.evaluationType)},${e.status},${e.score || 'N/A'}`
+                            ).join('\n');
+                            const blob = new Blob([`Estudiante,Grado,Evaluación,Estado,Puntaje\n${csvData}`], { type: 'text/csv' });
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `evaluaciones_${currentProfessor?.firstName}_${new Date().toISOString().split('T')[0]}.csv`;
+                            a.click();
+                        }}
+                    >
+                        Exportar CSV
+                    </Button>
                 </div>
 
                 {/* Resumen General */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Resumen General</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">Resumen General</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="bg-blue-50 p-4 rounded-lg text-center">
                             <div className="text-2xl font-bold text-azul-monte-tabor">{evaluationStats.total}</div>
@@ -1467,12 +1637,12 @@ const ProfessorDashboard: React.FC = () => {
 
                 {/* Estadísticas por Tipo de Evaluación */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Estadísticas por Tipo de Evaluación</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">Estadísticas por Tipo de Evaluación</h3>
                     <div className="space-y-4">
                         {Object.entries(statsByType).map(([type, stats]: [string, any]) => (
                             <div key={type} className="border border-gray-200 rounded-lg p-4">
                                 <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-semibold text-azul-monte-tabor">
+                                    <h4 className="font-semibold text-gray-900">
                                         {getEvaluationTypeLabel(type as EvaluationType)}
                                     </h4>
                                     <Badge variant="info">{stats.total} evaluaciones</Badge>
@@ -1502,11 +1672,11 @@ const ProfessorDashboard: React.FC = () => {
 
                 {/* Estadísticas por Grado */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Estadísticas por Grado</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">Estadísticas por Grado</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {Object.entries(statsByGrade).map(([grade, stats]: [string, any]) => (
                             <div key={grade} className="border border-gray-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-azul-monte-tabor mb-2">{grade}</h4>
+                                <h4 className="font-semibold text-gray-900 mb-2">{grade}</h4>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-gris-piedra">Total:</span>
@@ -1530,7 +1700,7 @@ const ProfessorDashboard: React.FC = () => {
 
                 {/* Actividad Reciente */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">
                         Actividad Reciente (últimas 2 semanas)
                     </h3>
                     {recentEvaluations.length > 0 ? (
@@ -1569,7 +1739,7 @@ const ProfessorDashboard: React.FC = () => {
                 {/* Progreso y Productividad */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="p-6">
-                        <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Progreso Semanal</h3>
+                        <h3 className="text-base font-semibold text-gray-900 mb-4">Progreso Semanal</h3>
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-gris-piedra">Esta semana:</span>
@@ -1599,7 +1769,7 @@ const ProfessorDashboard: React.FC = () => {
                     </Card>
 
                     <Card className="p-6">
-                        <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Información del Profesor</h3>
+                        <h3 className="text-base font-semibold text-gray-900 mb-4">Información del Profesor</h3>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gris-piedra">Nombre:</span>
@@ -1647,6 +1817,15 @@ const ProfessorDashboard: React.FC = () => {
             case 'horarios':
                 return currentProfessor ? (
                     <div className="space-y-6">
+                        {/* Header */}
+                        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Mis Horarios</p>
+                                <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Disponibilidad</h1>
+                                <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Administra tus bloques de disponibilidad para entrevistas y consulta tus próximas citas programadas.</p>
+                            </div>
+                        </section>
+
                         {/* Próximas entrevistas — contexto para gestionar horarios */}
                         {(() => {
                             const upcoming = interviews
@@ -1663,8 +1842,8 @@ const ProfessorDashboard: React.FC = () => {
                             return (
                                 <Card className="p-4 bg-blue-50 border-blue-200">
                                     <div className="flex items-center gap-2 mb-3">
-                                        <FiCalendar className="w-4 h-4 text-azul-monte-tabor" />
-                                        <h3 className="text-sm font-semibold text-azul-monte-tabor">
+                                        <FiCalendar className="w-4 h-4 text-gray-500" />
+                                        <h3 className="text-sm font-semibold text-gray-900">
                                             Próximas entrevistas ({upcoming.length})
                                         </h3>
                                         <span className="text-xs text-gray-500 ml-auto">
@@ -1713,11 +1892,17 @@ const ProfessorDashboard: React.FC = () => {
                 return renderReportesEstadisticas();
             case 'configuracion':
                 return (
-                    <Card className="p-6">
-                        <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">Información</h2>
+                    <div className="space-y-6">
+                        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Información</p>
+                                <h1 className="mt-1 text-lg font-bold text-gray-950">Consulta tu información personal y los detalles de tu cuenta en el sistema.</h1>
+                            </div>
+                        </section>
+                        <Card className="p-6">
                         <div className="space-y-4">
                             <div>
-                                <h3 className="font-semibold text-azul-monte-tabor mb-2">Información Personal</h3>
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">Información Personal</h3>
                                 <p><strong>Nombre:</strong> {currentProfessor?.firstName} {currentProfessor?.lastName}</p>
                                 <p><strong>Email:</strong> {currentProfessor?.email}</p>
                                 <p><strong>Asignatura:</strong> {currentProfessor?.subject ? getSubjectName(currentProfessor.subject) : 'No especificada'}</p>
@@ -1727,7 +1912,8 @@ const ProfessorDashboard: React.FC = () => {
                                 )}
                             </div>
                         </div>
-                    </Card>
+                        </Card>
+                    </div>
                 );
             case 'admin':
                 return (
