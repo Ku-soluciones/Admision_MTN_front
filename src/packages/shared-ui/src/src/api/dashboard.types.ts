@@ -236,6 +236,12 @@ export interface ApplicantCardCycleDirector {
   done: boolean;
   decision: string;
   reportLink: string | null;
+  report: {
+    observations: string | null;
+    recommendations: string | null;
+    areasForImprovement: string | null;
+    evaluator: string | null;
+  } | null;
 }
 
 export interface ApplicantCardFamily {

@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef } from 'react';
-import { FiExternalLink, FiRefreshCw, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiExternalLink, FiFileText, FiRefreshCw, FiX } from 'react-icons/fi';
 import type { ApplicantCard } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import { formatAdmissionDate, formatGenderLabel, formatGradeLabel, safeDisplayText, statusTone } from './admissionReportUtils';
 
@@ -188,7 +188,11 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                   <Field label="Fecha entrevista" value={formatAdmissionDate(card.cycleDirector.date, 'Sin registro')} />
                   <Field label="Realizada" value={booleanLabel(card.cycleDirector.done)} />
                   <Field label="Decisión" value={safeDisplayText(card.cycleDirector.decision, 'Pendiente')} />
-                  <Field label="Informe entrevista" value={<ReportLink href={card.cycleDirector.reportLink} />} />
+                  <Field
+                    label="Informe entrevista"
+                    value={<CycleDirectorReport report={card.cycleDirector.report} href={card.cycleDirector.reportLink} />}
+                    fullWidth
+                  />
                 </dl>
               </CardSection>
 
@@ -237,6 +241,55 @@ const ReportLink: React.FC<{ href?: string | null; compact?: boolean }> = ({ hre
     Abrir informe <FiExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
   </a>
 ) : <span className="text-sm font-medium text-slate-400">Sin informe</span>;
+
+type CycleDirectorReportData = ApplicantCard['cycleDirector']['report'];
+
+const CycleDirectorReport: React.FC<{ report: CycleDirectorReportData; href?: string | null }> = ({ report, href }) => {
+  const sections = [
+    { title: 'Desarrollo de la entrevista', content: report?.observations },
+    { title: 'Observaciones de la entrevista', content: report?.recommendations },
+    { title: 'Aspectos a acompañar', content: report?.areasForImprovement }
+  ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
+
+  if (!sections.length) return <ReportLink href={href} />;
+
+  return (
+    <details className="group mt-1 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-900 transition-colors hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-700 [&::-webkit-details-marker]:hidden">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-800" aria-hidden="true">
+          <FiFileText className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block">Ver informe completo</span>
+          <span className="block text-xs font-medium text-slate-600">{sections.length} {sections.length === 1 ? 'sección disponible' : 'secciones disponibles'}</span>
+        </span>
+        <FiChevronDown className="h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+      </summary>
+
+      <div className="border-t border-slate-200 bg-white px-3 py-4 sm:px-4">
+        <div className="space-y-5">
+          {report?.evaluator?.trim() && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Entrevistador/a</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{report.evaluator}</p>
+            </div>
+          )}
+          {sections.map((section) => (
+            <section key={section.title} aria-label={section.title}>
+              <h4 className="text-sm font-bold text-slate-950">{section.title}</h4>
+              <p className="mt-2 max-w-[72ch] whitespace-pre-line text-sm font-normal leading-6 text-slate-700">{section.content}</p>
+            </section>
+          ))}
+          {href && (
+            <div className="border-t border-slate-200 pt-3">
+              <ReportLink href={href} />
+            </div>
+          )}
+        </div>
+      </div>
+    </details>
+  );
+};
 
 const booleanLabel = (value?: boolean | null) => value == null ? 'Sin registro' : value ? 'Sí' : 'No';
 
