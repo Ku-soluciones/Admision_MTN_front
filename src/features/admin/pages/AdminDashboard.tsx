@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -72,8 +72,14 @@ import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 
+const AdmissionReportTabs = React.lazy(() =>
+  import('../components/admissionReports/AdmissionReportTabs')
+    .then((module) => ({ default: module.AdmissionReportTabs }))
+);
+
 const sections = [
   { key: 'metricas',      label: 'Métricas de Postulantes',   icon: BarChartIcon },
+  { key: 'admissionReports', label: 'Admisión',             icon: FileTextIcon },
   { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: FileTextIcon },
   { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: CheckCircleIcon },
   { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: ClockIcon },
@@ -161,7 +167,10 @@ const SidebarContent = React.memo(function SidebarContent({
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('metricas');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState(() =>
+    searchParams.get('section') === 'admision' ? 'admissionReports' : 'metricas'
+  );
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -538,6 +547,28 @@ Esta acción:
     setSelectedPostulante(null);
   };
 
+  useEffect(() => {
+    const requestedSection = searchParams.get('section');
+    setActiveSection((currentSection) => {
+      if (requestedSection === 'admision') return 'admissionReports';
+      if (currentSection === 'admissionReports') return 'metricas';
+      return currentSection;
+    });
+  }, [searchParams]);
+
+  const handleSectionChange = (key: string) => {
+    setInterviewToOpenId(null);
+    setActiveSection(key);
+
+    const next = new URLSearchParams(searchParams);
+    if (key === 'admissionReports') {
+      next.set('section', 'admision');
+    } else {
+      ['section', 'year', 'grade', 'status', 'action'].forEach((parameter) => next.delete(parameter));
+    }
+    setSearchParams(next);
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case 'metricas':
@@ -545,6 +576,15 @@ Esta acción:
           <div className="space-y-6">
             <ApplicantMetricsView />
           </div>
+        );
+
+      case 'admissionReports':
+        return (
+          <React.Suspense fallback={<div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" role="status" aria-label="Cargando Admisión" />}>
+            <div className="space-y-6">
+              <AdmissionReportTabs />
+            </div>
+          </React.Suspense>
         );
 
       case 'configuracion':
@@ -872,13 +912,13 @@ Esta acción:
       <div
         id="mobile-sidebar"
         aria-hidden={!isSidebarOpen}
-        {...(!isSidebarOpen ? { inert: '' } : {})}
+        inert={!isSidebarOpen}
         className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <SidebarContent
           user={user}
           activeSection={activeSection}
-          onSectionChange={(key) => { setInterviewToOpenId(null); setActiveSection(key); }}
+          onSectionChange={handleSectionChange}
           onShowCoordinator={() => setShowCoordinatorDashboard(true)}
           onLogout={logout}
           onNavigate={() => setIsSidebarOpen(false)}
@@ -891,7 +931,7 @@ Esta acción:
           <SidebarContent
             user={user}
             activeSection={activeSection}
-            onSectionChange={(key) => { setInterviewToOpenId(null); setActiveSection(key); }}
+            onSectionChange={handleSectionChange}
             onShowCoordinator={() => setShowCoordinatorDashboard(true)}
             onLogout={logout}
           />

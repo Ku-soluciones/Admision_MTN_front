@@ -51,6 +51,8 @@ export interface Student {
   isInclusionStudent?: boolean;
   inclusionType?: string;
   inclusionNotes?: string;
+  hasSiblingsInSchool?: boolean;
+  siblingsInSchoolDetails?: string;
 }
 
 export interface Parent {

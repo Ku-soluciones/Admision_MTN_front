@@ -644,6 +644,8 @@ const ApplicationForm: React.FC = () => {
                     currentSchool: appData.student?.currentSchool || '',
                     additionalNotes: appData.student?.additionalNotes || '',
                     admissionPreference: appData.student?.admissionPreference || appData.admissionPreference || '',
+                    hasSiblingsInSchool: appData.student?.hasSiblingsInSchool === true,
+                    siblingsInSchoolDetails: appData.student?.siblingsInSchoolDetails || '',
                     applicationYear: appData.applicationYear || new Date().getFullYear() + 1,
                     pais: appData.pais || 'Chile',
                     region: appData.region || '',
@@ -1076,7 +1078,9 @@ const ApplicationForm: React.FC = () => {
                                 gradeApplied: data.grade,
                                 currentSchool: data.currentSchool,
                                 additionalNotes: data.additionalNotes,
-                                admissionPreference: data.admissionPreference
+                                admissionPreference: data.admissionPreference,
+                                hasSiblingsInSchool: data.hasSiblingsInSchool === true,
+                                siblingsInSchoolDetails: data.siblingsInSchoolDetails || ''
                             },
                             father: {
                                 fullName: data.parent1Name,
@@ -1129,6 +1133,8 @@ const ApplicationForm: React.FC = () => {
                             currentSchool: data.currentSchool,
                             additionalNotes: data.additionalNotes,
                             admissionPreference: data.admissionPreference,
+                            hasSiblingsInSchool: data.hasSiblingsInSchool === true,
+                            siblingsInSchoolDetails: data.siblingsInSchoolDetails || '',
                             pais: data.pais || 'Chile',
                             region: data.region || null,
                             comuna: data.comuna || null,
@@ -2079,6 +2085,54 @@ const ApplicationForm: React.FC = () => {
                                 </p>
                             </div>
                         )}
+
+                        <div className="space-y-3 mt-4">
+                            <label className="block text-sm font-medium text-gray-700">
+                                ¿Tiene hermanos/as en el colegio?
+                            </label>
+                            <p className="text-sm text-gray-600 mb-2">
+                                Indique si el estudiante tiene hermanos/as actualmente en el colegio. El dato será corroborado por el establecimiento.
+                            </p>
+                            <div className="space-y-2">
+                                <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="hasSiblingsInSchool"
+                                        value="false"
+                                        checked={data.hasSiblingsInSchool !== true}
+                                        onChange={(e) => updateField('hasSiblingsInSchool', e.target.value === 'true')}
+                                        className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
+                                    />
+                                    <span className="ml-3 text-sm text-gray-900">No</span>
+                                </label>
+                                <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="hasSiblingsInSchool"
+                                        value="true"
+                                        checked={data.hasSiblingsInSchool === true}
+                                        onChange={(e) => updateField('hasSiblingsInSchool', e.target.value === 'true')}
+                                        className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
+                                    />
+                                    <span className="ml-3 text-sm text-gray-900">Sí</span>
+                                </label>
+                            </div>
+                            {data.hasSiblingsInSchool === true && (
+                                <div className="mt-3">
+                                    <label htmlFor="siblingsInSchoolDetails" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Nombre y curso de cada hermano/a en el colegio
+                                    </label>
+                                    <textarea
+                                        id="siblingsInSchoolDetails"
+                                        rows={2}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-azul-monte-tabor focus:border-azul-monte-tabor"
+                                        placeholder="Ej: María Pérez, 2º Básico"
+                                        value={data.siblingsInSchoolDetails || ''}
+                                        onChange={(e) => updateField('siblingsInSchoolDetails', e.target.value)}
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         <div className="mt-4">
                             <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-2">

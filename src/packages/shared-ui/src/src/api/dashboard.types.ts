@@ -195,3 +195,118 @@ export interface ApplicantMetricsResponse {
     timestamp: string;
   };
 }
+
+export interface CourseApplicant {
+  applicationId: number;
+  studentId: number;
+  studentName: string;
+  gradeApplied: string;
+  gender?: 'MALE' | 'FEMALE' | string;
+  admissionPreference: string;
+  alumniChild: string;
+  siblingsInSchool: string;
+  examAverage: number | null;
+  cycleDirectorDecision: string;
+  status: string;
+  statusLabel: string;
+}
+
+export interface CourseApplicantsResponse {
+  success: boolean;
+  data: CourseApplicant[];
+  meta: {
+    academicYear: number;
+    total: number;
+  };
+}
+
+export interface ApplicantCardExam {
+  evaluationType: string;
+  subject: string;
+  responsible: string;
+  score?: number;
+  maxScore?: number;
+  percentage?: number;
+  status: string;
+  reportLink: string | null;
+}
+
+export interface ApplicantCardCycleDirector {
+  date: string | null;
+  done: boolean;
+  decision: string;
+  reportLink: string | null;
+}
+
+export interface ApplicantCardFamily {
+  fatherName?: string;
+  fatherEmail?: string;
+  fatherPhone?: string;
+  motherName?: string;
+  motherEmail?: string;
+  motherPhone?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+}
+
+export interface ApplicantCardPrekinderProcess {
+  evaluationDate: string | null;
+  evaluationTime: string | null;
+  location: string | null;
+  evaluator: string | null;
+  attended: boolean | null;
+  evaluationReportLink: string | null;
+  familyInterviewDate: string | null;
+  familyInterviewers: string | null;
+  familyInterviewDone: boolean | null;
+  familyInterviewReportLink: string | null;
+}
+
+export interface ApplicantCardDocument {
+  type?: string;
+  name: string;
+  url: string;
+}
+
+export interface ApplicantCardStudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  rut: string;
+  birthDate: string;
+  gender?: string;
+  gradeApplied: string;
+  currentSchool?: string;
+  admissionPreference: string;
+  isAlumniChild: boolean;
+  alumniParentName?: string;
+  alumniParentYear?: number;
+  hasSiblingsInSchool: boolean;
+  siblingsInSchoolDetails?: string;
+}
+
+export interface ApplicantCard {
+  applicationId: number;
+  status: string;
+  statusLabel: string;
+  submissionDate: string;
+  observations?: string;
+  processType?: string;
+  examAverage?: number | null;
+  student: ApplicantCardStudent;
+  family: ApplicantCardFamily;
+  familyQuestionnaire?: {
+    received: boolean | null;
+    reportLink: string | null;
+  };
+  prekinderProcess?: ApplicantCardPrekinderProcess;
+  exams: ApplicantCardExam[];
+  cycleDirector: ApplicantCardCycleDirector;
+  documents?: ApplicantCardDocument[];
+}
+
+export interface ApplicantCardResponse {
+  success: boolean;
+  data: ApplicantCard;
+}

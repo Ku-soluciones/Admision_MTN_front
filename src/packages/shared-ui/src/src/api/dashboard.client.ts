@@ -15,7 +15,9 @@ import type {
   DetailedAdminStats,
   DashboardFilters,
   ApplicantMetricsFilters,
-  ApplicantMetricsResponse
+  ApplicantMetricsResponse,
+  CourseApplicantsResponse,
+  ApplicantCardResponse
 } from './dashboard.types';
 
 class DashboardClient {
@@ -360,6 +362,29 @@ class DashboardClient {
       conversionRate: Math.round(data.finalizationRate || 0),
       activeEvaluators: evaluatorData.data.totalEvaluators || 0
     };
+  }
+
+  /**
+   * Get applicants grouped by course for the admissions report.
+   * Endpoint: GET /v1/dashboard/course-applicants
+   */
+  async getCourseApplicants(academicYear?: number): Promise<CourseApplicantsResponse> {
+    const params = academicYear ? `?academicYear=${academicYear}` : '';
+    const response = await httpClient.get<CourseApplicantsResponse>(
+      `${this.basePath}/course-applicants${params}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get detailed applicant card for the admissions report modal.
+   * Endpoint: GET /v1/dashboard/applicants/:id/card
+   */
+  async getApplicantCard(applicationId: number): Promise<ApplicantCardResponse> {
+    const response = await httpClient.get<ApplicantCardResponse>(
+      `${this.basePath}/applicants/${applicationId}/card`
+    );
+    return response.data;
   }
 
   /**
