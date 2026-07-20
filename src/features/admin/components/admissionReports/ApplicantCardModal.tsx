@@ -246,10 +246,10 @@ type CycleDirectorReportData = ApplicantCard['cycleDirector']['report'];
 
 const CycleDirectorReport: React.FC<{ report: CycleDirectorReportData; href?: string | null }> = ({ report, href }) => {
   const sections = [
-    { title: 'Desarrollo de la entrevista', content: report?.observations },
-    { title: 'Observaciones de la entrevista', content: report?.recommendations },
-    { title: 'Aspectos a acompañar', content: report?.areasForImprovement }
-  ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
+    { title: 'Desarrollo de la entrevista', content: removeInvalidInterviewer(report?.observations) },
+    { title: 'Observaciones de la entrevista', content: removeInvalidInterviewer(report?.recommendations) },
+    { title: 'Aspectos a acompañar', content: removeInvalidInterviewer(report?.areasForImprovement) }
+  ].filter((section): section is { title: string; content: string } => Boolean(section.content));
 
   if (!sections.length) return <ReportLink href={href} />;
 
@@ -289,6 +289,17 @@ const CycleDirectorReport: React.FC<{ report: CycleDirectorReportData; href?: st
       </div>
     </details>
   );
+};
+
+const removeInvalidInterviewer = (content?: string | null): string => {
+  if (!content?.trim()) return '';
+
+  return content
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .filter((line) => !/^\s*Entrevistador(?:\/a)?:\s*(?:(?:undefined|null)\s*)+$/i.test(line))
+    .join('\n')
+    .trim();
 };
 
 const booleanLabel = (value?: boolean | null) => value == null ? 'Sin registro' : value ? 'Sí' : 'No';

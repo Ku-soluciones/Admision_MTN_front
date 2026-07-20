@@ -295,6 +295,10 @@ const CycleDirectorInterviewForm: React.FC = () => {
         try {
             // Guardar datos estructurados en JSON para recuperación posterior
             const interviewDataJSON = JSON.stringify(interviewData);
+            const storedProfessorName = [currentProfessor?.firstName, currentProfessor?.lastName]
+                .filter((part): part is string => typeof part === 'string' && part.trim().length > 0 && !['undefined', 'null'].includes(part.trim().toLowerCase()))
+                .join(' ');
+            const interviewerName = storedProfessorName || evaluation.evaluatorName?.trim() || '';
 
             // Consolidar toda la información de la entrevista en los campos de la evaluación
             const updatedEvaluation: Partial<ProfessorEvaluation> = {
@@ -335,9 +339,7 @@ EXPECTATIVAS DEL CAMBIO:
 • Contacto afectivo: ${interviewData.affectiveContact}
 • Adaptación a la entrevista: ${interviewData.interviewAdaptation}
 • Vocabulario/Lenguaje: ${interviewData.vocabularyLanguage}
-• Observaciones sociales/individuales: ${interviewData.socialIndividualObservations}
-
-Entrevistador: ${currentProfessor?.firstName} ${currentProfessor?.lastName}`,
+• Observaciones sociales/individuales: ${interviewData.socialIndividualObservations}${interviewerName ? `\n\nEntrevistador: ${interviewerName}` : ''}`,
 
                 status: 'COMPLETED'
             };
