@@ -17,7 +17,7 @@ const Badge: React.FC<BadgeProps> = ({
 
     const variantClasses = {
         success: 'bg-verde-esperanza text-blanco-pureza',
-        warning: 'bg-dorado-nazaret text-azul-monte-tabor',
+        warning: 'bg-dorado-nazaret text-blanco-pureza',
         error: 'bg-rojo-sagrado text-blanco-pureza',
         info: 'bg-azul-monte-tabor text-blanco-pureza',
         neutral: 'bg-gray-200 text-gris-piedra'
