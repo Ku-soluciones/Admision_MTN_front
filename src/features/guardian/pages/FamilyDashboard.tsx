@@ -288,6 +288,13 @@ const FamilyDashboard: React.FC = () => {
   };
 
   const handlePayApplication = async (applicationId: number) => {
+    // Abrir durante el gesto del usuario evita que el navegador bloquee la pestaña
+    // mientras esperamos la respuesta asíncrona del checkout.
+    const paymentWindow = window.open('about:blank', '_blank');
+    if (paymentWindow) {
+      paymentWindow.opener = null;
+    }
+
     try {
       setPaymentLoadingId(applicationId);
       const payment = await applicationService.startPaymentCheckout(applicationId);
@@ -296,11 +303,22 @@ const FamilyDashboard: React.FC = () => {
         : app
       ));
       if (payment.checkoutUrl) {
-        window.location.href = payment.checkoutUrl;
+        if (paymentWindow && !paymentWindow.closed) {
+          paymentWindow.location.replace(payment.checkoutUrl);
+        } else {
+          const openedWindow = window.open(payment.checkoutUrl, '_blank', 'noopener,noreferrer');
+          if (!openedWindow) {
+            setToast({ message: 'Permite las ventanas emergentes para abrir el portal de pago', type: 'error' });
+          }
+        }
       } else if (payment.paymentStatus === 'PAID') {
+        paymentWindow?.close();
         setToast({ message: 'La postulación ya se encuentra pagada', type: 'success' });
+      } else {
+        paymentWindow?.close();
       }
     } catch (error: any) {
+      paymentWindow?.close();
       setToast({ message: error.message || 'No se pudo iniciar el pago', type: 'error' });
     } finally {
       setPaymentLoadingId(null);
