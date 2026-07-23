@@ -3,14 +3,11 @@ import axios from 'axios';
 import httpClient from '../../services/http';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
 import Button from '../ui/Button';
-import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import DayScheduleSelector from '../DayScheduleSelector';
 import QuickScheduleSelector from './QuickScheduleSelector';
 import {
-  CalendarIcon,
-  UserIcon,
   MapPinIcon,
   VideoIcon
 } from '../icons/Icons';
@@ -48,6 +45,7 @@ import { applicationService } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
 import interviewerPairService from '../../services/interviewerPairService';
 import type { InterviewerPair } from '../../types/interviewerPair';
+import { isFamilyInterviewer } from '../../../../packages/shared-ui/src/utils/interviewerEligibility';
 
 // Interface para entrevistadores del backend
 interface BackendInterviewer {
@@ -59,10 +57,8 @@ interface BackendInterviewer {
   scheduleCount: number;
 }
 
-const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
-
 const isValidFamilyInterviewer = (interviewer?: BackendInterviewer): boolean => Boolean(
-  interviewer && !isCycleInterviewRole(interviewer.role)
+  interviewer && isFamilyInterviewer(interviewer)
 );
 
 const getTodayDateString = (): string => {
@@ -363,8 +359,6 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     // Crear nuevo AbortController para esta llamada
     const currentController = new AbortController();
     abortControllerRef.current = currentController;
-
-    const timestamp = Date.now();
 
     try {
       setIsLoadingSlots(true);
@@ -871,13 +865,13 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   const getFormTitle = () => {
     switch (mode) {
       case InterviewFormMode.CREATE:
-        return 'Nueva Entrevista';
+        return 'Nueva entrevista';
       case InterviewFormMode.EDIT:
-        return 'Editar Entrevista';
+        return 'Editar entrevista';
       case InterviewFormMode.COMPLETE:
-        return 'Completar Entrevista';
+        return 'Completar entrevista';
       case InterviewFormMode.VIEW:
-        return 'Detalles de Entrevista';
+        return 'Detalles de entrevista';
       default:
         return 'Entrevista';
     }
@@ -888,18 +882,15 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CalendarIcon className="w-6 h-6 text-azul-monte-tabor" />
-            <div>
-              <h2 className="text-xl font-semibold text-azul-monte-tabor">
-                {getFormTitle()}
-              </h2>
-              {interview && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Para: <span className="font-medium text-azul-monte-tabor">{interview.studentName}</span>
-                </p>
-              )}
-            </div>
+          <div>
+            <h2 className="text-xl font-semibold text-azul-monte-tabor">
+              {getFormTitle()}
+            </h2>
+            {interview && (
+              <p className="text-sm text-gray-600 mt-1">
+                {interview.studentName}
+              </p>
+            )}
           </div>
           
           {interview && (
@@ -911,151 +902,34 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
           )}
         </div>
 
-        {/* Información del estudiante - Siempre visible y destacada */}
-        {interview ? (
-          <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <UserIcon className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-blue-900 mb-1">
-                      {interview.studentName}
-                    </h3>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge variant="blue" size="sm">
-                        {interview.gradeApplied}
-                      </Badge>
-                      <span className="text-sm text-blue-700">
-                        ID de Postulación: #{interview.applicationId}
-                      </span>
-                    </div>
-                    <div className="text-sm text-blue-600">
-                      <p className="font-medium">Padres: {interview.parentNames}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-blue-500 mb-1">Entrevista para</p>
-                    <Badge variant={InterviewUtils.getStatusColor(interview.status)} size="sm">
-                      {INTERVIEW_STATUS_LABELS[interview.status]}
-                    </Badge>
-                  </div>
-                </div>
+        {interview && (
+          <section className="border-y border-gray-200 py-4" aria-label="Contexto del postulante">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-gray-950">{interview.studentName}</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {interview.gradeApplied} · Postulación #{interview.applicationId}
+                </p>
+                {interview.parentNames && (
+                  <p className="mt-1 text-sm text-gray-600">Apoderados: {interview.parentNames}</p>
+                )}
               </div>
             </div>
-          </Card>
-        ) : mode === InterviewFormMode.CREATE && (
-          (() => {
-            // Si hay interview, estamos REAGENDANDO (reusing the form for reschedule)
-            // Si no hay interview, estamos CREANDO nueva entrevista
-            const existingInterview = interview;
+          </section>
+        )}
 
-            if (existingInterview) {
-              // REAGENDANDO - mostrar mensaje contextual según estado
-              if (existingInterview.status === InterviewStatus.REJECTED_BY_FAMILY) {
-                return (
-                  <Card className="p-6 shadow-sm bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-amber-100">
-                        <UserIcon className="w-6 h-6 text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1 text-amber-900">
-                          Reagendar Entrevista Rechazada
-                        </h3>
-                        <p className="text-sm text-amber-700">
-                          La familia rechazó el horario anterior. Seleccione un nuevo horario que funcione para todas las partes.
-                        </p>
-                        <div className="mt-2">
-                          <span className="text-xs text-amber-600">
-                            Estado: {INTERVIEW_STATUS_LABELS[existingInterview.status]} {existingInterview.scheduledDate ? `(era: ${existingInterview.scheduledDate})` : ''}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              } else if (existingInterview.status === InterviewStatus.CANCELLED) {
-                return (
-                  <Card className="p-6 shadow-sm bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-emerald-100">
-                        <UserIcon className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1 text-emerald-900">
-                          Reagendar Entrevista Cancelada
-                        </h3>
-                        <p className="text-sm text-emerald-700">
-                          Esta entrevista fue cancelada. Seleccione nueva fecha y hora para reactivarla.
-                        </p>
-                        <div className="mt-2">
-                          <span className="text-xs text-emerald-600">
-                            Estado: {INTERVIEW_STATUS_LABELS[existingInterview.status]} {existingInterview.scheduledDate ? `(era: ${existingInterview.scheduledDate})` : ''}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              } else {
-                // PENDING u otros
-                return (
-                  <Card className="p-6 shadow-sm bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-green-100">
-                        <UserIcon className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-1 text-green-900">
-                          Agendar Entrevista
-                        </h3>
-                        <p className="text-sm text-green-700">
-                          Complete el formulario para programar la entrevista.
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              }
-            } else {
-              // CREANDO NUEVA ENTREVISTA
-              return (
-                <Card className="p-6 shadow-sm bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-full bg-green-100">
-                      <UserIcon className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold mb-1 text-green-900">
-                        Nueva Entrevista
-                        {selectedApplicationInfo && (
-                          <span className="text-base font-normal text-green-700 block">
-                            Para: {selectedApplicationInfo.name}
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-sm text-green-700">
-                        {selectedApplicationInfo
-                          ? `Programar entrevista para ${selectedApplicationInfo.name} - ${selectedApplicationInfo.grade}`
-                          : 'Complete el formulario para programar una nueva entrevista'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              );
-            }
-          })()
+        {!interview && isCreateMode && selectedApplicationInfo && (
+          <section className="border-y border-gray-200 py-4" aria-label="Postulante seleccionado">
+            <h3 className="font-semibold text-gray-950">{selectedApplicationInfo.name}</h3>
+            <p className="mt-1 text-sm text-gray-600">{selectedApplicationInfo.grade}</p>
+          </section>
         )}
 
         {/* Formulario principal */}
         <div className={isCreateMode && !showManualScheduling && formData.type !== InterviewType.CYCLE_DIRECTOR ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
           {/* Información básica */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Información Básica</h3>
+            <h3 className="text-lg font-medium text-gray-900">Información básica</h3>
             
             {/* Selección de Postulante - Solo si no está pre-llenado */}
             {mode === InterviewFormMode.CREATE && !formData.applicationId && (
@@ -1106,7 +980,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             {/* Tipo de entrevista */}
             <div>
               <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Entrevista *
+                Tipo de entrevista *
                 {(mode === InterviewFormMode.CREATE && interview?.type) && (
                   <span className="text-sm text-blue-600 font-normal"> (Pre-seleccionado)</span>
                 )}
@@ -1192,20 +1066,12 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                       ))}
                     </select>
                     <p id="pair-help" className="mt-1 text-sm text-gray-600">
-                      Solo se muestran parejas activas que cubren el curso {selectedApplicationInfo?.grade ? `“${selectedApplicationInfo.grade}”` : 'del postulante'}.
+                      Parejas activas para {selectedApplicationInfo?.grade ? `“${selectedApplicationInfo.grade}”` : 'el curso del postulante'}.
                     </p>
                     {(pairEligibilityMessage || errors.interviewerPairId) && (
-                      <p id="pair-error" role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                      <p id="pair-error" role="alert" className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
                         {errors.interviewerPairId || pairEligibilityMessage}
-                        {pairEligibilityMessage && ' Solicita a un administrador configurar integrantes, cursos y horarios.'}
                       </p>
-                    )}
-                    {formData.interviewerPairId && (
-                      <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-950" aria-live="polite">
-                        <p className="font-semibold">Pareja seleccionada</p>
-                        <p className="mt-1">Director de Ciclo: {eligiblePairs.find((pair) => String(pair.id) === String(formData.interviewerPairId))?.cycleDirector.name}</p>
-                        <p>Psicólogo/a: {eligiblePairs.find((pair) => String(pair.id) === String(formData.interviewerPairId))?.psychologist.name}</p>
-                      </div>
                     )}
                   </div>
                 ) : (
@@ -1213,7 +1079,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 {/* Entrevistador */}
                 <div>
                   <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700 mb-2">
-                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer Entrevistador *' : 'Entrevistador *'}
+                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer entrevistador *' : 'Entrevistador *'}
                   </label>
                   <select
                     id="interviewer"
@@ -1251,7 +1117,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 <div>
                   <label htmlFor="secondInterviewer" className="block text-sm font-medium text-gray-700 mb-2">
                     <FiUser className="inline w-4 h-4 mr-1" />
-                    Segundo Entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
+                    Segundo entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
                   </label>
                   <select
                     id="secondInterviewer"
@@ -1301,7 +1167,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                   <p className="mt-1 text-xs text-gray-500">
                     {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR)
                       ? formData.type === InterviewType.FAMILY
-                        ? 'Requiere dos entrevistadores. Directores de Ciclo y Psicólogos/as no participan en entrevistas familiares'
+                        ? 'Solo entrevistadores y coordinadores pueden formar esta pareja.'
                         : 'Este tipo de entrevista requiere dos entrevistadores'
                       : 'Se recomienda contar con dos entrevistadores disponibles simultáneamente'}
                   </p>
@@ -1341,47 +1207,47 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {isCreateMode && showManualScheduling && (
-                  <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                {isCreateMode && showManualScheduling && formData.type !== InterviewType.CYCLE_DIRECTOR && (
+                  <div className="flex items-center justify-between border-y border-gray-200 py-3">
                     <div>
-                      <p className="text-sm font-semibold text-blue-900">Modo avanzado</p>
-                      <p className="text-xs text-blue-700">Selecciona entrevistadores y horario manualmente.</p>
+                      <p className="text-sm font-semibold text-gray-900">Agendamiento manual</p>
+                      <p className="text-xs text-gray-600">Selecciona la pareja y el horario.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowManualScheduling(false)}
                       className="text-sm font-semibold text-azul-monte-tabor hover:underline"
                     >
-                      Volver a sugerencias
+                      Usar sugerencias
                     </button>
                   </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     <FiCalendar className="inline w-4 h-4 mr-1" />
-                    Seleccionar Fecha y Hora *
+                    Seleccionar fecha y hora *
                   </label>
                   {/* Mostrar mensaje si es FAMILY o CYCLE_DIRECTOR y falta el segundo entrevistador */}
                   {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.interviewerId && !formData.secondInterviewerId ? (
                     <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-md">
                       <p className="text-sm text-yellow-800 text-center font-medium">
-                        Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
+                        Selecciona ambos integrantes de la pareja.
                       </p>
                       <p className="text-xs text-yellow-700 text-center mt-1">
-                        Los horarios disponibles serán solo aquellos donde ambos entrevistadores están libres
+                        Mostraremos únicamente los horarios que tienen en común.
                       </p>
                     </div>
                   ) : formData.interviewerId && ((formData.type !== InterviewType.FAMILY && formData.type !== InterviewType.CYCLE_DIRECTOR) || formData.secondInterviewerId) ? (
                     <div>
                       {/* Mostrar información de ambos entrevistadores para FAMILY o CYCLE_DIRECTOR */}
                       {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-sm font-medium text-blue-900 mb-1">
+                        <div className="mb-3 border-y border-gray-200 py-3">
+                          <p className="text-sm font-medium text-gray-900 mb-1">
                             Horarios comunes para:
                           </p>
-                          <div className="text-sm text-blue-700 space-y-1">
-                            <p>• {interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
-                            <p>• {interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
+                          <div className="text-sm text-gray-700 space-y-1">
+                            <p>{interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
+                            <p>{interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
                           </div>
                         </div>
                       )}
@@ -1439,25 +1305,11 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             {/* Duración */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duración de la Entrevista
+                Duración
               </label>
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-azul-monte-tabor/5 to-indigo-50 border border-azul-monte-tabor/20 rounded-lg">
-                <div className="flex items-center justify-center w-10 h-10 bg-azul-monte-tabor/10 rounded-full">
-                  <FiClock className="w-5 h-5 text-azul-monte-tabor" />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold text-azul-monte-tabor">
-60 minutos
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-azul-monte-tabor/10 text-azul-monte-tabor border border-azul-monte-tabor/20">
-                      Fijo
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    Duración estándar para todas las entrevistas
-                  </span>
-                </div>
+              <div className="flex min-h-11 items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3">
+                <span className="text-sm font-semibold text-gray-900">60 minutos</span>
+                <span className="text-xs text-gray-600">Duración fija</span>
               </div>
             </div>
           </div>
@@ -1680,8 +1532,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 <>
                   <LoadingSpinner size="sm" />
                   <span className="ml-2">
-                    {isCreateMode ? 'Creando...' : 
-                     isCompleteMode ? 'Completando...' : 'Guardando...'}
+                    {isCreateMode ? 'Creando…' :
+                     isCompleteMode ? 'Completando…' : 'Guardando…'}
                   </span>
                 </>
               ) : (
@@ -1689,17 +1541,17 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                   {isCreateMode ? (
                     <>
                       <FiSave className="w-5 h-5 mr-2" />
-                      Programar Entrevista
+                      Programar entrevista
                     </>
                   ) : isCompleteMode ? (
                     <>
                       <FiCheck className="w-5 h-5 mr-2" />
-                      Completar Entrevista
+                      Completar entrevista
                     </>
                   ) : (
                     <>
                       <FiEdit className="w-5 h-5 mr-2" />
-                      Guardar Cambios
+                      Guardar cambios
                     </>
                   )}
                 </>

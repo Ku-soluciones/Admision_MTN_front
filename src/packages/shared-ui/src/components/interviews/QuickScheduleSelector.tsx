@@ -3,7 +3,6 @@ import {
   FiAlertCircle,
   FiCalendar,
   FiCheck,
-  FiChevronRight,
   FiClock,
   FiRefreshCw,
   FiUsers
@@ -18,6 +17,7 @@ import {
   NextAvailableSlotsResponse,
   SuggestedInterviewerPair
 } from '../../types/interview';
+import { buildFamilyInterviewerPairs } from '../../utils/interviewerEligibility';
 
 interface QuickScheduleSelection {
   date: string;
@@ -37,10 +37,10 @@ interface QuickScheduleSelectorProps {
 }
 
 const roleLabels: Record<string, string> = {
-  CYCLE_DIRECTOR: 'Dir. Ciclo',
-  PSYCHOLOGIST: 'Psicologia',
-  COORDINATOR: 'Coordinacion',
-  INTERVIEWER: 'Entrevista',
+  CYCLE_DIRECTOR: 'Director/a de Ciclo',
+  PSYCHOLOGIST: 'Psicólogo/a',
+  COORDINATOR: 'Coordinador/a',
+  INTERVIEWER: 'Entrevistador/a',
   TEACHER: 'Docente'
 };
 
@@ -48,7 +48,10 @@ const pairKey = (pair: SuggestedInterviewerPair) =>
   `${pair.interviewer1.id}-${pair.interviewer2.id}`;
 
 const interviewerLabel = (interviewer: InterviewerInfo) =>
-  `${interviewer.name}${interviewer.role ? ` (${roleLabels[interviewer.role] || interviewer.role})` : ''}`;
+  interviewer.name;
+
+const interviewerRoleLabel = (interviewer: InterviewerInfo) =>
+  roleLabels[interviewer.role || ''] || 'Entrevistador/a';
 
 const formatDate = (date: string) => {
   const [year, month, day] = date.split('-').map(Number);
@@ -69,18 +72,11 @@ const getTodayDateString = () => {
 
 const isPastDate = (date: string) => date < getTodayDateString();
 
-const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
-
 const buildFamilyPairs = (interviewers: InterviewerInfo[]): SuggestedInterviewerPair[] => {
-  const pairs: SuggestedInterviewerPair[] = [];
-  for (let i = 0; i < interviewers.length; i += 1) {
-    for (let j = i + 1; j < interviewers.length; j += 1) {
-      if (!isCycleInterviewRole(interviewers[i].role) && !isCycleInterviewRole(interviewers[j].role)) {
-        pairs.push({ interviewer1: interviewers[i], interviewer2: interviewers[j] });
-      }
-    }
-  }
-  return pairs;
+  return buildFamilyInterviewerPairs(interviewers).map(([interviewer1, interviewer2]) => ({
+    interviewer1,
+    interviewer2
+  }));
 };
 
 const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
@@ -159,14 +155,6 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
 
   const days = slotsData?.slotsByDate ?? [];
   const selectedDay: DaySlotsInfo | undefined = days[selectedDayIndex];
-  const selectedSummary = selectedSlot && selectedPair && selectedDate
-    ? {
-        date: selectedDate,
-        time: selectedSlot.time,
-        pair: selectedPair
-      }
-    : null;
-
   const nextAvailableSlot = useMemo(() => {
     if (!slotsData?.nextAvailable) return null;
     const day = slotsData.slotsByDate.find(item => item.date === slotsData.nextAvailable?.date);
@@ -204,17 +192,17 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
 
   if (isLoading) {
     return (
-      <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
+      <section className="rounded-lg border border-gray-200 bg-white p-5">
         <div className="flex items-center gap-3">
           <LoadingSpinner size="md" />
           <div>
-            <p className="text-sm font-semibold text-gray-900">Buscando el proximo horario disponible</p>
-            <p className="text-sm text-gray-600">Revisando agendas comunes para {duration} minutos.</p>
+            <p className="text-sm font-semibold text-gray-900">Buscando el próximo horario disponible</p>
+            <p className="text-sm text-gray-600">Revisando agendas comunes de {duration} minutos.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-5">
           {[0, 1, 2, 3, 4].map(item => (
-            <div key={item} className="h-16 animate-pulse rounded-lg bg-gray-100" />
+            <div key={item} className="h-16 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none" />
           ))}
         </div>
       </section>
@@ -228,12 +216,12 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
           <div className="flex items-start gap-3">
             <FiAlertCircle className="mt-0.5 h-5 w-5 flex-none text-red-600" />
             <div>
-              <p className="font-semibold text-red-900">No se pudo cargar la sugerencia automatica</p>
+              <p className="font-semibold text-red-900">No se pudieron cargar las sugerencias</p>
               <p className="mt-1 text-sm text-red-700">{error}</p>
             </div>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={onManualMode}>
-            Modo avanzado
+          <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onManualMode}>
+            Agendar manualmente
           </Button>
         </div>
       </section>
@@ -242,23 +230,23 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
 
   if (!slotsData?.nextAvailable || days.every(day => day.slots.length === 0)) {
     return (
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-lg border border-gray-200 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-gray-100 p-2">
               <FiCalendar className="h-5 w-5 text-gray-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">Sin disponibilidad en los proximos {daysToSearch} dias</p>
-              <p className="mt-1 text-sm text-gray-600">Puedes ampliar la busqueda o seleccionar entrevistadores manualmente.</p>
+              <p className="font-semibold text-gray-900">Sin disponibilidad en los próximos {daysToSearch} días</p>
+              <p className="mt-1 text-sm text-gray-600">Amplía la búsqueda o agenda manualmente.</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setDaysToSearch(prev => Math.min(prev + 5, 14))}>
-              Buscar mas adelante
+            <Button type="button" variant="secondary" size="sm" className="min-h-11" onClick={() => setDaysToSearch(prev => Math.min(prev + 5, 14))}>
+              Buscar más adelante
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={onManualMode}>
-              Modo avanzado
+            <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onManualMode}>
+              Agendar manualmente
             </Button>
           </div>
         </div>
@@ -268,18 +256,18 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
 
   return (
     <section className="space-y-5">
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+      <div className="rounded-lg border border-emerald-300 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+            <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-emerald-700">
               <FiCheck className="h-4 w-4" />
-              Proximo horario disponible
+              Próximo horario disponible
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <p className="text-xl font-bold text-emerald-950">
                 {formatDate(slotsData.nextAvailable.date)} a las {slotsData.nextAvailable.time}
               </p>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm font-medium text-emerald-800">
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-800">
                 <FiClock className="h-4 w-4" />
                 {duration} min
               </span>
@@ -301,20 +289,20 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Seleccionar otro dia</h3>
-            <p className="text-sm text-gray-600">Los dias con punto verde tienen al menos una pareja disponible.</p>
+            <h3 className="text-base font-semibold text-gray-900">Seleccionar otro día</h3>
+            <p className="text-sm text-gray-600">El indicador verde señala días con parejas disponibles.</p>
           </div>
           <button
             type="button"
             onClick={() => setDaysToSearch(prev => Math.min(prev + 5, 14))}
-            className="inline-flex items-center gap-2 self-start rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={daysToSearch >= 14}
           >
             <FiRefreshCw className="h-4 w-4" />
-            Ampliar busqueda
+            Ampliar búsqueda
           </button>
         </div>
 
@@ -322,16 +310,16 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
           {days.map((day, index) => {
             const isSelected = selectedDayIndex === index;
             const date = new Date(`${day.date}T00:00:00`);
-            const shortLabel = index === 0 ? 'Hoy' : index === 1 ? 'Manana' : date.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric' });
+            const shortLabel = index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : date.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric' });
 
             return (
               <button
                 key={day.date}
                 type="button"
                 onClick={() => setSelectedDayIndex(index)}
-                className={`min-w-[108px] rounded-lg border px-3 py-2 text-left transition ${
+                className={`min-h-11 min-w-[108px] rounded-lg border px-3 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                   isSelected
-                    ? 'border-azul-monte-tabor bg-blue-50 text-azul-monte-tabor shadow-sm'
+                    ? 'border-azul-monte-tabor bg-blue-50 text-azul-monte-tabor'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
@@ -348,24 +336,24 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
         <div className="mt-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h4 className="text-sm font-semibold text-gray-900">
-              Horarios para {selectedDay?.dayLabel || 'el dia seleccionado'}
+              Horarios para {selectedDay?.dayLabel || 'el día seleccionado'}
             </h4>
             <button
               type="button"
               onClick={onManualMode}
-              className="text-sm font-semibold text-azul-monte-tabor hover:underline"
+              className="min-h-11 rounded-lg px-2 text-sm font-semibold text-azul-monte-tabor hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
-              Modo avanzado
+              Agendar manualmente
             </button>
           </div>
 
           {!selectedDay || selectedDay.slots.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
-              <p className="text-sm font-medium text-gray-700">No hay parejas disponibles este dia.</p>
-              <p className="mt-1 text-sm text-gray-500">Prueba otro dia o usa el modo avanzado.</p>
+            <div className="border-y border-gray-200 py-5 text-center">
+              <p className="text-sm font-medium text-gray-700">No hay parejas disponibles este día.</p>
+              <p className="mt-1 text-sm text-gray-500">Prueba otro día o agenda manualmente.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-gray-200 border-y border-gray-200">
               {selectedDay.slots.map(slot => {
                 const isSelected = selectedDate === selectedDay.date && selectedSlot?.time === slot.time;
                 const pairs = buildFamilyPairs(slot.availableInterviewers);
@@ -375,59 +363,45 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
                 return (
                   <div
                     key={`${selectedDay.date}-${slot.time}`}
-                    className={`rounded-lg border p-3 transition ${
-                      isSelected ? 'border-azul-monte-tabor bg-blue-50 shadow-sm' : 'border-gray-200 bg-white'
+                    className={`px-2 py-3 transition-colors ${
+                      isSelected ? 'bg-blue-50' : 'bg-white'
                     }`}
                   >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => selectSlot(selectedDay.date, slot)}
-                        className="flex min-w-0 flex-1 items-start gap-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <span className="flex h-11 w-16 flex-none items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => selectSlot(selectedDay.date, slot)}
+                      className="flex min-h-11 w-full min-w-0 items-start gap-3 rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span className="w-14 flex-none pt-0.5 text-sm font-bold text-gray-950">
                           {slot.time}
                         </span>
                         <span className="min-w-0">
                           <span className="block font-semibold text-gray-900">
                             {interviewerLabel(primaryPair.interviewer1)} + {interviewerLabel(primaryPair.interviewer2)}
                           </span>
-                          <span className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                          <span className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-gray-600">
                             <FiUsers className="h-4 w-4" />
                             {slot.interviewerCount} entrevistadores disponibles
-                            {hasManyInterviewers && (
-                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                                elegir pareja
-                              </span>
-                            )}
+                            {hasManyInterviewers && <span>· {pairs.length} parejas</span>}
                           </span>
                         </span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => selectSlot(selectedDay.date, slot)}
-                        className="inline-flex items-center justify-center rounded-lg border border-azul-monte-tabor px-3 py-2 text-sm font-semibold text-azul-monte-tabor hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isSelected ? 'Seleccionado' : 'Seleccionar'}
-                        <FiChevronRight className="ml-1 h-4 w-4" />
-                      </button>
-                    </div>
+                        {isSelected && <FiCheck className="ml-auto mt-0.5 h-5 w-5 flex-none text-azul-monte-tabor" aria-hidden="true" />}
+                    </button>
 
                     {hasManyInterviewers && isSelected && (
-                      <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3">
-                        <p className="mb-3 text-sm font-semibold text-blue-900">
-                          {pairs.length} parejas válidas para entrevista familiar. Selecciona una.
+                      <div className="mt-2 border-t border-blue-200 pt-3">
+                        <p className="mb-2 text-sm font-semibold text-blue-900">
+                          Elegir pareja
                         </p>
-                        <div className="grid gap-2 md:grid-cols-2">
+                        <div className="divide-y divide-blue-100">
                           {pairs.map(pair => {
                             const checked = selectedPair ? pairKey(pair) === pairKey(selectedPair) : false;
                             return (
                               <label
                                 key={pairKey(pair)}
-                                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition ${
-                                  checked ? 'border-azul-monte-tabor bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                                className={`flex min-h-11 cursor-pointer items-start gap-3 px-1 py-2 text-sm transition-colors focus-within:ring-2 focus-within:ring-blue-200 ${
+                                  checked ? 'text-blue-950' : 'text-gray-800 hover:bg-white/70'
                                 }`}
                               >
                                 <input
@@ -437,8 +411,13 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
                                   onChange={() => selectPair(selectedDay.date, slot, pair)}
                                   className="mt-1 text-azul-monte-tabor focus:ring-azul-monte-tabor"
                                 />
-                                <span className="font-medium text-gray-800">
-                                  {interviewerLabel(pair.interviewer1)} + {interviewerLabel(pair.interviewer2)}
+                                <span className="min-w-0">
+                                  <span className="block font-medium">
+                                    {interviewerLabel(pair.interviewer1)} + {interviewerLabel(pair.interviewer2)}
+                                  </span>
+                                  <span className={`mt-0.5 block text-xs ${checked ? 'text-blue-800' : 'text-gray-600'}`}>
+                                    {interviewerRoleLabel(pair.interviewer1)} + {interviewerRoleLabel(pair.interviewer2)}
+                                  </span>
                                 </span>
                               </label>
                             );
@@ -453,20 +432,6 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
           )}
         </div>
       </div>
-
-      {selectedSummary && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-emerald-950">Horario seleccionado</p>
-              <p className="text-sm text-emerald-800">
-                {formatDate(selectedSummary.date)} a las {selectedSummary.time} con {interviewerLabel(selectedSummary.pair.interviewer1)} + {interviewerLabel(selectedSummary.pair.interviewer2)}
-              </p>
-            </div>
-            <FiCheck className="hidden h-6 w-6 text-emerald-700 md:block" />
-          </div>
-        </div>
-      )}
     </section>
   );
 };

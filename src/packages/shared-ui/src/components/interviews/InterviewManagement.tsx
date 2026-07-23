@@ -915,7 +915,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   };
 
   const interviewTypes = [
-    { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', requiresTwoInterviewers: false },
+    { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', requiresTwoInterviewers: true },
     { key: 'FAMILY', label: 'Entrevista Familiar', requiresTwoInterviewers: true }
   ];
 

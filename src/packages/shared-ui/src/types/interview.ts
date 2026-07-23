@@ -349,8 +349,10 @@ export interface WeeklyOverviewAvailableSlot {
   time: string;
   availableInterviewers: InterviewerInfo[];
   interviewerCount: number;
+  familyPairCount?: number;
   availablePairCount?: number;
   availablePairs?: AvailableInterviewerPair[];
+  availableInterviewTypes?: InterviewType[];
   suggestedPair?: SuggestedInterviewerPair;
 }
 

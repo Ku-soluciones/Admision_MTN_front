@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiPlus, FiUsers } from 'react-icons/fi';
+import { FiPlus } from 'react-icons/fi';
 import {
   AvailableInterviewerPair,
   InterviewerInfo,
@@ -9,12 +9,12 @@ import {
 import {
   CommandCenterViewMode,
   STATUS_STYLES,
-  getInterviewerInitials,
   getPrimaryOperationalInterview,
   getHistoricalInterviews,
   getOperationalInterviews
 } from './dashboardTypes';
 import InterviewTooltip from './InterviewTooltip';
+import { countFamilyInterviewerPairs } from '../../../../packages/shared-ui/src/utils/interviewerEligibility';
 
 interface WeeklyTimelineProps {
   days: WeeklyOverviewDay[];
@@ -35,19 +35,57 @@ const TIME_SLOTS = [
   '14:00', '15:00', '16:00', '17:00'
 ];
 
-const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
+const getFamilyPairCount = (interviewers: InterviewerInfo[], reportedCount?: number): number => (
+  typeof reportedCount === 'number' ? reportedCount : countFamilyInterviewerPairs(interviewers)
+);
 
-const buildFamilyPairs = (interviewers: InterviewerInfo[]): Array<[InterviewerInfo, InterviewerInfo]> => {
-  const pairs: Array<[InterviewerInfo, InterviewerInfo]> = [];
-  interviewers.forEach((first, index) => {
-    interviewers.slice(index + 1).forEach((second) => {
-      if (!isCycleInterviewRole(first.role) && !isCycleInterviewRole(second.role)) pairs.push([first, second]);
-    });
-  });
-  return pairs;
-};
+interface SlotAvailabilityButtonProps {
+  label: string;
+  dayLabel: string;
+  date: string;
+  time: string;
+  interviewers: InterviewerInfo[];
+  cyclePairs: AvailableInterviewerPair[];
+  familyPairCount: number;
+  onSlotClick: WeeklyTimelineProps['onSlotClick'];
+  compact?: boolean;
+}
 
-const pairNames = (first: InterviewerInfo, second: InterviewerInfo): string => `${first.name} + ${second.name}`;
+const SlotAvailabilityButton: React.FC<SlotAvailabilityButtonProps> = ({
+  label,
+  dayLabel,
+  date,
+  time,
+  interviewers,
+  cyclePairs,
+  familyPairCount,
+  onSlotClick,
+  compact = false
+}) => (
+  <button
+    type="button"
+    onClick={() => onSlotClick(date, time, interviewers, cyclePairs)}
+    className={`flex w-full flex-col justify-center text-left text-teal-950 transition-colors hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-300 ${
+      compact
+        ? 'min-h-11 border-t border-gray-200 bg-white px-2 py-1.5'
+        : 'h-28 rounded-lg border border-teal-300 bg-white px-3 py-2.5'
+    }`}
+    aria-label={`${label} el ${dayLabel} a las ${time}. ${familyPairCount} parejas familiares y ${cyclePairs.length} parejas de Director de Ciclo y Psicólogo`}
+  >
+    <span className="flex w-full items-center justify-between gap-2">
+      <span className="text-xs font-bold">{label}</span>
+      <FiPlus className="h-4 w-4 flex-shrink-0 text-teal-700" aria-hidden="true" />
+    </span>
+    <span className={`space-y-0.5 text-[10px] font-medium leading-4 text-teal-800 ${compact ? '' : 'mt-2'}`}>
+      {familyPairCount > 0 && (
+        <span className="block">Familiar: {familyPairCount}</span>
+      )}
+      {cyclePairs.length > 0 && (
+        <span className="block">Director + Psicólogo: {cyclePairs.length}</span>
+      )}
+    </span>
+  </button>
+);
 
 const getTodayDateString = (): string => {
   const today = new Date();
@@ -102,14 +140,14 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
 
   if (viewMode === 'month') {
     return (
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Mapa mensual</h3>
-            <p className="text-xs text-gray-500">Intensidad por carga diaria</p>
+            <h3 className="text-base font-bold text-gray-950">Mapa mensual</h3>
+            <p className="text-sm text-gray-600">Intensidad por carga diaria</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 md:grid-cols-5">
           {days.map(day => {
             const visibleScheduled = day.scheduled.filter(interview => isInterviewVisible(interview, filterByInterviewer));
             const scheduled = getOperationalInterviews(visibleScheduled).length;
@@ -117,9 +155,11 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
             const available = day.available.length;
             const intensity = Math.min(100, scheduled * 18 + available * 4);
             return (
-              <div key={day.date} className="rounded-lg border border-gray-200 p-4">
+              <div key={day.date} className="bg-white p-4">
                 <p className="text-sm font-semibold text-gray-900">{day.dayLabel}</p>
-                <div className="mt-3 h-24 rounded-lg border border-teal-200 bg-teal-50" style={{ opacity: Math.max(0.2, intensity / 100) }} />
+                <div className="mt-3 h-2 rounded-full bg-gray-100" aria-hidden="true">
+                  <div className="h-full rounded-full bg-teal-600" style={{ width: `${Math.max(4, intensity)}%` }} />
+                </div>
                 <p className="mt-3 text-xs text-gray-500">
                   {scheduled} activas · {available} libres{historical ? ` · ${historical} historial` : ''}
                 </p>
@@ -133,12 +173,12 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
 
   if (viewMode === '2weeks') {
     return (
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-4">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Timeline compacto</h3>
-          <p className="text-xs text-gray-500">Manana y tarde por dia habil</p>
+          <h3 className="text-base font-bold text-gray-950">Vista de dos semanas</h3>
+          <p className="text-sm text-gray-600">Mañana y tarde por día hábil</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 md:grid-cols-2 xl:grid-cols-5">
           {days.map(day => {
             const visibleScheduled = getOperationalInterviews(
               day.scheduled.filter(interview => isInterviewVisible(interview, filterByInterviewer))
@@ -146,14 +186,14 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
             const morning = visibleScheduled.filter(interview => interview.time < '13:00').length;
             const afternoon = visibleScheduled.length - morning;
             return (
-              <div key={day.date} className="rounded-lg border border-gray-200 p-3">
+              <div key={day.date} className="bg-white p-3">
                 <p className="mb-3 text-sm font-semibold text-gray-900">{day.dayLabel}</p>
-                <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="rounded-md bg-blue-50 p-3 text-blue-700">
+                <div className="grid grid-cols-2 divide-x divide-gray-200 border-y border-gray-200 text-center text-xs">
+                  <div className="p-3 text-blue-700">
                     <p className="text-lg font-bold">{morning}</p>
-                    <p>Manana</p>
+                    <p>Mañana</p>
                   </div>
-                  <div className="rounded-md bg-teal-50 p-3 text-teal-700">
+                  <div className="p-3 text-teal-700">
                     <p className="text-lg font-bold">{afternoon}</p>
                     <p>Tarde</p>
                   </div>
@@ -168,19 +208,18 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
   }
 
   return (
-    <section className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <section className="relative rounded-lg border border-gray-200 bg-white p-4">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Timeline semanal</h3>
+            <h3 className="text-base font-bold text-gray-950">Agenda semanal</h3>
             {viewMode !== 'day' && <span className="text-sm font-semibold text-gray-600">{rangeLabel}</span>}
           </div>
-          <p className="text-xs text-gray-500">Bloques de 60 minutos: solidos agendados, punteados disponibles</p>
+          <p className="text-sm text-gray-600">Bloques de 60 minutos con disponibilidad válida por tipo de entrevista.</p>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-gray-500">
           <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded border border-blue-400 bg-blue-50" /> Agendada</span>
-          <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded border border-dashed border-teal-300 bg-teal-50" /> Disponible</span>
-          <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded border border-amber-300 bg-amber-50" /> Multiples</span>
+          <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded border border-teal-300 bg-white" /> Disponible</span>
         </div>
       </div>
 
@@ -212,40 +251,24 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                     ? day.available.find(slot => slot.time === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
                     : undefined;
                   const available = day.date >= getTodayDateString()
-                    ? day.available.find(slot => slot.time === time && slot.interviewerCount >= 2 && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
+                    ? day.available.find(slot => {
+                      const familyPairCount = getFamilyPairCount(slot.availableInterviewers, slot.familyPairCount);
+                      const cyclePairCount = slot.availablePairCount ?? slot.availablePairs?.length ?? 0;
+                      return slot.time === time
+                        && (familyPairCount > 0 || cyclePairCount > 0)
+                        && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer));
+                    })
                     : undefined;
 
                   if (scheduled && available) {
                     const pair = [scheduled.interviewer1, scheduled.interviewer2].filter(Boolean) as InterviewerInfo[];
-                    const availPairs = available.availablePairs || [];
-                    if (availPairs.length === 0) {
-                      return (
-                        <button
-                          key={`${day.date}-${time}`}
-                          type="button"
-                          onClick={() => onInterviewClick(scheduled)}
-                          onMouseEnter={event => showTooltip(scheduled, event.currentTarget)}
-                          onMouseLeave={() => setTooltip(null)}
-                          onFocus={event => showTooltip(scheduled, event.currentTarget)}
-                          onBlur={() => setTooltip(null)}
-                          className={`relative h-28 overflow-visible rounded-lg border px-3 py-2 text-left text-xs shadow-sm transition-all hover:scale-[1.01] hover:shadow-md ${STATUS_STYLES[scheduled.status] || STATUS_STYLES.SCHEDULED}`}
-                        >
-                          {(activeCount > 1 || historicalCount > 0) && (
-                            <span className="absolute right-2 top-2 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
-                              {activeCount > 1 ? `+${activeCount - 1}` : `${historicalCount} hist.`}
-                            </span>
-                          )}
-                          <p className="truncate font-bold">{scheduled.studentName}</p>
-                          <p className="truncate">{pair.map(interviewer => getInterviewerInitials(interviewer.name)).join(' + ')}</p>
-                          {historicalCount > 0 && <p className="mt-1 truncate text-[11px] opacity-80">{historicalCount} cancelada(s) en historial</p>}
-                        </button>
-                      );
-                    }
+                    const cyclePairs = available.availablePairs || [];
+                    const familyPairCount = getFamilyPairCount(available.availableInterviewers, available.familyPairCount);
+                    const hasValidAvailability = cyclePairs.length > 0 || familyPairCount > 0;
                     return (
                       <div
                         key={`${day.date}-${time}`}
-                        className="flex flex-col gap-1 rounded-lg border border-amber-200 bg-amber-50 p-1 shadow-sm"
-                        style={{ minHeight: '7rem', height: 'auto' }}
+                        className="flex h-28 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
                       >
                         <button
                           type="button"
@@ -254,61 +277,30 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                           onMouseLeave={() => setTooltip(null)}
                           onFocus={event => showTooltip(scheduled, event.currentTarget)}
                           onBlur={() => setTooltip(null)}
-                          className={`relative flex-shrink-0 rounded-md border px-2 py-1.5 text-left text-xs transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-100 ${STATUS_STYLES[scheduled.status] || STATUS_STYLES.SCHEDULED}`}
+                          className={`relative min-h-12 flex-1 border-0 px-2 py-1.5 text-left text-xs focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200 ${STATUS_STYLES[scheduled.status] || STATUS_STYLES.SCHEDULED}`}
                         >
                           {(activeCount > 1 || historicalCount > 0) && (
-                            <span className="absolute right-2 top-1.5 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
+                            <span className="absolute right-2 top-1.5 text-[10px] font-bold text-gray-600">
                               {activeCount > 1 ? `+${activeCount - 1}` : `${historicalCount} hist.`}
                             </span>
                           )}
                           <p className="truncate font-bold">{scheduled.studentName}</p>
-                          <p className="truncate">{pair.map(interviewer => getInterviewerInitials(interviewer.name)).join(' + ')}</p>
+                          <p className="truncate text-[11px]" title={pair.map(interviewer => interviewer.name).join(' + ')}>
+                            {pair.map(interviewer => interviewer.name).join(' + ')}
+                          </p>
                         </button>
-                        {availPairs.length === 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
-                            className="inline-flex flex-shrink-0 items-center justify-between gap-2 rounded-md border border-dashed border-teal-300 bg-white px-2 py-1.5 text-left text-xs font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                            aria-label={`Agendar pareja libre el ${day.dayLabel} a las ${available.time}`}
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate">Pareja libre</span>
-                              <span className="block truncate text-[11px] font-medium text-teal-700">
-                                {pairNames(availPairs[0].cycleDirector, availPairs[0].psychologist)}
-                              </span>
-                            </span>
-                            <FiPlus className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                          </button>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1 px-1 pt-0.5">
-                              <FiUsers className="h-3 w-3 text-teal-600" aria-hidden="true" />
-                              <span className="text-[10px] font-semibold text-teal-700">{availPairs.length} parejas libres</span>
-                            </div>
-                            {availPairs.slice(0, 2).map(availPair => (
-                              <button
-                                key={availPair.id}
-                                type="button"
-                                onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
-                                className="inline-flex flex-shrink-0 items-center justify-between gap-2 rounded-md border border-dashed border-teal-300 bg-white px-2 py-1 text-left text-xs font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                                aria-label={`Agendar ${availPair.cycleDirector.name} + ${availPair.psychologist.name} el ${day.dayLabel} a las ${available.time}`}
-                              >
-                                <span className="min-w-0 truncate">
-                                  {pairNames(availPair.cycleDirector, availPair.psychologist)}
-                                </span>
-                                <FiPlus className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
-                              </button>
-                            ))}
-                            {availPairs.length > 2 && (
-                              <button
-                                type="button"
-                                onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
-                                className="px-1 text-left text-[10px] font-semibold text-teal-700 hover:text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                              >
-                                + {availPairs.length - 2} {availPairs.length - 2 === 1 ? 'otra pareja' : 'otras parejas'}
-                              </button>
-                            )}
-                          </>
+                        {hasValidAvailability && (
+                          <SlotAvailabilityButton
+                            compact
+                            label="Agendar otra"
+                            dayLabel={day.dayLabel}
+                            date={day.date}
+                            time={available.time}
+                            interviewers={available.availableInterviewers}
+                            cyclePairs={cyclePairs}
+                            familyPairCount={familyPairCount}
+                            onSlotClick={onSlotClick}
+                          />
                         )}
                       </div>
                     );
@@ -325,15 +317,17 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                         onMouseLeave={() => setTooltip(null)}
                         onFocus={event => showTooltip(scheduled, event.currentTarget)}
                         onBlur={() => setTooltip(null)}
-                        className={`relative h-28 overflow-visible rounded-lg border px-3 py-2 text-left text-xs shadow-sm transition-all hover:scale-[1.01] hover:shadow-md ${STATUS_STYLES[scheduled.status] || STATUS_STYLES.SCHEDULED}`}
+                        className={`relative h-28 overflow-visible rounded-lg border px-3 py-2 text-left text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${STATUS_STYLES[scheduled.status] || STATUS_STYLES.SCHEDULED}`}
                       >
                         {(activeCount > 1 || historicalCount > 0) && (
-                          <span className="absolute right-2 top-2 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
+                          <span className="absolute right-2 top-2 text-[10px] font-bold text-gray-600">
                             {activeCount > 1 ? `+${activeCount - 1}` : `${historicalCount} hist.`}
                           </span>
                         )}
                         <p className="truncate font-bold">{scheduled.studentName}</p>
-                        <p className="truncate">{pair.map(interviewer => getInterviewerInitials(interviewer.name)).join(' + ')}</p>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug" title={pair.map(interviewer => interviewer.name).join(' + ')}>
+                          {pair.map(interviewer => interviewer.name).join(' + ')}
+                        </p>
                         {historicalCount > 0 && <p className="mt-1 truncate text-[11px] opacity-80">{historicalCount} cancelada(s) en historial</p>}
                       </button>
                     );
@@ -341,15 +335,9 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
 
                   if (available) {
                     const cyclePairs = available.availablePairs || [];
-                    const familyPairs = buildFamilyPairs(available.availableInterviewers);
-                    const showingCyclePairs = cyclePairs.length > 0;
-                    const totalPairs = showingCyclePairs ? cyclePairs.length : familyPairs.length;
-                    const displayPairs = showingCyclePairs
-                      ? cyclePairs.map((pair) => ({ key: `cycle-${pair.id}`, first: pair.cycleDirector, second: pair.psychologist }))
-                      : familyPairs.map(([first, second]) => ({ key: `family-${first.id}-${second.id}`, first, second }));
-                    const visiblePairs = displayPairs.slice(0, 2);
+                    const familyPairCount = getFamilyPairCount(available.availableInterviewers, available.familyPairCount);
 
-                    if (totalPairs === 0) {
+                    if (cyclePairs.length === 0 && familyPairCount === 0) {
                       return (
                         <div
                           key={`${day.date}-${time}`}
@@ -362,51 +350,17 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                     }
 
                     return (
-                      <div
+                      <SlotAvailabilityButton
                         key={`${day.date}-${time}`}
-                        className="flex h-28 flex-col rounded-lg border border-dashed border-teal-400 bg-teal-50 p-2 text-teal-950 transition-colors hover:bg-teal-100/70"
-                      >
-                        <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
-                          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-bold text-teal-800">
-                            <FiUsers className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-                            <span className="truncate">{showingCyclePairs ? 'Director + Psicólogo' : 'Familiar'}</span>
-                          </span>
-                          <span className="flex-shrink-0 text-[10px] font-medium text-teal-700">
-                            {totalPairs} {totalPairs === 1 ? 'pareja' : 'parejas'}
-                          </span>
-                        </div>
-                        <div className="min-h-0 flex-1 space-y-1 overflow-hidden">
-                        {visiblePairs.map(({ key, first, second }) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, cyclePairs)}
-                            className="flex w-full items-center justify-between gap-2 rounded-md bg-white px-2 py-1 text-left text-[11px] font-semibold leading-tight text-teal-950 shadow-sm transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-teal-300"
-                            aria-label={`Agendar ${pairNames(first, second)} el ${day.dayLabel} a las ${available.time}`}
-                            title={pairNames(first, second)}
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate">{first.name}</span>
-                              <span className="block truncate text-[10px] font-medium text-teal-700">+ {second.name}</span>
-                            </span>
-                            <FiPlus className="h-3 w-3 flex-shrink-0 text-teal-600" aria-hidden="true" />
-                          </button>
-                        ))}
-                        </div>
-                        {totalPairs > visiblePairs.length && (
-                          <button
-                            type="button"
-                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, cyclePairs)}
-                            className="mt-1 self-start rounded px-1 text-[10px] font-semibold text-teal-700 hover:text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-300"
-                            aria-label={`Ver ${totalPairs - visiblePairs.length} parejas adicionales disponibles`}
-                          >
-                            + {totalPairs - visiblePairs.length} {totalPairs - visiblePairs.length === 1 ? 'otra pareja' : 'otras parejas'}
-                          </button>
-                        )}
-                        {historicalCount > 0 && (
-                          <p className="truncate text-[10px] text-gray-500">{historicalCount} historial cancelado</p>
-                        )}
-                      </div>
+                        label="Disponible"
+                        dayLabel={day.dayLabel}
+                        date={day.date}
+                        time={available.time}
+                        interviewers={available.availableInterviewers}
+                        cyclePairs={cyclePairs}
+                        familyPairCount={familyPairCount}
+                        onSlotClick={onSlotClick}
+                      />
                     );
                   }
 
@@ -414,7 +368,7 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                     return (
                       <div
                         key={`${day.date}-${time}`}
-                        className="flex h-28 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-100 px-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-400"
+                        className="flex h-28 items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-2 text-center text-xs font-medium text-gray-500"
                         title="Slot pasado no disponible para agendar"
                       >
                         Pasado

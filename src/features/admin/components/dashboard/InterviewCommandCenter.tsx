@@ -311,8 +311,10 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
             time: addition.time,
             availableInterviewers: addition.availableInterviewers,
             interviewerCount: addition.interviewerCount,
+            familyPairCount: addition.familyPairCount,
             availablePairs: addition.availablePairs,
-            availablePairCount: addition.availablePairCount
+            availablePairCount: addition.availablePairCount,
+            availableInterviewTypes: addition.availableInterviewTypes
           });
         }
       });
@@ -351,7 +353,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     void loadOverview();
   }, [loadOverview]);
 
-  const handleSchedule = async (data: QuickScheduleData, bookedInterviewerIds: [number, number]) => {
+  const handleSchedule = async (data: QuickScheduleData, bookedInterviewerIds: [number, number]): Promise<void> => {
     setIsScheduling(true);
     setSuccessMessage(null);
     try {
@@ -379,16 +381,15 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       writeSlotAvailabilityCache(availabilityCacheRef.current);
 
       // Enviar invitación por email automáticamente
-      try {
-        await interviewService.sendInterviewInvitation(interview.id);
-      } catch (emailError) {
-        // No bloquear la agenda si falla la notificación.
-      }
-
-      setSuccessMessage('Entrevista programada, invitación enviada y dashboard actualizado.');
-      void loadOverview();
-    } catch (scheduleError) {
-      setError('No se pudo programar la entrevista desde el dashboard.');
+      const invitation = await interviewService.sendInterviewInvitation(interview.id);
+      setSuccessMessage(invitation.success
+        ? 'Entrevista programada e invitación enviada.'
+        : 'Entrevista programada. La invitación quedó pendiente de envío.');
+      await loadOverview();
+    } catch (scheduleError: any) {
+      const message = scheduleError?.response?.data?.message || scheduleError?.message || 'No se pudo programar la entrevista.';
+      setError(message);
+      throw new Error(message);
     } finally {
       setIsScheduling(false);
     }
@@ -427,24 +428,24 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario Global</p>
-            <h2 className="mt-1 text-lg font-bold text-gray-950">Centro operativo de entrevistas</h2>
-            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">
-              {surface === 'operations' ? 'Vista operativa de entrevistas' : 'Calendario mensual de entrevistas'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-gray-950">Calendario global</h2>
+          <p className="mt-1 max-w-3xl text-sm text-gray-600">
+            {surface === 'operations'
+              ? 'Agenda, disponibilidad y carga de entrevistadores.'
+              : 'Vista mensual de todas las entrevistas.'}
+          </p>
+        </div>
+        <div className="inline-flex self-start rounded-lg bg-gray-100 p-1 md:self-auto" aria-label="Vista del calendario">
             <button
               type="button"
               onClick={() => setSurface('operations')}
               aria-pressed={surface === 'operations'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+              className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                 surface === 'operations'
-                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                  ? 'bg-white text-gray-950 ring-1 ring-gray-200'
+                  : 'text-gray-600 hover:text-gray-950'
               }`}
             >
               <FiGrid className="h-4 w-4" aria-hidden="true" />
@@ -454,16 +455,15 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
               type="button"
               onClick={() => setSurface('calendar')}
               aria-pressed={surface === 'calendar'}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+              className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                 surface === 'calendar'
-                  ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                  ? 'bg-white text-gray-950 ring-1 ring-gray-200'
+                  : 'text-gray-600 hover:text-gray-950'
               }`}
             >
               <FiCalendar className="h-4 w-4" aria-hidden="true" />
               Calendario
             </button>
-          </div>
         </div>
       </section>
 
@@ -487,7 +487,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       )}
 
       {isLoading && !visibleOverview ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-sm text-gray-500 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-sm text-gray-500">
           Cargando centro de entrevistas...
         </div>
       ) : visibleOverview ? (
@@ -545,7 +545,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           />
         </>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-sm text-gray-500 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-sm text-gray-500">
           No hay datos de entrevistas para este rango.
         </div>
       )}

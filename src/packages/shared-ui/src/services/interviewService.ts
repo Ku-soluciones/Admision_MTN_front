@@ -936,8 +936,10 @@ class InterviewService {
   async getSlotAvailability(date: string, time: string, duration: number): Promise<{
     availableInterviewers: InterviewerInfo[];
     interviewerCount: number;
+    familyPairCount: number;
     availablePairs: AvailableInterviewerPair[];
     availablePairCount: number;
+    availableInterviewTypes: InterviewType[];
   }> {
     const params = new URLSearchParams({ date, time, duration: duration.toString() });
     const response = await api.get<any>(`${this.baseUrl}/slot-availability?${params}`);
@@ -945,8 +947,10 @@ class InterviewService {
     return {
       availableInterviewers: data?.availableInterviewers ?? [],
       interviewerCount: data?.interviewerCount ?? 0,
+      familyPairCount: data?.familyPairCount ?? 0,
       availablePairs: data?.availablePairs ?? [],
-      availablePairCount: data?.availablePairCount ?? 0
+      availablePairCount: data?.availablePairCount ?? 0,
+      availableInterviewTypes: data?.availableInterviewTypes ?? []
     };
   }
 

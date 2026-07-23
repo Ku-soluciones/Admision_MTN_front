@@ -81,6 +81,7 @@ export const formatRole = (role: string): string => {
     CYCLE_DIRECTOR: 'Dir. Ciclo',
     PSYCHOLOGIST: 'Psicologo',
     COORDINATOR: 'Coordinador',
+    INTERVIEWER: 'Entrevistador',
     ENTREVISTADOR: 'Entrevistador'
   };
   return labels[role] || role.replace(/_/g, ' ');

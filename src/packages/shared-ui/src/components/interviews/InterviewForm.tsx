@@ -52,6 +52,7 @@ import {
 import { applicationService } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
 import { BASE_STORAGE_KEYS, getStorageKey } from "../../../../backend-sdk/src/index";
+import { isFamilyInterviewer } from '../../utils/interviewerEligibility';
 
 // Interface para entrevistadores del backend
 interface BackendInterviewer {
@@ -169,6 +170,20 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
     loadInterviewers();
   }, []);
+
+  useEffect(() => {
+    if (formData.type !== InterviewType.FAMILY) return;
+    const first = interviewers.find(item => String(item.id) === String(formData.interviewerId));
+    const second = interviewers.find(item => String(item.id) === String(formData.secondInterviewerId));
+    if ((first && !isFamilyInterviewer(first)) || (second && !isFamilyInterviewer(second))) {
+      setFormData(current => ({ ...current, interviewerId: '', secondInterviewerId: '' }));
+      setErrors(current => ({
+        ...current,
+        interviewerId: 'Selecciona un Entrevistador o Coordinador',
+        secondInterviewerId: 'Selecciona un Entrevistador o Coordinador'
+      }));
+    }
+  }, [formData.interviewerId, formData.secondInterviewerId, formData.type, interviewers]);
 
   useEffect(() => {
 
@@ -545,6 +560,12 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       if (formData.interviewerId && formData.secondInterviewerId) {
         if (formData.interviewerId === formData.secondInterviewerId) {
           newErrors.secondInterviewerId = 'Debe seleccionar un entrevistador diferente al primero';
+        } else if (formData.type === InterviewType.FAMILY) {
+          const first = interviewers.find(item => String(item.id) === String(formData.interviewerId));
+          const second = interviewers.find(item => String(item.id) === String(formData.secondInterviewerId));
+          if (!isFamilyInterviewer(first) || !isFamilyInterviewer(second)) {
+            newErrors.secondInterviewerId = 'La entrevista familiar solo admite Entrevistadores o Coordinadores';
+          }
         }
       }
 
@@ -791,7 +812,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         <div className={isCreateMode && !showManualScheduling ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
           {/* Información básica */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Información Básica</h3>
+            <h3 className="text-lg font-medium text-gray-900">Información básica</h3>
             
             {/* Selección de Postulante - Solo si no está pre-llenado */}
             {mode === InterviewFormMode.CREATE && !formData.applicationId && (
@@ -842,7 +863,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             {/* Tipo de entrevista */}
             <div>
               <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Entrevista *
+                Tipo de entrevista *
                 {(mode === InterviewFormMode.CREATE && interview?.type) && (
                   <span className="text-sm text-blue-600 font-normal"> (Pre-seleccionado)</span>
                 )}
@@ -909,7 +930,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 {/* Entrevistador */}
                 <div>
                   <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700 mb-2">
-                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer Entrevistador *' : 'Entrevistador *'}
+                    {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) ? 'Primer entrevistador *' : 'Entrevistador *'}
                   </label>
                   <select
                     id="interviewer"
@@ -926,7 +947,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                     ) : interviewersError ? (
                       <option disabled>Error al cargar entrevistadores</option>
                     ) : (
-                      interviewers.map(interviewer => (
+                      interviewers
+                        .filter(interviewer => formData.type !== InterviewType.FAMILY || isFamilyInterviewer(interviewer))
+                        .map(interviewer => (
                         <option
                           key={interviewer.id}
                           value={interviewer.id}
@@ -945,7 +968,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                 <div>
                   <label htmlFor="secondInterviewer" className="block text-sm font-medium text-gray-700 mb-2">
                     <FiUser className="inline w-4 h-4 mr-1" />
-                    Segundo Entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
+                    Segundo entrevistador {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && '*'}
                   </label>
                   <select
                     id="secondInterviewer"
@@ -968,7 +991,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                         const filteredInterviewers = interviewers.filter(interviewer => {
                           // Excluir el primer entrevistador si ya está seleccionado
                           const firstInterviewerId = formData.interviewerId ? formData.interviewerId.toString() : '';
-                          return interviewer.id.toString() !== firstInterviewerId;
+                          return interviewer.id.toString() !== firstInterviewerId
+                            && (formData.type !== InterviewType.FAMILY || isFamilyInterviewer(interviewer));
                         });
 
 
@@ -992,7 +1016,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                   )}
                   <p className="mt-1 text-xs text-gray-500">
                     {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR)
-                      ? 'Este tipo de entrevista requiere dos entrevistadores'
+                      ? formData.type === InterviewType.FAMILY
+                        ? 'Solo entrevistadores y coordinadores pueden formar esta pareja.'
+                        : 'Este tipo de entrevista requiere dos entrevistadores'
                       : 'Se recomienda contar con dos entrevistadores disponibles simultáneamente'}
                   </p>
                 </div>
@@ -1030,46 +1056,46 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             ) : (
               <div className="space-y-4">
                 {isCreateMode && showManualScheduling && (
-                  <div className="flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                  <div className="flex items-center justify-between border-y border-gray-200 py-3">
                     <div>
-                      <p className="text-sm font-semibold text-blue-900">Modo avanzado</p>
-                      <p className="text-xs text-blue-700">Selecciona entrevistadores y horario manualmente.</p>
+                      <p className="text-sm font-semibold text-gray-900">Agendamiento manual</p>
+                      <p className="text-xs text-gray-600">Selecciona la pareja y el horario.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowManualScheduling(false)}
                       className="text-sm font-semibold text-azul-monte-tabor hover:underline"
                     >
-                      Volver a sugerencias
+                      Usar sugerencias
                     </button>
                   </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     <FiCalendar className="inline w-4 h-4 mr-1" />
-                    Seleccionar Fecha y Hora *
+                    Seleccionar fecha y hora *
                   </label>
                   {/* Mostrar mensaje si es FAMILY o CYCLE_DIRECTOR y falta el segundo entrevistador */}
                   {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.interviewerId && !formData.secondInterviewerId ? (
                     <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-md">
                       <p className="text-sm text-yellow-800 text-center font-medium">
-                        Para entrevistas familiares, primero debe seleccionar AMBOS entrevistadores
+                        Selecciona ambos integrantes de la pareja.
                       </p>
                       <p className="text-xs text-yellow-700 text-center mt-1">
-                        Los horarios disponibles serán solo aquellos donde ambos entrevistadores están libres
+                        Mostraremos únicamente los horarios que tienen en común.
                       </p>
                     </div>
                   ) : formData.interviewerId && ((formData.type !== InterviewType.FAMILY && formData.type !== InterviewType.CYCLE_DIRECTOR) || formData.secondInterviewerId) ? (
                     <div>
                       {/* Mostrar información de ambos entrevistadores para FAMILY o CYCLE_DIRECTOR */}
                       {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && formData.secondInterviewerId && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-sm font-medium text-blue-900 mb-1">
+                        <div className="mb-3 border-y border-gray-200 py-3">
+                          <p className="text-sm font-medium text-gray-900 mb-1">
                             Horarios comunes para:
                           </p>
-                          <div className="text-sm text-blue-700 space-y-1">
-                            <p>• {interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
-                            <p>• {interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
+                          <div className="text-sm text-gray-700 space-y-1">
+                            <p>{interviewers.find(e => e.id === parseInt(formData.interviewerId as string))?.name || 'Entrevistador 1'}</p>
+                            <p>{interviewers.find(e => e.id === parseInt(formData.secondInterviewerId as string))?.name || 'Entrevistador 2'}</p>
                           </div>
                         </div>
                       )}

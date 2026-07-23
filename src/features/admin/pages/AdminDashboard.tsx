@@ -786,23 +786,22 @@ Esta acción:
 
       case 'usuarios':
         return (
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="rounded-lg border border-gray-200 bg-white">
             {/* Encabezado con título y pestañas, unificado con el contenido */}
             <div className="border-b border-gray-200 px-5 py-4">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
-                  <h1 className="mt-0.5 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
-                  <p className="mt-0.5 text-sm text-gray-500">Administra el personal del colegio y apoderados</p>
+                  <h1 className="text-lg font-bold text-gray-950">Gestión de usuarios</h1>
+                  <p className="mt-0.5 text-sm text-gray-600">Administra el personal, los apoderados y las parejas de entrevistas.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="inline-flex flex-wrap self-start rounded-lg bg-gray-100 p-1">
                   <button
                     type="button"
                     onClick={() => setUserSubsection('staff')}
-                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                       userSubsection === 'staff'
-                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                        ? 'bg-white text-gray-950 ring-1 ring-gray-200'
+                        : 'text-gray-600 hover:text-gray-950'
                     }`}
                   >
                     <FiUser className="h-4 w-4" aria-hidden="true" />
@@ -811,10 +810,10 @@ Esta acción:
                   <button
                     type="button"
                     onClick={() => setUserSubsection('guardians')}
-                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                       userSubsection === 'guardians'
-                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                        ? 'bg-white text-gray-950 ring-1 ring-gray-200'
+                        : 'text-gray-600 hover:text-gray-950'
                     }`}
                   >
                     <UsersIcon className="h-4 w-4" aria-hidden="true" />
@@ -823,14 +822,14 @@ Esta acción:
                   <button
                     type="button"
                     onClick={() => setUserSubsection('pairs')}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
                       userSubsection === 'pairs'
-                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                        ? 'bg-white text-gray-950 ring-1 ring-gray-200'
+                        : 'text-gray-600 hover:text-gray-950'
                     }`}
                   >
                     <FiUsers className="h-4 w-4" aria-hidden="true" />
-                    Parejas de entrevistas
+                    Parejas Director + Psicólogo
                   </button>
                 </div>
               </div>

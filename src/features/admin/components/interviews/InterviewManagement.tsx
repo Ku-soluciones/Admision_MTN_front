@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   PlusIcon,
 } from '../icons/Icons';
-import { FiCalendar, FiCheckCircle, FiClock, FiUser, FiStar, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiCheckCircle, FiClock, FiUser, FiUsers, FiStar, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
 import {
   Interview,
   InterviewStatus,
@@ -443,10 +443,10 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   // ── Vista de formulario inline ──────────────────────────────────────────
   if (activeView === 'form') {
     const formTitle =
-      formMode === InterviewFormMode.CREATE ? 'Nueva Entrevista' :
-      formMode === InterviewFormMode.EDIT   ? 'Editar Entrevista' :
-      formMode === InterviewFormMode.COMPLETE ? 'Completar Entrevista' :
-      'Detalles de Entrevista';
+      formMode === InterviewFormMode.CREATE ? 'Nueva entrevista' :
+      formMode === InterviewFormMode.EDIT   ? 'Editar entrevista' :
+      formMode === InterviewFormMode.COMPLETE ? 'Completar entrevista' :
+      'Detalles de entrevista';
 
     return (
       <div className={`space-y-6 ${className}`}>
@@ -463,7 +463,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           <h1 className="text-2xl font-bold text-gray-900">{formTitle}</h1>
         </div>
 
-        <Card className="p-6">
+        <div className="rounded-xl border border-gray-200 bg-white p-6">
           {formMode === InterviewFormMode.VIEW && selectedInterview ? (
             <InterviewDetailsPanel
               interview={selectedInterview}
@@ -486,7 +486,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
               refreshKey={refreshKey}
             />
           )}
-        </Card>
+        </div>
 
         {toast && (
           <SimpleToast
@@ -596,7 +596,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           disabled={isLoading}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
         >
-          <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
           Actualizar
         </button>
         <button
@@ -1157,7 +1157,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   };
 
   const interviewTypes = [
-    { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', requiresTwoInterviewers: false },
+    { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', requiresTwoInterviewers: true },
     { key: 'FAMILY', label: 'Entrevista Familiar', requiresTwoInterviewers: true }
   ];
 
@@ -1360,8 +1360,8 @@ interface StudentInterviewsModalProps {
 }
 
 const INTERVIEW_TYPES_CONFIG = [
-  { key: 'CYCLE_DIRECTOR', label: 'Entrevista Director de Ciclo', icon: '🎓' },
-  { key: 'FAMILY',         label: 'Entrevista Familiar',          icon: '👨‍👩‍👧' },
+  { key: 'CYCLE_DIRECTOR', label: 'Director de Ciclo', Icon: FiUser },
+  { key: 'FAMILY', label: 'Familiar', Icon: FiUsers },
 ];
 
 const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
@@ -1376,6 +1376,38 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
 }) => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !modalRef.current) return;
+
+      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1418,65 +1450,71 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="student-interviews-title"
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40" />
 
       {/* Panel */}
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        ref={modalRef}
+        className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-azul-monte-tabor to-blue-600">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <FiUser className="w-5 h-5 text-white" />
-            </div>
             <div>
-              <h2 className="text-lg font-semibold text-white leading-tight">{studentName}</h2>
-              <p className="text-xs text-blue-100">Gestión de entrevistas</p>
+              <h2 id="student-interviews-title" className="text-lg font-semibold leading-tight text-gray-950">{studentName}</h2>
+              <p className="mt-0.5 text-sm text-gray-600">Entrevistas requeridas</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onRefresh}
               title="Recargar"
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+              aria-label="Recargar entrevistas"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
               <FiRefreshCw className="w-4 h-4" />
             </button>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={onClose}
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+              aria-label="Cerrar"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <FiX className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex justify-center py-10">
               <LoadingSpinner size="lg" />
             </div>
           ) : (
-            INTERVIEW_TYPES_CONFIG.map(({ key, label, icon }) => {
+            <div className="divide-y divide-gray-200 border-y border-gray-200">
+            {INTERVIEW_TYPES_CONFIG.map(({ key, label, Icon }) => {
               const existing = getForType(key);
               return (
                 <div
                   key={key}
-                  className={`rounded-xl border-2 p-5 transition-colors ${
-                    existing ? 'border-green-200 bg-green-50/40' : 'border-gray-200 bg-gray-50/60'
-                  }`}
+                  className="px-1 py-4"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                     {/* Info izquierda */}
                     <div className="flex items-start gap-3 min-w-0">
-                      <span className="text-2xl shrink-0 mt-0.5">{icon}</span>
+                      <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-gray-500" aria-hidden="true" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-gray-900 text-sm">{label}</h3>
@@ -1510,25 +1548,27 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
                             )}
                           </div>
                         ) : (
-                          <p className="mt-1 text-xs text-gray-400">No programada aún</p>
+                          <p className="mt-1 text-xs text-gray-500">Pendiente de programación</p>
                         )}
                       </div>
                     </div>
 
                     {/* Acciones derecha */}
-                    <div className="flex flex-col gap-2 shrink-0">
+                    <div className="flex w-full flex-row gap-2 sm:w-auto sm:flex-col">
                       {existing ? (
                         <>
                           <button
+                            type="button"
                             onClick={() => { onView(existing); onClose(); }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border-2 border-azul-monte-tabor text-azul-monte-tabor hover:bg-blue-50 transition-colors whitespace-nowrap"
+                            className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border border-azul-monte-tabor px-3 py-1.5 text-xs font-medium text-azul-monte-tabor transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
                           >
                             <FiEye className="w-3.5 h-3.5" />
                             Ver detalles
                           </button>
                           <button
+                            type="button"
                             onClick={() => { onEdit(existing); onClose(); }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
+                            className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
                           >
                             <FiEdit className="w-3.5 h-3.5" />
                             Editar
@@ -1536,8 +1576,9 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
                         </>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => onSchedule(applicationId, key)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+                          className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-lg bg-azul-monte-tabor px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
                         >
                           <FiCalendar className="w-3.5 h-3.5" />
                           Agendar entrevista
@@ -1548,6 +1589,8 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
                 </div>
               );
             })
+            }
+            </div>
           )}
         </div>
 
@@ -1557,6 +1600,7 @@ const StudentInterviewsModal: React.FC<StudentInterviewsModalProps> = ({
             {interviews.filter(i => !InterviewLifecycle.isInactive(i.status)).length} / {INTERVIEW_TYPES_CONFIG.length} entrevistas asignadas
           </span>
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
           >
