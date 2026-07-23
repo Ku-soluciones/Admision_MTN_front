@@ -1,11 +1,11 @@
 import React from 'react';
 import { FiAlertTriangle, FiArrowRight } from 'react-icons/fi';
-import { InterviewerInfo, WeeklyOverviewDay } from '../../types/interview';
+import { AvailableInterviewerPair, InterviewerInfo, WeeklyOverviewDay } from '../../types/interview';
 import { getPairLabel } from './dashboardTypes';
 
 interface AvailableSlotsPanelProps {
   days: WeeklyOverviewDay[];
-  onSlotClick: (date: string, time: string, availableInterviewers: InterviewerInfo[]) => void;
+  onSlotClick: (date: string, time: string, availableInterviewers: InterviewerInfo[], availablePairs?: AvailableInterviewerPair[]) => void;
 }
 
 const getTodayDateString = (): string => {
@@ -42,13 +42,17 @@ const AvailableSlotsPanel: React.FC<AvailableSlotsPanelProps> = ({ days, onSlotC
             <button
               key={`${slot.date}-${slot.time}`}
               type="button"
-              onClick={() => onSlotClick(slot.date, slot.time, slot.availableInterviewers)}
+              onClick={() => onSlotClick(slot.date, slot.time, slot.availableInterviewers, slot.availablePairs || [])}
               className="w-full rounded-lg border border-gray-100 p-3 text-left transition-colors hover:border-teal-300 hover:bg-teal-50"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{slot.dayLabel} · {slot.time}</p>
-                  <p className="truncate text-xs text-gray-600">{getPairLabel(slot.availableInterviewers)}</p>
+                  <p className="truncate text-xs text-gray-600">
+                    {slot.availablePairCount
+                      ? `${slot.availablePairCount} pareja${slot.availablePairCount === 1 ? '' : 's'} Director + Psicólogo`
+                      : getPairLabel(slot.availableInterviewers)}
+                  </p>
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   {slot.interviewerCount > 2 && (

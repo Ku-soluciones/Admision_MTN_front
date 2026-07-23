@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiCalendar, FiGrid, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
-import { InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
+import { AvailableInterviewerPair, InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
@@ -90,7 +90,12 @@ const filterOverview = (overview: WeeklyOverviewResponse, searchTerm: string): W
         const pair = [interview.interviewer1.name, interview.interviewer2?.name].filter(Boolean).join(' ');
         return `${interview.studentName} ${pair} ${interview.interviewType}`.toLowerCase().includes(query);
       }),
-      available: day.available.filter(slot => slot.availableInterviewers.some(interviewer => interviewer.name.toLowerCase().includes(query)))
+      available: day.available.filter(slot =>
+        slot.availableInterviewers.some(interviewer => interviewer.name.toLowerCase().includes(query)) ||
+        (slot.availablePairs || []).some(pair =>
+          `${pair.cycleDirector.name} ${pair.psychologist.name}`.toLowerCase().includes(query)
+        )
+      )
     }))
   };
 };
@@ -305,7 +310,9 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           availableByTime.set(addition.time, {
             time: addition.time,
             availableInterviewers: addition.availableInterviewers,
-            interviewerCount: addition.interviewerCount
+            interviewerCount: addition.interviewerCount,
+            availablePairs: addition.availablePairs,
+            availablePairCount: addition.availablePairCount
           });
         }
       });
@@ -352,6 +359,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         applicationId: data.applicationId,
         interviewerId: data.interviewer1Id,
         secondInterviewerId: data.interviewer2Id,
+        interviewerPairId: data.interviewerPairId,
         type: data.type,
         mode: data.mode,
         scheduledDate: data.date,
@@ -390,14 +398,19 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     setAnchorDate(current => addDays(current, getStepDays(viewMode) * direction));
   };
 
-  const handleSlotClick = (date: string, time: string, availableInterviewers: InterviewerInfo[]) => {
+  const handleSlotClick = (
+    date: string,
+    time: string,
+    availableInterviewers: InterviewerInfo[],
+    availablePairs: AvailableInterviewerPair[] = []
+  ) => {
     if (isPastDate(date)) {
       setError('No se puede agendar entrevistas en fechas anteriores a hoy.');
       return;
     }
 
     setError(null);
-    setSelectedSlot({ date, time, availableInterviewers });
+    setSelectedSlot({ date, time, availableInterviewers, availablePairs });
   };
 
   const handleReleaseHistoricalInterview = async (interviewId: number) => {
@@ -542,6 +555,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           date={selectedSlot.date}
           time={selectedSlot.time}
           availableInterviewers={selectedSlot.availableInterviewers}
+          availablePairs={selectedSlot.availablePairs}
           isSubmitting={isScheduling}
           onSchedule={handleSchedule}
           onClose={() => setSelectedSlot(null)}

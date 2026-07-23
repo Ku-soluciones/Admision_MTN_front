@@ -46,6 +46,8 @@ import {
 } from '../../types/interview';
 import { applicationService } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
+import interviewerPairService from '../../services/interviewerPairService';
+import type { InterviewerPair } from '../../types/interviewerPair';
 
 // Interface para entrevistadores del backend
 interface BackendInterviewer {
@@ -56,6 +58,12 @@ interface BackendInterviewer {
   educationalLevel?: string;
   scheduleCount: number;
 }
+
+const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
+
+const isValidFamilyInterviewer = (interviewer?: BackendInterviewer): boolean => Boolean(
+  interviewer && !isCycleInterviewRole(interviewer.role)
+);
 
 const getTodayDateString = (): string => {
   const today = new Date();
@@ -87,6 +95,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     applicationId: '',
     interviewerId: '',
     secondInterviewerId: '', // Segundo entrevistador para entrevistas familiares
+    interviewerPairId: '',
     type: InterviewType.FAMILY,
     mode: InterviewMode.IN_PERSON,
     scheduledDate: '',
@@ -112,6 +121,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
   const [showManualScheduling, setShowManualScheduling] = useState(false);
+  const [eligiblePairs, setEligiblePairs] = useState<InterviewerPair[]>([]);
+  const [loadingPairs, setLoadingPairs] = useState(false);
+  const [pairEligibilityMessage, setPairEligibilityMessage] = useState<string | null>(null);
 
   // useRef para rastrear llamadas en progreso y prevenir race conditions
   const loadingSlotsRef = useRef(false);
@@ -178,12 +190,27 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   }, []);
 
   useEffect(() => {
+    if (formData.type !== InterviewType.FAMILY || !formData.interviewerId || !formData.secondInterviewerId) return;
+    const first = interviewers.find((item) => String(item.id) === String(formData.interviewerId));
+    const second = interviewers.find((item) => String(item.id) === String(formData.secondInterviewerId));
+    if (!isValidFamilyInterviewer(first) || !isValidFamilyInterviewer(second)) {
+      setFormData((current) => ({ ...current, interviewerId: '', secondInterviewerId: '' }));
+      setErrors((current) => ({
+        ...current,
+        interviewerId: 'Directores de Ciclo y Psicólogos/as no participan en entrevistas familiares',
+        secondInterviewerId: 'Selecciona dos entrevistadores habilitados para entrevista familiar'
+      }));
+    }
+  }, [formData.interviewerId, formData.secondInterviewerId, formData.type, interviewers]);
+
+  useEffect(() => {
 
     if (interview && (mode === InterviewFormMode.EDIT || mode === InterviewFormMode.VIEW || mode === InterviewFormMode.COMPLETE)) {
       setFormData({
         applicationId: interview.applicationId,
         interviewerId: interview.interviewerId,
         secondInterviewerId: interview.secondInterviewerId?.toString() || '',
+        interviewerPairId: interview.interviewerPairId?.toString() || '',
         type: interview.type,
         mode: interview.mode,
         scheduledDate: interview.scheduledDate,
@@ -237,6 +264,34 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       }
     }
   }, [mode, formData.applicationId, applications]);
+
+  useEffect(() => {
+    if (formData.type !== InterviewType.CYCLE_DIRECTOR || !formData.applicationId) {
+      setEligiblePairs([]);
+      setPairEligibilityMessage(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPairs(true);
+    setPairEligibilityMessage(null);
+    interviewerPairService.getEligible({ applicationId: Number(formData.applicationId) })
+      .then((result) => {
+        if (cancelled) return;
+        setEligiblePairs(result.eligiblePairs || []);
+        setPairEligibilityMessage(result.reason || null);
+        if (formData.interviewerPairId && !(result.eligiblePairs || []).some((pair) => String(pair.id) === String(formData.interviewerPairId))) {
+          setFormData((current) => ({ ...current, interviewerPairId: '', interviewerId: '', secondInterviewerId: '' }));
+        }
+      })
+      .catch((error: any) => {
+        if (!cancelled) {
+          setEligiblePairs([]);
+          setPairEligibilityMessage(error.message || 'No fue posible cargar las parejas compatibles.');
+        }
+      })
+      .finally(() => { if (!cancelled) setLoadingPairs(false); });
+    return () => { cancelled = true; };
+  }, [formData.type, formData.applicationId]);
 
   const loadApplications = async () => {
     try {
@@ -519,6 +574,19 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     try {
       setConflictWarning(null);
 
+      if (formData.type === InterviewType.CYCLE_DIRECTOR && formData.applicationId && formData.interviewerPairId) {
+        const eligibility = await interviewerPairService.getEligible({
+          applicationId: Number(formData.applicationId),
+          date,
+          time,
+          duration: formData.duration,
+        });
+        if (!eligibility.eligiblePairs.some((pair) => String(pair.id) === String(formData.interviewerPairId))) {
+          setConflictWarning(eligibility.reason || 'La pareja seleccionada no está disponible en este horario.');
+        }
+        return;
+      }
+
       const data = await httpClient.get(`/v1/interviewer-schedules/available?date=${date}&time=${time}`);
 
       // httpClient.get ya retorna response.data directamente
@@ -548,6 +616,13 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
     // Lógica específica por campo
     if (field === 'applicationId') {
+      setFormData(prev => ({
+        ...prev,
+        interviewerPairId: '',
+        interviewerId: formData.type === InterviewType.CYCLE_DIRECTOR ? '' : prev.interviewerId,
+        secondInterviewerId: formData.type === InterviewType.CYCLE_DIRECTOR ? '' : prev.secondInterviewerId,
+        scheduledTime: formData.type === InterviewType.CYCLE_DIRECTOR ? '' : prev.scheduledTime,
+      }));
       // Actualizar información del postulante seleccionado
       const selectedApp = applications.find(app => app.id === parseInt(value));
       if (selectedApp && selectedApp.student) {
@@ -568,13 +643,32 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     } else if (field === 'type') {
       // Limpiar segundo entrevistador si el tipo cambia y no es FAMILY ni CYCLE_DIRECTOR
       if (value !== InterviewType.FAMILY && value !== InterviewType.CYCLE_DIRECTOR) {
-        setFormData(prev => ({ ...prev, secondInterviewerId: '' }));
+        setFormData(prev => ({ ...prev, secondInterviewerId: '', interviewerPairId: '' }));
         // Limpiar error del segundo entrevistador también
         if (errors.secondInterviewerId) {
           setErrors(prev => ({ ...prev, secondInterviewerId: '' }));
         }
+      } else if (value === InterviewType.CYCLE_DIRECTOR) {
+        setFormData(prev => ({ ...prev, interviewerId: '', secondInterviewerId: '', interviewerPairId: '' }));
+        setShowManualScheduling(true);
+      } else if (value === InterviewType.FAMILY) {
+        setFormData(prev => ({ ...prev, interviewerId: '', secondInterviewerId: '', interviewerPairId: '' }));
       }
     }
+  };
+
+  const handlePairChange = (pairId: string) => {
+    const pair = eligiblePairs.find((item) => String(item.id) === pairId);
+    setFormData((current) => ({
+      ...current,
+      interviewerPairId: pairId,
+      interviewerId: pair ? String(pair.cycleDirector.id) : '',
+      secondInterviewerId: pair ? String(pair.psychologist.id) : '',
+      scheduledTime: '',
+    }));
+    setAvailableTimeSlots([]);
+    setIsDirty(true);
+    setErrors((current) => ({ ...current, interviewerPairId: '', interviewerId: '', secondInterviewerId: '' }));
   };
 
   const validateForm = (): boolean => {
@@ -597,12 +691,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         newErrors.scheduledTime = 'La hora es obligatoria';
       }
 
-      if (!formData.interviewerId) {
+      if (formData.type === InterviewType.CYCLE_DIRECTOR && !formData.interviewerPairId) {
+        newErrors.interviewerPairId = 'Selecciona una pareja compatible con el curso del postulante';
+      } else if (!formData.interviewerId) {
         newErrors.interviewerId = 'Debe seleccionar un entrevistador';
       }
 
       // Validar segundo entrevistador para entrevistas familiares y de director de ciclo
-      if ((formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR) && !formData.secondInterviewerId) {
+      if (formData.type === InterviewType.FAMILY && !formData.secondInterviewerId) {
         newErrors.secondInterviewerId = 'Debe seleccionar un segundo entrevistador para este tipo de entrevista';
       }
 
@@ -610,6 +706,12 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       if (formData.interviewerId && formData.secondInterviewerId) {
         if (formData.interviewerId === formData.secondInterviewerId) {
           newErrors.secondInterviewerId = 'Debe seleccionar un entrevistador diferente al primero';
+        } else if (formData.type === InterviewType.FAMILY) {
+          const first = interviewers.find((item) => String(item.id) === String(formData.interviewerId));
+          const second = interviewers.find((item) => String(item.id) === String(formData.secondInterviewerId));
+          if (!isValidFamilyInterviewer(first) || !isValidFamilyInterviewer(second)) {
+            newErrors.secondInterviewerId = 'Directores de Ciclo y Psicólogos/as no participan en entrevistas familiares';
+          }
         }
       }
 
@@ -662,6 +764,22 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
 
     try {
 
+      if (formData.type === InterviewType.CYCLE_DIRECTOR) {
+        const eligibility = await interviewerPairService.getEligible({
+          applicationId: Number(formData.applicationId),
+          date: formData.scheduledDate,
+          time: formData.scheduledTime,
+          duration: formData.duration,
+        });
+        const selectedPairIsEligible = eligibility.eligiblePairs.some((pair) => String(pair.id) === String(formData.interviewerPairId));
+        if (!selectedPairIsEligible) {
+          setConflictWarning(eligibility.reason || 'La pareja seleccionada ya no está disponible para este bloque.');
+          return false;
+        }
+        setConflictWarning(null);
+        return true;
+      }
+
       const data = await httpClient.get(
         `/v1/interviewer-schedules/available?date=${formData.scheduledDate}&time=${formData.scheduledTime}`
       );
@@ -704,6 +822,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         applicationId: parseInt(formData.applicationId as string) || 0,
         interviewerId: parseInt(formData.interviewerId as string) || 0,
         secondInterviewerId: formData.secondInterviewerId ? parseInt(formData.secondInterviewerId as string) : undefined,
+        interviewerPairId: formData.interviewerPairId ? Number(formData.interviewerPairId) : undefined,
         type: formData.type,
         mode: formData.mode,
         scheduledDate: formData.scheduledDate,
@@ -720,6 +839,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
       const updateData: UpdateInterviewRequest = {
         interviewerId: formData.interviewerId,
         secondInterviewerId: formData.secondInterviewerId ? parseInt(formData.secondInterviewerId as string) : undefined,
+        interviewerPairId: formData.interviewerPairId ? Number(formData.interviewerPairId) : undefined,
         type: formData.type,
         mode: formData.mode,
         scheduledDate: formData.scheduledDate,
@@ -932,7 +1052,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
         )}
 
         {/* Formulario principal */}
-        <div className={isCreateMode && !showManualScheduling ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
+        <div className={isCreateMode && !showManualScheduling && formData.type !== InterviewType.CYCLE_DIRECTOR ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
           {/* Información básica */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Información Básica</h3>
@@ -1048,8 +1168,48 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
               )}
             </div>
 
-            {(!isCreateMode || showManualScheduling) && (
+            {(formData.type === InterviewType.CYCLE_DIRECTOR || !isCreateMode || showManualScheduling) && (
               <>
+                {formData.type === InterviewType.CYCLE_DIRECTOR ? (
+                  <div>
+                    <label htmlFor="interviewerPair" className="block text-sm font-semibold text-gray-800 mb-2">
+                      Pareja de Director de Ciclo y Psicólogo/a *
+                    </label>
+                    <select
+                      id="interviewerPair"
+                      value={formData.interviewerPairId}
+                      onChange={(event) => handlePairChange(event.target.value)}
+                      aria-describedby="pair-help pair-error"
+                      aria-invalid={Boolean(errors.interviewerPairId)}
+                      className={`min-h-11 w-full rounded-lg border bg-white px-3 text-gray-950 focus:border-[#008a57] focus:outline-none focus:ring-2 focus:ring-[#008a57]/30 ${errors.interviewerPairId ? 'border-red-400' : 'border-gray-300'}`}
+                      disabled={isViewMode || isCompleteMode || loadingPairs || !formData.applicationId}
+                    >
+                      <option value="">{loadingPairs ? 'Buscando parejas compatibles…' : 'Seleccionar pareja compatible'}</option>
+                      {eligiblePairs.map((pair) => (
+                        <option key={pair.id} value={pair.id}>
+                          {pair.cycleDirector.name} + {pair.psychologist.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p id="pair-help" className="mt-1 text-sm text-gray-600">
+                      Solo se muestran parejas activas que cubren el curso {selectedApplicationInfo?.grade ? `“${selectedApplicationInfo.grade}”` : 'del postulante'}.
+                    </p>
+                    {(pairEligibilityMessage || errors.interviewerPairId) && (
+                      <p id="pair-error" role="alert" className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                        {errors.interviewerPairId || pairEligibilityMessage}
+                        {pairEligibilityMessage && ' Solicita a un administrador configurar integrantes, cursos y horarios.'}
+                      </p>
+                    )}
+                    {formData.interviewerPairId && (
+                      <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-950" aria-live="polite">
+                        <p className="font-semibold">Pareja seleccionada</p>
+                        <p className="mt-1">Director de Ciclo: {eligiblePairs.find((pair) => String(pair.id) === String(formData.interviewerPairId))?.cycleDirector.name}</p>
+                        <p>Psicólogo/a: {eligiblePairs.find((pair) => String(pair.id) === String(formData.interviewerPairId))?.psychologist.name}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
                 {/* Entrevistador */}
                 <div>
                   <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1070,7 +1230,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                     ) : interviewersError ? (
                       <option disabled>Error al cargar entrevistadores</option>
                     ) : (
-                      interviewers.map(interviewer => (
+                      interviewers
+                        .filter(interviewer => formData.type !== InterviewType.FAMILY || isValidFamilyInterviewer(interviewer))
+                        .map(interviewer => (
                         <option
                           key={interviewer.id}
                           value={interviewer.id}
@@ -1112,7 +1274,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                         const filteredInterviewers = interviewers.filter(interviewer => {
                           // Excluir el primer entrevistador si ya está seleccionado
                           const firstInterviewerId = formData.interviewerId ? formData.interviewerId.toString() : '';
-                          return interviewer.id.toString() !== firstInterviewerId;
+                          if (interviewer.id.toString() === firstInterviewerId) return false;
+                          if (formData.type !== InterviewType.FAMILY) return true;
+                          return isValidFamilyInterviewer(interviewer);
                         });
 
 
@@ -1136,10 +1300,14 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                   )}
                   <p className="mt-1 text-xs text-gray-500">
                     {(formData.type === InterviewType.FAMILY || formData.type === InterviewType.CYCLE_DIRECTOR)
-                      ? 'Este tipo de entrevista requiere dos entrevistadores'
+                      ? formData.type === InterviewType.FAMILY
+                        ? 'Requiere dos entrevistadores. Directores de Ciclo y Psicólogos/as no participan en entrevistas familiares'
+                        : 'Este tipo de entrevista requiere dos entrevistadores'
                       : 'Se recomienda contar con dos entrevistadores disponibles simultáneamente'}
                   </p>
                 </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -1149,7 +1317,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
             <h3 className="text-lg font-medium text-gray-900">Programación</h3>
             
             {/* Selección Visual de Fecha y Hora */}
-            {isCreateMode && !showManualScheduling ? (
+            {isCreateMode && !showManualScheduling && formData.type !== InterviewType.CYCLE_DIRECTOR ? (
               <div className="space-y-4">
                 <QuickScheduleSelector
                   duration={formData.duration}
@@ -1157,9 +1325,9 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
                   onManualMode={() => setShowManualScheduling(true)}
                   disabled={isViewMode || isCompleteMode}
                 />
-                {(errors.scheduledDate || errors.scheduledTime || errors.interviewerId || errors.secondInterviewerId) && (
+                {(errors.scheduledDate || errors.scheduledTime || errors.interviewerPairId || errors.interviewerId || errors.secondInterviewerId) && (
                   <p className="text-sm text-red-600">
-                    {errors.scheduledDate || errors.scheduledTime || errors.interviewerId || errors.secondInterviewerId}
+                    {errors.scheduledDate || errors.scheduledTime || errors.interviewerPairId || errors.interviewerId || errors.secondInterviewerId}
                   </p>
                 )}
                 {conflictWarning && (

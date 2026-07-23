@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FiPlus, FiUsers } from 'react-icons/fi';
 import {
+  AvailableInterviewerPair,
   InterviewerInfo,
   WeeklyOverviewDay,
   WeeklyOverviewScheduledInterview
@@ -9,7 +10,6 @@ import {
   CommandCenterViewMode,
   STATUS_STYLES,
   getInterviewerInitials,
-  getPairLabel,
   getPrimaryOperationalInterview,
   getHistoricalInterviews,
   getOperationalInterviews
@@ -21,7 +21,12 @@ interface WeeklyTimelineProps {
   viewMode: CommandCenterViewMode;
   rangeLabel: string;
   filterByInterviewer: number | null;
-  onSlotClick: (date: string, time: string, availableInterviewers: InterviewerInfo[]) => void;
+  onSlotClick: (
+    date: string,
+    time: string,
+    availableInterviewers: InterviewerInfo[],
+    availablePairs?: AvailableInterviewerPair[]
+  ) => void;
   onInterviewClick: (interview: WeeklyOverviewScheduledInterview) => void;
 }
 
@@ -30,13 +35,19 @@ const TIME_SLOTS = [
   '14:00', '15:00', '16:00', '17:00'
 ];
 
-const buildSlotPairs = (interviewers: InterviewerInfo[]): Array<[InterviewerInfo, InterviewerInfo]> => {
+const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
+
+const buildFamilyPairs = (interviewers: InterviewerInfo[]): Array<[InterviewerInfo, InterviewerInfo]> => {
   const pairs: Array<[InterviewerInfo, InterviewerInfo]> = [];
-  interviewers.forEach((first, i) => {
-    interviewers.slice(i + 1).forEach(second => pairs.push([first, second]));
+  interviewers.forEach((first, index) => {
+    interviewers.slice(index + 1).forEach((second) => {
+      if (!isCycleInterviewRole(first.role) && !isCycleInterviewRole(second.role)) pairs.push([first, second]);
+    });
   });
   return pairs;
 };
+
+const pairNames = (first: InterviewerInfo, second: InterviewerInfo): string => `${first.name} + ${second.name}`;
 
 const getTodayDateString = (): string => {
   const today = new Date();
@@ -206,7 +217,7 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
 
                   if (scheduled && available) {
                     const pair = [scheduled.interviewer1, scheduled.interviewer2].filter(Boolean) as InterviewerInfo[];
-                    const availPairs = buildSlotPairs(available.availableInterviewers);
+                    const availPairs = available.availablePairs || [];
                     if (availPairs.length === 0) {
                       return (
                         <button
@@ -256,14 +267,14 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                         {availPairs.length === 1 ? (
                           <button
                             type="button"
-                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers)}
+                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
                             className="inline-flex flex-shrink-0 items-center justify-between gap-2 rounded-md border border-dashed border-teal-300 bg-white px-2 py-1.5 text-left text-xs font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-200"
                             aria-label={`Agendar pareja libre el ${day.dayLabel} a las ${available.time}`}
                           >
                             <span className="min-w-0">
                               <span className="block truncate">Pareja libre</span>
                               <span className="block truncate text-[11px] font-medium text-teal-700">
-                                {getPairLabel(available.availableInterviewers)}
+                                {pairNames(availPairs[0].cycleDirector, availPairs[0].psychologist)}
                               </span>
                             </span>
                             <FiPlus className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
@@ -274,20 +285,29 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                               <FiUsers className="h-3 w-3 text-teal-600" aria-hidden="true" />
                               <span className="text-[10px] font-semibold text-teal-700">{availPairs.length} parejas libres</span>
                             </div>
-                            {availPairs.map(availPair => (
+                            {availPairs.slice(0, 2).map(availPair => (
                               <button
-                                key={`${availPair[0].id}-${availPair[1].id}`}
+                                key={availPair.id}
                                 type="button"
-                                onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers)}
+                                onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
                                 className="inline-flex flex-shrink-0 items-center justify-between gap-2 rounded-md border border-dashed border-teal-300 bg-white px-2 py-1 text-left text-xs font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                                aria-label={`Agendar ${availPair[0].name} + ${availPair[1].name} el ${day.dayLabel} a las ${available.time}`}
+                                aria-label={`Agendar ${availPair.cycleDirector.name} + ${availPair.psychologist.name} el ${day.dayLabel} a las ${available.time}`}
                               >
                                 <span className="min-w-0 truncate">
-                                  {getInterviewerInitials(availPair[0].name)} + {getInterviewerInitials(availPair[1].name)}
+                                  {pairNames(availPair.cycleDirector, availPair.psychologist)}
                                 </span>
                                 <FiPlus className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
                               </button>
                             ))}
+                            {availPairs.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, availPairs)}
+                                className="px-1 text-left text-[10px] font-semibold text-teal-700 hover:text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                              >
+                                + {availPairs.length - 2} {availPairs.length - 2 === 1 ? 'otra pareja' : 'otras parejas'}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -320,52 +340,69 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                   }
 
                   if (available) {
-                    const availPairs = buildSlotPairs(available.availableInterviewers);
-                    if (availPairs.length <= 1) {
+                    const cyclePairs = available.availablePairs || [];
+                    const familyPairs = buildFamilyPairs(available.availableInterviewers);
+                    const showingCyclePairs = cyclePairs.length > 0;
+                    const totalPairs = showingCyclePairs ? cyclePairs.length : familyPairs.length;
+                    const displayPairs = showingCyclePairs
+                      ? cyclePairs.map((pair) => ({ key: `cycle-${pair.id}`, first: pair.cycleDirector, second: pair.psychologist }))
+                      : familyPairs.map(([first, second]) => ({ key: `family-${first.id}-${second.id}`, first, second }));
+                    const visiblePairs = displayPairs.slice(0, 2);
+
+                    if (totalPairs === 0) {
                       return (
-                        <button
+                        <div
                           key={`${day.date}-${time}`}
-                          type="button"
-                          onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers)}
-                          className="h-28 rounded-lg border border-dashed border-teal-300 bg-teal-50 px-3 py-2 text-left text-xs text-teal-800 transition-colors hover:bg-teal-100 hover:shadow-sm"
+                          className="flex h-28 flex-col justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate font-semibold">{getPairLabel(available.availableInterviewers)}</span>
-                          </div>
-                          <p className="truncate">{available.interviewerCount} disponibles</p>
-                          {historicalCount > 0 && <p className="mt-1 truncate text-[11px] text-gray-500">{historicalCount} historial cancelado</p>}
-                        </button>
+                          <p className="font-semibold text-gray-800">Sin parejas válidas</p>
+                          <p className="mt-1 leading-snug">Hay entrevistadores libres, pero no forman una combinación permitida.</p>
+                        </div>
                       );
                     }
+
                     return (
                       <div
                         key={`${day.date}-${time}`}
-                        className="flex flex-col gap-1 rounded-lg border border-dashed border-teal-400 bg-teal-50 px-2 py-2"
-                        style={{ minHeight: '7rem', height: 'auto' }}
+                        className="flex h-28 flex-col rounded-lg border border-dashed border-teal-400 bg-teal-50 p-2 text-teal-950 transition-colors hover:bg-teal-100/70"
                       >
-                        <div className="flex items-center justify-between gap-1 pb-0.5">
-                          <div className="flex items-center gap-1">
-                            <FiUsers className="h-3 w-3 text-teal-600" aria-hidden="true" />
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-teal-700">
-                              {availPairs.length} parejas
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-teal-600">{available.interviewerCount} disp.</span>
+                        <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+                          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-bold text-teal-800">
+                            <FiUsers className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                            <span className="truncate">{showingCyclePairs ? 'Director + Psicólogo' : 'Familiar'}</span>
+                          </span>
+                          <span className="flex-shrink-0 text-[10px] font-medium text-teal-700">
+                            {totalPairs} {totalPairs === 1 ? 'pareja' : 'parejas'}
+                          </span>
                         </div>
-                        {availPairs.map(availPair => (
+                        <div className="min-h-0 flex-1 space-y-1 overflow-hidden">
+                        {visiblePairs.map(({ key, first, second }) => (
                           <button
-                            key={`${availPair[0].id}-${availPair[1].id}`}
+                            key={key}
                             type="button"
-                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers)}
-                            className="flex items-center justify-between gap-2 rounded-md border border-dashed border-teal-300 bg-white px-2 py-1 text-left text-xs font-semibold text-teal-800 hover:border-teal-500 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                            aria-label={`Agendar ${availPair[0].name} + ${availPair[1].name} el ${day.dayLabel} a las ${available.time}`}
+                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, cyclePairs)}
+                            className="flex w-full items-center justify-between gap-2 rounded-md bg-white px-2 py-1 text-left text-[11px] font-semibold leading-tight text-teal-950 shadow-sm transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                            aria-label={`Agendar ${pairNames(first, second)} el ${day.dayLabel} a las ${available.time}`}
+                            title={pairNames(first, second)}
                           >
-                            <span className="min-w-0 truncate">
-                              {getInterviewerInitials(availPair[0].name)} + {getInterviewerInitials(availPair[1].name)}
+                            <span className="min-w-0">
+                              <span className="block truncate">{first.name}</span>
+                              <span className="block truncate text-[10px] font-medium text-teal-700">+ {second.name}</span>
                             </span>
                             <FiPlus className="h-3 w-3 flex-shrink-0 text-teal-600" aria-hidden="true" />
                           </button>
                         ))}
+                        </div>
+                        {totalPairs > visiblePairs.length && (
+                          <button
+                            type="button"
+                            onClick={() => onSlotClick(day.date, available.time, available.availableInterviewers, cyclePairs)}
+                            className="mt-1 self-start rounded px-1 text-[10px] font-semibold text-teal-700 hover:text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                            aria-label={`Ver ${totalPairs - visiblePairs.length} parejas adicionales disponibles`}
+                          >
+                            + {totalPairs - visiblePairs.length} {totalPairs - visiblePairs.length === 1 ? 'otra pareja' : 'otras parejas'}
+                          </button>
+                        )}
                         {historicalCount > 0 && (
                           <p className="truncate text-[10px] text-gray-500">{historicalCount} historial cancelado</p>
                         )}

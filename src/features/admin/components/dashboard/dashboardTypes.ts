@@ -4,6 +4,7 @@ import {
   InterviewStatus,
   InterviewType,
   InterviewerInfo,
+  AvailableInterviewerPair,
   WeeklyOverviewAvailableSlot,
   WeeklyOverviewScheduledInterview
 } from '../../types/interview';
@@ -14,6 +15,7 @@ export interface SelectedSlot {
   date: string;
   time: string;
   availableInterviewers: InterviewerInfo[];
+  availablePairs: AvailableInterviewerPair[];
 }
 
 export interface QuickScheduleData {
@@ -21,6 +23,7 @@ export interface QuickScheduleData {
   time: string;
   interviewer1Id: number;
   interviewer2Id: number;
+  interviewerPairId?: number;
   applicationId: number;
   type: InterviewType;
   mode: InterviewMode;

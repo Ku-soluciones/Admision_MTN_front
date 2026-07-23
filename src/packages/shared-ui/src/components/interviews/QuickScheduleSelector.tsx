@@ -69,11 +69,15 @@ const getTodayDateString = () => {
 
 const isPastDate = (date: string) => date < getTodayDateString();
 
-const buildPairs = (interviewers: InterviewerInfo[]): SuggestedInterviewerPair[] => {
+const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
+
+const buildFamilyPairs = (interviewers: InterviewerInfo[]): SuggestedInterviewerPair[] => {
   const pairs: SuggestedInterviewerPair[] = [];
   for (let i = 0; i < interviewers.length; i += 1) {
     for (let j = i + 1; j < interviewers.length; j += 1) {
-      pairs.push({ interviewer1: interviewers[i], interviewer2: interviewers[j] });
+      if (!isCycleInterviewRole(interviewers[i].role) && !isCycleInterviewRole(interviewers[j].role)) {
+        pairs.push({ interviewer1: interviewers[i], interviewer2: interviewers[j] });
+      }
     }
   }
   return pairs;
@@ -108,7 +112,12 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
         });
 
         if (!isMounted) return;
-        const filteredSlotsByDate = (data.slotsByDate || []).filter(day => !isPastDate(day.date));
+        const filteredSlotsByDate = (data.slotsByDate || [])
+          .filter(day => !isPastDate(day.date))
+          .map(day => ({
+            ...day,
+            slots: day.slots.filter(slot => buildFamilyPairs(slot.availableInterviewers).length > 0)
+          }));
         const firstAvailableDay = filteredSlotsByDate.find(day => day.slots.length > 0);
         const firstAvailableSlot = firstAvailableDay?.slots[0];
         const nextAvailable = data.nextAvailable && !isPastDate(data.nextAvailable.date)
@@ -185,7 +194,12 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
   };
 
   const selectSlot = (date: string, slot: NextAvailableSlotInfo) => {
-    selectPair(date, slot, slot.suggestedPair);
+    const familyPair = buildFamilyPairs(slot.availableInterviewers)[0];
+    if (!familyPair) {
+      setError('No hay una pareja válida para entrevista familiar en este horario.');
+      return;
+    }
+    selectPair(date, slot, familyPair);
   };
 
   if (isLoading) {
@@ -354,8 +368,9 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
             <div className="space-y-3">
               {selectedDay.slots.map(slot => {
                 const isSelected = selectedDate === selectedDay.date && selectedSlot?.time === slot.time;
-                const hasManyInterviewers = slot.interviewerCount > 2;
-                const pairs = hasManyInterviewers ? buildPairs(slot.availableInterviewers) : [];
+                const pairs = buildFamilyPairs(slot.availableInterviewers);
+                const primaryPair = pairs[0];
+                const hasManyInterviewers = pairs.length > 1;
 
                 return (
                   <div
@@ -376,7 +391,7 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
                         </span>
                         <span className="min-w-0">
                           <span className="block font-semibold text-gray-900">
-                            {interviewerLabel(slot.suggestedPair.interviewer1)} + {interviewerLabel(slot.suggestedPair.interviewer2)}
+                            {interviewerLabel(primaryPair.interviewer1)} + {interviewerLabel(primaryPair.interviewer2)}
                           </span>
                           <span className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                             <FiUsers className="h-4 w-4" />
@@ -403,7 +418,7 @@ const QuickScheduleSelector: React.FC<QuickScheduleSelectorProps> = ({
                     {hasManyInterviewers && isSelected && (
                       <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3">
                         <p className="mb-3 text-sm font-semibold text-blue-900">
-                          {slot.interviewerCount} entrevistadores disponibles. Selecciona la pareja para esta entrevista.
+                          {pairs.length} parejas válidas para entrevista familiar. Selecciona una.
                         </p>
                         <div className="grid gap-2 md:grid-cols-2">
                           {pairs.map(pair => {

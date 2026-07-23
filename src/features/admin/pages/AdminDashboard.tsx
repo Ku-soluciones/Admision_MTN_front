@@ -71,6 +71,7 @@ import InterviewForm from '../components/interviews/InterviewForm';
 import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
+import InterviewerPairManagement from '../components/users/InterviewerPairManagement';
 
 const AdmissionReportTabs = React.lazy(() =>
   import('../components/admissionReports/AdmissionReportTabs')
@@ -217,7 +218,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedApplicationForEvaluation, setSelectedApplicationForEvaluation] = useState<Application | null>(null);
 
   // User management subsection state
-  const [userSubsection, setUserSubsection] = useState<'staff' | 'guardians'>('staff');
+  const [userSubsection, setUserSubsection] = useState<'staff' | 'guardians' | 'pairs'>('staff');
 
   // Coordinator Dashboard Modal state
   const [showCoordinatorDashboard, setShowCoordinatorDashboard] = useState(false);
@@ -819,16 +820,26 @@ Esta acción:
                     <UsersIcon className="h-4 w-4" aria-hidden="true" />
                     Apoderados
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserSubsection('pairs')}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 ${
+                      userSubsection === 'pairs'
+                        ? 'border-[#008a57] bg-[#008a57] text-white focus:ring-[#008a57]/30'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-100'
+                    }`}
+                  >
+                    <FiUsers className="h-4 w-4" aria-hidden="true" />
+                    Parejas de entrevistas
+                  </button>
                 </div>
               </div>
             </div>
             {/* Contenido de la subsección */}
             <div className="p-5">
-              {userSubsection === 'staff' ? (
-                <StaffManagement hideHeader />
-              ) : (
-                <GuardianManagement hideHeader />
-              )}
+              {userSubsection === 'staff' && <StaffManagement hideHeader />}
+              {userSubsection === 'guardians' && <GuardianManagement hideHeader />}
+              {userSubsection === 'pairs' && <InterviewerPairManagement />}
             </div>
           </div>
         );

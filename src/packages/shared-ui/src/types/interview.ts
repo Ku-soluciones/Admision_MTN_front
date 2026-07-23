@@ -125,6 +125,8 @@ export interface Interview {
   interviewerName: string;
   secondInterviewerId?: number; // Segundo entrevistador (requerido para entrevistas familiares)
   secondInterviewerName?: string;
+  interviewerPairId?: number;
+  interviewerPairRevision?: number;
   studentName: string;
   parentNames: string;
   gradeApplied: string;
@@ -154,6 +156,7 @@ export interface CreateInterviewRequest {
   applicationId: number;
   interviewerId: number;
   secondInterviewerId?: number; // Segundo entrevistador (requerido para FAMILY)
+  interviewerPairId?: number; // Requerido para CYCLE_DIRECTOR; el BFF deriva ambos integrantes
   type: InterviewType;
   mode: InterviewMode;
   scheduledDate: string;
@@ -169,6 +172,7 @@ export interface CreateInterviewRequest {
 export interface UpdateInterviewRequest {
   interviewerId?: number;
   secondInterviewerId?: number; // Segundo entrevistador (requerido para FAMILY)
+  interviewerPairId?: number;
   status?: InterviewStatus;
   type?: InterviewType;
   mode?: InterviewMode;
@@ -345,7 +349,18 @@ export interface WeeklyOverviewAvailableSlot {
   time: string;
   availableInterviewers: InterviewerInfo[];
   interviewerCount: number;
+  availablePairCount?: number;
+  availablePairs?: AvailableInterviewerPair[];
   suggestedPair?: SuggestedInterviewerPair;
+}
+
+export interface AvailableInterviewerPair {
+  id: number;
+  cycleDirector: InterviewerInfo;
+  psychologist: InterviewerInfo;
+  grades: string[];
+  active: boolean;
+  revision: number;
 }
 
 export interface WeeklyOverviewDay {

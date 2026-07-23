@@ -23,7 +23,8 @@ import {
   NextAvailableSlotsResponse,
   WeeklyOverviewResponse,
   WeeklyOverviewDay,
-  InterviewerInfo
+  InterviewerInfo,
+  AvailableInterviewerPair
 } from '../types/interview';
 
 export interface InterviewResponse {
@@ -34,6 +35,10 @@ export interface InterviewResponse {
   gradeApplied: string;
   interviewerId: number;
   interviewerName: string;
+  secondInterviewerId?: number;
+  secondInterviewerName?: string;
+  interviewerPairId?: number;
+  interviewerPairRevision?: number;
   status: InterviewStatus;
   type: InterviewType;
   mode: InterviewMode;
@@ -84,6 +89,8 @@ class InterviewService {
       interviewerName: response.interviewerName,
       secondInterviewerId: response.secondInterviewerId,
       secondInterviewerName: response.secondInterviewerName,
+      interviewerPairId: response.interviewerPairId,
+      interviewerPairRevision: response.interviewerPairRevision,
       status: response.status,
       type: response.interviewType || response.type || InterviewType.INDIVIDUAL,
       mode: response.mode,
@@ -133,6 +140,8 @@ class InterviewService {
       interviewerName: backendData.interviewerName || 'Sin asignar',
       secondInterviewerId: backendData.secondInterviewerId ? parseInt(backendData.secondInterviewerId) : undefined,
       secondInterviewerName: backendData.secondInterviewerName || undefined,
+      interviewerPairId: backendData.interviewerPairId ? Number(backendData.interviewerPairId) : undefined,
+      interviewerPairRevision: backendData.interviewerPairRevision ? Number(backendData.interviewerPairRevision) : undefined,
       status: backendData.status || InterviewStatus.SCHEDULED,
       type: backendData.interviewType || InterviewType.INDIVIDUAL,
       mode: backendData.mode || InterviewMode.IN_PERSON,
@@ -924,13 +933,20 @@ class InterviewService {
     return response.data?.data ?? response.data;
   }
 
-  async getSlotAvailability(date: string, time: string, duration: number): Promise<{ availableInterviewers: InterviewerInfo[]; interviewerCount: number }> {
+  async getSlotAvailability(date: string, time: string, duration: number): Promise<{
+    availableInterviewers: InterviewerInfo[];
+    interviewerCount: number;
+    availablePairs: AvailableInterviewerPair[];
+    availablePairCount: number;
+  }> {
     const params = new URLSearchParams({ date, time, duration: duration.toString() });
     const response = await api.get<any>(`${this.baseUrl}/slot-availability?${params}`);
     const data = response.data?.data ?? response.data;
     return {
       availableInterviewers: data?.availableInterviewers ?? [],
-      interviewerCount: data?.interviewerCount ?? 0
+      interviewerCount: data?.interviewerCount ?? 0,
+      availablePairs: data?.availablePairs ?? [],
+      availablePairCount: data?.availablePairCount ?? 0
     };
   }
 

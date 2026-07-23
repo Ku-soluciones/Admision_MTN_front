@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheck, FiCheckCircle, FiSearch, FiX } from 'react-icons/fi';
+import { FiCheck, FiCheckCircle, FiSearch, FiUsers, FiX } from 'react-icons/fi';
 import { Application, applicationService } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
+import interviewerPairService from '../../services/interviewerPairService';
 import {
+  AvailableInterviewerPair,
   INTERVIEW_TYPE_LABELS,
   InterviewLifecycle,
   InterviewMode,
@@ -16,15 +18,33 @@ interface QuickSchedulePopoverProps {
   date: string;
   time: string;
   availableInterviewers: InterviewerInfo[];
+  availablePairs: AvailableInterviewerPair[];
   isSubmitting: boolean;
   onSchedule: (data: QuickScheduleData, bookedInterviewerIds: [number, number]) => void;
   onClose: () => void;
 }
 
+const isCycleInterviewRole = (role?: string): boolean => role === 'CYCLE_DIRECTOR' || role === 'PSYCHOLOGIST';
+
+const isValidFamilyPair = (first: InterviewerInfo, second: InterviewerInfo): boolean => (
+  !isCycleInterviewRole(first.role) && !isCycleInterviewRole(second.role)
+);
+
+const ROLE_LABELS: Record<string, string> = {
+  COORDINATOR: 'Coordinador/a',
+  INTERVIEWER: 'Entrevistador/a',
+  TEACHER: 'Docente',
+  ADMIN: 'Administrador/a'
+};
+
+const getRoleLabel = (role?: string): string => ROLE_LABELS[role || ''] || 'Entrevistador/a';
+
 const buildPairs = (interviewers: InterviewerInfo[]): Array<[InterviewerInfo, InterviewerInfo]> => {
   const pairs: Array<[InterviewerInfo, InterviewerInfo]> = [];
   interviewers.forEach((first, firstIndex) => {
-    interviewers.slice(firstIndex + 1).forEach(second => pairs.push([first, second]));
+    interviewers.slice(firstIndex + 1).forEach(second => {
+      if (isValidFamilyPair(first, second)) pairs.push([first, second]);
+    });
   });
   return pairs;
 };
@@ -68,26 +88,40 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   date,
   time,
   availableInterviewers,
+  availablePairs,
   isSubmitting,
   onSchedule,
   onClose
 }) => {
   const [remainingInterviewers, setRemainingInterviewers] = useState<InterviewerInfo[]>(availableInterviewers);
-  const pairs = useMemo(() => buildPairs(remainingInterviewers), [remainingInterviewers]);
+  const familyPairs = useMemo(() => buildPairs(remainingInterviewers), [remainingInterviewers]);
   const [pairIndex, setPairIndex] = useState(0);
+  const [eligiblePairs, setEligiblePairs] = useState<AvailableInterviewerPair[]>(availablePairs);
+  const [bookedConfiguredPairIds, setBookedConfiguredPairIds] = useState<Set<number>>(() => new Set());
+  const [selectedConfiguredPairId, setSelectedConfiguredPairId] = useState('');
+  const [pairsLoading, setPairsLoading] = useState(false);
+  const [pairEligibilityMessage, setPairEligibilityMessage] = useState<string | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [assignedTypesByApplication, setAssignedTypesByApplication] = useState<Record<number, InterviewType[]>>({});
   const [applicationSearch, setApplicationSearch] = useState('');
   const [selectedApplicationId, setSelectedApplicationId] = useState('');
-  const [type, setType] = useState<InterviewType>(InterviewType.FAMILY);
+  const [type, setType] = useState<InterviewType>(
+    availablePairs.length > 0 ? InterviewType.CYCLE_DIRECTOR : InterviewType.FAMILY
+  );
   const [mode, setMode] = useState<InterviewMode>(InterviewMode.IN_PERSON);
   const [location, setLocation] = useState('');
   const [dateError, setDateError] = useState<string | null>(date < getTodayDateString() ? 'No se puede agendar en fechas anteriores a hoy.' : null);
   const [lastBookedStudentName, setLastBookedStudentName] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
-  const selectedPair = pairs[pairIndex];
   const selectedApplication = applications.find(application => application.id === Number(selectedApplicationId));
+  const selectedConfiguredPair = eligiblePairs.find(pair => String(pair.id) === selectedConfiguredPairId);
+  const selectedFamilyPair = familyPairs[pairIndex];
+  const selectedPairMembers: [InterviewerInfo, InterviewerInfo] | null = type === InterviewType.CYCLE_DIRECTOR
+    ? selectedConfiguredPair
+      ? [selectedConfiguredPair.cycleDirector, selectedConfiguredPair.psychologist]
+      : null
+    : selectedFamilyPair || null;
   const selectedAssignedTypes = selectedApplication ? assignedTypesByApplication[selectedApplication.id] || [] : [];
   const availableTypes = [InterviewType.FAMILY, InterviewType.CYCLE_DIRECTOR].filter(
     interviewType => !selectedAssignedTypes.includes(interviewType)
@@ -97,7 +131,8 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   const locationLabel = mode === InterviewMode.VIRTUAL ? 'Enlace de reunion' : mode === InterviewMode.HYBRID ? 'Ubicacion y enlace' : 'Ubicacion';
   const locationPlaceholder = mode === InterviewMode.VIRTUAL ? 'https://meet.google.com/...' : mode === InterviewMode.HYBRID ? 'Sala de entrevistas y enlace remoto' : 'Sala de entrevistas';
   const locationError = needsLocation && !location.trim() ? `${locationLabel} es obligatorio para esta modalidad.` : null;
-  const canSubmit = Boolean(selectedPair && selectedApplication && !typeAlreadyAssigned && !locationError && !dateError && !isSubmitting);
+  const pairCount = type === InterviewType.CYCLE_DIRECTOR ? eligiblePairs.length : familyPairs.length;
+  const canSubmit = Boolean(selectedPairMembers && selectedApplication && !typeAlreadyAssigned && !locationError && !dateError && !isSubmitting && !pairsLoading);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +184,51 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (type !== InterviewType.CYCLE_DIRECTOR) {
+      setPairsLoading(false);
+      setPairEligibilityMessage(null);
+      return;
+    }
+    if (!selectedApplication) {
+      const remainingConfiguredPairs = availablePairs.filter(pair => !bookedConfiguredPairIds.has(pair.id));
+      setEligiblePairs(remainingConfiguredPairs);
+      setSelectedConfiguredPairId(remainingConfiguredPairs.length === 1 ? String(remainingConfiguredPairs[0].id) : '');
+      setPairEligibilityMessage('Selecciona un postulante para validar el curso que cubre cada pareja.');
+      return;
+    }
+
+    let cancelled = false;
+    setPairsLoading(true);
+    setPairEligibilityMessage(null);
+    interviewerPairService.getEligible({
+      applicationId: selectedApplication.id,
+      date,
+      time,
+      duration: 60
+    }).then(result => {
+      if (cancelled) return;
+      const slotPairIds = new Set(availablePairs.filter(pair => !bookedConfiguredPairIds.has(pair.id)).map(pair => pair.id));
+      const pairsForSlot = (result.eligiblePairs || []).filter(pair => slotPairIds.has(pair.id));
+      setEligiblePairs(pairsForSlot);
+      setSelectedConfiguredPairId(current =>
+        pairsForSlot.some(pair => String(pair.id) === current)
+          ? current
+          : pairsForSlot.length === 1 ? String(pairsForSlot[0].id) : ''
+      );
+      setPairEligibilityMessage(pairsForSlot.length ? null : (result.reason || 'No hay una pareja compatible con el curso y el horario seleccionados.'));
+    }).catch(error => {
+      if (cancelled) return;
+      setEligiblePairs([]);
+      setSelectedConfiguredPairId('');
+      setPairEligibilityMessage(error.message || 'No fue posible validar las parejas configuradas.');
+    }).finally(() => {
+      if (!cancelled) setPairsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [availablePairs, bookedConfiguredPairIds, date, selectedApplication, time, type]);
+
   const filteredApplications = useMemo(() => {
     const query = applicationSearch.trim().toLowerCase();
     return applications
@@ -168,21 +248,22 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedPair || !selectedApplication || !canSubmit) return;
+    if (!selectedPairMembers || !selectedApplication || !canSubmit) return;
 
     if (date < getTodayDateString()) {
       setDateError('No se puede agendar en fechas anteriores a hoy.');
       return;
     }
 
-    const bookedPair: [number, number] = [selectedPair[0].id, selectedPair[1].id];
+    const bookedPair: [number, number] = [selectedPairMembers[0].id, selectedPairMembers[1].id];
     const studentName = getStudentName(selectedApplication);
 
     onSchedule({
       date,
       time,
-      interviewer1Id: selectedPair[0].id,
-      interviewer2Id: selectedPair[1].id,
+      interviewer1Id: selectedPairMembers[0].id,
+      interviewer2Id: selectedPairMembers[1].id,
+      interviewerPairId: type === InterviewType.CYCLE_DIRECTOR ? selectedConfiguredPair?.id : undefined,
       applicationId: selectedApplication.id,
       type,
       mode,
@@ -192,16 +273,24 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
     const nextRemaining = remainingInterviewers.filter(
       interviewer => !bookedPair.includes(interviewer.id)
     );
-    const nextPairs = buildPairs(nextRemaining);
+    const nextFamilyPairs = buildPairs(nextRemaining);
+    const nextConfiguredPairs = eligiblePairs.filter(pair => pair.id !== selectedConfiguredPair?.id);
 
     setLastBookedStudentName(studentName);
     setBookedCount(prev => prev + 1);
     setRemainingInterviewers(nextRemaining);
+    if (type === InterviewType.CYCLE_DIRECTOR) {
+      if (selectedConfiguredPair) {
+        setBookedConfiguredPairIds(current => new Set(current).add(selectedConfiguredPair.id));
+      }
+      setEligiblePairs(nextConfiguredPairs);
+      setSelectedConfiguredPairId(nextConfiguredPairs.length === 1 ? String(nextConfiguredPairs[0].id) : '');
+    }
     setPairIndex(0);
     setSelectedApplicationId('');
     setApplicationSearch('');
 
-    if (nextPairs.length === 0) {
+    if ((type === InterviewType.CYCLE_DIRECTOR ? nextConfiguredPairs.length : nextFamilyPairs.length) === 0) {
       setTimeout(onClose, 1200);
     }
   };
@@ -212,8 +301,8 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   }, [availableTypes, selectedApplication, type]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/35 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-xl rounded-lg border border-gray-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-[2px]">
+      <form onSubmit={handleSubmit} className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-2xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900">Agendar entrevista</h3>
@@ -235,32 +324,83 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
             <FiCheckCircle className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden="true" />
             <span>
               <strong>{lastBookedStudentName}</strong> agendada · {bookedCount} agendada{bookedCount !== 1 ? 's' : ''} en este slot
-              {pairs.length > 0
-                ? ` · ${pairs.length} pareja${pairs.length !== 1 ? 's' : ''} restante${pairs.length !== 1 ? 's' : ''}`
+              {pairCount > 0
+                ? ` · ${pairCount} pareja${pairCount !== 1 ? 's' : ''} restante${pairCount !== 1 ? 's' : ''}`
                 : ' · Cerrando...'}
             </span>
           </div>
         )}
 
         <div className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-gray-700">Pareja de entrevistadores</span>
-            <select
-              value={pairIndex}
-              onChange={event => setPairIndex(Number(event.target.value))}
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              {pairs.length === 0 ? (
-                <option value={0} disabled>Sin parejas disponibles</option>
-              ) : (
-                pairs.map((pair, index) => (
-                  <option key={`${pair[0].id}-${pair[1].id}`} value={index}>
-                    {pair[0].name} + {pair[1].name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
+          <fieldset>
+            <legend className="text-sm font-semibold text-gray-800">Pareja de entrevistadores</legend>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {type === InterviewType.FAMILY
+                ? 'Solo se muestran entrevistadores habilitados para entrevista familiar.'
+                : 'Parejas configuradas de Director de Ciclo y Psicólogo/a.'}
+            </p>
+            {pairsLoading ? (
+              <div className="mt-2 flex min-h-16 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600" role="status">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" aria-hidden="true" />
+                Validando parejas disponibles…
+              </div>
+            ) : pairCount === 0 ? (
+              <div className="mt-2 flex min-h-16 items-center gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 text-sm text-amber-800" role="status">
+                <FiUsers className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                No hay parejas válidas disponibles para este horario.
+              </div>
+            ) : (
+              <div className="mt-2 max-h-44 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Parejas disponibles">
+                {(type === InterviewType.CYCLE_DIRECTOR
+                  ? eligiblePairs.map(pair => ({
+                    key: `configured-${pair.id}`,
+                    selected: String(pair.id) === selectedConfiguredPairId,
+                    onSelect: () => setSelectedConfiguredPairId(String(pair.id)),
+                    first: pair.cycleDirector,
+                    second: pair.psychologist,
+                    firstRole: 'Director/a de Ciclo',
+                    secondRole: 'Psicólogo/a'
+                  }))
+                  : familyPairs.map((pair, index) => ({
+                    key: `family-${pair[0].id}-${pair[1].id}`,
+                    selected: index === pairIndex,
+                    onSelect: () => setPairIndex(index),
+                    first: pair[0],
+                    second: pair[1],
+                    firstRole: getRoleLabel(pair[0].role),
+                    secondRole: getRoleLabel(pair[1].role)
+                  }))).map(option => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      role="radio"
+                      aria-checked={option.selected}
+                      onClick={option.onSelect}
+                      className={`flex min-h-14 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                        option.selected
+                          ? 'border-blue-400 bg-blue-50 text-blue-950'
+                          : 'border-gray-200 bg-white text-gray-800 hover:border-blue-200 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${option.selected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        {option.selected ? <FiCheck aria-hidden="true" /> : <FiUsers aria-hidden="true" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{option.first.name}</span>
+                        <span className="block truncate text-sm font-semibold">{option.second.name}</span>
+                      </span>
+                      <span className="hidden flex-shrink-0 text-right text-[11px] leading-4 text-gray-500 sm:block">
+                        <span className="block">{option.firstRole}</span>
+                        <span className="block">{option.secondRole}</span>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+            {pairEligibilityMessage && type === InterviewType.CYCLE_DIRECTOR && (
+              <span className="mt-1 block text-xs font-medium text-amber-700" role="status">{pairEligibilityMessage}</span>
+            )}
+          </fieldset>
 
           <div className="rounded-lg border border-gray-200 p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -293,8 +433,8 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
                       key={application.id}
                       type="button"
                       onClick={() => setSelectedApplicationId(String(application.id))}
-                      className={`w-full border-b border-gray-100 p-3 text-left last:border-b-0 hover:bg-blue-50 ${
-                        isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-300' : 'bg-white'
+                      className={`w-full border-b border-gray-100 p-3 text-left transition-colors last:border-b-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-300 ${
+                        isSelected ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -304,8 +444,9 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
                             {application.student?.rut || 'RUT no informado'} · {getGrade(application)} · {getGuardianName(application)}
                           </p>
                         </div>
-                        <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
-                          {application.status}
+                        <span className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${isSelected ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {isSelected && <FiCheck className="h-3 w-3" aria-hidden="true" />}
+                          {application.status === 'PENDING' ? 'Pendiente' : application.status}
                         </span>
                       </div>
                     </button>
@@ -378,7 +519,7 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             <FiCheck className="h-4 w-4" aria-hidden="true" />
-            {isSubmitting ? 'Programando...' : pairs.length > 1 ? 'Programar y continuar' : 'Programar entrevista'}
+            {isSubmitting ? 'Programando...' : pairCount > 1 ? 'Programar y continuar' : 'Programar entrevista'}
           </button>
         </div>
       </form>
