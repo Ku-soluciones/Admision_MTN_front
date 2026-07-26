@@ -51,8 +51,8 @@ const gradeOptions = educationalLevels.map(level => ({
     label: level.label
 }));
 
-const schoolOptions = [
-    { value: '', label: 'Seleccione un género...' },
+const genderOptions = [
+    { value: '', label: 'Seleccione el género...' },
     { value: 'MALE', label: 'Masculino' },
     { value: 'FEMALE', label: 'Femenino' }
 ];
@@ -65,11 +65,11 @@ const getDocumentTypesConfig = () => {
 
     return [
         { key: DocumentType.BIRTH_CERTIFICATE, label: 'Certificado de Nacimiento', required: true },
-        { key: DocumentType.GRADES_YEAR_2, label: `Certificado de Estudios ${year2}`, required: true },
-        { key: DocumentType.GRADES_YEAR_1, label: `Certificado de Estudios ${year1}`, required: true },
-        { key: DocumentType.GRADES_SEMESTER_1, label: `Certificado de Estudios ${currentYear} - Primer Semestre`, required: true },
-        { key: DocumentType.PERSONALITY_YEAR_1, label: `Informe de Personalidad ${year1}`, required: false },
-        { key: DocumentType.PERSONALITY_SEMESTER_1, label: `Informe de Personalidad ${currentYear} - Primer Semestre`, required: false },
+        { key: DocumentType.GRADES_YEAR_2, label: `Certificado de Estudios ${year2}`, required: false, recommended: true },
+        { key: DocumentType.GRADES_YEAR_1, label: `Certificado de Estudios ${year1}`, required: false, recommended: true },
+        { key: DocumentType.GRADES_SEMESTER_1, label: `Certificado de Estudios ${currentYear} - Primer Semestre`, required: false, recommended: true },
+        { key: DocumentType.PERSONALITY_YEAR_1, label: `Informe de Desarrollo Personal ${year1}`, required: false },
+        { key: DocumentType.PERSONALITY_SEMESTER_1, label: `Informe de Desarrollo Personal ${currentYear} - Primer Semestre`, required: false },
         { key: DocumentType.MEDICAL_CERTIFICATE, label: 'Certificado Médico', required: false },
         { key: DocumentType.PSYCHOLOGICAL_REPORT, label: 'Informe Psicológico (si aplica)', required: false }
     ];
@@ -149,7 +149,8 @@ const ApplicationForm: React.FC = () => {
     const [gradeOptionsWithAvailability, setGradeOptionsWithAvailability] = useState(educationalLevels.map(level => ({
         value: level.value,
         label: level.label,
-        disabled: false
+        disabled: false,
+        vacancyInfo: null as { hasM: boolean; hasF: boolean } | null
     })));
 
     // Cargar disponibilidad de vacantes al montar
@@ -157,18 +158,36 @@ const ApplicationForm: React.FC = () => {
         const fetchAvailability = async () => {
             try {
                 const available = await gradeAvailabilityService.getAvailable();
-                // Normalizar: remover guiones bajos para comparar (backend usa "1_BASICO", frontend usa "1BASICO")
-                const availableGrades = new Set(
-                    available
-                        .filter((g: any) => g.hasVacancy === true)
-                        .map((g: any) => g.gradeLevel.replace(/_/g, '').toUpperCase())
-                );
+                // Map para acceso rápido: normalizar key (remover guiones bajos)
+                const availabilityMap: Record<string, { hasM: boolean; hasF: boolean }> = {};
+                available.forEach((g: any) => {
+                    const key = g.gradeLevel.replace(/_/g, '').toUpperCase();
+                    availabilityMap[key] = {
+                        hasM: g.hasVacancyM === true,
+                        hasF: g.hasVacancyF === true
+                    };
+                });
+
+                // Helper para generar label con info de género
+                const getLabelWithVacancyInfo = (levelLabel: string, hasM: boolean, hasF: boolean): string => {
+                    if (hasM && hasF) return `${levelLabel} (M/F)`;
+                    if (hasM) return `${levelLabel} (M)`;
+                    if (hasF) return `${levelLabel} (F)`;
+                    return levelLabel;
+                };
+
                 setGradeOptionsWithAvailability(
-                    educationalLevels.map(level => ({
-                        value: level.value,
-                        label: level.label,
-                        disabled: !availableGrades.has(level.value.toUpperCase().replace(/_/g, ''))
-                    }))
+                    educationalLevels.map(level => {
+                        const key = level.value.toUpperCase().replace(/_/g, '');
+                        const vacancy = availabilityMap[key] || { hasM: false, hasF: false };
+                        const hasVacancy = vacancy.hasM || vacancy.hasF;
+                        return {
+                            value: level.value,
+                            label: getLabelWithVacancyInfo(level.label, vacancy.hasM, vacancy.hasF),
+                            disabled: !hasVacancy,
+                            vacancyInfo: vacancy
+                        };
+                    })
                 );
             } catch (error) {
                 // Si falla, mostrar todos como disponibles
@@ -193,6 +212,24 @@ const ApplicationForm: React.FC = () => {
     // Estado del formulario simplificado
     const [data, setData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
+
+    // Opciones filtradas por género del estudiante
+    const gradeOptionsFiltered = useMemo(() => {
+        if (!data.gender) {
+            // Sin género seleccionado: mostrar solo cursos con vacantes para ambos
+            return gradeOptionsWithAvailability.filter(opt => {
+                if (!opt.vacancyInfo) return false;
+                return opt.vacancyInfo.hasM && opt.vacancyInfo.hasF;
+            });
+        }
+        // Filtrar por género del estudiante
+        return gradeOptionsWithAvailability.filter(opt => {
+            if (!opt.vacancyInfo) return false;
+            if (data.gender === 'MALE') return opt.vacancyInfo.hasM;
+            if (data.gender === 'FEMALE') return opt.vacancyInfo.hasF;
+            return false;
+        });
+    }, [gradeOptionsWithAvailability, data.gender]);
     const [isCheckingRut, setIsCheckingRut] = useState(false);
 
     // Estado para autenticación
@@ -932,7 +969,7 @@ const ApplicationForm: React.FC = () => {
             // Step 0: Información del Postulante
             case 0:
                 if (!data.firstName?.trim() || !data.paternalLastName?.trim() || !data.maternalLastName?.trim() ||
-                    !data.rut?.trim() || !data.birthDate) {
+                    !data.rut?.trim() || !data.birthDate || !data.gender) {
                     return false;
                 }
                 // Bloquear si el RUT ya existe como postulante (validación async onBlur)
@@ -965,6 +1002,13 @@ const ApplicationForm: React.FC = () => {
                 }
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
                     return false;
+                }
+                // Validar vacante por género
+                const selectedGradeOption = gradeOptionsWithAvailability.find(g => g.value === data.grade);
+                if (selectedGradeOption?.vacancyInfo) {
+                    const { hasM, hasF } = selectedGradeOption.vacancyInfo;
+                    if (data.gender === 'MALE' && !hasM) return false;
+                    if (data.gender === 'FEMALE' && !hasF) return false;
                 }
                 return true;
 
@@ -1355,6 +1399,7 @@ const ApplicationForm: React.FC = () => {
                 if (!data.rut?.trim()) missing.push('RUT');
                 else if (errors.rut) missing.push('RUT (ya registrado)');
                 if (!data.birthDate) missing.push('Fecha de Nacimiento');
+                if (!data.gender) missing.push('Género');
                 break;
 
             // Step 1: Lugar de Residencia
@@ -1373,6 +1418,13 @@ const ApplicationForm: React.FC = () => {
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) missing.push('Colegio de Procedencia');
                 if (!data.applicationYear) missing.push('Año al que postula');
                 if (!data.admissionPreference) missing.push('Tipo de Relación Familiar');
+                // Verificar vacante por género
+                const gradeOption = gradeOptionsWithAvailability.find(g => g.value === data.grade);
+                if (gradeOption?.vacancyInfo) {
+                    const { hasM, hasF } = gradeOption.vacancyInfo;
+                    if (data.gender === 'MALE' && !hasM) missing.push('No hay vacantes masculinas en este nivel');
+                    if (data.gender === 'FEMALE' && !hasF) missing.push('No hay vacantes femeninas en este nivel');
+                }
                 break;
 
             // Step 3: Datos del Padre
@@ -1801,6 +1853,16 @@ const ApplicationForm: React.FC = () => {
                                 })()}
                             </div>
                         </div>
+                        <Select
+                            id="gender"
+                            label="Género del Postulante"
+                            options={genderOptions}
+                            isRequired
+                            value={data.gender || ''}
+                            onChange={(e) => updateField('gender', e.target.value)}
+                            onBlur={() => touchField('gender')}
+                            error={errors.gender}
+                        />
                         <Input
                             id="studentEmail"
                             label="Correo Electrónico"
@@ -1962,13 +2024,21 @@ const ApplicationForm: React.FC = () => {
                         <Select
                             id="grade"
                             label="Nivel al que postula"
-                            options={gradeOptionsWithAvailability}
+                            options={gradeOptionsFiltered}
                             isRequired
                             value={data.grade || ''}
                             onChange={(e) => updateField('grade', e.target.value)}
                             onBlur={() => touchField('grade')}
                             error={errors.grade}
                         />
+
+                        {data.gender && gradeOptionsFiltered.length === 0 && (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-sm text-red-700">
+                                    <strong>Sin vacantes disponibles:</strong> No hay vacantes para el género seleccionado en ningún nivel. Por favor contacte a administración.
+                                </p>
+                            </div>
+                        )}
 
                         {requiresCurrentSchool(data.grade || '') && (
                             <Input
@@ -2508,14 +2578,14 @@ const ApplicationForm: React.FC = () => {
                                     <div className="mb-6">
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Obligatorios</h4>
                                         <div className="space-y-3">
-                                            {getDocumentTypesConfig().filter(doc => doc.required).map(doc => (
+                                            {getDocumentTypesConfig().filter(doc => doc.required && !doc.recommended).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg bg-red-50">
                                                     <label className="font-medium">
                                                         {doc.label} <span className="text-rojo-sagrado">*</span>
                                                     </label>
                                                     <div className="flex items-center gap-2">
-                                                        <input 
-                                                            type="file" 
+                                                        <input
+                                                            type="file"
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                             onChange={(e) => {
                                                                 const file = e.target.files?.[0];
@@ -2531,17 +2601,49 @@ const ApplicationForm: React.FC = () => {
                                             ))}
                                         </div>
                                     </div>
-                                    
+
+                                    {/* Documentos recomendados (no obligatorios pero importante tenerlos) */}
+                                    <div className="mb-6">
+                                        <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Recomendados</h4>
+                                        <div className="space-y-3">
+                                            {getDocumentTypesConfig().filter(doc => doc.recommended).map(doc => (
+                                                <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg bg-amber-50">
+                                                    <label className="font-medium">
+                                                        {doc.label} <span className="text-amber-600">*</span>
+                                                        <span className="text-xs text-gris-piedra ml-2">(Recomendado)</span>
+                                                    </label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) handleFileSelect(doc.key, file);
+                                                            }}
+                                                            className="text-sm"
+                                                        />
+                                                        {uploadedDocuments.has(doc.key) && (
+                                                            <span className="text-verde-esperanza text-sm">Seleccionado</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-gris-piedra mt-2">
+                                            Estos documentos son importantes para evaluar al postulante. Si no están disponibles (ej: Kinder o 1° Básico sin historial académico previo), puede omitirlos y completar más tarde desde su dashboard.
+                                        </p>
+                                    </div>
+
                                     {/* Documentos opcionales */}
                                     <div>
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Opcionales</h4>
                                         <div className="space-y-3">
-                                            {getDocumentTypesConfig().filter(doc => !doc.required).map(doc => (
+                                            {getDocumentTypesConfig().filter(doc => !doc.required && !doc.recommended).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg">
                                                     <label className="font-medium">{doc.label}</label>
                                                     <div className="flex items-center gap-2">
-                                                        <input 
-                                                            type="file" 
+                                                        <input
+                                                            type="file"
                                                             accept={doc.key === 'STUDENT_PHOTO' ? '.jpg,.jpeg,.png' : '.pdf,.jpg,.jpeg,.png'}
                                                             onChange={(e) => {
                                                                 const file = e.target.files?.[0];
@@ -2577,10 +2679,9 @@ const ApplicationForm: React.FC = () => {
                                 <strong>Notas importantes:</strong>
                             </p>
                             <ul className="text-sm text-amber-800 mt-2 list-disc list-inside space-y-1">
-                                <li>Los certificados de estudios e informes de personalidad son obligatorios solo para estudiantes de 3° básico en adelante.</li>
-                                <li>Para estudiantes menores, adjunte los documentos que correspondan según su nivel educativo actual.</li>
-                                <li>La fotografía del postulante es opcional pero recomendada para agilizar el proceso.</li>
-                                <li>Los informes de personalidad deben ser emitidos por el colegio o jardín infantil de origen.</li>
+                                <li><strong>Solo el Certificado de Nacimiento es obligatorio.</strong> Los demás documentos son recomendados (con *) u opcionales.</li>
+                                <li>Los certificados de estudios marcados con (*) son muy importantes para evaluar al postulante, pero no son obligatorios si no existen (ej: postulantes a Kinder o 1° Básico sin historial académico previo).</li>
+                                <li>Para estudiantes que vienen de jardines infantiles, puede omitir los certificados de estudios de años anteriores.</li>
                                 <li><strong>Puede enviar su postulación aunque no haya subido todos los documentos.</strong> Podrá completarlos más tarde desde su dashboard.</li>
                             </ul>
                         </div>
