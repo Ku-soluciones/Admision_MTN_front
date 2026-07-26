@@ -56,10 +56,9 @@ const Footer: React.FC = () => {
                         <div className="flex-1 text-center sm:text-left">
                             <h3 className="text-lg font-bold text-dorado-nazaret mb-4 font-serif">Enlaces Rápidos</h3>
                             <ul className="space-y-2">
-                                <li><a href="#" className="hover:underline text-sm text-white/65">Nuestro Proyecto Educativo</a></li>
-                                <li><a href="#" className="hover:underline text-sm text-white/65">Admisión 2025</a></li>
-                                <li><button onClick={() => setShowModal(true)} className="hover:underline text-sm text-white/65 bg-transparent border-none p-0 m-0 cursor-pointer">Contacto</button></li>
-                            </ul>
+                                <li><a href={appUrls.studentExams}
+                                                           className="hover:underline text-sm text-white/65">Admisión 2027</a></li>
+                             </ul>
                         </div>
                         {/* Sub-Col 2b: Redes */}
                         <div className="flex-1 text-center sm:text-left">
