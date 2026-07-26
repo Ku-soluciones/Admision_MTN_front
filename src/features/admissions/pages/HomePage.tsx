@@ -196,13 +196,12 @@ const HomePage: React.FC = () => {
                     <p className="text-gris-piedra text-lg mb-8 max-w-2xl mx-auto">
                         Nuestro equipo está aquí para ayudarte en todo el proceso de admisión
                     </p>
-                    <div className="flex justify-center">
-                        <a href={`mailto:${import.meta.env.VITE_ADMISSIONS_EMAIL}?subject=Consulta%20proceso%20de%20admisi%C3%B3n`}>
-                            <Button variant="secondary" size="lg">
-                                Contactar Admisión
-                            </Button>
-                        </a>
-                    </div>
+                    <p className="text-gris-piedra text-base">
+                        Para consultas, envía un correo a{' '}
+                        <a href="mailto:admision@mtn.cl" className="inline-flex min-h-11 items-center font-semibold text-azul-monte-tabor underline underline-offset-4 transition-colors duration-150 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:ring-offset-2 active:text-blue-800">
+                            admision@mtn.cl
+                        </a>.
+                    </p>
                 </div>
             </section>
         </div>
