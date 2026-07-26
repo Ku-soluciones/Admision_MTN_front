@@ -1,14 +1,16 @@
 export interface GradeAvailability {
   id?: number;
   gradeLevel: string;
-  hasVacancy: boolean;
+  hasVacancyM: boolean;
+  hasVacancyF: boolean;
   updatedAt?: string;
   updatedBy?: string;
 }
 
 export interface GradeAvailabilityUpdate {
   gradeLevel: string;
-  hasVacancy: boolean;
+  hasVacancyM: boolean;
+  hasVacancyF: boolean;
 }
 
 export interface GradeAvailabilityResponse {

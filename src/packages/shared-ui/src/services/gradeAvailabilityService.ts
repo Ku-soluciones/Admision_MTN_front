@@ -28,8 +28,8 @@ export const gradeAvailabilityService = {
   /**
    * Obtener solo niveles con vacantes (sin auth - para formulario público)
    */
-  async getAvailable(): Promise<Pick<GradeAvailability, 'gradeLevel' | 'hasVacancy'>[]> {
-    const response = await api.get<{ success: boolean; data: Pick<GradeAvailability, 'gradeLevel' | 'hasVacancy'>[] }>(PUBLIC_URL);
+  async getAvailable(): Promise<Pick<GradeAvailability, 'gradeLevel' | 'hasVacancyM' | 'hasVacancyF'>[]> {
+    const response = await api.get<{ success: boolean; data: Pick<GradeAvailability, 'gradeLevel' | 'hasVacancyM' | 'hasVacancyF'>[] }>(PUBLIC_URL);
     return response.data.data || [];
   },
 
@@ -40,7 +40,7 @@ export const gradeAvailabilityService = {
   async getAvailableGradeLevels(): Promise<string[]> {
     const available = await this.getAvailable();
     return available
-      .filter((g) => g.hasVacancy)
+      .filter((g) => g.hasVacancyM || g.hasVacancyF)
       .map((g) => g.gradeLevel);
   },
 };
