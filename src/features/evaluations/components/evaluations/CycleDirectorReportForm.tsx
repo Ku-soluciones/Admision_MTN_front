@@ -10,6 +10,7 @@ import { useNotifications } from '../../../admin/context/AppContext';
 import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
 import { useAutoSave } from '../../../../packages/shared-ui/src/hooks/useAutoSave';
 import api from '../../../admin/services/api';
+import { getTargetYear } from '../../../../packages/shared-ui/src/types/document';
 
 interface CycleDirectorReportData {
     studentName: string;
@@ -499,7 +500,7 @@ const CycleDirectorReportForm: React.FC = () => {
                                         label="Curso al que postula"
                                         value={reportData.gradeApplied}
                                         onChange={(e) => updateReportData('gradeApplied', e.target.value)}
-                                        placeholder="Ej: 1º Básico 2027"
+                                        placeholder={`Ej: 1º Básico ${getTargetYear()}`}
                                     />
                                 </div>
                             </div>
