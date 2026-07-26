@@ -79,8 +79,6 @@ const AdmissionReportTabs = React.lazy(() =>
 );
 
 const sections = [
-  { key: 'metricas',      label: 'Métricas de Postulantes',   icon: BarChartIcon },
-  { key: 'admissionReports', label: 'Admisión',             icon: FileTextIcon },
   { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: FileTextIcon },
   { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: CheckCircleIcon },
   { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: ClockIcon },
@@ -114,20 +112,19 @@ const SidebarContent = React.memo(function SidebarContent({
         <h1 className="text-xl font-bold text-azul-monte-tabor">Panel Admin</h1>
         <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
       </div>
-      <div className="px-4 mb-4">
+      <nav className="px-4" aria-label="Menú de navegación principal del administrador">
         <button
-          onClick={() => { onShowCoordinator(); onNavigate?.(); }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors bg-azul-monte-tabor hover:bg-blue-900 text-white shadow-sm"
-          aria-label="Abrir dashboard del coordinador con analytics y búsqueda avanzada"
+          onClick={() => { onSectionChange('admissionReports'); onNavigate?.(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors bg-azul-monte-tabor hover:bg-blue-900 text-white shadow-sm"
+          aria-label="Navegar a Admisión"
+          aria-current={activeSection === 'admissionReports' ? 'page' : undefined}
         >
-          <FiBarChart2 className="w-5 h-5" aria-hidden="true" />
+          <FileTextIcon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1">
-            <div className="text-sm font-semibold">Dashboard Coordinador</div>
-            <div className="text-xs opacity-90">Analytics y búsqueda avanzada</div>
+            <div className="text-sm font-semibold">Admisión</div>
+            <div className="text-xs opacity-90">Reportes y gestión</div>
           </div>
         </button>
-      </div>
-      <nav className="px-4" aria-label="Menú de navegación principal del administrador">
         {sections.map(section => {
           const Icon = section.icon;
           return (
@@ -169,9 +166,7 @@ const SidebarContent = React.memo(function SidebarContent({
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSection, setActiveSection] = useState(() =>
-    searchParams.get('section') === 'admision' ? 'admissionReports' : 'metricas'
-  );
+  const [activeSection, setActiveSection] = useState('admissionReports');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);

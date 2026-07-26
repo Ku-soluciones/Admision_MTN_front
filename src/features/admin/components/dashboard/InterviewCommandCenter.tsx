@@ -428,16 +428,16 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5 md:flex-row md:items-end md:justify-between">
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-gray-950">Calendario global</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario global</p>
           <p className="mt-1 max-w-3xl text-sm text-gray-600">
             {surface === 'operations'
               ? 'Agenda, disponibilidad y carga de entrevistadores.'
               : 'Vista mensual de todas las entrevistas.'}
           </p>
         </div>
-        <div className="inline-flex self-start rounded-lg bg-gray-100 p-1 md:self-auto" aria-label="Vista del calendario">
+        <div className="inline-flex self-start gap-2" aria-label="Vista del calendario">
             <button
               type="button"
               onClick={() => setSurface('operations')}
