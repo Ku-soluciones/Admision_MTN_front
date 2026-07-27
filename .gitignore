@@ -154,9 +154,22 @@ docker-compose.override.yml
 .stylelintcache
 .parcel-cache/
 
+# Claude Code
+CLAUDE.md
+
 # Security scanning results
 .snyk
 security-report.*
 vulnerability-report.*
 .vercel
+
+# AI tool directories and skills (installed locally, not versioned)
+.agents/
+.windsurf/
+.cursor/
+.claude/
+.gemini/
 .gstack/
+skills-lock.json
+docs/
+.env*

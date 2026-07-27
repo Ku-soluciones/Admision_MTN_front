@@ -1,0 +1,407 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import SimpleToast from '../ui/SimpleToast';
+import Pagination from '../ui/Pagination';
+import UserForm from './UserForm';
+import UserTable from './UserTable';
+import UserFilters from './UserFilters';
+import UserStats from './UserStats';
+import {
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UserFilters as UserFiltersType,
+  UserFormMode,
+  UserManagementState,
+  PagedResponse,
+  UserStats as UserStatsType
+} from '../../types/user';
+import { guardianService } from '../../services/guardianService';
+import {
+  PlusIcon,
+  UsersIcon,
+  ChartBarIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  ArrowLeftIcon
+} from '../icons/Icons';
+
+interface GuardianManagementProps {
+  onBack?: () => void;
+  hideHeader?: boolean;
+}
+
+const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHeader = false }) => {
+  const [state, setState] = useState<UserManagementState>({
+    users: [],
+    selectedUser: null,
+    isLoading: false,
+    isSubmitting: false,
+    error: null,
+    filters: { page: 0, size: 10 }, // Tamaño inicial más razonable
+    pagination: { page: 0, size: 10, total: 0, totalPages: 0 },
+    stats: null
+  });
+
+  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<UserFormMode>(UserFormMode.CREATE);
+  const [showStats, setShowStats] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    user: User | null;
+    action: 'delete' | 'toggle' | 'reset' | null;
+    message: string;
+  }>({
+    show: false,
+    user: null,
+    action: null,
+    message: ''
+  });
+
+  // Cargar usuarios
+  const loadUsers = useCallback(async (filters: UserFiltersType = state.filters) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const response = await guardianService.getGuardianUsers(filters);
+
+      setState(prev => ({
+        ...prev,
+        users: response.content,
+        pagination: {
+          page: response.number,
+          size: response.size,
+          total: response.totalElements,
+          totalPages: response.totalPages
+        },
+        isLoading: false
+      }));
+    } catch (error: any) {
+      setState(prev => ({
+        ...prev,
+        error: error.message,
+        isLoading: false
+      }));
+      
+      showToast('Error al cargar los usuarios', 'error');
+    }
+  }, [state.filters]);
+
+  // Cargar estadísticas
+  const loadStats = useCallback(async () => {
+    try {
+      const stats = await guardianService.getGuardianStats();
+      setState(prev => ({ ...prev, stats }));
+    } catch (error: any) {
+      // Si es 401, no mostrar error ya que la redirección se maneja en api.ts
+      if (error.response?.status !== 401) {
+        showToast('Error al cargar estadísticas de usuarios', 'error');
+      }
+    }
+  }, []);
+
+  // Efectos
+  useEffect(() => {
+    loadUsers();
+    loadStats();
+  }, []);
+
+  // Manejar cambios de filtros
+  const handleFiltersChange = useCallback((newFilters: UserFiltersType) => {
+    setState(prev => ({ ...prev, filters: newFilters }));
+    loadUsers(newFilters);
+  }, [loadUsers]);
+
+  // Manejar paginación
+  const handlePageChange = useCallback((page: number) => {
+    const newFilters = { ...state.filters, page };
+    handleFiltersChange(newFilters);
+  }, [state.filters, handleFiltersChange]);
+
+  // Mostrar toast
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  // Abrir formulario
+  const openForm = (mode: UserFormMode, user?: User) => {
+    setFormMode(mode);
+    setState(prev => ({ ...prev, selectedUser: user || null }));
+    setShowForm(true);
+  };
+
+  // Cerrar formulario
+  const closeForm = () => {
+    setShowForm(false);
+    setState(prev => ({ ...prev, selectedUser: null }));
+  };
+
+  // Manejar envío del formulario
+  const handleFormSubmit = async (data: CreateUserRequest | UpdateUserRequest) => {
+    setState(prev => ({ ...prev, isSubmitting: true }));
+
+    try {
+      if (formMode === UserFormMode.CREATE) {
+        await guardianService.createGuardianUser(data as CreateUserRequest);
+        showToast('Usuario creado exitosamente', 'success');
+      } else if (formMode === UserFormMode.EDIT && state.selectedUser) {
+        await guardianService.updateGuardianUser(state.selectedUser.id, data as UpdateUserRequest);
+        showToast('Usuario actualizado exitosamente', 'success');
+      }
+
+      closeForm();
+      await loadUsers();
+      await loadStats();
+      
+    } catch (error: any) {
+      showToast(error.message || 'Error al guardar el usuario', 'error');
+    } finally {
+      setState(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  // Confirmar acción
+  const confirmAction = (user: User, action: 'delete' | 'toggle' | 'reset') => {
+    let message = '';
+    
+    switch (action) {
+      case 'delete':
+        message = `¿Estás seguro de que deseas ELIMINAR PERMANENTEMENTE al usuario ${user.fullName}?\n\nEsta acción:\n• Eliminará completamente la cuenta del usuario\n• El usuario no podrá acceder al sistema\n• NO se puede deshacer esta acción\n• Se perderán todos los datos asociados\n\nIMPORTANTE: Si este usuario tiene evaluaciones asociadas, no se podrá eliminar y deberás desactivarlo en su lugar.`;
+        break;
+      case 'toggle':
+        message = user.active 
+          ? `¿Estás seguro de que deseas desactivar al usuario ${user.fullName}?\n\nEl usuario no podrá acceder al sistema, pero se mantendrán todas sus evaluaciones y datos asociados.`
+          : `¿Estás seguro de que deseas activar al usuario ${user.fullName}?`;
+        break;
+      case 'reset':
+        message = `¿Estás seguro de que deseas restablecer la contraseña del usuario ${user.fullName}? Se enviará un email con la nueva contraseña.`;
+        break;
+    }
+
+    setConfirmDialog({
+      show: true,
+      user,
+      action,
+      message
+    });
+  };
+
+  // Ejecutar acción confirmada
+  const executeAction = async () => {
+    const { user, action } = confirmDialog;
+    if (!user || !action) return;
+
+    try {
+      switch (action) {
+        case 'delete':
+          await guardianService.deleteGuardianUser(user.id);
+          showToast('Usuario eliminado permanentemente', 'success');
+          break;
+        case 'toggle':
+          if (user.active) {
+            await guardianService.deactivateGuardianUser(user.id);
+            showToast('Usuario desactivado exitosamente', 'success');
+          } else {
+            await guardianService.activateGuardianUser(user.id);
+            showToast('Usuario activado exitosamente', 'success');
+          }
+          break;
+        case 'reset':
+          await guardianService.resetGuardianPassword(user.id);
+          showToast('Contraseña restablecida exitosamente', 'success');
+          break;
+      }
+
+      await loadUsers();
+      await loadStats();
+      
+    } catch (error: any) {
+      // Mostrar mensaje específico para usuarios con evaluaciones
+      let errorMessage = error.message || 'Error al ejecutar la acción';
+      
+      if (error.message && error.message.includes('evaluación(es) asociada(s)')) {
+        errorMessage = error.message;
+      } else if (error.message && error.message.includes('foreign key constraint')) {
+        errorMessage = `No se puede eliminar este usuario porque tiene datos asociados en el sistema. Para mantener la integridad de la información, te recomendamos desactivar el usuario en lugar de eliminarlo.`;
+      }
+      
+      showToast(errorMessage, 'error');
+    } finally {
+      setConfirmDialog({ show: false, user: null, action: null, message: '' });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+
+      {/* Header */}
+      {hideHeader ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-950">Apoderados</h2>
+            <p className="mt-1 max-w-3xl text-sm text-gray-600">Apoderados y responsables del proceso de admisión</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openForm(UserFormMode.CREATE)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          >
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            Nuevo Usuario
+          </button>
+        </div>
+      ) : (
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
+              <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
+              <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Apoderados y responsables del proceso de admisión</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                  Volver
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => openForm(UserFormMode.CREATE)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+              >
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Nuevo Usuario
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Filtros */}
+      <UserFilters
+        filters={state.filters}
+        onChange={handleFiltersChange}
+        onReset={() => handleFiltersChange({ page: 0, size: 10 })}
+      />
+
+      {/* Error */}
+      {state.error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-2" />
+            <p className="text-red-700">{state.error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla de usuarios */}
+      <UserTable
+        users={state.users}
+        isLoading={state.isLoading}
+        onEdit={(user) => openForm(UserFormMode.EDIT, user)}
+        onDelete={(user) => confirmAction(user, 'delete')}
+        onToggleStatus={(user) => confirmAction(user, 'toggle')}
+        onResetPassword={(user) => confirmAction(user, 'reset')}
+      />
+
+      {/* Paginación */}
+      {state.pagination.total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-gray-400">
+            Mostrando {state.pagination.page * state.pagination.size + 1}–{Math.min((state.pagination.page + 1) * state.pagination.size, state.pagination.total)} de {state.pagination.total}
+          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400">Por página:</span>
+              <select
+                value={state.pagination.size}
+                onChange={(e) => handleFiltersChange({ ...state.filters, size: Number(e.target.value), page: 0 })}
+                className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            {state.pagination.totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => handlePageChange(0)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
+                <button onClick={() => handlePageChange(state.pagination.page - 1)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
+                <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{state.pagination.page + 1} / {state.pagination.totalPages}</span>
+                <button onClick={() => handlePageChange(state.pagination.page + 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
+                <button onClick={() => handlePageChange(state.pagination.totalPages - 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal del formulario */}
+      <Modal
+        isOpen={showForm}
+        onClose={closeForm}
+        title={formMode === UserFormMode.CREATE ? 'Nuevo Usuario' : 'Editar Usuario'}
+        size="lg"
+      >
+        <UserForm
+          user={state.selectedUser}
+          mode={formMode}
+          onSubmit={handleFormSubmit}
+          onCancel={closeForm}
+          isSubmitting={state.isSubmitting}
+        />
+      </Modal>
+
+      {/* Modal de confirmación */}
+      <Modal
+        isOpen={confirmDialog.show}
+        onClose={() => setConfirmDialog({ show: false, user: null, action: null, message: '' })}
+        title="Confirmar Acción"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <ExclamationTriangleIcon className="w-6 h-6 text-orange-500 mt-1" />
+            <p className="text-gray-700 whitespace-pre-line">{confirmDialog.message}</p>
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialog({ show: false, user: null, action: null, message: '' })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={executeAction}
+              className={confirmDialog.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {confirmDialog.action === 'delete' ? 'Eliminar Permanentemente' : 'Confirmar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Toast */}
+      {toast && (
+        <SimpleToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default GuardianManagement;
