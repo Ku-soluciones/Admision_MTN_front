@@ -530,15 +530,12 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-5 ${className}`}>
       {/* Header */}
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Entrevistas</p>
-            <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Entrevistas</h1>
-            <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Centro de evaluación de candidatos</p>
-          </div>
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Entrevistas</p>
+          <p className="mt-1 max-w-3xl text-sm text-gray-600">Centro de evaluación de candidatos</p>
         </div>
       </section>
 
