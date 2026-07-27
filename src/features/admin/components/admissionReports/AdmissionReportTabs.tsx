@@ -97,46 +97,40 @@ export const AdmissionReportTabs: React.FC = () => {
     : null;
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <header className="px-1 py-2 sm:py-3">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-[-0.04em] text-slate-950">Admisión</h1>
-              <span className="rounded-full bg-[#efe6cc] px-3 py-1 text-sm font-bold text-[#715614]">{academicYear}</span>
-            </div>
-            <p className="mt-1.5 text-sm text-slate-500">
+    <div className="space-y-5">
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Admisión</p>
+            <p className="mt-1 max-w-3xl text-sm text-gray-600">
               Seguimiento de postulantes y decisiones
-              {lastUpdated && <span className="text-slate-400"> · actualizado {lastUpdated}</span>}
+              {lastUpdated && <span className="text-gray-400"> · actualizado {lastUpdated}</span>}
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3">
-              <FiCalendar className="h-4 w-4 text-slate-500" aria-hidden="true" />
-              <label htmlFor="admissionAcademicYear" className="text-sm text-slate-600">Año</label>
+            <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+              <FiCalendar className="h-4 w-4 text-gray-500" aria-hidden="true" />
+              <label htmlFor="admissionAcademicYear" className="text-sm text-gray-600">Año</label>
               <select
                 id="admissionAcademicYear"
                 value={academicYear}
                 onChange={(event) => handleYearChange(Number(event.target.value))}
-                className="cursor-pointer border-none bg-transparent py-2 text-sm font-bold text-slate-950 focus:ring-0"
+                className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
               >
                 {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
               </select>
             </div>
-            <button
-              type="button"
-              onClick={refresh}
-              disabled={loading}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-blue-950 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-              aria-label="Actualizar resumen de admisión"
-            >
-              <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {loading && rows.length ? 'Actualizando' : 'Actualizar'}
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Actualizar resumen de admisión"
+          >
+            <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+            {loading && rows.length ? 'Actualizando' : 'Actualizar'}
+          </button>
         </div>
-      </header>
+      </section>
 
       {loading && !rows.length ? (
         <LoadingState />

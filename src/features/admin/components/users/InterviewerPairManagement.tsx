@@ -115,7 +115,7 @@ const InterviewerPairManagement: React.FC = () => {
             Define quiénes entrevistan juntos y los niveles que pueden atender.
           </p>
         </div>
-        <button type="button" onClick={openCreate} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#008a57] px-4 py-2 text-sm font-semibold text-white hover:bg-[#007247] focus:outline-none focus:ring-2 focus:ring-[#008a57] focus:ring-offset-2">
+        <button type="button" onClick={openCreate} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200">
           <FiPlus aria-hidden="true" /> Crear pareja
         </button>
       </div>
@@ -200,29 +200,36 @@ const InterviewerPairManagement: React.FC = () => {
       {loading ? (
         <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-gray-700" role="status"><FiRefreshCw className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> Cargando parejas…</div>
       ) : pairs.length === 0 ? (
-        <div className="rounded-xl border border-gray-300 bg-gray-50 p-8 text-center">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
           <FiUsers className="mx-auto h-8 w-8 text-gray-500" aria-hidden="true" />
           <h3 className="mt-3 font-bold text-gray-950">No hay parejas configuradas</h3>
           <p className="mt-1 text-sm text-gray-600">Crea la primera pareja y asígnale uno o más niveles para habilitar entrevistas de Director de Ciclo.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-300">
-          <table className="min-w-full divide-y divide-gray-300 text-left text-sm">
-            <thead className="bg-gray-50 text-gray-700"><tr><th className="px-4 py-3 font-semibold">Integrantes</th><th className="px-4 py-3 font-semibold">Niveles</th><th className="px-4 py-3 font-semibold">Estado</th><th className="px-4 py-3 text-right font-semibold">Acciones</th></tr></thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Integrantes</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Niveles</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
               {pairs.map((pair) => {
                 const statusClass = pair.active
                   ? 'bg-emerald-100 text-emerald-900'
                   : 'bg-gray-200 text-gray-700';
                 return (
-                  <tr key={pair.id} className={!pair.active ? 'bg-gray-50 text-gray-600' : ''}>
-                    <td className="px-4 py-4">
+                  <tr key={pair.id} className={`transition-colors ${!pair.active ? 'bg-gray-50 text-gray-600' : 'hover:bg-gray-50'}`}>
+                    <td className="px-4 py-3">
                       <p className="font-semibold text-gray-950">{pair.cycleDirector.name}</p>
                       <p className="text-gray-600">Director de Ciclo</p>
                       <p className="mt-2 font-semibold text-gray-950">{pair.psychologist.name}</p>
                       <p className="text-gray-600">Psicólogo/a</p>
                     </td>
-                    <td className="max-w-md px-4 py-4">
+                    <td className="max-w-md px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {pair.grades.map((grade) => (
                           <span key={grade} className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
@@ -231,12 +238,12 @@ const InterviewerPairManagement: React.FC = () => {
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusClass}`}>
                         {pair.active ? `Activa · revisión ${pair.revision}` : `Archivada · revisión ${pair.revision}`}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         {pair.active && (
                           <>

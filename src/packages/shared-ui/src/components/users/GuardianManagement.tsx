@@ -33,22 +33,14 @@ interface GuardianManagementProps {
 }
 
 const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHeader = false }) => {
-  // Función para calcular el mejor tamaño de página
-  const getOptimalPageSize = (totalUsers: number): number => {
-    if (totalUsers <= 20) return Math.max(10, totalUsers);  // Mínimo 10, pero si hay menos, mostrar todos
-    if (totalUsers <= 50) return 15;  // Para colegios medianos
-    if (totalUsers <= 100) return 20; // Para colegios grandes
-    return 25; // Para instituciones muy grandes
-  };
-
   const [state, setState] = useState<UserManagementState>({
     users: [],
     selectedUser: null,
     isLoading: false,
     isSubmitting: false,
     error: null,
-    filters: { page: 0, size: 15 }, // Tamaño inicial más razonable
-    pagination: { page: 0, size: 15, total: 0, totalPages: 0 },
+    filters: { page: 0, size: 10 }, // Tamaño inicial más razonable
+    pagination: { page: 0, size: 10, total: 0, totalPages: 0 },
     stats: null
   });
 
@@ -69,39 +61,12 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHea
   });
 
   // Cargar usuarios
-  const loadUsers = useCallback(async (filters: UserFiltersType = state.filters, skipOptimalSize: boolean = false) => {
+  const loadUsers = useCallback(async (filters: UserFiltersType = state.filters) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+
     try {
       const response = await guardianService.getGuardianUsers(filters);
-      
-      // Si es la primera carga y no estamos evitando el ajuste automático,
-      // ajustar el tamaño de página según el total de usuarios
-      let updatedFilters = filters;
-      if (!skipOptimalSize && response.totalElements > 0) {
-        const optimalSize = getOptimalPageSize(response.totalElements);
-        if (filters.size !== optimalSize) {
-          updatedFilters = { ...filters, size: optimalSize, page: 0 };
-          
-          // Recargar con el nuevo tamaño óptimo
-          const reloadResponse = await guardianService.getGuardianUsers(updatedFilters);
-          
-          setState(prev => ({
-            ...prev,
-            users: reloadResponse.content,
-            filters: updatedFilters,
-            pagination: {
-              page: reloadResponse.number,
-              size: reloadResponse.size,
-              total: reloadResponse.totalElements,
-              totalPages: reloadResponse.totalPages
-            },
-            isLoading: false
-          }));
-          return;
-        }
-      }
-      
+
       setState(prev => ({
         ...prev,
         users: response.content,
@@ -146,8 +111,7 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHea
   // Manejar cambios de filtros
   const handleFiltersChange = useCallback((newFilters: UserFiltersType) => {
     setState(prev => ({ ...prev, filters: newFilters }));
-    // Evitar ajuste automático de tamaño cuando el usuario está cambiando filtros manualmente
-    loadUsers(newFilters, true);
+    loadUsers(newFilters);
   }, [loadUsers]);
 
   // Manejar paginación
@@ -275,11 +239,15 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHea
 
       {/* Header */}
       {hideHeader ? (
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-950">Apoderados</h2>
+            <p className="mt-1 max-w-3xl text-sm text-gray-600">Apoderados y responsables del proceso de admisión</p>
+          </div>
           <button
             type="button"
             onClick={() => openForm(UserFormMode.CREATE)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
           >
             <PlusIcon className="h-4 w-4" aria-hidden="true" />
             Nuevo Usuario
@@ -321,7 +289,7 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHea
       <UserFilters
         filters={state.filters}
         onChange={handleFiltersChange}
-        onReset={() => handleFiltersChange({ page: 0, size: 15 })}
+        onReset={() => handleFiltersChange({ page: 0, size: 10 })}
       />
 
       {/* Error */}
@@ -345,13 +313,35 @@ const GuardianManagement: React.FC<GuardianManagementProps> = ({ onBack, hideHea
       />
 
       {/* Paginación */}
-      {state.pagination.totalPages > 1 && (
-        <div className="flex justify-center">
-          <Pagination
-            currentPage={state.pagination.page}
-            totalPages={state.pagination.totalPages}
-            onPageChange={handlePageChange}
-          />
+      {state.pagination.total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-gray-400">
+            Mostrando {state.pagination.page * state.pagination.size + 1}–{Math.min((state.pagination.page + 1) * state.pagination.size, state.pagination.total)} de {state.pagination.total}
+          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400">Por página:</span>
+              <select
+                value={state.pagination.size}
+                onChange={(e) => handleFiltersChange({ ...state.filters, size: Number(e.target.value), page: 0 })}
+                className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            {state.pagination.totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => handlePageChange(0)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
+                <button onClick={() => handlePageChange(state.pagination.page - 1)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
+                <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{state.pagination.page + 1} / {state.pagination.totalPages}</span>
+                <button onClick={() => handlePageChange(state.pagination.page + 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
+                <button onClick={() => handlePageChange(state.pagination.totalPages - 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

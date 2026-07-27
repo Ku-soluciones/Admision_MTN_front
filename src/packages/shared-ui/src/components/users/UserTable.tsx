@@ -66,49 +66,46 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
   }
 
   return (
-    <div className={`overflow-hidden ${className}`}>
-      <div className="overflow-x-auto">
+    <div className={`overflow-x-auto rounded-lg border border-gray-200 ${className}`}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Usuario
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Contacto
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Rol
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Creado
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-100">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
+              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                 {/* Usuario */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-azul-monte-tabor bg-opacity-10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-azul-monte-tabor">
-                          {(user.firstName?.charAt(0) || '?')}{(user.lastName?.charAt(0) || '?')}
-                        </span>
-                      </div>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0 h-8 w-8 rounded-full bg-azul-monte-tabor bg-opacity-10 flex items-center justify-center">
+                      <span className="text-xs font-semibold text-azul-monte-tabor">
+                        {(user.firstName?.charAt(0) || '?')}{(user.lastName?.charAt(0) || '?')}
+                      </span>
                     </div>
-                    <div className="ml-4">
+                    <div className="min-w-0">
                       <div className="text-sm font-medium text-gray-900">
                         {user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sin nombre'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs text-gray-500">
                         RUT: {user.rut || 'No especificado'}
                       </div>
                     </div>
@@ -116,22 +113,22 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
                 </td>
 
                 {/* Contacto */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{user.email || 'No especificado'}</div>
                   {user.phone && (
-                    <div className="text-sm text-gray-500">{user.phone}</div>
+                    <div className="text-xs text-gray-500">{user.phone}</div>
                   )}
                 </td>
 
                 {/* Rol */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <Badge variant={UserUtils.getRoleColor(user.role)}>
                     {USER_ROLE_LABELS[user.role]}
                   </Badge>
                 </td>
 
                 {/* Estado */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center space-x-2">
                     <Badge variant={UserUtils.getStatusColor(user.active)}>
                       {user.active ? 'Activo' : 'Inactivo'}
@@ -145,12 +142,12 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
                 </td>
 
                 {/* Creado */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                   {UserUtils.formatCreatedAt(user.createdAt)}
                 </td>
 
                 {/* Acciones */}
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end space-x-2">
                     {/* Ver */}
                     <Button
@@ -226,10 +223,9 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
             ))}
           </tbody>
         </table>
-      </div>
 
       {/* Leyenda */}
-      <div className="mt-4 px-6 py-3 bg-gray-50 border-t">
+      <div className="px-4 py-3 bg-gray-50 border-t">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1">
