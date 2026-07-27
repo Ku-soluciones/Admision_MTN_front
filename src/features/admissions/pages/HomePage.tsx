@@ -55,7 +55,7 @@ const HomePage: React.FC = () => {
             <section className="relative text-blanco-pureza py-[7.5rem] sm:py-48 text-center bg-cover bg-center" style={{ backgroundImage: `url('https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/colegio.png?updatedAt=1780848172602')` }}>
                 <div className="absolute inset-0 bg-azul-monte-tabor" style={{ opacity: 0.85, filter: 'brightness(0.75)' }}></div>
                 <div className="relative container mx-auto px-4 sm:px-6">
-                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Formando líderes con espíritu de servicio</h1>
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Unidos al corazón de Jesús, construimos una comunidad de esperanza</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únanse a una comunidad educativa comprometida con la excelencia académica y formación católica</p>
                     <div className="flex justify-center">
                         <a href={appUrls.guardianRegister}>

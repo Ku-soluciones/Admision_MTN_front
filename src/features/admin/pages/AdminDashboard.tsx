@@ -379,7 +379,7 @@ const AdminDashboard: React.FC = () => {
       cursoPostulado: app.student.gradeApplied,
       colegioActual: app.student.currentSchool,
       colegioDestino: app.student.gender || null,
-      añoAcademico: '2025',
+      añoAcademico: (app as any).applicationYear?.toString() || (new Date().getFullYear() + 1).toString(),
       
       // Estado de postulación
       estadoPostulacion: app.status,

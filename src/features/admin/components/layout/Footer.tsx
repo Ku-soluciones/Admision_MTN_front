@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
 import { appUrls } from '../../utils/appUrls';
+import { getTargetYear } from '../../../../packages/shared-ui/src/types/document';
 
 const Footer: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
@@ -43,7 +44,7 @@ const Footer: React.FC = () => {
                         <h3 className="text-lg font-bold text-dorado-nazaret mb-4 font-serif">Enlaces Rápidos</h3>
                         <ul className="space-y-2">
                                 <li><a href="#" className="hover:underline text-sm text-gray-300">Nuestro Proyecto Educativo</a></li>
-                                <li><a href="#" className="hover:underline text-sm text-gray-300">Admisión 2025</a></li>
+                                <li><a href="#" className="hover:underline text-sm text-gray-300">Admisión {getTargetYear()}</a></li>
                                 <li><button onClick={() => setShowModal(true)} className="hover:underline text-sm text-gray-300 bg-transparent border-none p-0 m-0 cursor-pointer">Contacto</button></li>
                         </ul>
                     </div>

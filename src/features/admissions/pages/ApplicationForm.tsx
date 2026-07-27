@@ -1174,6 +1174,7 @@ const ApplicationForm: React.FC = () => {
                             studentAddress: data.studentAddress,
                             grade: data.grade,
                             schoolApplied: data.schoolApplied,
+                            applicationYear: data.applicationYear || (new Date().getFullYear() + 1).toString(),
                             currentSchool: data.currentSchool,
                             additionalNotes: data.additionalNotes,
                             admissionPreference: data.admissionPreference,

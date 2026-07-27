@@ -335,7 +335,7 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
                     previousSchool: String(student.currentSchool || 'No especificado'),
                     hasSpecialNeeds: Boolean(student.specialNeeds),
                     specialNeedsDescription: String(student.specialNeedsDescription || ''),
-                    academicYear: new Date().getFullYear().toString(),
+                    academicYear: app.applicationYear?.toString() || new Date().getFullYear().toString(),
                     evaluationStatus: app.evaluationStatus || 'PENDING',
                     interviewDate: app.interviewDate,
                     documentsComplete: app.documentsComplete || false,
