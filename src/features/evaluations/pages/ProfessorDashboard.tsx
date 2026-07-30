@@ -772,95 +772,197 @@ const ProfessorDashboard: React.FC = () => {
         };
 
         return (
-            <Card className="p-6">
-                <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">
-                    Mis Evaluaciones Asignadas ({evaluations.length})
-                </h2>
-
-                {/* Tabs de filtrado - Solo mostrar tabs con evaluaciones */}
-                {(hasAcademicEvaluations || hasPsychologicalEvaluations || hasFamilyEvaluations) && (
-                    <div className="flex gap-2 mb-6 border-b border-gray-200 pb-2">
-                        {hasAcademicEvaluations && (
-                            <button
-                                onClick={() => setActiveEvaluationTab('academicas')}
-                                className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${
-                                    activeEvaluationTab === 'academicas'
-                                        ? 'bg-azul-monte-tabor text-blanco-pureza'
-                                        : 'bg-gray-100 text-gris-piedra hover:bg-gray-200'
-                                }`}
-                            >
-                                Exámenes Académicos
-                                <Badge variant="info" className="ml-2">{academicEvaluations.length}</Badge>
-                            </button>
-                        )}
-                        {hasPsychologicalEvaluations && (
-                            <button
-                                onClick={() => setActiveEvaluationTab('psicologicas')}
-                                className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${
-                                    activeEvaluationTab === 'psicologicas'
-                                        ? 'bg-azul-monte-tabor text-blanco-pureza'
-                                        : 'bg-gray-100 text-gris-piedra hover:bg-gray-200'
-                                }`}
-                            >
-                                Entrevistas Psicológicas/Director
-                                <Badge variant="info" className="ml-2">{psychologicalEvaluations.length}</Badge>
-                            </button>
-                        )}
-                        {hasFamilyEvaluations && (
-                            <button
-                                onClick={() => setActiveEvaluationTab('familiares')}
-                                className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${
-                                    activeEvaluationTab === 'familiares'
-                                        ? 'bg-azul-monte-tabor text-blanco-pureza'
-                                        : 'bg-gray-100 text-gris-piedra hover:bg-gray-200'
-                                }`}
-                            >
-                                Entrevistas Familiares
-                                <Badge variant="info" className="ml-2">{familyEvaluations.length}</Badge>
-                            </button>
-                        )}
+            <div className="space-y-6">
+                {/* Header */}
+                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Mis Exámenes</p>
+                        <h1 className="mt-1 text-lg font-bold text-gray-950">Mis Evaluaciones Asignadas ({evaluations.length})</h1>
+                        <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Revisa y completa las evaluaciones académicas y entrevistas que tienes pendientes o ya has completado.</p>
                     </div>
-                )}
+                </section>
 
-                {isLoading ? (
-                    <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto"></div>
-                        <p className="text-gris-piedra mt-2">Cargando evaluaciones...</p>
+                {/* Acciones */}
+                <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setRefreshKey(prev => prev + 1)}
+                        disabled={isLoading}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                    >
+                        <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+                        Actualizar
+                    </button>
+                </div>
+
+                {/* Contenido */}
+                <Card className="overflow-hidden p-0">
+                    {/* Tabs + contador */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 flex-wrap">
+                        {(hasAcademicEvaluations || hasPsychologicalEvaluations || hasFamilyEvaluations) && (
+                            <>
+                                {hasAcademicEvaluations && (
+                                    <button
+                                        onClick={() => setActiveEvaluationTab('academicas')}
+                                        className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                                            activeEvaluationTab === 'academicas'
+                                                ? 'bg-azul-monte-tabor text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Exámenes Académicos <span className="ml-1 opacity-75">{academicEvaluations.length}</span>
+                                    </button>
+                                )}
+                                {hasPsychologicalEvaluations && (
+                                    <button
+                                        onClick={() => setActiveEvaluationTab('psicologicas')}
+                                        className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                                            activeEvaluationTab === 'psicologicas'
+                                                ? 'bg-azul-monte-tabor text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Psicológicas/Director <span className="ml-1 opacity-75">{psychologicalEvaluations.length}</span>
+                                    </button>
+                                )}
+                                {hasFamilyEvaluations && (
+                                    <button
+                                        onClick={() => setActiveEvaluationTab('familiares')}
+                                        className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                                            activeEvaluationTab === 'familiares'
+                                                ? 'bg-azul-monte-tabor text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Familiares <span className="ml-1 opacity-75">{familyEvaluations.length}</span>
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        <span className="ml-auto text-sm text-gray-500 whitespace-nowrap">{currentEvaluations.length} registros</span>
                     </div>
-                ) : (
-                    <div className="space-y-6">
-                        {/* Pendientes */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                <ClockIcon className="w-5 h-5 mr-2" />
-                                {getTabLabel()} Pendientes ({sortedPending.length})
-                            </h3>
-                            {sortedPending.length === 0 ? (
-                                <div className="text-center py-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <p className="text-sm text-blue-600">No hay {getTabLabel().toLowerCase()} pendientes</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {sortedPending.map(renderEvaluationCard)}
-                                </div>
-                            )}
+
+                    {isLoading ? (
+                        <div className="text-center py-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-monte-tabor mx-auto"></div>
+                            <p className="text-gris-piedra mt-2 text-sm">Cargando evaluaciones...</p>
                         </div>
+                    ) : (
+                        <>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-100">
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/4">Estudiante</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/6">Tipo</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/6">Estado</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/6">Puntaje</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {currentEvaluations.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">
+                                                No hay evaluaciones en esta categoría
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <>
+                                            {sortedPending.length > 0 && (
+                                                <>
+                                                    {sortedPending.map((evaluation) => {
+                                                        const scoreDisplay = evaluation.score !== undefined && evaluation.score !== null
+                                                            ? `${Math.round((evaluation.score / (evaluation.maxScore || 100)) * 100)}%`
+                                                            : null;
+                                                        return (
+                                                            <tr key={evaluation.id} className="hover:bg-gray-50 transition-colors">
+                                                                <td className="px-4 py-3">
+                                                                    <p className="font-semibold text-gray-900">{evaluation.studentName}</p>
+                                                                    <p className="text-xs text-gray-500">{evaluation.studentGrade}</p>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                        {getEvaluationTypeShort(evaluation.evaluationType)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                        Pendiente
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-400">—</td>
+                                                                <td className="px-4 py-3">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="primary"
+                                                                        onClick={() => navigate(getEvaluationUrl(evaluation))}
+                                                                    >
+                                                                        {getButtonLabel(evaluation)}
+                                                                    </Button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </>
+                                            )}
+                                            {sortedCompleted.length > 0 && (
+                                                <>
+                                                    {sortedCompleted.map((evaluation) => {
+                                                        const scoreDisplay = evaluation.score !== undefined && evaluation.score !== null
+                                                            ? `${Math.round((evaluation.score / (evaluation.maxScore || 100)) * 100)}%`
+                                                            : null;
+                                                        return (
+                                                            <tr key={evaluation.id} className="hover:bg-gray-50 transition-colors">
+                                                                <td className="px-4 py-3">
+                                                                    <p className="font-semibold text-gray-900">{evaluation.studentName}</p>
+                                                                    <p className="text-xs text-gray-500">{evaluation.studentGrade}</p>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                        {getEvaluationTypeShort(evaluation.evaluationType)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                                                                        Completado
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    {scoreDisplay ? (
+                                                                        <span className="font-semibold text-green-700">{scoreDisplay}</span>
+                                                                    ) : (
+                                                                        <span className="text-gray-400">—</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => navigate(getEvaluationUrl(evaluation))}
+                                                                    >
+                                                                        {getButtonLabel(evaluation)}
+                                                                    </Button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </tbody>
+                            </table>
 
-                        {/* Completadas */}
-                        {sortedCompleted.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4 flex items-center">
-                                    <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
-                                    {getTabLabel()} Completadas ({sortedCompleted.length})
-                                </h3>
-                                <div className="space-y-3">
-                                    {sortedCompleted.map(renderEvaluationCard)}
-                                </div>
+                            {/* Totales */}
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
+                                <span>
+                                    Mostrando {currentEvaluations.length} evaluaciones · {sortedPending.length} pendientes · {sortedCompleted.length} completadas
+                                </span>
                             </div>
-                        )}
-                    </div>
-                )}
-            </Card>
+                        </>
+                    )}
+                </Card>
+            </div>
         );
     };
 
