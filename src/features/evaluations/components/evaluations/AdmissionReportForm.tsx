@@ -311,7 +311,7 @@ const AdmissionReportForm: React.FC = () => {
                 newWindow.document.write(`
                     <html>
                         <head>
-                            <title>Informe de Admisión ${getTargetYear()} - ${reportData.subject}</title>
+                            <title>Informe de Admisión {getTargetYear()} - ${reportData.subject}</title>
                             <link rel="preconnect" href="https://fonts.googleapis.com">
                             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                             <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
@@ -372,11 +372,11 @@ const AdmissionReportForm: React.FC = () => {
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold text-azul-monte-tabor">
-                                Informe de Admisión ${getTargetYear()}
+                                Informe de Admisión {getTargetYear()}
                             </h1>
                             {autoSave.hasDraft && (
-                                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
-                                    Borrador guardado
+                                <span >
+
                                 </span>
                             )}
                             {autoSave.lastSaved && (
@@ -411,7 +411,7 @@ const AdmissionReportForm: React.FC = () => {
                     {/* Encabezado del informe */}
                     <div className="text-center mb-8 pb-4 border-b-4 border-azul-monte-tabor">
                         <h1 className="text-3xl font-bold text-azul-monte-tabor mb-2">
-                            INFORME ADMISIÓN ${getTargetYear()}
+                            INFORME ADMISIÓN {getTargetYear()}
                         </h1>
                         <h2 className="text-xl font-semibold text-gris-piedra">
                             {reportData.subject}
@@ -743,7 +743,7 @@ const AdmissionReportForm: React.FC = () => {
                     <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
                         <p>Fecha de evaluación: {new Date().toLocaleDateString('es-CL')}</p>
                         <p>Evaluador: {reportData.evaluatorName}</p>
-                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión ${getTargetYear()}</p>
+                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {getTargetYear()}</p>
                     </div>
                 </Card>
 
