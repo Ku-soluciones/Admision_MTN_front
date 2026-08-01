@@ -202,10 +202,10 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
   // Helper function to get grade range label
   const getGradeRangeLabel = (applicableTo: string): string | null => {
     const rangeMap: Record<string, string> = {
-      'PREKINDER_2BASICO': 'Pre Kinder a 2° Básico',
-      '3BASICO_4BASICO': '3° Básico a 4° Básico',
-      '5BASICO_3MEDIO': '5° Básico a IV Medio',
-      '4MEDIO': 'IV Medio',
+      'PREKINDER_2BASICO': 'Prekínder a 2 Básico',
+      '3BASICO_4BASICO': '3 Básico a 4 Básico',
+      '5BASICO_3MEDIO': '5 Básico a 3 Medio',
+      '4MEDIO': '4 Medio',
       'ALL_LEVELS': null, // Don't show for all levels
     };
     return rangeMap[applicableTo] || null;

@@ -24,6 +24,10 @@ import {
   clearRefreshTokenFallback,
   emitAuthEvent,
 } from '../../../../backend-sdk/src/index';
+import {
+  normalizeGradeLevelsForBackend,
+  normalizeGradeLevelsForDisplay,
+} from '../../../../shared-utils/src/gradeLevels';
 
 class HttpClient {
   private axiosInstance: AxiosInstance;
@@ -93,6 +97,12 @@ class HttpClient {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
       async (config) => {
+        const prekinderCode = String(config.url || '').includes('grade-availability')
+          ? 'PREKINDER' as const
+          : 'PRE_KINDER' as const;
+        config.data = normalizeGradeLevelsForBackend(config.data, { prekinderCode });
+        config.params = normalizeGradeLevelsForBackend(config.params, { prekinderCode });
+
         const runtimeBaseURL = getApiBaseUrl();
 
         if (this.metrics.requestCount === 0) {
@@ -130,6 +140,7 @@ class HttpClient {
           this.metrics.responseTime.push(responseTime);
           // Response logging removed for security
         }
+        response.data = normalizeGradeLevelsForDisplay(response.data);
         return response;
       },
       async (error: AxiosError) => {

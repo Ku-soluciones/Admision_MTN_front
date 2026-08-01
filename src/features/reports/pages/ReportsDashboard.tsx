@@ -301,7 +301,7 @@ const ReportsDashboard: React.FC = () => {
             {
               estudiante: 'María González',
               rut: '12.345.678-9',
-              grado: 'Pre-Kinder',
+              grado: 'Prekínder',
               evaluacionMatematica: 'Completada',
               evaluacionLenguaje: 'Pendiente',
               evaluacionIngles: 'Completada',
@@ -519,12 +519,12 @@ const ReportsDashboard: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-azul-monte-tabor"
               >
                 <option value="">Todos los grados</option>
-                <option value="Pre-Kinder">Pre-Kinder</option>
-                <option value="Kinder">Kinder</option>
-                <option value="1° Básico">1° Básico</option>
-                <option value="2° Básico">2° Básico</option>
-                <option value="3° Básico">3° Básico</option>
-                <option value="4° Básico">4° Básico</option>
+                <option value="Prekínder">Prekínder</option>
+                <option value="Kínder">Kínder</option>
+                <option value="1 Básico">1 Básico</option>
+                <option value="2 Básico">2 Básico</option>
+                <option value="3 Básico">3 Básico</option>
+                <option value="4 Básico">4 Básico</option>
               </select>
             </div>
           </div>

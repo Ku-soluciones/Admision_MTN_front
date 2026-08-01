@@ -18,6 +18,10 @@ import {
   emitAuthEvent,
 } from '../../../backend-sdk/src/index';
 import { notify } from '../utils/notify';
+import {
+  normalizeGradeLevelsForBackend,
+  normalizeGradeLevelsForDisplay,
+} from '../../../shared-utils/src/gradeLevels';
 
 // Tipos
 interface RetryConfig {
@@ -80,6 +84,12 @@ class HttpClient {
     // Request Interceptor
     this.client.interceptors.request.use(
       async (config) => {
+        const prekinderCode = String(config.url || '').includes('grade-availability')
+          ? 'PREKINDER' as const
+          : 'PRE_KINDER' as const;
+        config.data = normalizeGradeLevelsForBackend(config.data, { prekinderCode });
+        config.params = normalizeGradeLevelsForBackend(config.params, { prekinderCode });
+
         // CRITICAL: Set baseURL at REQUEST TIME to ensure runtime evaluation
         // This runs in the browser, so getApiBaseUrl() will detect the correct hostname
         const runtimeBaseURL = getApiBaseUrl();
@@ -152,6 +162,7 @@ class HttpClient {
           this.metrics.delete(correlationId);
         }
 
+        response.data = normalizeGradeLevelsForDisplay(response.data);
         return response;
       },
       async (error: AxiosError) => {

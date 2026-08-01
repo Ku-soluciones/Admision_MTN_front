@@ -1,5 +1,7 @@
 // Datos estáticos necesarios para el sistema - reemplazo temporal de archivos mock eliminados
 
+import { GRADE_LEVEL_OPTIONS, toBackendGradeLevel } from '../../../shared-utils/src/gradeLevels';
+
 export interface ExamSubject {
   id: string;
   name: string;
@@ -37,33 +39,18 @@ export const educationalLevels: EducationalLevel[] = [
     id: 'BASIC',
     name: 'Educación Básica',
     description: 'Educación Básica',
-    grades: ['1° Básico', '2° Básico', '3° Básico', '4° Básico', '5° Básico', '6° Básico', '7° Básico', '8° Básico']
+    grades: ['1 Básico', '2 Básico', '3 Básico', '4 Básico', '5 Básico', '6 Básico', '7 Básico', '8 Básico']
   },
   {
     id: 'HIGH_SCHOOL',
     name: 'Educación Media',
     description: 'Educación Media',
-    grades: ['1° Medio', '2° Medio', '3° Medio', '4° Medio']
+    grades: ['1 Medio', '2 Medio', '3 Medio', '4 Medio']
   }
 ];
 
 // Para compatibilidad con ApplicationForm (formato value/label)
-export const educationalLevelsForForm = [
-  { value: 'prekinder', label: 'Prekínder', category: 'Preescolar' },
-  { value: 'kinder', label: 'Kínder', category: 'Preescolar' },
-  { value: '1basico', label: '1° Básico', category: 'Básica' },
-  { value: '2basico', label: '2° Básico', category: 'Básica' },
-  { value: '3basico', label: '3° Básico', category: 'Básica' },
-  { value: '4basico', label: '4° Básico', category: 'Básica' },
-  { value: '5basico', label: '5° Básico', category: 'Básica' },
-  { value: '6basico', label: '6° Básico', category: 'Básica' },
-  { value: '7basico', label: '7° Básico', category: 'Básica' },
-  { value: '8basico', label: '8° Básico', category: 'Básica' },
-  { value: '1medio', label: '1° Medio', category: 'Media' },
-  { value: '2medio', label: '2° Medio', category: 'Media' },
-  { value: '3medio', label: '3° Medio', category: 'Media' },
-  { value: '4medio', label: '4° Medio', category: 'Media' }
-];
+export const educationalLevelsForForm = GRADE_LEVEL_OPTIONS;
 
 // Datos estáticos de materias de examen
 export const examSubjects: any[] = [
@@ -126,8 +113,9 @@ export const examSubjects: any[] = [
 // Función helper para obtener topics por nivel
 export const getTopicsByLevel = (subjectId: string, level: string) => {
   // Determinar categoría del nivel
-  const isBasic = level.includes('basico') || level === 'prekinder' || level === 'kinder';
-  const isMedia = level.includes('medio');
+  const backendLevel = toBackendGradeLevel(level);
+  const isBasic = backendLevel.includes('_BASICO') || backendLevel === 'PRE_KINDER' || backendLevel === 'KINDER';
+  const isMedia = backendLevel.includes('_MEDIO');
   
   switch (subjectId) {
     case 'MATH':
@@ -226,7 +214,7 @@ export const mockStudentProfiles = [
   {
     id: '1',
     name: 'Juan Pérez',
-    grade: '5° Básico',
+    grade: '5 Básico',
     age: 11,
     rut: '12345678-9',
     status: 'ACTIVE'
@@ -234,7 +222,7 @@ export const mockStudentProfiles = [
   {
     id: '2', 
     name: 'María González',
-    grade: '3° Medio',
+    grade: '3 Medio',
     age: 16,
     rut: '87654321-0',
     status: 'ACTIVE'

@@ -4,6 +4,8 @@
  * shape similar a Application.toJSON() del application-service Node.
  */
 
+import { formatGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
+
 /** Estados del BFF → etiquetas usadas en ApplicationsDataTable (subset legacy). */
 export function mapBffApplicationStatusToTable(
   status: string | undefined
@@ -52,11 +54,7 @@ export function buildGradeDisplay(student: Record<string, unknown> | null | unde
   const raw = String(
     student?.gradeApplying || student?.gradeApplied || student?.grade || ''
   ).trim();
-  if (!raw) return '—';
-  return raw
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return formatGradeLevel(raw, '—');
 }
 
 export function buildGuardianContact(app: Record<string, unknown>): {
