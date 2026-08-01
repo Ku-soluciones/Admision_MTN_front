@@ -28,6 +28,8 @@ export interface AuthUser {
   phone?: string;
   rut?: string;
   applicationId?: number;
+  mustChangePassword?: boolean;
+  temporaryPasswordExpiresAt?: string | null;
 }
 
 export interface AuthContextType {

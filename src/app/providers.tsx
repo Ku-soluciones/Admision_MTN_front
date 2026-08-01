@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import SessionTimeoutManager from '../packages/shared-ui/src/components/auth/SessionTimeoutManager';
 import { AuthNavigationBridge } from './components/AuthNavigationBridge';
+import TemporaryPasswordGate from '../packages/shared-ui/src/components/auth/TemporaryPasswordGate';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         {/* Auto-renderiza modal de aviso e impone hard-cap absoluto sólo
             cuando hay sesión activa (lee authStore). Sin sesión es no-op. */}
         <SessionTimeoutManager />
-        {children}
+        <TemporaryPasswordGate>{children}</TemporaryPasswordGate>
       </BrowserRouter>
     </QueryClientProvider>
   );

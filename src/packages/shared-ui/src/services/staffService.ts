@@ -1,6 +1,6 @@
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import api from './http';
-import { User, CreateUserRequest, UpdateUserRequest, UserFilters, PagedResponse, UserStats } from '../types/user';
+import { User, CreateUserRequest, UpdateUserRequest, UserFilters, PagedResponse, UserStats, TemporaryPasswordResetResult } from '../types/user';
 import { getSecondaryAuth, hasFirebaseConfig } from '../src/lib/firebase';
 import { getApiBaseUrl } from '../config/api.config';
 
@@ -202,8 +202,9 @@ class StaffService {
   /**
    * Reset staff member password
    */
-  async resetStaffPassword(id: number): Promise<void> {
-    await api.put(`/v1/users/${id}/reset-password`);
+  async resetStaffPassword(id: number): Promise<TemporaryPasswordResetResult> {
+    const response = await api.put<{ success: boolean; data: TemporaryPasswordResetResult }>(`/v1/users/${id}/reset-password`);
+    return response.data;
   }
 
   /**

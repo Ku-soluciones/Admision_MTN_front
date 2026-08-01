@@ -243,8 +243,9 @@ class StaffService {
   /**
    * Reset staff member password
    */
-  async resetStaffPassword(id: number): Promise<void> {
-    await api.put(`/v1/users/${id}/reset-password`);
+  async resetStaffPassword(id: number): Promise<{ email: string; expiresAt: string; notificationSent: boolean }> {
+    const response = await api.put<{ success: boolean; data: { email: string; expiresAt: string; notificationSent: boolean } }>(`/v1/users/${id}/reset-password`);
+    return response.data;
   }
 
   /**

@@ -52,7 +52,7 @@ import {
 import EvaluationManagement from '../../admin/components/admin/EvaluationManagement';
 import EvaluationStatistics from '../../admin/components/admin/EvaluationStatistics';
 import EvaluationReports from '../../admin/components/admin/EvaluationReports';
-import { GuardianManagement, StaffManagement } from '../../admin/components/users/index';
+import { StaffManagement } from '../../admin/components/users/index';
 import { InterviewManagement } from '../../admin/components/interviews/index';
 import SharedCalendar from '../../admin/components/admin/SharedCalendar';
 import ApplicantMetricsView from '../../admin/components/admin/ApplicantMetricsView';
@@ -130,8 +130,6 @@ const AdminDashboard: React.FC = () => {
   const [selectedApplicationForEvaluation, setSelectedApplicationForEvaluation] = useState<Application | null>(null);
 
   // User management subsection state
-  const [userSubsection, setUserSubsection] = useState<'staff' | 'guardians'>('staff');
-
   // Coordinator Dashboard Modal state
   const [showCoordinatorDashboard, setShowCoordinatorDashboard] = useState(false);
 
@@ -753,30 +751,7 @@ Esta acción:
       case 'usuarios':
         return (
           <div className="space-y-6">
-            {/* Navigation tabs for subsections */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={userSubsection === 'staff' ? 'primary' : 'outline'}
-                onClick={() => setUserSubsection('staff')}
-              >
-                <FiUser className="w-5 h-5 mr-2" />
-                Personal del Colegio
-              </Button>
-              <Button
-                variant={userSubsection === 'guardians' ? 'primary' : 'outline'}
-                onClick={() => setUserSubsection('guardians')}
-              >
-                <UsersIcon className="w-5 h-5 mr-2" />
-                Apoderados
-              </Button>
-            </div>
-
-            {/* Render appropriate subsection */}
-            {userSubsection === 'staff' ? (
-              <StaffManagement onBack={() => setActiveSection('dashboard')} />
-            ) : (
-              <GuardianManagement onBack={() => setActiveSection('dashboard')} />
-            )}
+            <StaffManagement onBack={() => setActiveSection('dashboard')} />
           </div>
         );
 

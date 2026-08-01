@@ -24,6 +24,14 @@ export interface User {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  mustChangePassword?: boolean;
+  temporaryPasswordExpiresAt?: string | null;
+}
+
+export interface TemporaryPasswordResetResult {
+  email: string;
+  expiresAt: string;
+  notificationSent: boolean;
 }
 
 export interface CreateUserRequest {

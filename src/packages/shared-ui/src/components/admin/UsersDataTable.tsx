@@ -262,11 +262,12 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({
     // Resetear contraseña
     const handleResetPassword = async (user: User) => {
         try {
-            await userService.resetUserPassword(typeof user.id === 'string' ? parseInt(user.id) : user.id);
+            const result = await userService.resetUserPassword(typeof user.id === 'string' ? parseInt(user.id) : user.id);
+            if (!result.notificationSent) throw new Error('El proveedor no confirmó el envío');
             addNotification({
                 type: 'success',
-                title: 'Contraseña reseteada',
-                message: `Se ha enviado un email a ${user.email} con las instrucciones para resetear la contraseña`
+                title: 'Contraseña temporal enviada',
+                message: `Contraseña temporal enviada a ${result.email}`
             });
         } catch (error: any) {
             addNotification({

@@ -39,6 +39,8 @@ export function buildUserFromBff(u: any): AuthUser {
     role: mapBackendRole(u?.role),
     phone: u?.phone,
     rut: u?.rut,
+    mustChangePassword: Boolean(u?.mustChangePassword),
+    temporaryPasswordExpiresAt: u?.temporaryPasswordExpiresAt ?? null,
   };
 }
 

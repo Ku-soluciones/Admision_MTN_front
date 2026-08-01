@@ -54,7 +54,7 @@ import {
 } from '../types/evaluation';
 import EvaluationManagement from '../components/admin/EvaluationManagement';
 import EvaluationReports from '../components/admin/EvaluationReports';
-import { GuardianManagement, StaffManagement } from '../components/users';
+import { StaffManagement } from '../components/users';
 import { InterviewManagement } from '../components/interviews';
 import ApplicantMetricsView from '../components/admin/ApplicantMetricsView';
 import { Application, applicationService } from '../services/applicationService';
@@ -211,7 +211,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedApplicationForEvaluation, setSelectedApplicationForEvaluation] = useState<Application | null>(null);
 
   // User management subsection state
-  const [userSubsection, setUserSubsection] = useState<'staff' | 'guardians' | 'pairs'>('staff');
+  const [userSubsection, setUserSubsection] = useState<'staff' | 'pairs'>('staff');
 
   // Coordinator Dashboard Modal state
   const [showCoordinatorDashboard, setShowCoordinatorDashboard] = useState(false);
@@ -762,7 +762,7 @@ Esta acción:
             <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
-                <p className="mt-1 max-w-3xl text-sm text-gray-600">Administra el personal, los apoderados y las parejas de entrevistas.</p>
+                <p className="mt-1 max-w-3xl text-sm text-gray-600">Administra el personal y las parejas de entrevistas.</p>
               </div>
               <div className="inline-flex self-start gap-2" aria-label="Vista de usuarios">
                 <button
@@ -780,19 +780,6 @@ Esta acción:
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUserSubsection('guardians')}
-                  aria-pressed={userSubsection === 'guardians'}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-                    userSubsection === 'guardians'
-                      ? 'bg-white text-gray-950 ring-1 ring-gray-200'
-                      : 'text-gray-600 hover:text-gray-950'
-                  }`}
-                >
-                  <UsersIcon className="h-4 w-4" aria-hidden="true" />
-                  Apoderados
-                </button>
-                <button
-                  type="button"
                   onClick={() => setUserSubsection('pairs')}
                   aria-pressed={userSubsection === 'pairs'}
                   className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
@@ -807,7 +794,6 @@ Esta acción:
               </div>
             </section>
             {userSubsection === 'staff' && <StaffManagement hideHeader />}
-            {userSubsection === 'guardians' && <GuardianManagement hideHeader />}
             {userSubsection === 'pairs' && <InterviewerPairManagement />}
           </div>
         );
