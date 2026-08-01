@@ -45,6 +45,11 @@ import { documentService } from '../../admin/services/documentService';
 import FamilyInterviews from '../../admin/components/family/FamilyInterviews';
 import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
 import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
+import {
+  formatGuardianDocumentDate,
+  loadGuardianDocumentGroups,
+  type GuardianDocumentGroup,
+} from '../utils/guardianDocuments';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -139,7 +144,9 @@ const FamilyDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [realApplications, setRealApplications] = useState<Application[]>([]);
   const [selectedApplicationIndex, setSelectedApplicationIndex] = useState(0);
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documentGroups, setDocumentGroups] = useState<GuardianDocumentGroup[]>([]);
+  const [documentLoadErrors, setDocumentLoadErrors] = useState(0);
+  const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
 
@@ -213,22 +220,32 @@ const FamilyDashboard: React.FC = () => {
     };
   }, [isAuthenticated, user]);
 
-  // Load documents when application is available
+  // Load documents for every application so families with multiple applicants
+  // can see every available attachment in one place.
   useEffect(() => {
     let isMounted = true;
 
     const loadDocuments = async () => {
-      if (!hasRealApplication || !realApplications[0]?.id) return;
+      if (realApplications.length === 0) {
+        if (isMounted) {
+          setDocumentGroups([]);
+          setDocumentLoadErrors(0);
+          setLoadingDocuments(false);
+        }
+        return;
+      }
 
       try {
         if (isMounted) setLoadingDocuments(true);
-        const response = await applicationService.getApplicationDocuments(realApplications[0].id);
+        const groups = await loadGuardianDocumentGroups(
+          realApplications,
+          applicationId => applicationService.getApplicationDocuments(applicationId),
+        );
 
         if (isMounted) {
-          setDocuments(response.data || []);
+          setDocumentGroups(groups);
+          setDocumentLoadErrors(groups.filter(group => group.loadError).length);
         }
-      } catch (error) {
-        if (isMounted) setDocuments([]);
       } finally {
         if (isMounted) setLoadingDocuments(false);
       }
@@ -240,7 +257,7 @@ const FamilyDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [realApplications]);
+  }, [realApplications, documentsReloadKey]);
 
   // Use real applications if available, otherwise fallback to context or mock data
   const hasRealApplication = Array.isArray(realApplications) && realApplications.length > 0;
@@ -250,6 +267,8 @@ const FamilyDashboard: React.FC = () => {
   const payableApplications = realApplications.filter(app => app.canFillComplementaryForm && !app.hasComplementaryForm);
   const hasComplementaryFormAccess = payableApplications.length > 0;
   const visibleSections = sections;
+  const availableDocumentGroups = documentGroups.filter(group => group.documents.length > 0);
+  const totalDocuments = availableDocumentGroups.reduce((total, group) => total + group.documents.length, 0);
 
   const buildFamilyPrefillState = () => {
     if (!hasRealApplication || realApplications.length === 0) {
@@ -722,59 +741,99 @@ const FamilyDashboard: React.FC = () => {
           <Card className="p-6">
             <h2 className="text-xl font-bold text-azul-monte-tabor mb-4">Documentos</h2>
 
+            {documentLoadErrors > 0 && !loadingDocuments && (
+              <div className="mb-4 flex flex-col gap-3 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-900 sm:flex-row sm:items-center sm:justify-between" role="alert">
+                <div className="flex min-w-0 items-start gap-3">
+                  <FiAlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  <p>
+                    No se pudieron actualizar los documentos de {documentLoadErrors === 1 ? 'una postulación' : `${documentLoadErrors} postulaciones`}.
+                    {totalDocuments > 0 ? ' Se muestran todos los archivos que ya estaban disponibles.' : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocumentsReloadKey(key => key + 1)}
+                  className="inline-flex min-h-[44px] flex-shrink-0 items-center justify-center gap-2 rounded-lg bg-yellow-100 px-4 py-2 font-medium text-yellow-950 transition-colors hover:bg-yellow-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-700 focus-visible:ring-offset-2"
+                >
+                  <FiRefreshCw className="h-4 w-4" aria-hidden="true" />
+                  Reintentar
+                </button>
+              </div>
+            )}
+
             {loadingDocuments ? (
               <div className="text-center py-8">
                 <FiRefreshCw className="w-8 h-8 animate-spin mx-auto text-azul-monte-tabor mb-2" />
                 <p className="text-gris-piedra">Cargando documentos...</p>
               </div>
-            ) : documents.length === 0 ? (
+            ) : totalDocuments === 0 ? (
               <div className="text-center py-8">
                 <FiFile className="w-12 h-12 mx-auto text-gris-piedra mb-3" />
-                <p className="text-gris-piedra mb-2">No hay documentos subidos aún</p>
+                <p className="text-gris-piedra mb-2">
+                  {documentLoadErrors > 0 ? 'No fue posible cargar los documentos' : 'No hay documentos subidos aún'}
+                </p>
                 <p className="text-sm text-gris-piedra">
-                  Los documentos que subas durante el proceso de postulación aparecerán aquí
+                  {documentLoadErrors > 0
+                    ? 'Intenta nuevamente para consultar los archivos disponibles.'
+                    : 'Los documentos que subas durante el proceso de postulación aparecerán aquí'}
                 </p>
               </div>
             ) : (
               <>
-                <div className="space-y-3">
-                  {documents.map(doc => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <FileTextIcon className="w-5 h-5 text-dorado-nazaret" />
-                        <div>
-                          <span className="font-medium block">
-                            {(doc.documentType || doc.document_type) && DOCUMENT_TYPE_LABELS[(doc.documentType || doc.document_type) as DocumentType]
-                              ? DOCUMENT_TYPE_LABELS[(doc.documentType || doc.document_type) as DocumentType]
-                              : doc.originalName || doc.name || doc.documentType || doc.document_type}
-                          </span>
-                          <span className="text-xs text-gris-piedra">
-                            Subido: {new Date(doc.uploadDate || doc.created_at || doc.upload_date).toLocaleDateString('es-CL')}
-                          </span>
-                        </div>
+                <div className="space-y-6">
+                  {availableDocumentGroups.map(group => (
+                    <section key={group.applicationId} aria-labelledby={`documentos-postulante-${group.applicationId}`}>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 id={`documentos-postulante-${group.applicationId}`} className="flex min-w-0 items-center gap-2 font-semibold text-azul-monte-tabor">
+                          <FiUser className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                          <span className="break-words">{group.studentName}</span>
+                        </h3>
+                        <span className="text-sm text-gris-piedra">
+                          {group.documents.length} {group.documents.length === 1 ? 'documento' : 'documentos'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewDocument(doc.id, doc.originalName || doc.original_name)}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-azul-monte-tabor text-white rounded-lg hover:bg-opacity-90 transition-colors"
-                          title="Ver documento"
-                        >
-                          <FiEye className="w-4 h-4" />
-                          Ver
-                        </button>
-                        <Badge
-                          variant="success"
-                          size="sm"
-                        >
-                          Subido
-                        </Badge>
+
+                      <div className="space-y-3">
+                        {group.documents.map(doc => {
+                          const documentType = doc.documentType || doc.document_type;
+                          const documentName = documentType && DOCUMENT_TYPE_LABELS[documentType as DocumentType]
+                            ? DOCUMENT_TYPE_LABELS[documentType as DocumentType]
+                            : doc.originalName || doc.original_name || doc.name || documentType || 'Documento sin nombre';
+                          const uploadDate = doc.uploadDate || doc.created_at || doc.upload_date;
+
+                          return (
+                            <div key={`${group.applicationId}-${doc.id}`} className="flex flex-col gap-3 rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex min-w-0 items-start gap-3">
+                                <FileTextIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-dorado-nazaret" />
+                                <div className="min-w-0">
+                                  <span className="block break-words font-medium">{documentName}</span>
+                                  <span className="text-xs text-gris-piedra">
+                                    Subido: {formatGuardianDocumentDate(uploadDate)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-shrink-0 items-center gap-2 self-end sm:self-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDocument(doc.id, doc.originalName || doc.original_name || documentName)}
+                                  className="flex min-h-[44px] items-center gap-2 rounded-lg bg-azul-monte-tabor px-3 py-2 text-sm text-white transition-colors hover:bg-opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azul-monte-tabor focus-visible:ring-offset-2"
+                                  aria-label={`Ver ${documentName} de ${group.studentName}`}
+                                >
+                                  <FiEye className="h-4 w-4" aria-hidden="true" />
+                                  Ver
+                                </button>
+                                <Badge variant="success" size="sm">Subido</Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    </section>
                   ))}
                 </div>
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-azul-monte-tabor">
-                    <strong>Total de documentos:</strong> {documents.length}
+                    <strong>Total de documentos:</strong> {totalDocuments} en {availableDocumentGroups.length} {availableDocumentGroups.length === 1 ? 'postulación' : 'postulaciones'}
                   </p>
                 </div>
               </>

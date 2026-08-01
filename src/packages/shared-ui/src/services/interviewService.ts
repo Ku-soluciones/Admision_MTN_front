@@ -250,14 +250,9 @@ class InterviewService {
   }
 
   // Enviar invitación con botones de confirmación (patrón pasarela)
-  async sendInterviewInvitation(id: number, bffBaseUrl?: string): Promise<{ success: boolean; message: string; data?: Interview }> {
+  async sendInterviewInvitation(id: number): Promise<{ success: boolean; message: string; data?: Interview }> {
     try {
-      const headers: Record<string, string> = {};
-      if (bffBaseUrl) {
-        headers['X-Base-Url'] = bffBaseUrl;
-      }
-      
-      const response = await api.post<any>(`${this.baseUrl}/${id}/send-invitation`, {}, { headers });
+      const response = await api.post<any>(`${this.baseUrl}/${id}/send-invitation`, {});
       
       if (response.data?.success) {
         return {
