@@ -19,7 +19,7 @@ import {
 } from './refreshTokenFallback';
 
 const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
-const REFRESH_PATH = '/api/auth/refresh';
+const REFRESH_PATH = '/v1/auth/refresh';
 const STAGING_AUTH_BASE_URL = 'https://admitia-nginx-staging.up.railway.app';
 const PRODUCTION_AUTH_BASE_URL = 'https://admitia-nginx.up.railway.app';
 

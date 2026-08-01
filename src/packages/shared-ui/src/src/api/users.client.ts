@@ -45,7 +45,7 @@ export class UsersClient {
       this.basePath,
       userData
     );
-    return (response.data as any).data;
+    return (response as any).data;
   }
 
   /**
@@ -80,11 +80,11 @@ export class UsersClient {
   /**
    * Reset user password (admin only)
    */
-  async resetUserPassword(id: number): Promise<{ temporaryPassword: string }> {
-    const response = await httpClient.post<{ success: boolean; data: { temporaryPassword: string } }>(
+  async resetUserPassword(id: number): Promise<{ email: string; expiresAt: string; notificationSent: boolean }> {
+    const response = await httpClient.post<{ success: boolean; data: { email: string; expiresAt: string; notificationSent: boolean } }>(
       `${this.basePath}/${id}/reset-password`
     );
-    return (response.data as any).data;
+    return (response as any).data;
   }
 
   /**

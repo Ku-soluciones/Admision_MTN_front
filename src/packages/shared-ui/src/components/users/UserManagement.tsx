@@ -298,8 +298,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   };
 
   // Manejar éxito del reset de contraseña
-  const handleResetPasswordSuccess = async () => {
-    showToast('Contraseña restablecida exitosamente', 'success');
+  const handleResetPasswordSuccess = async (result: { email: string }) => {
+    showToast(`Contraseña temporal enviada a ${result.email}`, 'success');
     await loadUsers();
     await loadStats();
   };

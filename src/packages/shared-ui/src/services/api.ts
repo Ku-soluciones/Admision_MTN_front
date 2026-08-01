@@ -238,6 +238,14 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
+        if (status === 403 && (code === 'PASSWORD_CHANGE_REQUIRED' || code === 'TEMPORARY_PASSWORD_EXPIRED')) {
+            authStore.patchUser({
+                mustChangePassword: true,
+                temporaryPasswordExpired: code === 'TEMPORARY_PASSWORD_EXPIRED',
+            });
+            return Promise.reject(error);
+        }
+
         // Códigos terminales: nunca reintentar, limpiar y redirigir.
         // Excepción: si el endpoint que falló es uno de auth (refresh/logout/login),
         // el AuthContext lo manejará — no redirigimos NI emitimos eventos

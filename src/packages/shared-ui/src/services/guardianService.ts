@@ -91,7 +91,7 @@ class GuardianService {
     //      - El browser NO acepta el `Set-Cookie` del nuevo usuario.
     //    Así, la sesión del admin queda intacta.
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/auth/firebase-register`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/auth/firebase-register`, {
         method: 'POST',
         credentials: 'omit',
         headers: {

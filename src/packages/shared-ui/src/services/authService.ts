@@ -67,6 +67,9 @@ export interface AuthUser {
     educationalLevel?: string | null;
     active: boolean;
     emailVerified: boolean;
+    mustChangePassword?: boolean;
+    temporaryPasswordExpiresAt?: string | null;
+    temporaryPasswordExpired?: boolean;
     lastLoginAt?: string;
     preferences?: Record<string, any>;
     // Index signature para compatibilizar con `AuthSessionUser` del SDK.
@@ -99,59 +102,23 @@ export interface AuthResponse {
 /**
  * Endpoints de auth.
  *
- * El BFF declara auth bajo `/api/auth/*` y emite la cookie de refresh con
- * `Path=/api/auth`; por eso el frontend debe usar este mismo namespace.
+ * El gateway publica auth bajo `/v1/auth/*` y reescribe internamente hacia
+ * `/api/auth/*`. También adapta a `/v1/auth` el Path de la cookie de refresh.
  */
 const ENDPOINTS = {
-    login: '/api/auth/login',
-    firebaseLogin: '/api/auth/firebase-login',
-    register: '/api/auth/register',
-    firebaseRegister: '/api/auth/firebase-register',
-    refresh: '/api/auth/refresh',
-    logout: '/api/auth/logout',
-    check: '/api/auth/check',
-    firebaseLink: '/api/auth/firebase/link',
-    firebaseSendVerification: '/api/auth/firebase/send-verification-email',
-    checkEmail: '/api/auth/check-email',
+    login: '/v1/auth/login',
+    firebaseLogin: '/v1/auth/firebase-login',
+    register: '/v1/auth/register',
+    firebaseRegister: '/v1/auth/firebase-register',
+    refresh: '/v1/auth/refresh',
+    logout: '/v1/auth/logout',
+    check: '/v1/auth/check',
+    firebaseLink: '/v1/auth/firebase/link',
+    firebaseSendVerification: '/v1/auth/firebase/send-verification-email',
+    checkEmail: '/v1/auth/check-email',
 } as const;
 
-const NEW_API = {
-    login: '/api/auth/login',
-    firebaseLogin: '/api/auth/firebase-login',
-    register: '/api/auth/register',
-    firebaseRegister: '/api/auth/firebase-register',
-    refresh: '/api/auth/refresh',
-    logout: '/api/auth/logout',
-    check: '/api/auth/check',
-    firebaseLink: '/api/auth/firebase/link',
-    firebaseSendVerification: '/api/auth/firebase/send-verification-email',
-    checkEmail: '/api/auth/check-email',
-} as const;
-
-function shouldTryNewApi(): boolean {
-    try {
-        const meta: any = (Function('return import.meta')() as any) ?? {};
-        return String(meta?.env?.VITE_AUTH_TRY_NEW_API ?? '').toLowerCase() === 'true';
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Llama al endpoint primario (`/v1/...`); si está habilitado por env,
- * intenta primero el nuevo (`/api/...`) y cae al primario en 404/405.
- */
 async function postAuth<T = any>(endpointKey: keyof typeof ENDPOINTS, body: any): Promise<T> {
-    if (shouldTryNewApi()) {
-        try {
-            const res = await api.post(NEW_API[endpointKey], body);
-            return res.data as T;
-        } catch (error: any) {
-            const status = error?.response?.status;
-            if (status !== 404 && status !== 405) throw error;
-            // Fallback a /v1/...
-        }
-    }
     const res = await api.post(ENDPOINTS[endpointKey], body);
     return res.data as T;
 }
@@ -192,9 +159,7 @@ class AuthService {
 
             // 2. Llamar al BFF. El nuevo contrato acepta `firebaseIdToken` como
             //    parte del body para enlazar/validar el UID en el mismo paso.
-            //    Por defecto va a `/api/auth/firebase-login` (NGINX); si el
-            //    flag VITE_AUTH_TRY_NEW_API=true se intenta primero
-            //    `/api/auth/firebase-login`.
+            //    El gateway expone este intercambio bajo `/v1/auth/*`.
             const data = await postAuth<AuthResponse>(
                 'firebaseLogin',
                 { idToken, portalType: request.portalType ?? 'GUARDIAN' },
@@ -231,9 +196,18 @@ class AuthService {
         } catch (error: any) {
             const code = error?.code;
             if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-                throw new Error('Credenciales inválidas');
+                try {
+                    // Las credenciales temporales emitidas por un administrador
+                    // se validan en el BFF y deben abrir la sesión que activa el
+                    // cambio obligatorio, aunque Firebase rechace primero la clave.
+                    const data = await postAuth<AuthResponse>('login', request);
+                    if (data?.token && typeof data.expiresIn === 'number') adoptSession(data);
+                    return data;
+                } catch (fallbackError: any) {
+                    error = fallbackError;
+                }
             }
-            if (code === 'auth/too-many-requests') {
+            if (error?.code === 'auth/too-many-requests') {
                 throw new Error('Demasiados intentos. Intenta más tarde.');
             }
             const status = error?.response?.status;

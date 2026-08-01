@@ -8,7 +8,8 @@ import {
   PagedResponse,
   UserStats,
   UserRole,
-  USER_ROLE_LABELS
+  USER_ROLE_LABELS,
+  TemporaryPasswordResetResult
 } from '../types/user';
 import { DataAdapter } from './dataAdapter';
 import { getSecondaryAuth, hasFirebaseConfig } from '../src/lib/firebase';
@@ -221,11 +222,10 @@ class UserService {
   /**
    * Restablecer contraseña de usuario
    */
-  async resetUserPassword(id: number): Promise<void> {
+  async resetUserPassword(id: number): Promise<TemporaryPasswordResetResult> {
     try {
-
-      await api.put(`/v1/users/${id}/reset-password`);
-      
+      const response = await api.put<{ success: boolean; data: TemporaryPasswordResetResult }>(`/v1/users/${id}/reset-password`);
+      return response.data.data;
 
     } catch (error: any) {
       throw this.handleError(error, 'Error al restablecer la contraseña');
