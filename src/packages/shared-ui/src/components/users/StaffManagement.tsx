@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getApiBaseUrl } from '../../config/api.config';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -51,6 +51,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
   const [showStats, setShowStats] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [scheduleUser, setScheduleUser] = useState<User | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const actionInFlight = useRef(false);
+  const [confirmError, setConfirmError] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     user: User | null;
@@ -183,6 +186,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
 
   // Confirmar acción
   const confirmAction = (user: User, action: 'delete' | 'toggle' | 'reset') => {
+    setConfirmError('');
     let message = '';
     
     switch (action) {
@@ -195,7 +199,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
           : `¿Estás seguro de que deseas activar al usuario ${user.fullName}?`;
         break;
       case 'reset':
-        message = `¿Estás seguro de que deseas restablecer la contraseña del usuario ${user.fullName}? Se enviará un email con la nueva contraseña.`;
+        message = '';
         break;
     }
 
@@ -209,9 +213,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
 
   // Ejecutar acción confirmada
   const executeAction = async () => {
+    if (actionInFlight.current) return;
     const { user, action } = confirmDialog;
     if (!user || !action) return;
 
+    actionInFlight.current = true;
+    setActionPending(true);
+    setConfirmError('');
     try {
       switch (action) {
         case 'delete':
@@ -228,13 +236,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
           }
           break;
         case 'reset':
-          await staffService.resetStaffPassword(user.id);
-          showToast('Contraseña restablecida exitosamente', 'success');
+          const result = await staffService.resetStaffPassword(user.id);
+          if (!result.notificationSent) throw new Error('El proveedor no confirmó el envío del correo');
+          showToast(`Contraseña temporal enviada a ${result.email}`, 'success');
           break;
       }
 
       await loadUsers();
       await loadStats();
+      setConfirmDialog({ show: false, user: null, action: null, message: '' });
 
     } catch (error: any) {
       // Capturar error 409 (Conflict) específicamente
@@ -282,11 +292,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
         errorMessage = `No se puede eliminar este usuario porque tiene datos asociados en el sistema. Para mantener la integridad de la información, te recomendamos desactivar el usuario en lugar de eliminarlo.`;
       }
 
-      showToast(errorMessage, 'error');
-    } finally {
-      if (!conflictDialog.show) {
-        setConfirmDialog({ show: false, user: null, action: null, message: '' });
+      if (action === 'reset') {
+        setConfirmError(errorMessage);
+      } else {
+        showToast(errorMessage, 'error');
       }
+    } finally {
+      actionInFlight.current = false;
+      setActionPending(false);
     }
   };
 
@@ -452,19 +465,43 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
       {/* Modal de confirmación */}
       <Modal
         isOpen={confirmDialog.show}
-        onClose={() => setConfirmDialog({ show: false, user: null, action: null, message: '' })}
-        title="Confirmar Acción"
+        onClose={() => {
+          if (!actionPending) setConfirmDialog({ show: false, user: null, action: null, message: '' });
+        }}
+        title={confirmDialog.action === 'reset' ? 'Restablecer contraseña' : 'Confirmar Acción'}
         size="md"
       >
         <div className="space-y-4">
-          <div className="flex items-start space-x-3">
-            <ExclamationTriangleIcon className="w-6 h-6 text-orange-500 mt-1" />
-            <p className="text-gray-700 whitespace-pre-line">{confirmDialog.message}</p>
-          </div>
+          {confirmDialog.action === 'reset' && confirmDialog.user ? (
+            <>
+              <dl className="grid gap-2 rounded-lg bg-gray-50 p-4 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-600">Usuario</dt>
+                  <dd className="font-semibold text-gray-950">{confirmDialog.user.fullName}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-600">Correo</dt>
+                  <dd className="break-all font-medium text-gray-950">{confirmDialog.user.email}</dd>
+                </div>
+              </dl>
+              <p className="text-sm leading-6 text-gray-700">
+                Se cerrarán sus sesiones y recibirá una contraseña temporal válida por 24 horas. Deberá cambiarla al ingresar antes de acceder al portal.
+              </p>
+              {confirmError && (
+                <p className="rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700" role="alert">{confirmError}</p>
+              )}
+            </>
+          ) : (
+            <div className="flex items-start space-x-3">
+              <ExclamationTriangleIcon className="w-6 h-6 text-orange-500 mt-1" />
+              <p className="text-gray-700 whitespace-pre-line">{confirmDialog.message}</p>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3">
             <Button
               variant="outline"
+              disabled={actionPending}
               onClick={() => setConfirmDialog({ show: false, user: null, action: null, message: '' })}
             >
               Cancelar
@@ -472,9 +509,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
             <Button
               variant="primary"
               onClick={executeAction}
+              isLoading={actionPending}
+              loadingText={confirmDialog.action === 'reset' ? 'Generando y enviando…' : 'Procesando…'}
               className={confirmDialog.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : ''}
             >
-              {confirmDialog.action === 'delete' ? 'Eliminar Permanentemente' : 'Confirmar'}
+              {confirmDialog.action === 'delete'
+                ? 'Eliminar Permanentemente'
+                : confirmDialog.action === 'reset'
+                  ? 'Generar y enviar contraseña'
+                  : 'Confirmar'}
             </Button>
           </div>
         </div>

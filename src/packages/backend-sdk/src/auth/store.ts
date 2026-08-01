@@ -22,6 +22,9 @@ export interface AuthSessionUser {
   subject?: string;
   active?: boolean;
   emailVerified?: boolean;
+  mustChangePassword?: boolean;
+  temporaryPasswordExpiresAt?: string | null;
+  temporaryPasswordExpired?: boolean;
   [key: string]: unknown;
 }
 

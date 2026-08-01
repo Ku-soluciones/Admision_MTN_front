@@ -155,6 +155,14 @@ class HttpClient {
         const code = extractAuthErrorCode(error.response?.data);
         const config = error.config as any;
 
+        if (status === 403 && (code === 'PASSWORD_CHANGE_REQUIRED' || code === 'TEMPORARY_PASSWORD_EXPIRED')) {
+          authStore.patchUser({
+            mustChangePassword: true,
+            temporaryPasswordExpired: code === 'TEMPORARY_PASSWORD_EXPIRED',
+          });
+          return Promise.reject(error);
+        }
+
         if (status === 401 && isSessionTerminal(code)) {
           authStore.clear();
           clearRefreshTokenFallback();

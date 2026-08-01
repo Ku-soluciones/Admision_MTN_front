@@ -81,7 +81,7 @@ export async function exchangeFirebaseToken(
   portalType?: 'ADMIN' | 'STAFF' | 'GUARDIAN',
 ): Promise<{ token: string; expiresIn: number; user?: any; firebaseLinked?: boolean } | null> {
   try {
-    const res = await api.post('/api/auth/firebase-login', {
+    const res = await api.post('/v1/auth/firebase-login', {
       idToken: firebaseToken,
       ...(portalType ? { portalType } : {}),
     });

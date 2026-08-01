@@ -221,19 +221,15 @@ export async function changePassword(
  * Reset Password (Admin) - Resetea la contraseña de cualquier usuario
  * Usa el endpoint del BFF (solo accesible por administradores)
  */
-export interface ResetPasswordRequest {
-  newPassword: string;
-}
-
 export async function resetUserPassword(
-  userId: number,
-  data: ResetPasswordRequest
-): Promise<ChangePasswordResponse & { message?: string }> {
+  userId: number
+): Promise<ChangePasswordResponse & { message?: string; data?: { email: string; expiresAt: string; notificationSent: boolean } }> {
   try {
-    const response = await apiClient.put<any>(`/v1/users/${userId}/reset-password`, data);
+    const response = await apiClient.put<any>(`/v1/users/${userId}/reset-password`);
     return {
       success: response.data?.success ?? true,
       message: response.data?.message,
+      data: response.data?.data,
       error: response.data?.error,
       errorCode: response.data?.errorCode
     };
@@ -241,8 +237,8 @@ export async function resetUserPassword(
     if (error.response?.data) {
       return {
         success: false,
-        error: error.response.data.error || error.response.data.message || 'Error al resetear la contraseña',
-        errorCode: error.response.data.errorCode || 'RESET_FAILED'
+        error: error.response.data.error?.message || error.response.data.message || 'Error al resetear la contraseña',
+        errorCode: error.response.data.error?.code || error.response.data.errorCode || 'RESET_FAILED'
       };
     }
     return {

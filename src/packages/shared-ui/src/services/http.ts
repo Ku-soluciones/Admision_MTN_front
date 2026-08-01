@@ -305,9 +305,13 @@ class HttpClient {
   }
 
   private handle403Error(error: AxiosError): void {
-    // Un 403 es autorización de negocio, no pérdida de sesión. El caller
-    // muestra el mensaje correspondiente sin recargar ni cambiar de módulo.
-    void error;
+    const code = extractAuthErrorCode(error.response?.data);
+    if (code === 'PASSWORD_CHANGE_REQUIRED' || code === 'TEMPORARY_PASSWORD_EXPIRED') {
+      authStore.patchUser({
+        mustChangePassword: true,
+        temporaryPasswordExpired: code === 'TEMPORARY_PASSWORD_EXPIRED',
+      });
+    }
   }
 
   private redirectToLogin(): void {
@@ -321,7 +325,7 @@ class HttpClient {
   private createHttpError(error: AxiosError, correlationId?: string): HttpError {
     return {
       status: error.response?.status || 0,
-      message: error.response?.data?.message || error.message || 'Error de conexión',
+      message: (error.response?.data as any)?.error?.message || (error.response?.data as any)?.message || error.message || 'Error de conexión',
       data: error.response?.data,
       correlationId,
     };

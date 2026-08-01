@@ -201,7 +201,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
             }
           } else {
             // 'firebase-login': llamada directa, como en admissions previo.
-            const res = await api.post('/api/auth/firebase-login', {
+            const res = await api.post('/v1/auth/firebase-login', {
               idToken: storedAccessToken,
               portalType: resolvePortalType(),
             });
@@ -308,7 +308,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
           const idToken = await firebaseUser.getIdToken(/* forceRefresh */ false);
           let response: any = null;
           try {
-            const r = await api.post('/api/auth/firebase-login', {
+            const r = await api.post('/v1/auth/firebase-login', {
               idToken,
               portalType: resolvePortalType(),
             });
@@ -385,7 +385,7 @@ export function useAuthBootstrap(options: UseAuthBootstrapOptions): UseAuthBoots
         const existingToken = localStorage.getItem(getStorageKey(BASE_STORAGE_KEYS.AUTH_TOKEN));
         if (existingToken) {
           try {
-            const response = await api.get('/api/auth/check');
+            const response = await api.get('/v1/auth/check');
             if (response.data?.success && response.data?.user) {
               const userData = buildUserFromBff(response.data.user);
               localStorage.setItem(

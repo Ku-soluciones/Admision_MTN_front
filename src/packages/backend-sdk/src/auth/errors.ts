@@ -15,6 +15,8 @@ export const AUTH_ERROR_CODES = {
   CONFLICT: 'CONFLICT',
   ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
   RATE_LIMITED: 'RATE_LIMITED',
+  PASSWORD_CHANGE_REQUIRED: 'PASSWORD_CHANGE_REQUIRED',
+  TEMPORARY_PASSWORD_EXPIRED: 'TEMPORARY_PASSWORD_EXPIRED',
 } as const;
 
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
@@ -79,4 +81,3 @@ export function reasonFromCode(code: AuthErrorCode | undefined): string {
       return code.toLowerCase();
   }
 }
-
