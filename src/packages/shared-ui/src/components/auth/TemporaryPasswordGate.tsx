@@ -53,7 +53,12 @@ export default function TemporaryPasswordGate({ children }: PropsWithChildren) {
         throw new Error(body?.error?.message || body?.message || 'No fue posible actualizar la contraseña');
       }
 
+      const updatedUser = body?.data?.user;
+      if (updatedUser?.active === false) {
+        throw new Error('La contraseña se actualizó, pero la cuenta figura inactiva. Contacta al administrador.');
+      }
       authStore.patchUser({
+        ...(updatedUser ?? {}),
         mustChangePassword: false,
         temporaryPasswordExpiresAt: null,
         temporaryPasswordExpired: false,
@@ -103,6 +108,7 @@ export default function TemporaryPasswordGate({ children }: PropsWithChildren) {
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 disabled={submitting}
+                aria-describedby="temporary-password-rules"
                 className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 px-3 text-slate-950 outline-none transition focus:border-blue-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
@@ -117,7 +123,7 @@ export default function TemporaryPasswordGate({ children }: PropsWithChildren) {
                   <span key={index} className={`h-1.5 rounded-full ${index < strength ? (strength === 4 ? 'bg-emerald-600' : 'bg-amber-500') : 'bg-slate-200'}`} />
                 ))}
               </div>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              <ul id="temporary-password-rules" className="mt-4 grid gap-2 sm:grid-cols-2">
                 {rules.map((rule) => (
                   <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.passed ? 'text-emerald-700' : 'text-slate-600'}`}>
                     <CheckCircleIcon className="h-4 w-4 shrink-0" aria-hidden="true" />

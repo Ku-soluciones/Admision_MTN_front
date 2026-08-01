@@ -98,7 +98,7 @@ class StaffService {
     //    Bearer del admin en la petición.
     let createdUserId: number | undefined;
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/auth/firebase-register`, {
+      const response = await fetch(`${getApiBaseUrl()}/v1/auth/firebase-register`, {
         method: 'POST',
         credentials: 'omit',
         headers: {

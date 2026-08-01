@@ -59,7 +59,7 @@ class ProfessorAuthService {
         try {
             const credential = await signInWithEmailAndPassword(firebaseAuth, request.email, request.password);
             const idToken = await credential.user.getIdToken();
-            const response = await api.post('/api/auth/firebase-login', {
+            const response = await api.post('/v1/auth/firebase-login', {
                 idToken,
                 portalType: 'STAFF',
             });
@@ -67,10 +67,12 @@ class ProfessorAuthService {
             return response.data;
         } catch (firebaseError: any) {
             const fbCode = firebaseError?.code;
-            // Errores de credenciales reales en Firebase: no probamos legacy
-            // (evita ataques de enumeración y mensajes confusos).
+            // La contraseña temporal administrativa se valida en el BFF. Firebase
+            // todavía no la reconoce si la cuenta tenía un UID desactualizado o
+            // mientras se completa la sincronización, por lo que siempre damos al
+            // BFF la oportunidad de validarla ante un error de credenciales.
             if (fbCode === 'auth/wrong-password' || fbCode === 'auth/invalid-credential') {
-                throw new Error('Credenciales inválidas');
+                return this.legacyLogin(request);
             }
             if (fbCode === 'auth/too-many-requests') {
                 throw new Error('Demasiados intentos. Intenta más tarde.');
@@ -89,7 +91,7 @@ class ProfessorAuthService {
 
     private async legacyLogin(request: ProfessorLoginRequest): Promise<ProfessorAuthResponse> {
         try {
-            const response = await api.post('/api/auth/login', { ...request, portalType: 'STAFF' });
+            const response = await api.post('/v1/auth/login', { ...request, portalType: 'STAFF' });
             this.persistSession(response.data);
             return response.data;
         } catch (error: any) {
@@ -178,7 +180,7 @@ class ProfessorAuthService {
     }
     
     async logout() {
-        try { await api.post('/api/auth/logout'); } catch { /* idempotente */ }
+        try { await api.post('/v1/auth/logout'); } catch { /* idempotente */ }
         authStore.clear();
         clearRefreshTokenFallback();
         localStorage.removeItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN));

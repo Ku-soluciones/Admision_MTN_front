@@ -83,7 +83,7 @@ const SessionTimeoutManagerInner: React.FC<Required<SessionTimeoutManagerProps>>
     // de `api.ts` programa refresh proactivo si el access está por
     // caducar. No tocamos /auth/refresh directamente para no acoplar
     // este componente al contrato del refresh.
-    try { await api.get('/api/auth/check'); } catch { /* silencioso */ }
+    try { await api.get('/v1/auth/check'); } catch { /* silencioso */ }
   }, []);
 
   const handleLogoutFromModal = useCallback(() => {

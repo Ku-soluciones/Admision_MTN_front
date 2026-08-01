@@ -155,7 +155,7 @@ class StaffService {
     //    Usamos publicApi para evitar inyectar el token del admin en este request.
     let createdUserId: number | undefined;
     try {
-      const registerResp = await publicApi.post<any>('/api/auth/firebase-register', {
+      const registerResp = await publicApi.post<any>('/v1/auth/firebase-register', {
         idToken,
         firstName: userData.firstName,
         lastName: userData.lastName,
