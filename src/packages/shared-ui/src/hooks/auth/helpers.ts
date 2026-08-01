@@ -10,6 +10,7 @@
  *     `passwordService`/`ChangePasswordModal` para que lean del `authStore`.
  */
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../backend-sdk/src/index';
+import { GRADE_LEVEL_LABELS } from '../../../../shared-utils/src/gradeLevels';
 import type { AuthUser, UserRole } from './types';
 
 const ROLE_MAP: Record<string, UserRole> = {
@@ -51,11 +52,7 @@ export function setAdminCompat(user: AuthUser, token: string, subject?: string):
       email: user.email,
       subject: subject ?? 'ALL_SUBJECTS',
       subjects: ['MATH', 'SPANISH', 'ENGLISH', 'PSYCHOLOGY'],
-      assignedGrades: [
-        'prekinder', 'kinder',
-        '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico',
-        '1medio', '2medio', '3medio', '4medio',
-      ],
+      assignedGrades: [...GRADE_LEVEL_LABELS],
       isAdmin: true,
     }));
     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_TOKEN), token);
@@ -67,4 +64,3 @@ export function setAdminCompat(user: AuthUser, token: string, subject?: string):
     }));
   } catch { /* no-op: localStorage puede fallar en algunos navegadores */ }
 }
-

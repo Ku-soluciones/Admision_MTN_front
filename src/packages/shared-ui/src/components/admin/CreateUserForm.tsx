@@ -8,6 +8,7 @@ import { PsychologySpecialty, SupportStaffType, KinderLevel } from '../../types'
 import { useNotifications } from '../../context/AppContext';
 import { getDayOfWeekOptions, getTimeSlotOptions } from '../../services/interviewerScheduleService';
 import { FiClock, FiCalendar, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { GRADE_LEVEL_LABELS } from '../../../../shared-utils/src/gradeLevels';
 
 interface CreateUserFormProps {
     isOpen: boolean;
@@ -335,23 +336,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
     };
     
     const subjects = ['Matemática', 'Lenguaje', 'Inglés']; // Solo estas tres materias para profesores
-    const grades = ['PREKINDER', 'KINDER', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'];
-    const gradeLabels: Record<string, string> = {
-        'PREKINDER': 'Pre-Kinder',
-        'KINDER': 'Kinder',
-        '1basico': '1° Básico',
-        '2basico': '2° Básico',
-        '3basico': '3° Básico',
-        '4basico': '4° Básico',
-        '5basico': '5° Básico',
-        '6basico': '6° Básico',
-        '7basico': '7° Básico',
-        '8basico': '8° Básico',
-        '1medio': '1° Medio',
-        '2medio': '2° Medio',
-        '3medio': '3° Medio',
-        '4medio': '4° Medio'
-    };
+    const grades = GRADE_LEVEL_LABELS;
     const kinderSpecializations = ['Desarrollo Motor', 'Lenguaje Inicial', 'Matemática Temprana', 'Arte y Creatividad', 'Socialización', 'Juego Educativo'];
     const supportStaffResponsibilities = [
         'Gestión administrativa',
@@ -493,7 +478,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
                                                 onChange={() => toggleArrayItem('assignedGrades', grade)}
                                                 className="text-azul-monte-tabor"
                                             />
-                                            <span className="text-xs">{gradeLabels[grade] || grade}</span>
+                                            <span className="text-xs">{grade}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -505,7 +490,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
                     {/* Campos específicos para personal de kinder - temporalmente deshabilitados */}
                     {false && formData.role === UserRole.TEACHER_LANGUAGE && (
                         <div className="border-t pt-6">
-                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4">Información del Personal de Kinder</h3>
+                            <h3 className="text-lg font-semibold text-azul-monte-tabor mb-4">Información del Personal de Kínder</h3>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
@@ -517,8 +502,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
                                         onChange={(e) => updateField('assignedLevel', e.target.value as KinderLevel)}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
                                     >
-                                        <option value={KinderLevel.PREKINDER}>Pre-Kinder</option>
-                                        <option value={KinderLevel.KINDER}>Kinder</option>
+                                        <option value={KinderLevel.PREKINDER}>Prekínder</option>
+                                        <option value={KinderLevel.KINDER}>Kínder</option>
                                     </select>
                                     {errors.assignedLevel && <p className="text-red-500 text-sm mt-1">{errors.assignedLevel}</p>}
                                 </div>
@@ -619,7 +604,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ isOpen, onClose, onSubm
                                                 onChange={() => toggleArrayItem('assignedGrades', grade)}
                                                 className="text-azul-monte-tabor"
                                             />
-                                            <span className="text-xs">{gradeLabels[grade] || grade}</span>
+                                            <span className="text-xs">{grade}</span>
                                         </label>
                                     ))}
                                 </div>

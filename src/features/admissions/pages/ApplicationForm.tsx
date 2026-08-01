@@ -20,6 +20,7 @@ import { isValidRut, RUT_ERROR_MESSAGES } from '../../../packages/shared-ui/src/
 import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
+import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -50,6 +51,9 @@ const gradeOptions = educationalLevels.map(level => ({
     value: level.value,
     label: level.label
 }));
+
+const getGradeAvailabilityKey = (grade: string): string =>
+    toBackendGradeLevel(grade, { prekinderCode: 'PREKINDER' });
 
 const genderOptions = [
     { value: '', label: 'Seleccione el género...' },
@@ -161,7 +165,7 @@ const ApplicationForm: React.FC = () => {
                 // Map para acceso rápido: normalizar key (remover guiones bajos)
                 const availabilityMap: Record<string, { hasM: boolean; hasF: boolean }> = {};
                 available.forEach((g: any) => {
-                    const key = g.gradeLevel.replace(/_/g, '').toUpperCase();
+                    const key = getGradeAvailabilityKey(g.gradeLevel);
                     availabilityMap[key] = {
                         hasM: g.hasVacancyM === true,
                         hasF: g.hasVacancyF === true
@@ -178,7 +182,7 @@ const ApplicationForm: React.FC = () => {
 
                 setGradeOptionsWithAvailability(
                     educationalLevels.map(level => {
-                        const key = level.value.toUpperCase().replace(/_/g, '');
+                        const key = getGradeAvailabilityKey(level.value);
                         const vacancy = availabilityMap[key] || { hasM: false, hasF: false };
                         const hasVacancy = vacancy.hasM || vacancy.hasF;
                         return {
@@ -538,10 +542,10 @@ const ApplicationForm: React.FC = () => {
     // Helper function to check if current school is required
     const requiresCurrentSchool = useCallback((grade: string): boolean => {
         const schoolRequiredGrades = [
-            '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico',
-            '1medio', '2medio', '3medio', '4medio'
+            '2_BASICO', '3_BASICO', '4_BASICO', '5_BASICO', '6_BASICO', '7_BASICO', '8_BASICO',
+            '1_MEDIO', '2_MEDIO', '3_MEDIO', '4_MEDIO'
         ];
-        return schoolRequiredGrades.includes(grade);
+        return schoolRequiredGrades.includes(toBackendGradeLevel(grade));
     }, []);
 
     // Helper function to parse address from backend into separate fields
@@ -786,7 +790,7 @@ const ApplicationForm: React.FC = () => {
                     message: 'El postulante debe tener al menos 4 años cumplidos al 31 de marzo del año de postulación.',
                 };
             }
-            // Edad máxima: 18 años para IV Medio (4medio)
+            // Edad máxima: 18 años para 4 Medio (4medio)
             if (ageAtReference > 18) {
                 return {
                     valid: false,
@@ -900,23 +904,23 @@ const ApplicationForm: React.FC = () => {
         // Define expected ages for each grade (at March 31 of application year)
         const gradeAgeRanges: { [key: string]: { min: number; max: number; name: string } } = {
             'playgroup': { min: 4, max: 5, name: 'Playgroup' },
-            'prekinder': { min: 5, max: 6, name: 'Pre-Kínder' },
-            'kinder': { min: 6, max: 7, name: 'Kínder' },
-            '1basico': { min: 7, max: 8, name: '1° Básico' },
-            '2basico': { min: 8, max: 9, name: '2° Básico' },
-            '3basico': { min: 9, max: 10, name: '3° Básico' },
-            '4basico': { min: 10, max: 11, name: '4° Básico' },
-            '5basico': { min: 11, max: 12, name: '5° Básico' },
-            '6basico': { min: 12, max: 13, name: '6° Básico' },
-            '7basico': { min: 13, max: 14, name: '7° Básico' },
-            '8basico': { min: 14, max: 15, name: '8° Básico' },
-            '1medio': { min: 15, max: 16, name: '1° Medio' },
-            '2medio': { min: 16, max: 17, name: '2° Medio' },
-            '3medio': { min: 17, max: 18, name: '3° Medio' },
-            '4medio': { min: 18, max: 19, name: '4° Medio' }
+            'PRE_KINDER': { min: 5, max: 6, name: 'Prekínder' },
+            'KINDER': { min: 6, max: 7, name: 'Kínder' },
+            '1_BASICO': { min: 7, max: 8, name: '1 Básico' },
+            '2_BASICO': { min: 8, max: 9, name: '2 Básico' },
+            '3_BASICO': { min: 9, max: 10, name: '3 Básico' },
+            '4_BASICO': { min: 10, max: 11, name: '4 Básico' },
+            '5_BASICO': { min: 11, max: 12, name: '5 Básico' },
+            '6_BASICO': { min: 12, max: 13, name: '6 Básico' },
+            '7_BASICO': { min: 13, max: 14, name: '7 Básico' },
+            '8_BASICO': { min: 14, max: 15, name: '8 Básico' },
+            '1_MEDIO': { min: 15, max: 16, name: '1 Medio' },
+            '2_MEDIO': { min: 16, max: 17, name: '2 Medio' },
+            '3_MEDIO': { min: 17, max: 18, name: '3 Medio' },
+            '4_MEDIO': { min: 18, max: 19, name: '4 Medio' }
         };
 
-        const range = gradeAgeRanges[grade];
+        const range = gradeAgeRanges[toBackendGradeLevel(grade)];
         if (!range) return { valid: true };
 
         if (ageAtReference < range.min || ageAtReference > range.max) {
@@ -2058,7 +2062,7 @@ const ApplicationForm: React.FC = () => {
                             <div className="p-4 bg-blue-50 rounded-lg">
                                 <p className="text-sm text-blue-800">
                                     <strong>Nota:</strong> Para el nivel seleccionado no es necesario indicar colegio de procedencia.
-                                    {['playgroup', 'prekinder', 'kinder'].includes(data.grade)
+                                    {['playgroup', 'PRE_KINDER', 'KINDER'].includes(toBackendGradeLevel(data.grade))
                                         ? ' Si viene de un jardín infantil, puede mencionarlo en observaciones adicionales.'
                                         : ' Es su primer año escolar formal.'}
                                 </p>
@@ -2197,7 +2201,7 @@ const ApplicationForm: React.FC = () => {
                                         id="siblingsInSchoolDetails"
                                         rows={2}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-azul-monte-tabor focus:border-azul-monte-tabor"
-                                        placeholder="Ej: María Pérez, 2º Básico"
+                                        placeholder="Ej: María Pérez, 2 Básico"
                                         value={data.siblingsInSchoolDetails || ''}
                                         onChange={(e) => updateField('siblingsInSchoolDetails', e.target.value)}
                                     />
@@ -2631,7 +2635,7 @@ const ApplicationForm: React.FC = () => {
                                             ))}
                                         </div>
                                         <p className="text-xs text-gris-piedra mt-2">
-                                            Estos documentos son importantes para evaluar al postulante. Si no están disponibles (ej: Kinder o 1° Básico sin historial académico previo), puede omitirlos y completar más tarde desde su dashboard.
+                                            Estos documentos son importantes para evaluar al postulante. Si no están disponibles (ej: Kínder o 1 Básico sin historial académico previo), puede omitirlos y completar más tarde desde su dashboard.
                                         </p>
                                     </div>
 
@@ -2681,7 +2685,7 @@ const ApplicationForm: React.FC = () => {
                             </p>
                             <ul className="text-sm text-amber-800 mt-2 list-disc list-inside space-y-1">
                                 <li><strong>Solo el Certificado de Nacimiento es obligatorio.</strong> Los demás documentos son recomendados (con *) u opcionales.</li>
-                                <li>Los certificados de estudios marcados con (*) son muy importantes para evaluar al postulante, pero no son obligatorios si no existen (ej: postulantes a Kinder o 1° Básico sin historial académico previo).</li>
+                                <li>Los certificados de estudios marcados con (*) son muy importantes para evaluar al postulante, pero no son obligatorios si no existen (ej: postulantes a Kínder o 1 Básico sin historial académico previo).</li>
                                 <li>Para estudiantes que vienen de jardines infantiles, puede omitir los certificados de estudios de años anteriores.</li>
                                 <li><strong>Puede enviar su postulación aunque no haya subido todos los documentos.</strong> Podrá completarlos más tarde desde su dashboard.</li>
                             </ul>

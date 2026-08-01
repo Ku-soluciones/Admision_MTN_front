@@ -41,8 +41,8 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 
 // Labels para la UI - Niveles Educativos
 export const EDUCATIONAL_LEVEL_LABELS: Record<EducationalLevel, string> = {
-  [EducationalLevel.PRESCHOOL]: 'Prebásica (Kinder - 2° Básico)',
-  [EducationalLevel.BASIC]: 'Básica (3° - 8° Básico)',
+  [EducationalLevel.PRESCHOOL]: 'Prebásica (Kínder - 2 Básico)',
+  [EducationalLevel.BASIC]: 'Básica (3° - 8 Básico)',
   [EducationalLevel.HIGH_SCHOOL]: 'Media (I° - IV° Medio)',
   [EducationalLevel.ALL_LEVELS]: 'Todos los Niveles'
 };

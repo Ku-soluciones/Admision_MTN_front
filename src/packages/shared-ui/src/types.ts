@@ -271,6 +271,6 @@ export const SupportStaffTypeLabels = {
 };
 
 export const KinderLevelLabels = {
-    [KinderLevel.PREKINDER]: 'Pre-Kinder',
-    [KinderLevel.KINDER]: 'Kinder'
+    [KinderLevel.PREKINDER]: 'Prekínder',
+    [KinderLevel.KINDER]: 'Kínder'
 };

@@ -698,20 +698,20 @@ const AdmissionReportForm: React.FC = () => {
                                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-azul-monte-tabor text-base font-medium"
                                     >
                                         <option value="">Seleccionar curso...</option>
-                                        <option value="PRE_KINDER">Pre-Kínder</option>
-                                        <option value="KINDER">Kínder</option>
-                                        <option value="1_BASICO">1° Básico</option>
-                                        <option value="2_BASICO">2° Básico</option>
-                                        <option value="3_BASICO">3° Básico</option>
-                                        <option value="4_BASICO">4° Básico</option>
-                                        <option value="5_BASICO">5° Básico</option>
-                                        <option value="6_BASICO">6° Básico</option>
-                                        <option value="7_BASICO">7° Básico</option>
-                                        <option value="8_BASICO">8° Básico</option>
-                                        <option value="I_MEDIO">I Medio</option>
-                                        <option value="II_MEDIO">II Medio</option>
-                                        <option value="III_MEDIO">III Medio</option>
-                                        <option value="IV_MEDIO">IV Medio</option>
+                                        <option value="Prekínder">Prekínder</option>
+                                        <option value="Kínder">Kínder</option>
+                                        <option value="1 Básico">1 Básico</option>
+                                        <option value="2 Básico">2 Básico</option>
+                                        <option value="3 Básico">3 Básico</option>
+                                        <option value="4 Básico">4 Básico</option>
+                                        <option value="5 Básico">5 Básico</option>
+                                        <option value="6 Básico">6 Básico</option>
+                                        <option value="7 Básico">7 Básico</option>
+                                        <option value="8 Básico">8 Básico</option>
+                                        <option value="1 Medio">1 Medio</option>
+                                        <option value="2 Medio">2 Medio</option>
+                                        <option value="3 Medio">3 Medio</option>
+                                        <option value="4 Medio">4 Medio</option>
                                         <option value="NO_APLICA">No Aplica (No Aceptado)</option>
                                     </select>
                                     <p className="text-xs text-gray-600 mt-2">

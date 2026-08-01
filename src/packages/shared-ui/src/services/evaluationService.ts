@@ -193,13 +193,13 @@ class EvaluationService {
         {
           id: 1,
           evaluationType: EvaluationType.MATHEMATICS_EXAM,
-          gradeLevel: '4° Básico',
+          gradeLevel: '4 Básico',
           application: {
             id: applicationId,
             student: {
               firstName: 'Juan',
               lastName: 'Pérez',
-              gradeApplied: '4° Básico'
+              gradeApplied: '4 Básico'
             }
           },
           evaluator: {
@@ -224,13 +224,13 @@ class EvaluationService {
         {
           id: 2,
           evaluationType: EvaluationType.PSYCHOLOGICAL_INTERVIEW,
-          gradeLevel: '4° Básico',
+          gradeLevel: '4 Básico',
           application: {
             id: applicationId,
             student: {
               firstName: 'Juan',
               lastName: 'Pérez',
-              gradeApplied: '4° Básico'
+              gradeApplied: '4 Básico'
             }
           },
           evaluator: {
@@ -255,13 +255,13 @@ class EvaluationService {
         {
           id: 3,
           evaluationType: EvaluationType.LANGUAGE_EXAM,
-          gradeLevel: '4° Básico',
+          gradeLevel: '4 Básico',
           application: {
             id: applicationId,
             student: {
               firstName: 'Juan',
               lastName: 'Pérez',
-              gradeApplied: '4° Básico'
+              gradeApplied: '4 Básico'
             }
           },
           evaluator: {

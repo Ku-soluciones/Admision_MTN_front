@@ -106,7 +106,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
           applicationDetails: {
             studentName: 'Juan Carlos Gangale González',
             rut: '12345678-9',
-            gradeApplied: '3° Básico'
+            gradeApplied: '3 Básico'
           }
         },
         {
@@ -126,7 +126,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
           applicationDetails: {
             studentName: 'Ana Sofía González López',
             rut: '87654321-0',
-            gradeApplied: '4° Básico'
+            gradeApplied: '4 Básico'
           }
         },
         {
@@ -155,7 +155,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
           applicationDetails: {
             studentName: 'Diego Muñoz Rivera',
             rut: '19876543-2',
-            gradeApplied: '5° Básico'
+            gradeApplied: '5 Básico'
           }
         }
       ];

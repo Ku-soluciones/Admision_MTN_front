@@ -6,6 +6,7 @@ import StudentDetailModal from './StudentDetailModal';
 import { FiEdit, FiEye, FiDownload, FiCalendar, FiFileText, FiUser, FiMapPin, FiPhone, FiMail, FiBookOpen, FiClock, FiCheckCircle, FiAlertCircle, FiInfo, FiHome, FiUsers } from 'react-icons/fi';
 import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
+import { toBackendGradeLevel } from '../../../../shared-utils/src/gradeLevels';
 
 // Interface específica para postulantes
 interface Postulante {
@@ -119,6 +120,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
             align: 'center',
             render: (_, record) => {
                 if (!record) return <div>-</div>;
+                const backendGrade = toBackendGradeLevel(record.cursoPostulado);
                 return (
                     <div className="flex flex-col gap-1">
                         {record.esHijoFuncionario && (
@@ -190,7 +192,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                     <div className="flex flex-col items-center gap-1">
                         <Badge 
                             variant={
-                                record.cursoPostulado?.includes('Prekinder') || record.cursoPostulado?.includes('Kinder') ? 'purple' :
+                                backendGrade === 'PRE_KINDER' || backendGrade === 'KINDER' ? 'purple' :
                                 record.cursoPostulado?.includes('Básico') ? 'blue' :
                                 record.cursoPostulado?.includes('Medio') ? 'green' : 'gray'
                             } 
