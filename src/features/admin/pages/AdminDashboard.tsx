@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
-import { DashboardIcon, FileTextIcon, UsersIcon, BarChartIcon, CheckCircleIcon, ClockIcon, UserIcon, LogoIcon } from '../components/icons/Icons';
+import { UsersIcon, BarChartIcon, LogoIcon, ClipboardDocumentListIcon, AcademicCapIcon } from '../components/icons/Icons';
 import GradeAvailabilityManager from '../components/gradeAvailability/GradeAvailabilityManager';
 import {
   FiFileText,
@@ -35,7 +35,7 @@ import {
   FiCheck,
   FiX,
   FiSearch,
-  FiGrid
+  FiMessageSquare
 } from 'react-icons/fi';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import { CreateUserRequest, UserRole, User } from '../types/user';
@@ -64,7 +64,6 @@ import { useAuth } from '../context/AuthContext';
 import ApplicationsTable from '../components/admin/ApplicationsTable';
 import SimpleToast from '../components/ui/SimpleToast';
 import AdminDataTables from '../components/admin/AdminDataTables';
-import EmailTemplateManager from '../components/admin/EmailTemplateManager';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
 import InterviewForm from '../components/interviews/InterviewForm';
@@ -79,13 +78,12 @@ const AdmissionReportTabs = React.lazy(() =>
 );
 
 const sections = [
-  { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: FileTextIcon },
-  { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: CheckCircleIcon },
-  { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: ClockIcon },
-  { key: 'calendario',    label: 'Calendario Global',         icon: DashboardIcon },
+  { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: ClipboardDocumentListIcon },
+  { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: AcademicCapIcon },
+  { key: 'entrevistas',   label: 'Gestión de Entrevistas',   icon: FiMessageSquare },
+  { key: 'calendario',    label: 'Calendario Global',         icon: FiCalendar },
   { key: 'usuarios',       label: 'Gestión de Usuarios',      icon: UsersIcon },
-  { key: 'vacantes',       label: 'Gestión de Vacantes', icon: FiGrid },
-  { key: 'configuracion', label: 'Configuración',             icon: UserIcon },
+  { key: 'vacantes',       label: 'Gestión de Vacantes',      icon: FiBookOpen },
 ];
 
 interface SidebarContentProps {
@@ -119,7 +117,7 @@ const SidebarContent = React.memo(function SidebarContent({
           aria-label="Navegar a Admisión"
           aria-current={activeSection === 'admissionReports' ? 'page' : undefined}
         >
-          <FileTextIcon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          <BarChartIcon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1">
             <div className="text-sm font-semibold">Admisión</div>
             <div className="text-xs opacity-90">Reportes y gestión</div>
@@ -579,13 +577,6 @@ Esta acción:
               <AdmissionReportTabs />
             </div>
           </React.Suspense>
-        );
-
-      case 'configuracion':
-        return (
-          <div className="space-y-6">
-            <EmailTemplateManager />
-          </div>
         );
 
       case 'vacantes':

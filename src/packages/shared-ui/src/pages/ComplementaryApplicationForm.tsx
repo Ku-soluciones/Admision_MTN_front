@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -308,12 +308,14 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
               <p className="text-blue-100">Complete la siguiente información sobre su familia y motivaciones</p>
             </div>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/dashboard-apoderado')}
-              className="text-white border-white hover:bg-white hover:text-azul-monte-tabor"
+                variant="outline"
+
+                size="sm"
+                onClick={() => {
+                  window.location.href = '/dashboard-apoderado';
+                }}
+                className="text-white border-white hover:bg-white hover:text-[#0F4C81]"
             >
-              <FiArrowLeft className="w-4 h-4 mr-2" />
               Volver
             </Button>
           </div>
@@ -741,14 +743,18 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
           {/* Submit Buttons */}
           {!isReadOnly ? (
             <div className="flex justify-end gap-4">
+
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/dashboard-apoderado')}
+                onClick={() => {
+                  window.location.href = '/dashboard-apoderado';
+                }}
                 disabled={saving}
               >
                 Cancelar
               </Button>
+
               <Button
                 type="submit"
                 variant="outline"
@@ -792,7 +798,9 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
               <Button
                 type="button"
                 variant="primary"
-                onClick={() => navigate('/dashboard-apoderado')}
+                onClick={() => {
+                  window.location.href = '/dashboard-apoderado';
+                }}
               >
                 <FiArrowLeft className="w-4 h-4 mr-2" />
                 Volver al Dashboard
