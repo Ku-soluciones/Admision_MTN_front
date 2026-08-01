@@ -825,12 +825,12 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
       setApplications(mappedApplications);
     } catch (error) {
       setApplications([
-        { id: 1, studentName: 'Juan Pérez González', gradeApplied: 'Kinder', parentNames: 'María González y Pedro Pérez', status: 'APPROVED' },
-        { id: 4, studentName: 'Ana Martínez López', gradeApplied: '1° Básico', parentNames: 'Carmen López y Roberto Martínez', status: 'APPROVED' },
-        { id: 26, studentName: 'GASPAR GONZALEZ', gradeApplied: '2° Básico', parentNames: 'Padres de Gaspar', status: 'APPROVED' },
-        { id: 7, studentName: 'María Fernández Torres', gradeApplied: 'Kinder', parentNames: 'Carlos Torres y Ana Fernández', status: 'PENDING' },
-        { id: 8, studentName: 'Pablo García Morales', gradeApplied: '1° Básico', parentNames: 'Luis Morales y Carmen García', status: 'PENDING' },
-        { id: 15, studentName: 'Sofía López Ruiz', gradeApplied: '3° Básico', parentNames: 'Roberto Ruiz y Patricia López', status: 'PENDING' },
+        { id: 1, studentName: 'Juan Pérez González', gradeApplied: 'Kínder', parentNames: 'María González y Pedro Pérez', status: 'APPROVED' },
+        { id: 4, studentName: 'Ana Martínez López', gradeApplied: '1 Básico', parentNames: 'Carmen López y Roberto Martínez', status: 'APPROVED' },
+        { id: 26, studentName: 'GASPAR GONZALEZ', gradeApplied: '2 Básico', parentNames: 'Padres de Gaspar', status: 'APPROVED' },
+        { id: 7, studentName: 'María Fernández Torres', gradeApplied: 'Kínder', parentNames: 'Carlos Torres y Ana Fernández', status: 'PENDING' },
+        { id: 8, studentName: 'Pablo García Morales', gradeApplied: '1 Básico', parentNames: 'Luis Morales y Carmen García', status: 'PENDING' },
+        { id: 15, studentName: 'Sofía López Ruiz', gradeApplied: '3 Básico', parentNames: 'Roberto Ruiz y Patricia López', status: 'PENDING' },
       ]);
     } finally {
       setIsLoading(false);

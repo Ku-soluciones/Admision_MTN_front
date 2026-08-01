@@ -310,22 +310,22 @@ export const fullTemplateData = {
   },
   "gradeRanges": {
     "PREKINDER_2BASICO": {
-      "description": "Pre Kinder a 2° Básico",
+      "description": "Prekínder a 2 Básico",
       "grades": ["PRE_KINDER", "KINDER", "1_BASICO", "2_BASICO"],
       "applicableQuestions": ["1.1", "1.2a", "1.3a", "2.1", "2.2", "3.1", "4.1"]
     },
     "3BASICO_4BASICO": {
-      "description": "3° Básico a 4° Básico",
+      "description": "3 Básico a 4 Básico",
       "grades": ["3_BASICO", "4_BASICO"],
       "applicableQuestions": ["1.1", "1.2b", "1.3a", "2.1", "2.2", "3.1", "4.1"]
     },
     "5BASICO_3MEDIO": {
-      "description": "5° Básico a III Medio",
+      "description": "5 Básico a 3 Medio",
       "grades": ["5_BASICO", "6_BASICO", "7_BASICO", "8_BASICO", "1_MEDIO", "2_MEDIO", "3_MEDIO"],
       "applicableQuestions": ["1.1", "1.2b", "1.3b", "2.1", "2.2", "3.1", "4.1"]
     },
     "4MEDIO": {
-      "description": "IV Medio",
+      "description": "4 Medio",
       "grades": ["4_MEDIO"],
       "applicableQuestions": ["1.1", "1.2b", "1.3b", "2.1", "2.2", "3.1", "4.1"]
     }

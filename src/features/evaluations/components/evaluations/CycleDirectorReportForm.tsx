@@ -500,7 +500,7 @@ const CycleDirectorReportForm: React.FC = () => {
                                         label="Curso al que postula"
                                         value={reportData.gradeApplied}
                                         onChange={(e) => updateReportData('gradeApplied', e.target.value)}
-                                        placeholder={`Ej: 1º Básico ${getTargetYear()}`}
+                                        placeholder={`Ej: 1 Básico ${getTargetYear()}`}
                                     />
                                 </div>
                             </div>
@@ -618,7 +618,7 @@ const CycleDirectorReportForm: React.FC = () => {
                                     label="Curso de ingreso"
                                     value={reportData.entryCourse}
                                     onChange={(e) => setReportData({ ...reportData, entryCourse: e.target.value })}
-                                    placeholder="Ej: 1° Básico, 5° Básico, etc."
+                                    placeholder="Ej: 1 Básico, 5 Básico, etc."
                                 />
 
                                 <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">

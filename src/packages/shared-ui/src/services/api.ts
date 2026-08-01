@@ -22,6 +22,10 @@ import axios from 'axios';
 import { csrfService } from './csrfService';
 import { getApiBaseUrl } from '../config/api.config';
 import {
+    normalizeGradeLevelsForBackend,
+    normalizeGradeLevelsForDisplay,
+} from '../../../shared-utils/src/gradeLevels';
+import {
     getStorageKey,
     BASE_STORAGE_KEYS,
     authStore,
@@ -126,6 +130,12 @@ const refreshQueue = {
 // Interceptor para agregar el token de autenticación y CSRF token
 api.interceptors.request.use(
     async (config) => {
+        const prekinderCode = String(config.url || '').includes('grade-availability')
+            ? 'PREKINDER' as const
+            : 'PRE_KINDER' as const;
+        config.data = normalizeGradeLevelsForBackend(config.data, { prekinderCode });
+        config.params = normalizeGradeLevelsForBackend(config.params, { prekinderCode });
+
         const runtimeBaseURL = getApiBaseUrl();
         if (config.url && !config.url.startsWith('http')) {
             config.url = runtimeBaseURL + config.url;
@@ -196,6 +206,7 @@ api.interceptors.response.use(
         if (!response) {
             return Promise.reject(new Error('No se recibió respuesta del servidor'));
         }
+        response.data = normalizeGradeLevelsForDisplay(response.data);
         return response;
     },
     async (error) => {

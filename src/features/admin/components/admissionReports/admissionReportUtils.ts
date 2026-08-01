@@ -1,4 +1,5 @@
 import type { CourseApplicant } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import { formatGradeLevel } from '../../../../packages/shared-utils/src/gradeLevels';
 
 const normalizeToken = (value: string) =>
   value
@@ -8,24 +9,7 @@ const normalizeToken = (value: string) =>
     .toLowerCase();
 
 export const formatGradeLabel = (value?: string | null) => {
-  if (!value) return 'Curso sin informar';
-
-  const normalized = value.trim().replace(/_/g, ' ').replace(/\s+/g, ' ');
-  const gradeMatch = normalized.match(/^(\d+)\s*(BASICO|BÁSICO|MEDIO)$/i);
-  if (gradeMatch) {
-    const [, number, level] = gradeMatch;
-    return `${number}° ${normalizeToken(level) === 'basico' ? 'Básico' : 'Medio'}`;
-  }
-
-  const sectionMatch = normalized.match(/^(\d+)\s*([A-Z])$/i);
-  if (sectionMatch) return `${sectionMatch[1]}° ${sectionMatch[2].toUpperCase()}`;
-
-  if (normalizeToken(normalized) === 'prekinder') return 'Prekínder';
-  if (normalizeToken(normalized) === 'kinder') return 'Kínder';
-
-  return normalized
-    .toLowerCase()
-    .replace(/(^|\s)\p{L}/gu, (letter) => letter.toUpperCase());
+  return formatGradeLevel(value, 'Curso sin informar');
 };
 
 export const formatGenderLabel = (value?: string | null, compact = false) => {

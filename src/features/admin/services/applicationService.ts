@@ -1,6 +1,7 @@
 import api from './api';
 import { DataAdapter } from './dataAdapter';
 import { extractBffList } from '../src/api/bffResponse';
+import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 
 export interface ApplicationRequest {
     // Datos del estudiante
@@ -157,26 +158,7 @@ class ApplicationService {
 
     // Helper function to transform frontend grade format to backend format
     private transformGradeToBackend(grade: string): string {
-        // Frontend uses: "8basico", "1medio", etc.
-        // Backend expects: "8_BASICO", "1_MEDIO", "PRE_KINDER", "KINDER"
-        const gradeMap: Record<string, string> = {
-            'PREKINDER': 'PRE_KINDER',
-            'KINDER': 'KINDER',
-            '1basico': '1_BASICO',
-            '2basico': '2_BASICO',
-            '3basico': '3_BASICO',
-            '4basico': '4_BASICO',
-            '5basico': '5_BASICO',
-            '6basico': '6_BASICO',
-            '7basico': '7_BASICO',
-            '8basico': '8_BASICO',
-            '1medio': '1_MEDIO',
-            '2medio': '2_MEDIO',
-            '3medio': '3_MEDIO',
-            '4medio': '4_MEDIO'
-        };
-
-        return gradeMap[grade] || grade.toUpperCase().replace('BASICO', '_BASICO').replace('MEDIO', '_MEDIO');
+        return toBackendGradeLevel(grade);
     }
 
     /**

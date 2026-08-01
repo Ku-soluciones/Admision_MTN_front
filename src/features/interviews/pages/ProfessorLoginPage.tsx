@@ -9,6 +9,7 @@ import { useNotifications } from '../../admin/context/AppContext';
 import { professorAuthService } from '../services/professorAuthService';
 import { useAuth } from '../../coordinator/context/AuthContext';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
+import { GRADE_LEVEL_LABELS } from '../../../packages/shared-utils/src/gradeLevels';
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -84,7 +85,7 @@ const ProfessorLoginPage: React.FC = () => {
                         role: respRole,
                         subject: respSubject,
                         subjects: getSubjectsByRole(respRole),
-                        assignedGrades: ['prekinder', 'kinder', '1basico', '2basico', '3basico', '4basico', '5basico', '6basico', '7basico', '8basico', '1medio', '2medio', '3medio', '4medio'],
+                        assignedGrades: [...GRADE_LEVEL_LABELS],
                         isAdmin: respRole === 'ADMIN',
                     };
                     localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(professorSnapshot));

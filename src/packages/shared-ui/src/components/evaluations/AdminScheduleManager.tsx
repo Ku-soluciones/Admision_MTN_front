@@ -258,15 +258,15 @@ const AdminScheduleManager: React.FC<AdminScheduleManagerProps> = ({
               required
             >
               <option value="">Seleccionar nivel</option>
-              <option value="Kinder">Kinder</option>
-              <option value="1° Básico">1° Básico</option>
-              <option value="2° Básico">2° Básico</option>
-              <option value="3° Básico">3° Básico</option>
-              <option value="4° Básico">4° Básico</option>
-              <option value="5° Básico">5° Básico</option>
-              <option value="6° Básico">6° Básico</option>
-              <option value="7° Básico">7° Básico</option>
-              <option value="8° Básico">8° Básico</option>
+              <option value="Kínder">Kínder</option>
+              <option value="1 Básico">1 Básico</option>
+              <option value="2 Básico">2 Básico</option>
+              <option value="3 Básico">3 Básico</option>
+              <option value="4 Básico">4 Básico</option>
+              <option value="5 Básico">5 Básico</option>
+              <option value="6 Básico">6 Básico</option>
+              <option value="7 Básico">7 Básico</option>
+              <option value="8 Básico">8 Básico</option>
             </select>
           </div>
 
