@@ -40,7 +40,7 @@ const HomePage: React.FC = () => {
 
     const admissionSteps = [
         { title: 'Registro y Postulación', description: 'Complete el formulario en línea con los datos del postulante y la familia.', icon: <FileText className="w-12 h-12 text-dorado-nazaret" /> },
-        { title: 'Entrevistas Familiares', description: 'Agende y asista a una entrevista con nuestro equipo de admisiones.', icon: <Users className="w-12 h-12 text-dorado-nazaret" /> },
+        { title: 'Entrevistas Familiares', description: 'El colegio agendará su entrevista y le enviará un correo con la fecha y hora programada.', icon: <Users className="w-12 h-12 text-dorado-nazaret" /> },
         { title: 'Publicación de Resultados', description: 'Consulte los resultados del proceso de admisión en las fechas publicadas.', icon: <CheckCircle className="w-12 h-12 text-dorado-nazaret" /> },
     ];
 
