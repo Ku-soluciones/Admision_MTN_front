@@ -1,13 +1,78 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Modal from '../ui/Modal';
+import SimpleToast from '../ui/SimpleToast';
 import api from '../../services/api';
+import {
+  formatDisplayValue,
+  formatPersonDisplayName,
+  hasDisplayValue
+} from '../../utils/applicationDecisionDisplay';
+
+interface PersonSummary {
+  fullName?: unknown;
+  name?: unknown;
+  firstName?: unknown;
+  lastName?: unknown;
+  paternalLastName?: unknown;
+  maternalLastName?: unknown;
+  email?: unknown;
+}
+
+interface StudentSummary extends PersonSummary {
+  gradeApplied?: unknown;
+  gradeApplying?: unknown;
+  grade?: unknown;
+}
+
+interface ProcessSummary {
+  id?: number | string;
+  type?: unknown;
+  interviewType?: unknown;
+  evaluationType?: unknown;
+  interviewer?: unknown;
+  interviewerName?: unknown;
+  evaluator?: unknown;
+  evaluatorName?: unknown;
+  score?: unknown;
+  maxScore?: unknown;
+  status?: unknown;
+}
+
+interface DecisionApplication {
+  id: number | string;
+  student?: StudentSummary | null;
+  father?: PersonSummary | null;
+  mother?: PersonSummary | null;
+  guardian?: PersonSummary | null;
+  applicantUser?: PersonSummary | null;
+  interviews?: ProcessSummary[] | null;
+  evaluations?: ProcessSummary[] | null;
+}
 
 interface ApplicationDecisionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  application: any;
+  application: DecisionApplication | null;
   onDecisionMade: () => void;
 }
+
+const getRequestErrorMessage = (error: unknown): string => {
+  if (!error || typeof error !== 'object') {
+    return 'No se pudo registrar la decisión. Intenta nuevamente.';
+  }
+
+  const requestError = error as {
+    message?: unknown;
+    response?: { data?: { message?: unknown; error?: { message?: unknown } } };
+  };
+  const backendMessage = requestError.response?.data?.error?.message
+    || requestError.response?.data?.message;
+
+  return formatDisplayValue(
+    backendMessage || requestError.message,
+    'No se pudo registrar la decisión. Intenta nuevamente.'
+  );
+};
 
 const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   isOpen,
@@ -20,10 +85,37 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+  }, []);
 
   if (!application) return null;
 
+  const interviews = Array.isArray(application.interviews) ? application.interviews : [];
+  const evaluations = Array.isArray(application.evaluations) ? application.evaluations : [];
+  const studentName = formatPersonDisplayName(application.student, 'Sin nombre registrado');
+  const guardian = application.guardian
+    || application.father
+    || application.mother
+    || application.applicantUser;
+
+  const handleClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setDecision(null);
+    setNote('');
+    setShowConfirmation(false);
+    setToast(null);
+    onClose();
+  };
+
   const handleSubmitDecision = async () => {
+    if (loading) return;
+
     if (!decision) {
       setToast({ message: 'Por favor selecciona una decisión', type: 'error' });
       return;
@@ -33,27 +125,19 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
     try {
       await api.post(
         `/v1/applications/${application.id}/final-decision`,
-        { decision, note }
+        { decision, note: note.trim() }
       );
 
       setShowConfirmation(true);
-      setTimeout(() => {
-        setShowConfirmation(false);
-        onDecisionMade();
-        onClose();
+      onDecisionMade();
+      closeTimerRef.current = setTimeout(() => {
+        handleClose();
       }, 2000);
     } catch (error) {
-      setToast({ message: 'Error al procesar la decisión. Por favor intenta nuevamente.', type: 'error' });
+      setToast({ message: getRequestErrorMessage(error), type: 'error' });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleClose = () => {
-    setDecision(null);
-    setNote('');
-    setShowConfirmation(false);
-    onClose();
   };
 
   return (
@@ -99,28 +183,39 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
           {/* Información del Estudiante */}
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
             <h3 className="font-semibold text-blue-900 mb-2">Información del Postulante</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
                 <span className="text-blue-700 font-medium">Estudiante:</span>
-                <p className="text-blue-900">{application.student?.fullName || application.student?.firstName + ' ' + application.student?.lastName}</p>
+                <p className="break-words text-blue-900">{studentName}</p>
               </div>
               <div>
                 <span className="text-blue-700 font-medium">Curso:</span>
-                <p className="text-blue-900">{application.student?.gradeApplied}</p>
+                <p className="break-words text-blue-900">
+                  {formatDisplayValue(
+                    application.student?.gradeApplied
+                    || application.student?.gradeApplying
+                    || application.student?.grade,
+                    'Sin curso registrado'
+                  )}
+                </p>
               </div>
               <div>
                 <span className="text-blue-700 font-medium">Apoderado:</span>
-                <p className="text-blue-900">{application.father?.fullName || application.mother?.fullName}</p>
+                <p className="break-words text-blue-900">
+                  {formatPersonDisplayName(guardian, 'Sin apoderado registrado')}
+                </p>
               </div>
               <div>
                 <span className="text-blue-700 font-medium">Email:</span>
-                <p className="text-blue-900">{application.father?.email || application.mother?.email}</p>
+                <p className="break-all text-blue-900">
+                  {formatDisplayValue(guardian?.email, 'Sin email registrado')}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Resumen del Proceso */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Entrevistas */}
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
@@ -129,14 +224,21 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                 </svg>
                 Entrevistas
               </h4>
-              {application.interviews && application.interviews.length > 0 ? (
+              {interviews.length > 0 ? (
                 <div className="space-y-2">
-                  {application.interviews.map((interview: any) => (
-                    <div key={interview.id} className="text-sm border-l-2 border-blue-300 pl-3">
-                      <p className="font-medium text-gray-900">{interview.type}</p>
-                      <p className="text-gray-600">{interview.interviewer}</p>
-                      <p className={`text-xs ${interview.status === 'COMPLETED' ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {interview.status}
+                  {interviews.map((interview, index) => (
+                    <div key={interview.id ?? index} className="border-l-2 border-blue-300 pl-3 text-sm">
+                      <p className="break-words font-medium text-gray-900">
+                        {formatDisplayValue(interview.type || interview.interviewType, 'Entrevista')}
+                      </p>
+                      <p className="break-words text-gray-600">
+                        {formatPersonDisplayName(
+                          interview.interviewerName || interview.interviewer,
+                          'Sin entrevistador asignado'
+                        )}
+                      </p>
+                      <p className={`text-xs ${interview.status === 'COMPLETED' ? 'text-green-600' : 'text-yellow-700'}`}>
+                        {formatDisplayValue(interview.status, 'Sin estado')}
                       </p>
                     </div>
                   ))}
@@ -154,19 +256,26 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                 </svg>
                 Evaluaciones
               </h4>
-              {application.evaluations && application.evaluations.length > 0 ? (
+              {evaluations.length > 0 ? (
                 <div className="space-y-2">
-                  {application.evaluations.map((evaluation: any) => (
-                    <div key={evaluation.id} className="text-sm border-l-2 border-green-300 pl-3">
-                      <p className="font-medium text-gray-900">{evaluation.type}</p>
-                      <p className="text-gray-600">{evaluation.evaluator}</p>
-                      {evaluation.score && (
+                  {evaluations.map((evaluation, index) => (
+                    <div key={evaluation.id ?? index} className="border-l-2 border-green-300 pl-3 text-sm">
+                      <p className="break-words font-medium text-gray-900">
+                        {formatDisplayValue(evaluation.evaluationType || evaluation.type, 'Evaluación')}
+                      </p>
+                      <p className="break-words text-gray-600">
+                        {formatPersonDisplayName(
+                          evaluation.evaluatorName || evaluation.evaluator,
+                          'Sin evaluador asignado'
+                        )}
+                      </p>
+                      {hasDisplayValue(evaluation.score) && (
                         <p className="text-green-600 font-semibold">
-                          {evaluation.score}/{evaluation.maxScore || 100}
+                          {formatDisplayValue(evaluation.score)}/{formatDisplayValue(evaluation.maxScore, '100')}
                         </p>
                       )}
-                      <p className={`text-xs ${evaluation.status === 'COMPLETED' ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {evaluation.status}
+                      <p className={`text-xs ${evaluation.status === 'COMPLETED' ? 'text-green-600' : 'text-yellow-700'}`}>
+                        {formatDisplayValue(evaluation.status, 'Sin estado')}
                       </p>
                     </div>
                   ))}
@@ -181,9 +290,11 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
           <div className="border-t border-gray-200 pt-6">
             <h3 className="font-semibold text-gray-900 mb-4">Tomar Decisión Final</h3>
 
-            <div className="flex gap-4 mb-4">
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row">
               <button
+                type="button"
                 onClick={() => setDecision('APPROVED')}
+                aria-pressed={decision === 'APPROVED'}
                 className={`flex-1 p-4 border-2 rounded-lg transition-all ${
                   decision === 'APPROVED'
                     ? 'border-green-500 bg-green-50'
@@ -201,7 +312,9 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => setDecision('REJECTED')}
+                aria-pressed={decision === 'REJECTED'}
                 className={`flex-1 p-4 border-2 rounded-lg transition-all ${
                   decision === 'REJECTED'
                     ? 'border-red-500 bg-red-50'
@@ -220,10 +333,11 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="final-decision-note" className="block text-sm font-medium text-gray-700 mb-2">
                 {decision === 'APPROVED' ? 'Mensaje de Bienvenida (opcional)' : 'Observaciones (opcional)'}
               </label>
               <textarea
+                id="final-decision-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
@@ -238,6 +352,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
 
             <div className="flex gap-3 justify-end">
               <button
+                type="button"
                 onClick={handleClose}
                 disabled={loading}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
@@ -245,6 +360,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleSubmitDecision}
                 disabled={!decision || loading}
                 className={`px-6 py-2 rounded-md text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
