@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Facebook, Instagram, Linkedin } from 'lucide-react';
+import { Instagram } from 'lucide-react';
 import { appUrls } from '../../utils/appUrls';
 import { getTargetYear } from '../../../../packages/shared-ui/src/types/document';
 
@@ -51,15 +51,17 @@ const Footer: React.FC = () => {
                         {/* Sub-Col 2b: Redes */}
                         <div className="flex-1 text-center sm:text-left">
                         <h3 className="text-lg font-bold text-dorado-nazaret mb-4 font-serif">Síguenos</h3>
-                            <div className="flex justify-center sm:justify-start gap-4 mt-2">
-                               <a href="#" aria-label="Facebook" className="p-2 rounded-full bg-white/10 hover:bg-dorado-nazaret/20 hover:scale-110 transition-all duration-200">
-                                   <Facebook className="w-7 h-7" strokeWidth={2} />
-                               </a>
-                               <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-white/10 hover:bg-dorado-nazaret/20 hover:scale-110 transition-all duration-200">
+                            <div className="flex justify-center sm:justify-start items-center gap-3 mt-2">
+                               <a href="https://www.instagram.com/colegiomontetaborynazaret?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" aria-label="Instagram" className="p-2 rounded-full bg-white/10 hover:bg-dorado-nazaret/20 hover:scale-110 transition-all duration-200" target="_blank" rel="noopener noreferrer">
                                    <Instagram className="w-7 h-7" strokeWidth={2} />
                                </a>
-                               <a href="#" aria-label="LinkedIn" className="p-2 rounded-full bg-white/10 hover:bg-dorado-nazaret/20 hover:scale-110 transition-all duration-200">
-                                   <Linkedin className="w-7 h-7" strokeWidth={2} />
+                               <a
+                                   href="https://www.instagram.com/colegiomontetaborynazaret?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
+                                   className="text-sm text-gray-300 hover:text-dorado-nazaret transition-colors duration-200"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                               >
+                                   @colegiomontetaborynazaret
                                </a>
                             </div>
                         </div>

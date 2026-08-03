@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { SiFacebook, SiInstagram, SiLinkedin } from 'react-icons/si';
+import { SiInstagram } from 'react-icons/si';
 import { appUrls } from '../../../../shared-utils/src/appUrls';
 
 const socialLinks = [
-    { href: '#', label: 'Síguenos en Facebook', Icon: SiFacebook },
-    { href: '#', label: 'Síguenos en Instagram', Icon: SiInstagram },
-    { href: '#', label: 'Síguenos en LinkedIn', Icon: SiLinkedin },
+    { href: 'https://www.instagram.com/colegiomontetaborynazaret?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==', label: 'Síguenos en Instagram', Icon: SiInstagram },
 ];
 
 const Footer: React.FC = () => {
@@ -62,17 +60,28 @@ const Footer: React.FC = () => {
                         </div>
                         {/* Sub-Col 2b: Redes */}
                         <div className="flex-1 text-center sm:text-left">
-                            <h3 className="text-lg font-bold text-dorado-nazaret mb-4 font-serif">Síguenos</h3>
-                            <div className="flex justify-center sm:justify-start gap-1 mt-2">
+                        <h3 className="text-lg font-bold text-dorado-nazaret mb-4 font-serif">Síguenos</h3>
+                            <div className="flex justify-center sm:justify-start items-center gap-3 mt-2">
                                 {socialLinks.map(({ href, label, Icon }) => (
-                                    <a
-                                        key={label}
-                                        href={href}
-                                        aria-label={label}
-                                        className="p-2 text-white/55 hover:text-dorado-nazaret transition-colors duration-200"
-                                    >
-                                        <Icon size={20} aria-hidden={true} />
-                                    </a>
+                                    <React.Fragment key={label}>
+                                        <a
+                                            href={href}
+                                            aria-label={label}
+                                            className="p-2 text-white/55 hover:text-dorado-nazaret transition-colors duration-200"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <Icon size={20} aria-hidden={true} />
+                                        </a>
+                                        <a
+                                            href={href}
+                                            className="text-sm text-white/65 hover:text-dorado-nazaret transition-colors duration-200"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            @colegiomontetaborynazaret
+                                        </a>
+                                    </React.Fragment>
                                 ))}
                             </div>
                         </div>
