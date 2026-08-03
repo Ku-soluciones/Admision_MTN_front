@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  CreditCard,
   GraduationCap,
   LoaderCircle,
   Mail,
@@ -22,6 +23,10 @@ import {
   formatProcessStatus,
   hasDisplayValue
 } from '../../utils/applicationDecisionDisplay';
+import {
+  getPaymentStatusDisplay,
+  type PaymentStatusTone
+} from '../../utils/paymentStatusDisplay';
 
 interface PersonSummary {
   fullName?: unknown;
@@ -62,6 +67,9 @@ interface DecisionApplication {
   applicantUser?: PersonSummary | null;
   interviews?: ProcessSummary[] | null;
   evaluations?: ProcessSummary[] | null;
+  paymentStatus?: unknown;
+  paymentRequired?: unknown;
+  paidAt?: unknown;
 }
 
 interface ApplicationDecisionModalProps {
@@ -161,6 +169,14 @@ const isComplete = (status: unknown): boolean => {
   return normalized === 'COMPLETED' || normalized === 'APPROVED' || normalized === 'CONFIRMED';
 };
 
+const PAYMENT_TONE_CLASSES: Record<PaymentStatusTone, string> = {
+  success: 'bg-emerald-100 text-emerald-800',
+  warning: 'bg-amber-100 text-amber-900',
+  error: 'bg-red-100 text-red-800',
+  info: 'bg-blue-100 text-blue-800',
+  neutral: 'bg-gray-100 text-gray-700'
+};
+
 const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   isOpen,
   onClose,
@@ -204,6 +220,11 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   );
   const interviewCompleteCount = interviews.filter((item) => isComplete(item.status)).length;
   const evaluationCompleteCount = evaluations.filter((item) => isComplete(item.status)).length;
+  const payment = getPaymentStatusDisplay(
+    application.paymentStatus,
+    application.paymentRequired,
+    application.paidAt
+  );
 
   const handleClose = () => {
     if (loading) return;
@@ -354,9 +375,19 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="w-fit shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-800">
-                  Postulación #{application.id}
-                </span>
+                <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                  <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-800">
+                    Postulación #{application.id}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${PAYMENT_TONE_CLASSES[payment.tone]}`}
+                    title={payment.detail}
+                    aria-label={`Estado del pago de admisión: ${payment.label}. ${payment.detail}`}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                    Pago: {payment.label}
+                  </span>
+                </div>
               </div>
             </section>
 
