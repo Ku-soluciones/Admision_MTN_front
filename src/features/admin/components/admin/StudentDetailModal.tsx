@@ -19,7 +19,11 @@ import { userService } from '../../services/userService';
 import { documentService } from '../../services/documentService';
 import { DocumentType } from '../../types/document';
 import { getApiBaseUrl } from '../../config/api.config';
-import { getPaymentStatusDisplay } from '../../../../packages/shared-ui/src/utils/paymentStatusDisplay';
+import {
+    formatPaymentStatusCheckedTime,
+    getPaymentStatusDisplay
+} from '../../../../packages/shared-ui/src/utils/paymentStatusDisplay';
+import { useApplicationPaymentStatus } from '../../../../packages/shared-ui/src/hooks/useApplicationPaymentStatus';
 
 interface Postulante {
     id: number;
@@ -128,6 +132,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [isEditingSchool, setIsEditingSchool] = useState(false);
     const [savingSchool, setSavingSchool] = useState(false);
     const { addNotification } = useNotifications();
+    const { data: refreshedPayment, state: paymentSyncState } = useApplicationPaymentStatus(
+        postulante?.id,
+        isOpen
+    );
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
@@ -866,10 +874,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const currentSchool = studentData.currentSchool || postulante.colegioActual;
         const submissionDate = fullApplication?.submissionDate || postulante.fechaPostulacion;
         const payment = getPaymentStatusDisplay(
-            fullApplication?.paymentStatus ?? postulante.estadoPago,
-            fullApplication?.paymentRequired ?? postulante.pagoRequerido,
-            fullApplication?.paidAt ?? postulante.fechaPago
+            refreshedPayment?.paymentStatus ?? fullApplication?.paymentStatus ?? postulante.estadoPago,
+            refreshedPayment?.paymentRequired ?? fullApplication?.paymentRequired ?? postulante.pagoRequerido,
+            refreshedPayment?.paidAt ?? fullApplication?.paidAt ?? postulante.fechaPago
         );
+        const lastPaymentCheck = formatPaymentStatusCheckedTime(refreshedPayment?.lastStatusCheckedAt);
 
 
         // Helper function to format dates safely
@@ -1050,7 +1059,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             </Badge>
                         </div>
                         <div className="flex flex-col gap-2 border-t border-gray-200 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                            <span className="flex items-center gap-2 text-gray-600">
+                            <span className="flex items-center gap-2 text-gray-600 sm:whitespace-nowrap">
                                 <FiCreditCard className="h-4 w-4 shrink-0" aria-hidden="true" />
                                 Pago de admisión:
                             </span>
@@ -1061,6 +1070,22 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                 <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
                                     {payment.detail}
                                 </p>
+                                <div className="mt-1 min-h-5 text-xs leading-5" aria-live="polite">
+                                    {paymentSyncState === 'loading' && (
+                                        <span className="inline-flex items-center gap-1.5 text-blue-700">
+                                            <FiRefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                            Consultando estado en Toku…
+                                        </span>
+                                    )}
+                                    {paymentSyncState === 'success' && lastPaymentCheck && (
+                                        <span className="text-emerald-700">Consultado en Toku a las {lastPaymentCheck}.</span>
+                                    )}
+                                    {paymentSyncState === 'error' && (
+                                        <span className="text-amber-700">
+                                            No fue posible consultar Toku; se muestra el último estado guardado.
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

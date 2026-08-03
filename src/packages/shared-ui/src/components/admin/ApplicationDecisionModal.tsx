@@ -27,6 +27,7 @@ import {
   getPaymentStatusDisplay,
   type PaymentStatusTone
 } from '../../utils/paymentStatusDisplay';
+import { useApplicationPaymentStatus } from '../../hooks/useApplicationPaymentStatus';
 
 interface PersonSummary {
   fullName?: unknown;
@@ -189,6 +190,10 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: refreshedPayment, state: paymentSyncState } = useApplicationPaymentStatus(
+    application?.id,
+    isOpen && Boolean(application)
+  );
 
   useEffect(() => () => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -221,9 +226,9 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const interviewCompleteCount = interviews.filter((item) => isComplete(item.status)).length;
   const evaluationCompleteCount = evaluations.filter((item) => isComplete(item.status)).length;
   const payment = getPaymentStatusDisplay(
-    application.paymentStatus,
-    application.paymentRequired,
-    application.paidAt
+    refreshedPayment?.paymentStatus ?? application.paymentStatus,
+    refreshedPayment?.paymentRequired ?? application.paymentRequired,
+    refreshedPayment?.paidAt ?? application.paidAt
   );
 
   const handleClose = () => {
@@ -381,10 +386,18 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                   </span>
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${PAYMENT_TONE_CLASSES[payment.tone]}`}
-                    title={payment.detail}
-                    aria-label={`Estado del pago de admisión: ${payment.label}. ${payment.detail}`}
+                    title={paymentSyncState === 'error'
+                      ? `${payment.detail} No fue posible consultar Toku; se muestra el último estado guardado.`
+                      : payment.detail}
+                    aria-label={`Estado del pago de admisión: ${payment.label}. ${payment.detail}${
+                      paymentSyncState === 'loading' ? ' Consultando Toku.' : ''
+                    }`}
                   >
-                    <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                    {paymentSyncState === 'loading' ? (
+                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
                     Pago: {payment.label}
                   </span>
                 </div>
