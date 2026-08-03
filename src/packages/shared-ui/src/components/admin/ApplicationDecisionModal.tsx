@@ -90,6 +90,7 @@ const DECISION_OPTIONS: Array<{
   value: Decision;
   label: string;
   description: string;
+  confirmationLabel: string;
   Icon: typeof CheckCircle2;
   selectedClasses: string;
   iconClasses: string;
@@ -97,6 +98,7 @@ const DECISION_OPTIONS: Array<{
   {
     value: 'APPROVED',
     label: 'Aprobar postulación',
+    confirmationLabel: 'Confirmar aprobación',
     description: 'La familia recibirá la confirmación de admisión.',
     Icon: CheckCircle2,
     selectedClasses: 'border-emerald-500 bg-emerald-50 text-emerald-900',
@@ -105,6 +107,7 @@ const DECISION_OPTIONS: Array<{
   {
     value: 'WAITLIST',
     label: 'Agregar a lista de espera',
+    confirmationLabel: 'Confirmar lista de espera',
     description: 'La postulación queda activa a la espera de un cupo.',
     Icon: Clock3,
     selectedClasses: 'border-amber-500 bg-amber-50 text-amber-950',
@@ -113,6 +116,7 @@ const DECISION_OPTIONS: Array<{
   {
     value: 'REJECTED',
     label: 'Rechazar postulación',
+    confirmationLabel: 'Confirmar rechazo',
     description: 'La familia será informada del cierre del proceso.',
     Icon: XCircle,
     selectedClasses: 'border-red-500 bg-red-50 text-red-950',
@@ -184,7 +188,14 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
     || application.mother
     || application.applicantUser;
   const guardianName = formatPersonDisplayName(guardian, 'Sin apoderado registrado');
-  const guardianEmail = formatDisplayValue(guardian?.email, 'Sin email registrado');
+  const guardianEmail = [
+    application.applicantUser?.email,
+    application.guardian?.email,
+    application.father?.email,
+    application.mother?.email
+  ]
+    .map((email) => formatDisplayValue(email, ''))
+    .find(Boolean) || 'Sin email registrado';
   const grade = formatDisplayValue(
     application.student?.gradeApplied
       || application.student?.gradeApplying
@@ -537,7 +548,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                         Guardando y enviando…
                       </>
                     ) : (
-                      `Confirmar ${selectedOption?.label.toLocaleLowerCase('es-CL') || 'decisión'}`
+                      selectedOption?.confirmationLabel || 'Confirmar decisión'
                     )}
                   </button>
                 </div>
