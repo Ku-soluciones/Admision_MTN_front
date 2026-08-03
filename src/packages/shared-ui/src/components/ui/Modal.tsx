@@ -26,6 +26,13 @@ const Modal: React.FC<ModalProps> = ({
     const panelRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+    const onCloseRef = useRef(onClose);
+    const closeDisabledRef = useRef(closeDisabled);
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+        closeDisabledRef.current = closeDisabled;
+    });
     const sizeClasses = {
         sm: 'max-w-md',
         md: 'max-w-lg',
@@ -48,8 +55,8 @@ const Modal: React.FC<ModalProps> = ({
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape' && !closeDisabled) {
-                onClose();
+            if (event.key === 'Escape' && !closeDisabledRef.current) {
+                onCloseRef.current();
                 return;
             }
 
@@ -90,7 +97,7 @@ const Modal: React.FC<ModalProps> = ({
             document.removeEventListener('keydown', handleKeyDown);
             previouslyFocusedRef.current?.focus();
         };
-    }, [closeDisabled, isOpen, onClose]);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
