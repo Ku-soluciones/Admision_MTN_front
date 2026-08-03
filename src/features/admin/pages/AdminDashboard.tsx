@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -66,6 +66,7 @@ import SimpleToast from '../components/ui/SimpleToast';
 import AdminDataTables from '../components/admin/AdminDataTables';
 import StudentDetailModal from '../components/admin/StudentDetailModal';
 import ApplicationDecisionModal from '../components/admin/ApplicationDecisionModal';
+import AdmissionCycleCloseControl from '../components/admin/AdmissionCycleCloseControl';
 import InterviewForm from '../components/interviews/InterviewForm';
 import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
@@ -231,6 +232,10 @@ const AdminDashboard: React.FC = () => {
   // Estados para gestión de postulaciones
   const [adminApplications, setAdminApplications] = useState<Application[]>([]);
   const [isLoadingAdminApplications, setIsLoadingAdminApplications] = useState(false);
+  const [activeAdmissionYear, setActiveAdmissionYear] = useState<number | null>(null);
+  const handleAdmissionCycleSnapshot = useCallback((snapshot: { academicYear: number }) => {
+    setActiveAdmissionYear(snapshot.academicYear);
+  }, []);
   const [applicationToast, setApplicationToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const [archiveDialog, setArchiveDialog] = useState<{
@@ -675,7 +680,13 @@ Esta acción:
         };
 
         // Usar applications del contexto si adminApplications está vacío
-        const applicationsToFilter = adminApplications.length > 0 ? adminApplications : applications;
+        const allApplications = adminApplications.length > 0 ? adminApplications : applications;
+        const applicationsToFilter = activeAdmissionYear == null
+          ? allApplications
+          : allApplications.filter((application) => {
+              const year = application.academicYear ?? application.applicationYear;
+              return year === activeAdmissionYear;
+            });
 
         const filteredApplications = statusFilter === 'all'
           ? applicationsToFilter
@@ -725,6 +736,9 @@ Esta acción:
 
             {/* Acciones */}
             <div className="flex flex-wrap justify-end gap-2">
+              <AdmissionCycleCloseControl
+                onSnapshot={handleAdmissionCycleSnapshot}
+              />
               {statusFilter !== 'all' && (
                 <button
                   type="button"

@@ -130,6 +130,8 @@ export interface Application {
         lastName: string;
     };
     documents?: any[];
+    academicYear?: number;
+    applicationYear?: number;
 }
 
 /** Filtros alineados a GET /v1/applications del BFF (page, size, status, gradeApplying, search). */

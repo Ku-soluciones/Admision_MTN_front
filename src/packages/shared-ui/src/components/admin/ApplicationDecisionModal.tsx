@@ -99,7 +99,7 @@ const DECISION_OPTIONS: Array<{
     value: 'APPROVED',
     label: 'Aprobar postulación',
     confirmationLabel: 'Confirmar aprobación',
-    description: 'La familia recibirá la confirmación de admisión.',
+    description: 'El resultado quedará preparado para el cierre general.',
     Icon: CheckCircle2,
     selectedClasses: 'border-emerald-500 bg-emerald-50 text-emerald-900',
     iconClasses: 'text-emerald-600'
@@ -117,7 +117,7 @@ const DECISION_OPTIONS: Array<{
     value: 'REJECTED',
     label: 'Rechazar postulación',
     confirmationLabel: 'Confirmar rechazo',
-    description: 'La familia será informada del cierre del proceso.',
+    description: 'El resultado quedará preparado para el cierre general.',
     Icon: XCircle,
     selectedClasses: 'border-red-500 bg-red-50 text-red-950',
     iconClasses: 'text-red-600'
@@ -183,19 +183,9 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const interviews = Array.isArray(application.interviews) ? application.interviews : [];
   const evaluations = Array.isArray(application.evaluations) ? application.evaluations : [];
   const studentName = formatPersonDisplayName(application.student, 'Sin nombre registrado');
-  const guardian = application.guardian
-    || application.father
-    || application.mother
-    || application.applicantUser;
+  const guardian = application.guardian;
   const guardianName = formatPersonDisplayName(guardian, 'Sin apoderado registrado');
-  const guardianEmail = [
-    application.applicantUser?.email,
-    application.guardian?.email,
-    application.father?.email,
-    application.mother?.email
-  ]
-    .map((email) => formatDisplayValue(email, ''))
-    .find(Boolean) || 'Sin email registrado';
+  const guardianEmail = formatDisplayValue(application.guardian?.email, 'Sin email registrado');
   const grade = formatDisplayValue(
     application.student?.gradeApplied
       || application.student?.gradeApplying
@@ -238,7 +228,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
       setResult({ decision, notification });
       onDecisionMade();
 
-      if (notification.sent === true) {
+      if (notification.sent === true || notification.status === 'DEFERRED_UNTIL_PROCESS_CLOSE') {
         closeTimerRef.current = setTimeout(handleClose, 2600);
       }
     } catch (error) {
@@ -306,6 +296,16 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                   </p>
                 </div>
               </div>
+            ) : result.notification.status === 'DEFERRED_UNTIL_PROCESS_CLOSE' ? (
+              <div className="mt-7 flex w-full items-start gap-3 rounded-xl bg-blue-50 p-4 text-left text-blue-950">
+                <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold">Resultado preparado para el cierre general</p>
+                  <p className="mt-1 text-sm text-blue-900">
+                    El apoderado recibirá el correo únicamente cuando un administrador termine el proceso completo.
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="mt-7 flex w-full items-start gap-3 rounded-xl bg-amber-50 p-4 text-left text-amber-950">
                 <MailWarning className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
@@ -321,7 +321,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
               </div>
             )}
 
-            {result.notification.sent !== true && (
+            {result.notification.sent !== true && result.notification.status !== 'DEFERRED_UNTIL_PROCESS_CLOSE' && (
               <button
                 type="button"
                 onClick={handleClose}
@@ -365,7 +365,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                 <div className="mb-4">
                   <h3 id="process-heading" className="text-lg font-bold text-gray-950">Resumen del proceso</h3>
                   <p className="mt-1 text-sm text-gray-600">
-                    Revisa los antecedentes antes de comunicar la decisión a la familia.
+                    Revisa los antecedentes antes de dejar preparado el resultado final.
                   </p>
                 </div>
 
@@ -514,8 +514,8 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                   )}
                   <p>
                     {guardianEmail === 'Sin email registrado'
-                      ? 'No hay un email visible. La decisión se guardará, pero el envío podría no realizarse.'
-                      : <>Al confirmar, se enviará un correo a <span className="break-all font-semibold">{guardianEmail}</span>.</>}
+                      ? 'El apoderado formal no tiene un correo visible. Podrás guardar la decisión, pero el cierre general quedará bloqueado hasta corregirlo.'
+                      : <>La decisión se guardará ahora. El correo a <span className="break-all font-semibold">{guardianEmail}</span> se liberará al cerrar el proceso completo.</>}
                   </p>
                 </div>
 
@@ -545,7 +545,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                     {loading ? (
                       <>
                         <LoaderCircle className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                        Guardando y enviando…
+                        Guardando decisión…
                       </>
                     ) : (
                       selectedOption?.confirmationLabel || 'Confirmar decisión'
