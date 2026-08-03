@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
         }
         setError("");
         // Simular envío (mailto)
-        window.location.href = `mailto:admision@mtn.cl?subject=Contacto%20desde%20web%20MTN&body=Nombre:%20${encodeURIComponent(nombre)}%0ACorreo:%20${encodeURIComponent(correo)}%0AMensaje:%20${encodeURIComponent(mensaje)}`;
+        window.location.href = `mailto:admisiones@mtn.cl?subject=Contacto%20desde%20web%20MTN&body=Nombre:%20${encodeURIComponent(nombre)}%0ACorreo:%20${encodeURIComponent(correo)}%0AMensaje:%20${encodeURIComponent(mensaje)}`;
         setEnviado(true);
     };
 
@@ -34,7 +34,7 @@ const Footer: React.FC = () => {
                             <p>Avda. Paseo Pie Andino 5894</p>
                             <p>Lo Barnechea</p>
                             <p>Tel: (56-2) 2 7500 900</p>
-                            <p>admision@mtn.cl</p>
+                            <p>admisiones@mtn.cl</p>
                         </address>
                     </div>
                     {/* Columna 2: Enlaces y Redes Sociales */}
@@ -92,7 +92,7 @@ const Footer: React.FC = () => {
                         ) : (
                             <div className="text-center py-8">
                                 <h2 className="text-2xl font-bold text-azul-monte-tabor mb-2">¡Mensaje preparado!</h2>
-                                <p className="text-gris-piedra mb-4">Se abrirá tu cliente de correo para enviar el mensaje a <b>admision@mtn.cl</b>.</p>
+                                <p className="text-gris-piedra mb-4">Se abrirá tu cliente de correo para enviar el mensaje a <b>admisiones@mtn.cl</b>.</p>
                                 <button className="mt-4 bg-dorado-nazaret text-azul-monte-tabor font-bold py-2 px-6 rounded hover:bg-amber-400 transition" onClick={() => { setShowModal(false); setEnviado(false); setNombre(""); setCorreo(""); setMensaje(""); setError(""); }}>Cerrar</button>
                             </div>
                         )}

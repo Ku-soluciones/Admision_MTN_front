@@ -112,10 +112,10 @@ export default function InterviewConfirmationResult() {
               Si necesita confirmar o reprogramar su entrevista, por favor contacte directamente a:
             </p>
             <a 
-              href="mailto:admision@mtn.cl" 
+              href="mailto:admisiones@mtn.cl" 
               className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              admision@mtn.cl
+              admisiones@mtn.cl
             </a>
           </div>
         );
