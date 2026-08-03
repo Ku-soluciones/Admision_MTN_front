@@ -47,3 +47,44 @@ export const formatDisplayValue = (value: unknown, fallback = '—'): string => 
 
 export const hasDisplayValue = (value: unknown): boolean =>
   nonEmptyText(value) !== null;
+
+const PROCESS_LABELS: Record<string, string> = {
+  FAMILY_INTERVIEW: 'Entrevista familiar',
+  CYCLE_DIRECTOR_INTERVIEW: 'Entrevista con dirección de ciclo',
+  CYCLE_DIRECTOR_REPORT: 'Informe de dirección de ciclo',
+  PSYCHOLOGICAL_INTERVIEW: 'Entrevista psicológica',
+  ENGLISH_EXAM: 'Examen de Inglés',
+  MATHEMATICS_EXAM: 'Examen de Matemática',
+  LANGUAGE_EXAM: 'Examen de Lenguaje',
+  FAMILY: 'Entrevista familiar',
+  CYCLE_DIRECTOR: 'Dirección de ciclo',
+  PSYCHOLOGICAL: 'Entrevista psicológica'
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente',
+  SCHEDULED: 'Agendada',
+  CONFIRMED: 'Confirmada',
+  IN_PROGRESS: 'En progreso',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+  APPROVED: 'Aprobada',
+  REJECTED: 'Rechazada'
+};
+
+const humanizeCode = (value: string): string => {
+  const normalized = value.trim().replace(/[_-]+/g, ' ').toLocaleLowerCase('es-CL');
+  return normalized ? normalized.charAt(0).toLocaleUpperCase('es-CL') + normalized.slice(1) : '';
+};
+
+export const formatProcessLabel = (value: unknown, fallback: string): string => {
+  const code = nonEmptyText(value);
+  if (!code) return fallback;
+  return PROCESS_LABELS[code.toUpperCase()] || humanizeCode(code);
+};
+
+export const formatProcessStatus = (value: unknown): string => {
+  const code = nonEmptyText(value);
+  if (!code) return 'Sin estado';
+  return STATUS_LABELS[code.toUpperCase()] || humanizeCode(code);
+};
