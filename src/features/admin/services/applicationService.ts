@@ -123,6 +123,9 @@ export interface Application {
         relationship: string;
     };
     status: string;
+    paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+    paymentRequired?: boolean;
+    paidAt?: string;
     submissionDate: string;
     applicantUser: {
         email: string;

@@ -6,7 +6,7 @@ import {
     FiUser, FiPhone, FiMail, FiMapPin, FiHome, FiBookOpen, FiCalendar,
     FiFileText, FiEdit, FiDownload, FiClock, FiCheckCircle, FiAlertCircle,
     FiUsers, FiBriefcase, FiHeart, FiStar, FiEye, FiCheck,
-    FiX, FiChevronRight, FiInfo, FiMessageSquare, FiAward, FiRefreshCw
+    FiX, FiChevronRight, FiInfo, FiMessageSquare, FiAward, FiRefreshCw, FiCreditCard
 } from 'react-icons/fi';
 import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
@@ -19,6 +19,7 @@ import { userService } from '../../services/userService';
 import { documentService } from '../../services/documentService';
 import { DocumentType } from '../../types/document';
 import { getApiBaseUrl } from '../../config/api.config';
+import { getPaymentStatusDisplay } from '../../../../packages/shared-ui/src/utils/paymentStatusDisplay';
 
 interface Postulante {
     id: number;
@@ -43,6 +44,9 @@ interface Postulante {
     colegioDestino: 'MALE' | 'FEMALE' | null;
     añoAcademico: string;
     estadoPostulacion: string;
+    estadoPago?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+    pagoRequerido?: boolean;
+    fechaPago?: string;
     fechaPostulacion: string;
     fechaActualizacion: string;
     nombreContactoPrincipal: string;
@@ -861,6 +865,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const address = studentData.address || postulante.direccion;
         const currentSchool = studentData.currentSchool || postulante.colegioActual;
         const submissionDate = fullApplication?.submissionDate || postulante.fechaPostulacion;
+        const payment = getPaymentStatusDisplay(
+            fullApplication?.paymentStatus ?? postulante.estadoPago,
+            fullApplication?.paymentRequired ?? postulante.pagoRequerido,
+            fullApplication?.paidAt ?? postulante.fechaPago
+        );
 
 
         // Helper function to format dates safely
@@ -883,12 +892,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         <div className="space-y-6">
             {/* Header con foto y datos básicos */}
             <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg">
-                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
+                <div className="w-20 h-20 shrink-0 bg-gray-200 rounded-full flex items-center justify-center">
                     <FiUser className="w-8 h-8 text-gray-400" />
                 </div>
-                <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900">{postulante.nombreCompleto}</h2>
-                    <div className="flex items-center gap-4 mt-2">
+                <div className="min-w-0 flex-1">
+                    <h2 className="break-words text-xl font-bold text-gray-900 sm:text-2xl">{postulante.nombreCompleto}</h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                         <Badge variant={getStatusVariant(postulante.estadoPostulacion)} size="lg">
                             {getStatusText(postulante.estadoPostulacion)}
                         </Badge>
@@ -1039,6 +1048,20 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                             <Badge variant={postulante.entrevistaProgramada ? 'purple' : 'gray'} size="sm">
                                 {postulante.entrevistaProgramada ? 'Programada' : 'No programada'}
                             </Badge>
+                        </div>
+                        <div className="flex flex-col gap-2 border-t border-gray-200 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                            <span className="flex items-center gap-2 text-gray-600">
+                                <FiCreditCard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                Pago de admisión:
+                            </span>
+                            <div className="min-w-0 text-left sm:text-right">
+                                <Badge variant={payment.tone} size="sm">
+                                    {payment.label}
+                                </Badge>
+                                <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
+                                    {payment.detail}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

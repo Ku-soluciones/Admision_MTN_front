@@ -381,6 +381,9 @@ const AdminDashboard: React.FC = () => {
       
       // Estado de postulación
       estadoPostulacion: app.status,
+      estadoPago: app.paymentStatus,
+      pagoRequerido: app.paymentRequired,
+      fechaPago: app.paidAt,
       fechaPostulacion: app.submissionDate,
       fechaActualizacion: app.submissionDate,
       
