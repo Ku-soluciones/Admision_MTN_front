@@ -145,6 +145,8 @@ export interface PaymentCheckoutResponse {
     currency?: string;
     expiresAt?: string;
     providerInvoiceId?: string;
+    providerStatus?: string;
+    lastStatusCheckedAt?: string;
 }
 
 class ApplicationService {

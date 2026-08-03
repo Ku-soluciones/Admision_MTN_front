@@ -24,6 +24,16 @@ const formatPaidDate = (paidAt: unknown): string | null => {
   }).format(date);
 };
 
+export const formatPaymentStatusCheckedTime = (checkedAt: unknown): string | null => {
+  if (typeof checkedAt !== 'string' || !checkedAt.trim()) return null;
+  const date = new Date(checkedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
 export const getPaymentStatusDisplay = (
   status: unknown,
   paymentRequired: unknown,
