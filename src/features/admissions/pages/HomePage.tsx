@@ -78,11 +78,8 @@ const HomePage: React.FC = () => {
                                 key={index}
                                 className="bg-blanco-pureza p-8 rounded-2xl border border-gray-200 text-center"
                                 style={{
-                                    transition: 'transform 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms cubic-bezier(0.23,1,0.32,1)',
                                     animation: `mtn-fade-in 280ms ease-out ${index * 60}ms both`,
                                 }}
-                                onMouseEnter={(e) => { if (window.matchMedia('(hover:hover)').matches) { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.09)'; } }}
-                                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                             >
                                 <div className="flex justify-center mb-4">{step.icon}</div>
                                 <h3 className="text-lg font-bold text-azul-monte-tabor mb-3">{step.title}</h3>
@@ -143,8 +140,8 @@ const HomePage: React.FC = () => {
                                             <div className="flex-1 pr-10 text-right">
                                                 {index % 2 === 0 ? (
                                                     <>
-                                                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${status === 'future' ? 'text-gray-400' : 'text-dorado-nazaret'}`}>{item.period}</p>
-                                                        <p className={`font-bold text-base ${status === 'future' ? 'text-gray-400' : 'text-azul-monte-tabor'}`}>{item.title}</p>
+                                                        <p className="text-xs font-bold uppercase tracking-wider mb-1 text-dorado-nazaret">{item.period}</p>
+                                                        <p className="font-bold text-base text-azul-monte-tabor">{item.title}</p>
                                                     </>
                                                 ) : (
                                                     <p className="text-gris-piedra text-sm">{item.description}</p>
@@ -158,8 +155,8 @@ const HomePage: React.FC = () => {
                                                     <p className="text-gris-piedra text-sm">{item.description}</p>
                                                 ) : (
                                                     <>
-                                                        <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${status === 'future' ? 'text-gray-400' : 'text-dorado-nazaret'}`}>{item.period}</p>
-                                                        <p className={`font-bold text-base ${status === 'future' ? 'text-gray-400' : 'text-azul-monte-tabor'}`}>{item.title}</p>
+                                                        <p className="text-xs font-bold uppercase tracking-wider mb-1 text-dorado-nazaret">{item.period}</p>
+                                                        <p className="font-bold text-base text-azul-monte-tabor">{item.title}</p>
                                                     </>
                                                 )}
                                             </div>
@@ -176,8 +173,8 @@ const HomePage: React.FC = () => {
                                         <div key={item.id} className={`flex items-start gap-4 p-4 rounded-lg border-l-4 ${isCurrent ? 'border-dorado-nazaret bg-amber-50' : status === 'future' ? 'border-gray-300 bg-gray-100' : 'border-azul-monte-tabor bg-blanco-pureza'}`}>
                                             <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${isCurrent ? 'bg-dorado-nazaret' : status === 'future' ? 'bg-gray-300' : 'bg-azul-monte-tabor'}`}></div>
                                             <div>
-                                                <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${status === 'future' ? 'text-gray-400' : 'text-dorado-nazaret'}`}>{item.period}</p>
-                                                <p className={`font-bold text-sm mb-1 ${status === 'future' ? 'text-gray-400' : 'text-azul-monte-tabor'}`}>{item.title}</p>
+                                                <p className="text-xs font-bold uppercase tracking-wider mb-1 text-dorado-nazaret">{item.period}</p>
+                                                <p className="font-bold text-sm mb-1 text-azul-monte-tabor">{item.title}</p>
                                                 <p className="text-gris-piedra text-sm">{item.description}</p>
                                             </div>
                                         </div>
@@ -198,8 +195,8 @@ const HomePage: React.FC = () => {
                     </p>
                     <p className="text-gris-piedra text-base">
                         Para consultas, envía un correo a{' '}
-                        <a href="mailto:admision@mtn.cl" className="inline-flex min-h-11 items-center font-semibold text-azul-monte-tabor underline underline-offset-4 transition-colors duration-150 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:ring-offset-2 active:text-blue-800">
-                            admision@mtn.cl
+                        <a href="mailto:admisiones@mtn.cl" className="inline-flex min-h-11 items-center font-semibold text-azul-monte-tabor underline underline-offset-4 transition-colors duration-150 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:ring-offset-2 active:text-blue-800">
+                            admisiones@mtn.cl
                         </a>.
                     </p>
                 </div>

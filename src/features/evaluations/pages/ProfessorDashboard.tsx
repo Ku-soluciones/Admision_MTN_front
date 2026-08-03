@@ -1683,34 +1683,6 @@ const ProfessorDashboard: React.FC = () => {
                     </div>
                 </section>
 
-                {/* Acciones */}
-                <div className="flex flex-wrap justify-end gap-2">
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => window.print()}
-                    >
-                        Imprimir Reporte
-                    </Button>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                            const csvData = evaluations.map(e =>
-                                `${e.studentName},${e.studentGrade},${getEvaluationTypeLabel(e.evaluationType)},${e.status},${e.score || 'N/A'}`
-                            ).join('\n');
-                            const blob = new Blob([`Estudiante,Grado,Evaluación,Estado,Puntaje\n${csvData}`], { type: 'text/csv' });
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `evaluaciones_${currentProfessor?.firstName}_${new Date().toISOString().split('T')[0]}.csv`;
-                            a.click();
-                        }}
-                    >
-                        Exportar CSV
-                    </Button>
-                </div>
-
                 {/* Resumen General */}
                 <Card className="p-6">
                     <h3 className="text-base font-semibold text-gray-900 mb-4">Resumen General</h3>
