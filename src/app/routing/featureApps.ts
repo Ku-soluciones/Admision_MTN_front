@@ -9,4 +9,5 @@ export const featureApps = {
   admin: lazy(() => import('../../features/admin/App')),
   reports: lazy(() => import('../../features/reports/App')),
   coordinator: lazy(() => import('../../features/coordinator/App')),
+  prekinder: lazy(() => import('../../features/prekinder/App')),
 };

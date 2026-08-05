@@ -32,6 +32,7 @@ const isEvaluationRoute = (pathname: string) =>
 const isAdminRoute = (pathname: string) => pathname === '/login' || pathname.startsWith('/admin');
 
 export const featureRoutes: FeatureRoute[] = [
+  { app: featureApps.prekinder, matches: (pathname) => pathname.startsWith('/prekinder') },
   { app: featureApps.admissions, matches: isRootOrAdmissions },
   { app: featureApps.guardian, matches: isGuardianRoute },
   { app: featureApps.student, matches: isStudentRoute },

@@ -8,54 +8,15 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Sistema de Admisión MTN</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                colors: {
-                    'azul-monte-tabor': '#1e3a8a',
-                    'dorado-nazaret': '#f59e0b',
-                    'blanco-pureza': '#ffffff',
-                    'gris-piedra': '#6b7280',
-                    'verde-esperanza': '#059669',
-                    'rojo-sagrado': '#dc2626',
-                },
-                fontFamily: {
-                    sans: ['Montserrat', 'sans-serif'],
-                    serif: ['Lato', 'sans-serif'],
-                }
-            }
-        }
-    }
-    </script>
 </head>
 <body class="bg-gray-100">
     <!-- Compatibilidad con URLs históricas de HashRouter.
          Se ejecuta antes de React y normaliza tanto /#/admin como
          /login#/admin a /admin, preservando query params antiguos. -->
-    <script>
-      (function () {
-        if (!window.location.hash || window.location.hash.indexOf('#/') !== 0) return;
-
-        var legacyRoute = new URL(window.location.hash.slice(1), window.location.origin);
-        var oldParams = new URLSearchParams(window.location.search);
-        var routeParams = new URLSearchParams(legacyRoute.search);
-        oldParams.forEach(function (value, key) {
-          if (!routeParams.has(key)) routeParams.append(key, value);
-        });
-
-        var query = routeParams.toString();
-        window.history.replaceState(
-          null,
-          '',
-          legacyRoute.pathname + (query ? '?' + query : '')
-        );
-      })();
-    </script>
+    <script src="/legacy-route-normalizer.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 </body>
