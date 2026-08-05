@@ -469,7 +469,12 @@ class ApplicationService {
                 studentAddress: data.studentAddress || '',
                 studentCurrentSchool: data.currentSchool || '',
                 studentGender: data.schoolApplied === 'MALE' ? 'MALE' : data.schoolApplied === 'FEMALE' ? 'FEMALE' : '',
+                // Mantener la clave legacy durante la transición y enviar también
+                // la forma canónica que persiste el BFF.
                 studentAdmissionPreference: data.admissionPreference || 'NINGUNA',
+                admissionPreference: data.admissionPreference || 'NINGUNA',
+                isAlumniChild: data.admissionPreference === 'HIJO_EX_ALUMNO',
+                isEmployeeChild: data.admissionPreference === 'HIJO_FUNCIONARIO',
                 studentPais: 'Chile',
                 studentRegion: '',
                 studentComuna: '',
