@@ -1127,6 +1127,8 @@ const ApplicationForm: React.FC = () => {
                                 currentSchool: data.currentSchool,
                                 additionalNotes: data.additionalNotes,
                                 admissionPreference: data.admissionPreference,
+                                isAlumniChild: data.admissionPreference === 'HIJO_EX_ALUMNO',
+                                isEmployeeChild: data.admissionPreference === 'HIJO_FUNCIONARIO',
                                 hasSiblingsInSchool: data.hasSiblingsInSchool === true,
                                 siblingsInSchoolDetails: data.siblingsInSchoolDetails || ''
                             },
@@ -1647,7 +1649,13 @@ const ApplicationForm: React.FC = () => {
                                     ]}
                                     isRequired
                                     value={authData.guardianType}
-                                    onChange={(e) => updateAuthField('guardianType', e.target.value)}
+                                    onChange={(e) => {
+                                        const guardianType = e.target.value;
+                                        updateAuthField('guardianType', guardianType);
+                                        updateField('admissionPreference', guardianType === 'ex-alumno'
+                                            ? 'HIJO_EX_ALUMNO'
+                                            : guardianType === 'funcionario' ? 'HIJO_FUNCIONARIO' : 'NINGUNA');
+                                    }}
                                 />
 
                                 <EmailVerification
