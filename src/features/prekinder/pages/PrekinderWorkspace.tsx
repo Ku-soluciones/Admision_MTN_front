@@ -118,12 +118,12 @@ export function PrekinderWorkspace() {
       <header className="border-b border-blue-950/20 bg-[#102b57] text-white">
         <div className="mx-auto flex min-h-20 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-4">
-            <button onClick={() => navigate('/admin')} className="rounded-lg p-2 text-blue-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300" aria-label="Volver a administración">
+            <button onClick={() => navigate('/prekinder')} className="rounded-lg p-2 text-blue-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300" aria-label="Volver a postulaciones Prekínder">
               <ArrowLeft size={20} />
             </button>
             <div className="min-w-0">
               <h1 className="truncate text-base font-bold tracking-[-0.02em] sm:text-2xl">Admisión Prekínder 2027</h1>
-              <p className="mt-0.5 truncate text-sm text-blue-100">Mesa de evaluación colaborativa</p>
+              <p className="mt-0.5 truncate text-sm text-blue-100">Evaluaciones · volver a postulaciones con la flecha</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

@@ -93,6 +93,32 @@ export type Evaluation = {
   version: number;
 };
 
+export type AdmissionProcess = {
+  processId: string;
+  academicYear: number;
+  name: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
+  startsAt: string | null;
+  endsAt: string | null;
+  version: number;
+  applicationCount: number;
+  acceptingApplications: boolean;
+};
+
+export type PrekinderApplication = {
+  applicationId: string;
+  applicantId: string;
+  processId: string;
+  status: string;
+  identity: {
+    rut: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName: string;
+  };
+  createdAt: string;
+};
+
 export type Comment = {
   commentId: string;
   evaluationId: string;
@@ -107,6 +133,22 @@ export type Comment = {
 };
 
 export const prekinderApi = {
+  processes: () => apiRequest<AdmissionProcess[]>('/v1/prekinder/processes'),
+  createProcess: (academicYear: number, name: string) =>
+    apiRequest<AdmissionProcess>('/v1/prekinder/processes', {
+      method: 'POST', body: JSON.stringify({ academicYear, name }),
+    }),
+  publishProcess: (processId: string, startsAt: string, endsAt: string) =>
+    apiRequest<AdmissionProcess>(`/v1/prekinder/processes/${processId}/publication`, {
+      method: 'PUT', body: JSON.stringify({ startsAt, endsAt }),
+    }),
+  applications: (processId: string) =>
+    apiRequest<PrekinderApplication[]>(`/v1/prekinder/applications?processId=${encodeURIComponent(processId)}`),
+  createApplication: (input: {
+    processId: string; rut: string; firstName: string; paternalLastName: string; maternalLastName: string;
+  }) => apiRequest<PrekinderApplication>('/v1/prekinder/applications', {
+    method: 'POST', body: JSON.stringify(input),
+  }),
   evaluations: () => apiRequest<Evaluation[]>('/v1/prekinder/evaluations'),
   comments: (evaluationId: string) => apiRequest<Comment[]>(`/v1/prekinder/evaluations/${evaluationId}/comments`),
   ticket: () => apiRequest<{ ticket: string; expiresInSeconds: number }>('/v1/prekinder/realtime/tickets', { method: 'POST' }),
