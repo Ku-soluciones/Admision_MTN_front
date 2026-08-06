@@ -15,6 +15,8 @@ export interface ApplicationRequest {
     schoolApplied: string; // "MALE" para niños, "FEMALE" para niñas
     currentSchool?: string;
     additionalNotes?: string;
+    hasSiblingsInSchool?: boolean;
+    siblingsInSchoolDetails?: string;
 
     // Datos del padre
     parent1Name: string;
@@ -479,6 +481,10 @@ class ApplicationService {
                 studentRegion: '',
                 studentComuna: '',
                 studentAdditionalNotes: data.additionalNotes || '',
+                hasSiblingsInSchool: data.hasSiblingsInSchool === true,
+                siblingsInSchoolDetails: data.hasSiblingsInSchool === true
+                    ? data.siblingsInSchoolDetails || ''
+                    : '',
 
                 // Father data (parent1)
                 parent1Name: data.parent1Name || '',
