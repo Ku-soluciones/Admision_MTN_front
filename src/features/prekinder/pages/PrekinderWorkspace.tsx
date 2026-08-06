@@ -114,8 +114,8 @@ export function PrekinderWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f1e9] font-sans text-slate-900">
-      <header className="border-b border-blue-950/20 bg-[#102b57] text-white">
+    <div className="min-h-screen bg-gray-50 font-sans text-slate-900">
+      <header className="border-b border-blue-950/20 bg-azul-monte-tabor text-blanco-pureza">
         <div className="mx-auto flex min-h-20 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-4">
             <button onClick={() => navigate('/prekinder')} className="rounded-lg p-2 text-blue-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300" aria-label="Volver a postulaciones Prekínder">
@@ -204,7 +204,7 @@ export function PrekinderWorkspace() {
                 </section>
               </div>
 
-              <aside className="self-start overflow-hidden rounded-2xl bg-[#fffdf8] shadow-[0_12px_35px_rgba(15,23,42,0.08)] xl:sticky xl:top-6">
+              <aside className="self-start overflow-hidden rounded-2xl bg-blanco-pureza shadow-[0_12px_35px_rgba(15,23,42,0.08)] xl:sticky xl:top-6">
                 <div className="border-b border-amber-200 bg-amber-50 px-5 py-4">
                   <div className="flex items-center gap-2 font-bold text-amber-950"><Send size={18} /> Añadir comentario</div>
                   <p className="mt-1 text-xs text-amber-900">Se confirma sólo después del commit en PostgreSQL.</p>

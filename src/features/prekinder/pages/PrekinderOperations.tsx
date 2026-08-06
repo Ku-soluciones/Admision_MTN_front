@@ -1,0 +1,1529 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  ClipboardCheck,
+  Clock3,
+  DoorOpen,
+  FileCheck2,
+  LayoutDashboard,
+  Menu,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+  UsersRound,
+  X,
+} from "lucide-react";
+import {
+  ApiError,
+  prekinderApi,
+  type AdmissionProcess,
+  type DashboardMetrics,
+  type EvaluationGroup,
+  type FlowApplication,
+  type Professional,
+  type Room,
+  type Wave,
+} from "../services/api";
+import { PrekinderBrand } from "../components/PrekinderBrand";
+
+const sections = [
+  ["Resumen", LayoutDashboard],
+  ["Oleadas", Activity],
+  ["Postulaciones", Users],
+  ["Jornadas", CalendarDays],
+  ["Profesionales", UsersRound],
+  ["Pautas", ClipboardCheck],
+  ["Decisiones", FileCheck2],
+  ["Auditoría", ShieldCheck],
+] as const;
+
+const waveNames: Record<string, string> = {
+  SIBLINGS: "Hermanos de alumnos",
+  STAFF_OR_ALUMNI: "Funcionarios y exalumnos",
+  NEW_FAMILIES: "Nuevas familias",
+};
+
+const statusTone: Record<string, string> = {
+  VERIFIED: "bg-emerald-50 text-emerald-800",
+  PENDING: "bg-amber-50 text-amber-800",
+  REJECTED: "bg-red-50 text-red-800",
+  CONFIRMED: "bg-blue-50 text-blue-800",
+  COMPLETED: "bg-emerald-50 text-emerald-800",
+  DRAFT: "bg-slate-100 text-slate-700",
+};
+const statusLabel: Record<string, string> = {
+  VERIFIED: "Verificada",
+  PENDING: "Pendiente",
+  REJECTED: "Rechazada",
+  CONFIRMED: "Confirmado",
+  COMPLETED: "Completado",
+  DRAFT: "Borrador",
+  CANCELLED: "Cancelado",
+  PUBLISHED: "Publicada",
+  CLOSED: "Cerrada",
+};
+
+function today() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+  }).format(new Date());
+}
+function localInput(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
+function fullName(app: FlowApplication) {
+  return [
+    app.identity.firstName,
+    app.identity.paternalLastName,
+    app.identity.maternalLastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+function formatTime(iso: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Santiago",
+  }).format(new Date(iso));
+}
+
+export function PrekinderOperations() {
+  const [section, setSection] = useState("Resumen");
+  const [mobileNav, setMobileNav] = useState(false);
+  const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
+  const [processId, setProcessId] = useState("");
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [waves, setWaves] = useState<Wave[]>([]);
+  const [applications, setApplications] = useState<FlowApplication[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [groups, setGroups] = useState<EvaluationGroup[]>([]);
+  const [date, setDate] = useState(today());
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const selected =
+    groups.find((group) => group.groupId === selectedGroup) ?? null;
+  const eligible = applications.filter(
+    (app) => app.eligibilityStatus === "VERIFIED",
+  );
+
+  async function loadBase() {
+    setError("");
+    try {
+      const next = await prekinderApi.processes();
+      setProcesses(next);
+      setProcessId((current) => current || next[0]?.processId || "");
+      const people = await prekinderApi.professionals();
+      setProfessionals(people);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos cargar Prekínder.",
+      );
+    }
+  }
+
+  async function loadProcess(id = processId, day = date) {
+    if (!id) return;
+    setBusy(true);
+    setError("");
+    try {
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups] =
+        await Promise.all([
+          prekinderApi.dashboard(id),
+          prekinderApi.waves(id),
+          prekinderApi.flowApplications(id),
+          prekinderApi.rooms(id),
+          prekinderApi.groups(id, day),
+        ]);
+      setMetrics(nextMetrics);
+      setWaves(nextWaves);
+      setApplications(nextApplications);
+      setRooms(nextRooms);
+      setGroups(nextGroups);
+      setSelectedGroup((current) =>
+        nextGroups.some((group) => group.groupId === current) ? current : null,
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos actualizar la jornada.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadBase();
+  }, []);
+  useEffect(() => {
+    if (processId) void loadProcess(processId, date);
+  }, [processId, date]);
+  useEffect(() => {
+    if (!mobileNav) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNav(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [mobileNav]);
+
+  async function action(work: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await work();
+      setMessage(success);
+      await loadProcess();
+    } catch (reason) {
+      setError(
+        reason instanceof ApiError
+          ? reason.message
+          : "No pudimos guardar el cambio.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="pk-page">
+      <header className="pk-topbar sticky top-0 z-30">
+        <div className="flex h-16 items-center gap-4 px-4 lg:px-7">
+          <button
+            className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 lg:hidden"
+            onClick={() => setMobileNav(true)}
+            aria-label="Abrir navegación"
+          >
+            <Menu size={20} />
+          </button>
+          <PrekinderBrand
+            title="Admisión Prekínder"
+            context="Centro de jornada"
+            compactOnMobile
+          />
+          <div className="ml-auto flex items-center gap-2">
+            <select
+              className="min-h-11 max-w-[220px] rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
+              value={processId}
+              onChange={(event) => setProcessId(event.target.value)}
+              aria-label="Proceso de admisión"
+            >
+              {processes.map((process) => (
+                <option key={process.processId} value={process.processId}>
+                  {process.name}
+                </option>
+              ))}
+              {!processes.length && <option value="">Sin proceso</option>}
+            </select>
+            <button
+              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => void loadProcess()}
+              disabled={busy}
+              aria-label="Actualizar"
+            >
+              <RefreshCw size={18} className={busy ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        <aside className="hidden min-h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
+          <Navigation section={section} onSelect={setSection} />
+        </aside>
+        {mobileNav && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/40 lg:hidden"
+            onClick={() => setMobileNav(false)}
+          >
+            <aside
+              className="h-full w-72 bg-white p-4"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navegación de Prekínder"
+            >
+              <button
+                className="mb-4 ml-auto grid min-h-11 min-w-11 place-items-center"
+                onClick={() => setMobileNav(false)}
+                aria-label="Cerrar navegación"
+              >
+                <X />
+              </button>
+              <Navigation
+                section={section}
+                onSelect={(next) => {
+                  setSection(next);
+                  setMobileNav(false);
+                }}
+              />
+            </aside>
+          </div>
+        )}
+
+        <main className="min-w-0 flex-1 p-4 lg:p-7">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="pk-section-title">
+                {section}
+              </h1>
+            </div>
+            {section === "Jornadas" && (
+              <label className="text-xs font-bold text-slate-600">
+                Fecha
+                <input
+                  className="mt-1 block min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                  type="date"
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                />
+              </label>
+            )}
+          </div>
+          {error && (
+            <div
+              className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900"
+              role="alert"
+            >
+              <span>{error}</span>
+              <button
+                className="min-h-11 rounded-lg px-3 font-extrabold underline underline-offset-4"
+                onClick={() => void loadProcess()}
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+          {message && (
+            <div
+              className="mb-5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"
+              role="status"
+            >
+              <Check size={18} />
+              {message}
+            </div>
+          )}
+
+          {section === "Resumen" && (
+            <Overview
+              metrics={metrics}
+              waves={waves}
+              groups={groups}
+              applications={applications}
+              onGo={setSection}
+            />
+          )}
+          {section === "Oleadas" && (
+            <Waves
+              waves={waves}
+              busy={busy}
+              onSave={(wave, opensAt, closesAt, status) =>
+                action(
+                  () =>
+                    prekinderApi.configureWave(wave.waveId, {
+                      opensAt,
+                      closesAt,
+                      status,
+                      expectedVersion: wave.version,
+                    }),
+                  "Oleada actualizada.",
+                )
+              }
+            />
+          )}
+          {section === "Postulaciones" && (
+            <Applications
+              applications={applications}
+              busy={busy}
+              onReview={(app, decision, reason) =>
+                action(
+                  () =>
+                    prekinderApi.reviewEligibility(
+                      app.applicationId,
+                      decision,
+                      reason,
+                      app.declarationVersion,
+                    ),
+                  decision === "VERIFIED"
+                    ? "Elegibilidad verificada."
+                    : "Declaración rechazada e invalidada.",
+                )
+              }
+            />
+          )}
+          {section === "Jornadas" && (
+            <DayCenter
+              processId={processId}
+              date={date}
+              rooms={rooms}
+              groups={groups}
+              applications={eligible}
+              professionals={professionals}
+              selected={selected}
+              busy={busy}
+              onSelect={setSelectedGroup}
+              onAction={action}
+            />
+          )}
+          {section === "Profesionales" && (
+            <Professionals
+              professionals={professionals}
+              busy={busy}
+              onSave={(input) =>
+                action(
+                  () => prekinderApi.saveProfessional(input),
+                  "Perfil profesional guardado.",
+                )
+              }
+            />
+          )}
+          {section === "Pautas" && <Rubrics />}
+          {section === "Decisiones" && (
+            <Decisions
+              processId={processId}
+              applications={applications}
+              busy={busy}
+              onAction={action}
+            />
+          )}
+          {section === "Auditoría" && <AuditNotice />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Navigation({
+  section,
+  onSelect,
+}: {
+  section: string;
+  onSelect: (section: string) => void;
+}) {
+  return (
+    <nav aria-label="Secciones de Prekínder" className="space-y-1">
+      {sections.map(([label, Icon]) => (
+        <button
+          key={label}
+          onClick={() => onSelect(label)}
+          aria-current={section === label ? "page" : undefined}
+          className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-bold transition-colors ${section === label ? "bg-azul-monte-tabor text-blanco-pureza" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
+        >
+          <Icon size={18} />
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function Overview({
+  metrics,
+  waves,
+  groups,
+  applications,
+  onGo,
+}: {
+  metrics: DashboardMetrics | null;
+  waves: Wave[];
+  groups: EvaluationGroup[];
+  applications: FlowApplication[];
+  onGo: (value: string) => void;
+}) {
+  const cards = [
+    ["Postulaciones", metrics?.applications ?? 0, "Postulaciones"],
+    [
+      "Elegibilidad pendiente",
+      metrics?.eligibilityPending ?? 0,
+      "Postulaciones",
+    ],
+    ["Grupos de hoy", metrics?.groupsToday ?? 0, "Jornadas"],
+    ["Informes pendientes", metrics?.reportsPending ?? 0, "Jornadas"],
+    ["Decisiones listas", metrics?.decisionsReady ?? 0, "Decisiones"],
+  ] as const;
+  const active = waves.find((wave) => wave.active);
+  return (
+    <div className="space-y-6">
+      <section className="pk-panel grid grid-cols-2 overflow-hidden xl:grid-cols-5">
+        {cards.map(([label, value, target]) => (
+          <button
+            key={label}
+            onClick={() => onGo(target)}
+            className="group min-h-24 border-b border-r border-slate-200 p-4 text-left transition-colors hover:bg-blue-50/60 sm:p-5 xl:min-h-28 xl:border-b-0 [&:nth-child(even)]:border-r-0 xl:[&:nth-child(even)]:border-r xl:[&:last-child]:border-r-0"
+          >
+            <p className="text-sm font-semibold text-slate-600">{label}</p>
+            <p className="mt-2 flex items-end justify-between text-3xl font-black text-azul-monte-tabor sm:mt-3">
+              {value}
+              <ChevronRight
+                size={17}
+                className="mb-1 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-800"
+              />
+            </p>
+          </button>
+        ))}
+      </section>
+      <section className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+        <div className="pk-panel p-6">
+          <h2 className="text-lg font-extrabold">Estado operativo</h2>
+          <div className="mt-5 divide-y divide-slate-100">
+            {groups.length ? (
+              groups.slice(0, 5).map((group) => (
+                <button
+                  key={group.groupId}
+                  onClick={() => onGo("Jornadas")}
+                  className="flex min-h-16 w-full items-center gap-4 text-left"
+                >
+                  <span className="w-14 text-sm font-black text-azul-monte-tabor">
+                    {formatTime(group.startsAt)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-bold">
+                      {group.code} · {group.roomName}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {group.memberIds.length}/{group.capacity} niños ·{" "}
+                      {group.evaluatorIds.length}/{group.requiredEvaluators}{" "}
+                      profesionales
+                    </span>
+                  </span>
+                  <ChevronRight size={18} />
+                </button>
+              ))
+            ) : (
+              <p className="py-10 text-center text-sm text-slate-500">
+                No hay grupos para hoy.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-[14px] bg-azul-monte-tabor p-6 text-blanco-pureza shadow-[0_16px_36px_rgba(30,58,138,0.16)]">
+          <p className="text-sm font-bold text-blue-200">Oleada vigente</p>
+          <h2 className="mt-3 text-2xl font-black">
+            {active ? waveNames[active.waveType] : "Sin oleada abierta"}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-blue-100">
+            {active
+              ? `Recibiendo postulaciones hasta ${new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Santiago" }).format(new Date(active.closesAt!))}.`
+              : "Publica una ventana para habilitar postulaciones."}
+          </p>
+          <p className="mt-8 text-4xl font-black">{applications.length}</p>
+          <p className="text-sm text-blue-200">postulaciones registradas</p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Waves({
+  waves,
+  busy,
+  onSave,
+}: {
+  waves: Wave[];
+  busy: boolean;
+  onSave: (
+    wave: Wave,
+    opensAt: string,
+    closesAt: string,
+    status: Wave["status"],
+  ) => void;
+}) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-3">
+      {waves.map((wave) => (
+        <WaveEditor key={wave.waveId} wave={wave} busy={busy} onSave={onSave} />
+      ))}
+    </div>
+  );
+}
+function WaveEditor({
+  wave,
+  busy,
+  onSave,
+}: {
+  wave: Wave;
+  busy: boolean;
+  onSave: (
+    wave: Wave,
+    opensAt: string,
+    closesAt: string,
+    status: Wave["status"],
+  ) => void;
+}) {
+  const [opensAt, setOpensAt] = useState(localInput(wave.opensAt));
+  const [closesAt, setClosesAt] = useState(localInput(wave.closesAt));
+  const [status, setStatus] = useState(wave.status);
+  useEffect(() => {
+    setOpensAt(localInput(wave.opensAt));
+    setClosesAt(localInput(wave.closesAt));
+    setStatus(wave.status);
+  }, [wave]);
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 font-black text-blue-900">
+          {wave.position}
+        </span>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-extrabold ${wave.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}
+        >
+          {wave.active ? "Vigente" : statusLabel[wave.status] || wave.status}
+        </span>
+      </div>
+      <h2 className="mt-5 text-lg font-black">{waveNames[wave.waveType]}</h2>
+      <div className="mt-5 space-y-4">
+        <Field label="Apertura">
+          <input
+            className="control"
+            type="datetime-local"
+            value={opensAt}
+            onChange={(e) => setOpensAt(e.target.value)}
+          />
+        </Field>
+        <Field label="Cierre">
+          <input
+            className="control"
+            type="datetime-local"
+            value={closesAt}
+            onChange={(e) => setClosesAt(e.target.value)}
+          />
+        </Field>
+        <Field label="Estado">
+          <select
+            className="control"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as Wave["status"])}
+          >
+            <option value="DRAFT">Borrador</option>
+            <option value="PUBLISHED">Publicada</option>
+            <option value="CLOSED">Cerrada</option>
+            <option value="CANCELLED">Cancelada</option>
+          </select>
+        </Field>
+        <button
+          disabled={busy || !opensAt || !closesAt}
+          onClick={() =>
+            onSave(
+              wave,
+              new Date(opensAt).toISOString(),
+              new Date(closesAt).toISOString(),
+              status,
+            )
+          }
+          className="primary w-full"
+        >
+          Guardar configuración
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function Applications({
+  applications,
+  busy,
+  onReview,
+}: {
+  applications: FlowApplication[];
+  busy: boolean;
+  onReview: (
+    app: FlowApplication,
+    decision: "VERIFIED" | "REJECTED",
+    reason: string,
+  ) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = applications.filter(
+    (app) =>
+      fullName(app).toLowerCase().includes(query.toLowerCase()) ||
+      app.identity.rut.includes(query),
+  );
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 p-5">
+        <div>
+          <h2 className="font-black">Revisión de elegibilidad</h2>
+          <p className="text-xs text-slate-500">
+            Una declaración rechazada no cambia de oleada.
+          </p>
+        </div>
+        <input
+          className="control ml-auto max-w-xs"
+          placeholder="Buscar por nombre o RUT"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      <div className="divide-y divide-slate-100">
+        {filtered.map((app) => (
+          <ApplicationRow
+            key={app.applicationId}
+            app={app}
+            busy={busy}
+            onReview={onReview}
+          />
+        ))}
+        {!filtered.length && (
+          <p className="p-10 text-center text-sm text-slate-500">
+            No hay postulaciones que coincidan.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+function ApplicationRow({
+  app,
+  busy,
+  onReview,
+}: {
+  app: FlowApplication;
+  busy: boolean;
+  onReview: (
+    app: FlowApplication,
+    decision: "VERIFIED" | "REJECTED",
+    reason: string,
+  ) => void;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <div className="grid gap-4 p-5 xl:grid-cols-[1.4fr_.8fr_1fr_auto] xl:items-center">
+      <div>
+        <p className="font-extrabold">{fullName(app)}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          RUT {app.identity.rut} · Nacimiento{" "}
+          {new Intl.DateTimeFormat("es-CL").format(
+            new Date(`${app.identity.birthDate}T12:00:00`),
+          )}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+          Origen
+        </p>
+        <p className="mt-1 text-sm font-semibold">
+          {waveNames[app.eligibilityCategory]}
+        </p>
+      </div>
+      <span
+        className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${statusTone[app.eligibilityStatus] || statusTone.DRAFT}`}
+      >
+        {statusLabel[app.eligibilityStatus] || app.eligibilityStatus}
+      </span>
+      {app.eligibilityStatus === "PENDING" ? (
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <input
+            className="control max-w-44"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Motivo si rechaza"
+            aria-label="Motivo del rechazo"
+          />
+          <button
+            disabled={busy}
+            className="secondary"
+            onClick={() => onReview(app, "REJECTED", reason)}
+          >
+            Rechazar
+          </button>
+          <button
+            disabled={busy}
+            className="primary"
+            onClick={() => onReview(app, "VERIFIED", reason)}
+          >
+            Verificar
+          </button>
+        </div>
+      ) : (
+        <span className="text-right text-xs text-slate-400">
+          Revisión cerrada
+        </span>
+      )}
+    </div>
+  );
+}
+
+function DayCenter({
+  processId,
+  date,
+  rooms,
+  groups,
+  applications,
+  professionals,
+  selected,
+  busy,
+  onSelect,
+  onAction,
+}: {
+  processId: string;
+  date: string;
+  rooms: Room[];
+  groups: EvaluationGroup[];
+  applications: FlowApplication[];
+  professionals: Professional[];
+  selected: EvaluationGroup | null;
+  busy: boolean;
+  onSelect: (id: string) => void;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+}) {
+  const [roomId, setRoomId] = useState("");
+  const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
+  const [time, setTime] = useState("09:00");
+  const [code, setCode] = useState("");
+  const [capacity, setCapacity] = useState(3);
+  const [requiredEvaluators, setRequiredEvaluators] = useState(3);
+  const roomColumns = useMemo(
+    () =>
+      rooms.map((room) => ({
+        room,
+        groups: groups.filter((group) => group.roomId === room.roomId),
+      })),
+    [rooms, groups],
+  );
+  return (
+    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_350px]">
+      <section className="pk-panel min-w-0 overflow-hidden">
+        <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-5">
+          <Field label="Sala">
+            <select
+              className="control"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+            >
+              <option value="">Seleccionar</option>
+              {rooms.map((room) => (
+                <option key={room.roomId} value={room.roomId}>
+                  {room.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Tipo de pauta">
+            <select
+              className="control"
+              value={stage}
+              onChange={(e) => {
+                const next = e.target.value as EvaluationGroup["stage"];
+                setStage(next);
+                setCapacity(next === "GROUP_3" ? 3 : 9);
+                setRequiredEvaluators(next === "GROUP_3" ? 3 : 6);
+              }}
+            >
+              <option value="GROUP_3">Observación focal · base 3</option>
+              <option value="GROUP_9">Interacción grupal · base 9</option>
+            </select>
+          </Field>
+          <Field label="Máximo de niños">
+            <input
+              className="control w-24"
+              type="number"
+              min={1}
+              max={30}
+              value={capacity}
+              onChange={(event) => setCapacity(Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Evaluadores requeridos">
+            <input
+              className="control w-24"
+              type="number"
+              min={1}
+              max={12}
+              value={requiredEvaluators}
+              onChange={(event) =>
+                setRequiredEvaluators(Number(event.target.value))
+              }
+            />
+          </Field>
+          <Field label="Hora">
+            <input
+              className="control"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </Field>
+          <Field label="Código">
+            <input
+              className="control w-28"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="G3-01"
+            />
+          </Field>
+          <button
+            disabled={
+              busy || !roomId || !code || capacity < 1 || requiredEvaluators < 1
+            }
+            className="primary"
+            onClick={() =>
+              onAction(
+                () =>
+                  prekinderApi.createGroup({
+                    processId,
+                    roomId,
+                    stage,
+                    code,
+                    startsAt: new Date(`${date}T${time}:00`).toISOString(),
+                    durationMinutes: 30,
+                    capacity,
+                    requiredEvaluators,
+                  }),
+                "Grupo creado sin conflictos.",
+              )
+            }
+          >
+            Crear grupo
+          </button>
+        </div>
+        <div className="overflow-x-auto p-5">
+          <div
+            className="grid min-w-[700px] gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(rooms.length, 1)}, minmax(220px, 1fr))`,
+            }}
+          >
+            {roomColumns.map(({ room, groups: roomGroups }) => (
+              <div key={room.roomId}>
+                <div className="mb-3 flex items-center gap-2 border-b border-azul-monte-tabor pb-3">
+                  <DoorOpen size={18} className="text-azul-monte-tabor" />
+                  <span className="font-black">{room.name}</span>
+                  <span className="ml-auto text-xs text-slate-400">
+                    cap. {room.capacity}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {roomGroups.map((group) => (
+                    <button
+                      key={group.groupId}
+                      onClick={() => onSelect(group.groupId)}
+                      aria-pressed={selected?.groupId === group.groupId}
+                      className={`w-full rounded-xl border p-4 text-left transition-[border-color,background-color,box-shadow] ${selected?.groupId === group.groupId ? "border-blue-700 bg-blue-50 shadow-[0_8px_20px_rgba(30,58,138,0.1)]" : "border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-white"}`}
+                    >
+                      <div className="flex justify-between gap-3">
+                        <span className="font-black">
+                          {formatTime(group.startsAt)}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-black ${statusTone[group.status] || statusTone.DRAFT}`}
+                        >
+                          {statusLabel[group.status] || group.status}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm font-bold">
+                        {group.code} ·{" "}
+                        {group.stage === "GROUP_3"
+                          ? "Observación focal"
+                          : "Interacción grupal"}
+                      </p>
+                      <div className="mt-3 flex gap-4 text-xs text-slate-500">
+                        <span>
+                          {group.memberIds.length}/{group.capacity} niños
+                        </span>
+                        <span>
+                          {group.evaluatorIds.length}/{group.requiredEvaluators}{" "}
+                          profesionales
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                  {!roomGroups.length && (
+                    <div className="rounded-xl border border-dashed border-slate-300 p-7 text-center text-xs text-slate-400">
+                      Sala disponible
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <GroupInspector
+        group={selected}
+        date={date}
+        rooms={rooms}
+        applications={applications}
+        professionals={professionals}
+        busy={busy}
+        onAction={onAction}
+      />
+    </div>
+  );
+}
+function GroupInspector({
+  group,
+  date,
+  rooms,
+  applications,
+  professionals,
+  busy,
+  onAction,
+}: {
+  group: EvaluationGroup | null;
+  date: string;
+  rooms: Room[];
+  applications: FlowApplication[];
+  professionals: Professional[];
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+}) {
+  const [applicationId, setApplicationId] = useState("");
+  const [evaluatorId, setEvaluatorId] = useState("");
+  const [nextRoom, setNextRoom] = useState("");
+  const [nextTime, setNextTime] = useState("");
+  const [reason, setReason] = useState("");
+  const [limitCapacity, setLimitCapacity] = useState(3);
+  const [limitEvaluators, setLimitEvaluators] = useState(3);
+  const [configurationReason, setConfigurationReason] = useState("");
+  useEffect(() => {
+    setNextRoom(group?.roomId || "");
+    setNextTime(group ? localInput(group.startsAt).slice(11, 16) : "");
+    setReason("");
+    setLimitCapacity(group?.capacity || 3);
+    setLimitEvaluators(group?.requiredEvaluators || 3);
+    setConfigurationReason("");
+  }, [group?.groupId, group?.version]);
+  if (!group)
+    return (
+      <aside className="pk-panel p-7">
+        <CalendarDays className="text-slate-300" size={34} />
+        <h2 className="mt-5 text-lg font-black">Inspector de grupo</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Selecciona una tarjeta para completar integrantes, profesionales y
+          confirmar el bloque.
+        </p>
+      </aside>
+    );
+  const availableApps = applications.filter(
+    (app) => !group.memberIds.includes(app.applicationId),
+  );
+  const availablePeople = professionals.filter(
+    (person) =>
+      person.active && !group.evaluatorIds.includes(person.professionalId),
+  );
+  return (
+    <aside className="pk-panel p-6 shadow-[0_16px_36px_rgba(30,58,138,0.07)] 2xl:sticky 2xl:top-24 2xl:self-start">
+      <h2 className="text-xl font-black">{group.code}</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        {group.stage === "GROUP_3" ? "Primera instancia" : "Segunda instancia"} · {group.roomName} · {formatTime(group.startsAt)}–
+        {formatTime(group.endsAt)}
+      </p>
+      <div className="mt-6 space-y-6">
+        <div className="border-y border-slate-200 py-4">
+          <p className="text-sm font-black">Configuración flexible</p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">
+            La modalidad define la pauta; estos límites los decide
+            administración.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Field label="Máximo de niños">
+              <input
+                className="control w-full"
+                type="number"
+                min={Math.max(1, group.memberIds.length)}
+                max={30}
+                value={limitCapacity}
+                onChange={(event) =>
+                  setLimitCapacity(Number(event.target.value))
+                }
+              />
+            </Field>
+            <Field label="Evaluadores requeridos">
+              <input
+                className="control w-full"
+                type="number"
+                min={Math.max(1, group.evaluatorIds.length)}
+                max={12}
+                value={limitEvaluators}
+                onChange={(event) =>
+                  setLimitEvaluators(Number(event.target.value))
+                }
+              />
+            </Field>
+          </div>
+          <input
+            className="control mt-2 w-full"
+            value={configurationReason}
+            onChange={(event) => setConfigurationReason(event.target.value)}
+            placeholder="Motivo si el bloque ya comenzó"
+          />
+          <button
+            className="secondary mt-2 w-full"
+            disabled={busy || ["COMPLETED", "CANCELLED"].includes(group.status)}
+            onClick={() =>
+              onAction(
+                () =>
+                  prekinderApi.configureGroup(group.groupId, {
+                    capacity: limitCapacity,
+                    requiredEvaluators: limitEvaluators,
+                    reason: configurationReason,
+                    expectedVersion: group.version,
+                  }),
+                "Configuración del grupo actualizada.",
+              )
+            }
+          >
+            Guardar límites
+          </button>
+        </div>
+        <div>
+          <div className="mb-2 flex justify-between text-sm font-bold">
+            <span>Postulantes</span>
+            <span>
+              {group.memberIds.length}/{group.capacity}
+            </span>
+          </div>
+          <select
+            className="control w-full"
+            value={applicationId}
+            onChange={(e) => setApplicationId(e.target.value)}
+          >
+            <option value="">Seleccionar postulante</option>
+            {availableApps.map((app) => (
+              <option key={app.applicationId} value={app.applicationId}>
+                {fullName(app)}
+              </option>
+            ))}
+          </select>
+          <button
+            className="secondary mt-2 w-full"
+            disabled={
+              busy ||
+              !applicationId ||
+              ["COMPLETED", "CANCELLED"].includes(group.status) ||
+              group.memberIds.length >= group.capacity
+            }
+            onClick={() =>
+              onAction(
+                () => prekinderApi.addMember(group.groupId, applicationId),
+                "Postulante asignado.",
+              )
+            }
+          >
+            Asignar postulante
+          </button>
+        </div>
+        <div>
+          <div className="mb-2 flex justify-between text-sm font-bold">
+            <span>Profesionales</span>
+            <span>
+              {group.evaluatorIds.length}/{group.requiredEvaluators}
+            </span>
+          </div>
+          <select
+            className="control w-full"
+            value={evaluatorId}
+            onChange={(e) => setEvaluatorId(e.target.value)}
+          >
+            <option value="">Seleccionar profesional</option>
+            {availablePeople.map((person) => (
+              <option key={person.professionalId} value={person.professionalId}>
+                {person.displayName} · {person.specialty}
+              </option>
+            ))}
+          </select>
+          <button
+            className="secondary mt-2 w-full"
+            disabled={
+              busy ||
+              !evaluatorId ||
+              ["COMPLETED", "CANCELLED"].includes(group.status) ||
+              group.evaluatorIds.length >= group.requiredEvaluators
+            }
+            onClick={() =>
+              onAction(
+                () => prekinderApi.assignEvaluator(group.groupId, evaluatorId),
+                "Profesional asignado.",
+              )
+            }
+          >
+            Asignar profesional
+          </button>
+        </div>
+        <div className="border-t border-slate-100 pt-5">
+          <p className="mb-3 text-sm font-black">Reasignar sala u hora</p>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              className="control"
+              value={nextRoom}
+              onChange={(event) => setNextRoom(event.target.value)}
+            >
+              {rooms.map((room) => (
+                <option key={room.roomId} value={room.roomId}>
+                  {room.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="control"
+              type="time"
+              value={nextTime}
+              onChange={(event) => setNextTime(event.target.value)}
+            />
+          </div>
+          <input
+            className="control mt-2 w-full"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Motivo si el bloque ya comenzó"
+          />
+          <button
+            className="secondary mt-2 w-full"
+            disabled={busy || !nextRoom || !nextTime}
+            onClick={() =>
+              onAction(
+                () =>
+                  prekinderApi.rescheduleGroup(group.groupId, {
+                    roomId: nextRoom,
+                    startsAt: new Date(`${date}T${nextTime}:00`).toISOString(),
+                    durationMinutes: Math.round(
+                      (new Date(group.endsAt).getTime() -
+                        new Date(group.startsAt).getTime()) /
+                        60_000,
+                    ),
+                    reason,
+                    expectedVersion: group.version,
+                  }),
+                "Grupo reasignado y notificaciones encoladas.",
+              )
+            }
+          >
+            Validar y reasignar
+          </button>
+        </div>
+        <button
+          className="primary w-full"
+          disabled={
+            busy ||
+            group.status !== "DRAFT" ||
+            !group.memberIds.length ||
+            group.evaluatorIds.length !== group.requiredEvaluators
+          }
+          onClick={() =>
+            onAction(
+              () => prekinderApi.confirmGroup(group.groupId, group.version),
+              "Grupo confirmado e informes creados.",
+            )
+          }
+        >
+          Confirmar grupo
+        </button>
+        <p className="text-xs leading-5 text-slate-600">
+          Antes de confirmar revisaremos automáticamente la disponibilidad de
+          la sala, profesionales y postulantes.
+        </p>
+      </div>
+    </aside>
+  );
+}
+
+function Professionals({
+  professionals,
+  busy,
+  onSave,
+}: {
+  professionals: Professional[];
+  busy: boolean;
+  onSave: (
+    input: Partial<Professional> & {
+      displayName: string;
+      email: string;
+      roleCode: Professional["roleCode"];
+      expectedVersion: number;
+    },
+  ) => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [specialty, setSpecialty] = useState("");
+  return (
+    <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+      <form
+        className="rounded-2xl border border-slate-200 bg-white p-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave({
+            displayName: name,
+            email,
+            specialty,
+            roleCode: "EVALUATOR",
+            active: true,
+            expectedVersion: 0,
+          });
+        }}
+      >
+        <h2 className="text-lg font-black">Nuevo profesional</h2>
+        <div className="mt-5 space-y-4">
+          <Field label="Nombre">
+            <input
+              required
+              className="control w-full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          <Field label="Correo">
+            <input
+              required
+              type="email"
+              className="control w-full"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+          <Field label="Especialidad">
+            <input
+              className="control w-full"
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              placeholder="Educadora, psicóloga…"
+            />
+          </Field>
+          <button disabled={busy} className="primary w-full">
+            Crear perfil
+          </button>
+        </div>
+      </form>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 p-5">
+          <h2 className="font-black">Equipo Prekínder</h2>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {professionals.map((person) => (
+            <div
+              key={person.professionalId}
+              className="flex min-h-20 items-center gap-4 px-5"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
+                {person.displayName
+                  .split(" ")
+                  .map((part) => part[0])
+                  .slice(0, 2)
+                  .join("")}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-bold">
+                  {person.displayName}
+                </span>
+                <span className="block truncate text-xs text-slate-500">
+                  {person.specialty || "Sin especialidad"} · {person.email}
+                </span>
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+              >
+                {person.active ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Rubrics() {
+  const data = [
+    {
+      name: "Observación focal",
+      base: "Base sugerida: 3 postulantes · 3 profesionales",
+      count: 6,
+      items:
+        "Comunicación · Lenguaje · Adaptación/regulación · Psicomotricidad · Seguimiento de instrucciones · Autonomía",
+    },
+    {
+      name: "Interacción grupal",
+      base: "Base sugerida: 9 postulantes · 6 profesionales",
+      count: 6,
+      items:
+        "Interacción con pares · Participación · Cooperación · Regulación · Transiciones · Comunicación grupal",
+    },
+  ];
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      {data.map((rubric) => (
+        <article
+          key={rubric.name}
+          className="rounded-2xl border border-slate-200 bg-white p-7"
+        >
+          <div className="flex justify-between">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">
+              Publicada · v1
+            </span>
+            <span className="text-xs font-bold text-slate-400">Inmutable</span>
+          </div>
+          <h2 className="mt-5 text-2xl font-black">{rubric.name}</h2>
+          <p className="mt-1 text-xs font-bold text-blue-800">{rubric.base}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            {rubric.items}
+          </p>
+          <div className="mt-6 border-t border-slate-100 pt-5 text-sm">
+            <strong>{rubric.count} criterios</strong>
+            <span className="ml-2 text-slate-500">
+              Escala observable 0–3 + No observado
+            </span>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function Decisions({
+  processId,
+  applications,
+  busy,
+  onAction,
+}: {
+  processId: string;
+  applications: FlowApplication[];
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+}) {
+  const [scheduledAt, setScheduledAt] = useState("");
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="mr-auto">
+            <h2 className="font-black">Publicación programada</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              El lote captura sólo decisiones completas. El portal será la
+              fuente oficial.
+            </p>
+          </div>
+          <Field label="Fecha y hora">
+            <input
+              className="control"
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+            />
+          </Field>
+          <button
+            className="primary"
+            disabled={busy || !scheduledAt}
+            onClick={() =>
+              onAction(
+                () =>
+                  prekinderApi.schedulePublication(
+                    processId,
+                    new Date(scheduledAt).toISOString(),
+                  ),
+                "Lote de publicación programado.",
+              )
+            }
+          >
+            Programar lote
+          </button>
+        </div>
+      </section>
+      <section className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {applications.map((app) => (
+          <DecisionRow
+            key={app.applicationId}
+            app={app}
+            busy={busy}
+            onAction={onAction}
+          />
+        ))}
+      </section>
+    </div>
+  );
+}
+function DecisionRow({
+  app,
+  busy,
+  onAction,
+}: {
+  app: FlowApplication;
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+}) {
+  const [decision, setDecision] = useState<
+    "ACCEPTED" | "REJECTED" | "WAITLIST"
+  >("WAITLIST");
+  const [note, setNote] = useState("");
+  return (
+    <div className="grid gap-3 p-5 lg:grid-cols-[1fr_180px_1fr_auto] lg:items-center">
+      <div>
+        <p className="font-bold">{fullName(app)}</p>
+        <p className="text-xs text-slate-500">
+          {waveNames[app.eligibilityCategory]}
+        </p>
+      </div>
+      <select
+        className="control"
+        value={decision}
+        onChange={(e) => setDecision(e.target.value as typeof decision)}
+      >
+        <option value="ACCEPTED">Aceptado</option>
+        <option value="WAITLIST">Lista de espera</option>
+        <option value="REJECTED">Rechazado</option>
+      </select>
+      <input
+        className="control"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Observación interna"
+      />
+      <button
+        className="primary"
+        disabled={busy}
+        onClick={() =>
+          onAction(
+            () => prekinderApi.decide(app.applicationId, decision, note),
+            "Decisión guardada.",
+          )
+        }
+      >
+        Guardar
+      </button>
+    </div>
+  );
+}
+
+function AuditNotice() {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-8">
+      <ShieldCheck size={36} className="text-azul-monte-tabor" />
+      <h2 className="mt-5 text-xl font-black">Historial protegido y activo</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+        Cada cambio de configuración, revisión, asignación, informe, extensión,
+        decisión y publicación conserva responsable, fecha y motivo. Los datos
+        personales y documentos no se incluyen en los registros técnicos.
+      </p>
+    </section>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block text-xs font-extrabold text-slate-600">
+      {label}
+      <span className="mt-1 block">{children}</span>
+    </label>
+  );
+}

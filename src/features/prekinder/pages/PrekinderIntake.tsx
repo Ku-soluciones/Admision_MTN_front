@@ -125,8 +125,8 @@ export function PrekinderIntake() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f1e9] text-slate-950">
-      <header className="bg-[#102b57] text-white shadow-[0_10px_30px_rgba(15,23,42,0.16)]">
+    <div className="min-h-screen bg-gray-50 text-slate-950">
+      <header className="bg-azul-monte-tabor text-blanco-pureza shadow-[0_10px_30px_rgba(30,58,138,0.16)]">
         <div className="mx-auto flex min-h-20 max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-4">
             <button onClick={() => navigate('/admin')} aria-label="Volver a administración" className="rounded-lg p-2 text-blue-100 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-amber-300">
@@ -209,7 +209,7 @@ export function PrekinderIntake() {
                 </div>
 
                 {selected.status === 'DRAFT' && (
-                  <div className="mb-6 overflow-hidden rounded-2xl bg-[#fffdf8] shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
+                  <div className="mb-6 overflow-hidden rounded-2xl bg-blanco-pureza shadow-[0_12px_34px_rgba(15,23,42,0.08)]">
                     <div className="border-b border-amber-200 bg-amber-50 px-5 py-4">
                       <h4 className="flex items-center gap-2 font-bold text-amber-950"><CalendarDays size={19} />Periodo de postulación</h4>
                       <p className="mt-1 text-sm text-amber-900">Publicar habilita el ingreso sólo durante estas fechas.</p>

@@ -1,21 +1,32 @@
-import { authStore } from '../../../packages/backend-sdk/src/auth/store';
+import { authStore } from "../../../packages/backend-sdk/src/auth/store";
+import { auth } from "../../admin/src/lib/firebase";
 
-const LOCAL_GATEWAY = 'http://localhost:8081';
+const LOCAL_GATEWAY = "http://localhost:8081";
 
 function baseUrl(): string {
-  const configured = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
-  if (configured) return configured.replace(/\/+$/, '');
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return LOCAL_GATEWAY;
+  const configured = (import.meta as any).env?.VITE_API_BASE_URL as
+    string | undefined;
+  if (configured) return configured.replace(/\/+$/, "");
+  if (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  )
+    return LOCAL_GATEWAY;
   return window.location.origin;
 }
 
-const refreshChannel = typeof BroadcastChannel !== 'undefined'
-  ? new BroadcastChannel('admitia-prekinder-auth')
-  : null;
+const refreshChannel =
+  typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("admitia-prekinder-auth")
+    : null;
 
-refreshChannel?.addEventListener('message', (event) => {
+refreshChannel?.addEventListener("message", (event) => {
   const data = event.data;
-  if (data?.type === 'ACCESS_REFRESHED' && typeof data.token === 'string' && typeof data.expiresIn === 'number') {
+  if (
+    data?.type === "ACCESS_REFRESHED" &&
+    typeof data.token === "string" &&
+    typeof data.expiresIn === "number"
+  ) {
     authStore.updateAccessToken(data.token, data.expiresIn, data.user);
   }
 });
@@ -24,64 +35,89 @@ let refreshInFlight: Promise<string | null> | null = null;
 
 export function refreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = coordinateRefresh().finally(() => { refreshInFlight = null; });
+  refreshInFlight = coordinateRefresh().finally(() => {
+    refreshInFlight = null;
+  });
   return refreshInFlight;
 }
 
 async function coordinateRefresh(): Promise<string | null> {
   const execute = async () => {
     const response = await fetch(`${baseUrl()}/v1/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
+      method: "POST",
+      credentials: "include",
+      headers: { Accept: "application/json" },
     });
     if (!response.ok) return null;
     const data = await response.json();
-    if (!data?.token || typeof data.expiresIn !== 'number') return null;
+    if (!data?.token || typeof data.expiresIn !== "number") return null;
     authStore.updateAccessToken(data.token, data.expiresIn, data.user);
-    refreshChannel?.postMessage({ type: 'ACCESS_REFRESHED', token: data.token, expiresIn: data.expiresIn, user: data.user });
+    refreshChannel?.postMessage({
+      type: "ACCESS_REFRESHED",
+      token: data.token,
+      expiresIn: data.expiresIn,
+      user: data.user,
+    });
     return data.token as string;
   };
-  if ('locks' in navigator) {
-    return navigator.locks.request('admitia-prekinder-refresh', execute);
+  if ("locks" in navigator) {
+    return navigator.locks.request("admitia-prekinder-refresh", execute);
   }
   return execute();
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
-  let token = authStore.getValidAccessToken(15_000);
+export async function apiRequest<T>(
+  path: string,
+  init: RequestInit = {},
+  retry = true,
+): Promise<T> {
+  let token = auth.currentUser
+    ? await auth.currentUser.getIdToken()
+    : authStore.getValidAccessToken(15_000);
   if (!token) token = await refreshAccessToken();
-  if (!token) throw new ApiError(401, 'Tu sesión expiró. Ingresa nuevamente.');
+  if (!token) throw new ApiError(401, "Tu sesión expiró. Ingresa nuevamente.");
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
-    credentials: 'include',
+    credentials: "include",
     headers: {
-      Accept: 'application/json',
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      Accept: "application/json",
+      ...(init.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
       Authorization: `Bearer ${token}`,
-      'X-Request-ID': crypto.randomUUID(),
+      "X-Request-ID": crypto.randomUUID(),
       ...init.headers,
     },
   });
-  if (response.status === 401 && retry) {
+  if (response.status === 401 && retry && !auth.currentUser) {
     const renewed = await refreshAccessToken();
     if (renewed) return apiRequest<T>(path, init, false);
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(response.status, body?.error?.message || recoveryMessage(response.status));
+    throw new ApiError(
+      response.status,
+      body?.error?.message || recoveryMessage(response.status),
+    );
   }
   return body.data as T;
 }
 
 function recoveryMessage(status: number): string {
-  if (status === 409) return 'El dato cambió. Resincroniza e intenta nuevamente.';
-  if (status === 503) return 'El tiempo real no está disponible. Puedes continuar en modo seguro.';
-  return 'No pudimos completar la operación. Intenta nuevamente.';
+  if (status === 409)
+    return "El dato cambió. Resincroniza e intenta nuevamente.";
+  if (status === 503)
+    return "El tiempo real no está disponible. Puedes continuar en modo seguro.";
+  return "No pudimos completar la operación. Intenta nuevamente.";
 }
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) { super(message); }
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 export type Evaluation = {
@@ -97,7 +133,7 @@ export type AdmissionProcess = {
   processId: string;
   academicYear: number;
   name: string;
-  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
+  status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
   startsAt: string | null;
   endsAt: string | null;
   version: number;
@@ -119,6 +155,154 @@ export type PrekinderApplication = {
   createdAt: string;
 };
 
+export type Wave = {
+  waveId: string;
+  processId: string;
+  waveType: "SIBLINGS" | "STAFF_OR_ALUMNI" | "NEW_FAMILIES";
+  position: number;
+  status: "DRAFT" | "PUBLISHED" | "CLOSED" | "CANCELLED";
+  opensAt: string | null;
+  closesAt: string | null;
+  version: number;
+  active: boolean;
+};
+
+export type ApplicantIdentity = {
+  rut: string;
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName: string;
+  birthDate: string;
+  familyEmail: string;
+  fatherEmail: string;
+  motherEmail: string;
+};
+
+export type FlowApplication = {
+  applicationId: string;
+  applicantId: string;
+  processId: string;
+  waveId: string;
+  status: string;
+  eligibilityCategory: Wave["waveType"];
+  eligibilityStatus: string;
+  version: number;
+  declarationVersion: number;
+  identity: ApplicantIdentity;
+  createdAt: string;
+};
+
+export type Professional = {
+  professionalId: string;
+  legacyUserId: number | null;
+  displayName: string;
+  email: string;
+  specialty: string;
+  roleCode: "ADMIN" | "COORDINATOR" | "EVALUATOR";
+  active: boolean;
+  version: number;
+};
+
+export type Room = {
+  roomId: string;
+  processId: string;
+  code: string;
+  name: string;
+  capacity: number;
+  active: boolean;
+  version: number;
+};
+
+export type EvaluationGroup = {
+  groupId: string;
+  processId: string;
+  roomId: string;
+  roomName: string;
+  stage: "GROUP_3" | "GROUP_9";
+  code: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  requiredEvaluators: number;
+  status: string;
+  version: number;
+  memberIds: string[];
+  evaluatorIds: string[];
+};
+
+export type ReportSummary = {
+  reportId: string;
+  applicationId: string;
+  applicantName: string;
+  status: string;
+  version: number;
+  rawScore: number | null;
+  maximumScore: number | null;
+};
+
+export type AgendaGroup = {
+  group: EvaluationGroup;
+  editableNow: boolean;
+  reports: ReportSummary[];
+};
+
+export type Report = {
+  header: {
+    reportId: string;
+    groupId: string;
+    applicationId: string;
+    applicantName: string;
+    evaluatorId: string;
+    templateVersionId: string;
+    status: string;
+    rawScore: number | null;
+    maximumScore: number | null;
+    version: number;
+    stage: "GROUP_3" | "GROUP_9";
+    groupCode: string;
+    startsAt: string;
+    endsAt: string;
+    roomName: string;
+  };
+  editableNow: boolean;
+  criteria: Array<{
+    criterionId: string;
+    code: string;
+    name: string;
+    descriptor: string;
+    position: number;
+    options: Array<{
+      optionId: string;
+      value: number;
+      label: string;
+      descriptor: string;
+      position: number;
+    }>;
+    responseId: string | null;
+    selectedOptionId: string | null;
+    notObserved: boolean;
+    observedValue: number | null;
+    responseVersion: number;
+  }>;
+  note: { noteId: string | null; content: string; version: number };
+};
+
+export type DashboardMetrics = {
+  applications: number;
+  eligibilityPending: number;
+  groupsToday: number;
+  reportsPending: number;
+  decisionsReady: number;
+};
+
+export type PublishedResult = {
+  applicationId: string;
+  applicantName: string;
+  decision: "ACCEPTED" | "REJECTED" | "WAITLIST";
+  publishedAt: string;
+  decisionVersion: number;
+};
+
 export type Comment = {
   commentId: string;
   evaluationId: string;
@@ -127,45 +311,287 @@ export type Comment = {
   serverSequence: number;
   status: string;
   revision: number;
-  revisionState: 'CURRENT' | 'CONFLICTED' | 'TOMBSTONE';
+  revisionState: "CURRENT" | "CONFLICTED" | "TOMBSTONE";
   content: string;
   createdAt: string;
 };
 
 export const prekinderApi = {
-  processes: () => apiRequest<AdmissionProcess[]>('/v1/prekinder/processes'),
+  processes: () => apiRequest<AdmissionProcess[]>("/v1/prekinder/processes"),
   createProcess: (academicYear: number, name: string) =>
-    apiRequest<AdmissionProcess>('/v1/prekinder/processes', {
-      method: 'POST', body: JSON.stringify({ academicYear, name }),
+    apiRequest<AdmissionProcess>("/v1/prekinder/processes", {
+      method: "POST",
+      body: JSON.stringify({ academicYear, name }),
     }),
   publishProcess: (processId: string, startsAt: string, endsAt: string) =>
-    apiRequest<AdmissionProcess>(`/v1/prekinder/processes/${processId}/publication`, {
-      method: 'PUT', body: JSON.stringify({ startsAt, endsAt }),
-    }),
+    apiRequest<AdmissionProcess>(
+      `/v1/prekinder/processes/${processId}/publication`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ startsAt, endsAt }),
+      },
+    ),
   applications: (processId: string) =>
-    apiRequest<PrekinderApplication[]>(`/v1/prekinder/applications?processId=${encodeURIComponent(processId)}`),
+    apiRequest<PrekinderApplication[]>(
+      `/v1/prekinder/applications?processId=${encodeURIComponent(processId)}`,
+    ),
   createApplication: (input: {
-    processId: string; rut: string; firstName: string; paternalLastName: string; maternalLastName: string;
-  }) => apiRequest<PrekinderApplication>('/v1/prekinder/applications', {
-    method: 'POST', body: JSON.stringify(input),
-  }),
-  evaluations: () => apiRequest<Evaluation[]>('/v1/prekinder/evaluations'),
-  comments: (evaluationId: string) => apiRequest<Comment[]>(`/v1/prekinder/evaluations/${evaluationId}/comments`),
-  ticket: () => apiRequest<{ ticket: string; expiresInSeconds: number }>('/v1/prekinder/realtime/tickets', { method: 'POST' }),
-  createComment: (evaluationId: string, operationId: string, content: string) =>
-    apiRequest<{ comment: Comment; duplicate: boolean }>(`/v1/prekinder/evaluations/${evaluationId}/comments`, {
-      method: 'POST', body: JSON.stringify({ operationId, content }),
+    processId: string;
+    rut: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName: string;
+  }) =>
+    apiRequest<PrekinderApplication>("/v1/prekinder/applications", {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
+  evaluations: () => apiRequest<Evaluation[]>("/v1/prekinder/evaluations"),
+  comments: (evaluationId: string) =>
+    apiRequest<Comment[]>(`/v1/prekinder/evaluations/${evaluationId}/comments`),
+  ticket: () =>
+    apiRequest<{ ticket: string; expiresInSeconds: number }>(
+      "/v1/prekinder/realtime/tickets",
+      { method: "POST" },
+    ),
+  createComment: (evaluationId: string, operationId: string, content: string) =>
+    apiRequest<{ comment: Comment; duplicate: boolean }>(
+      `/v1/prekinder/evaluations/${evaluationId}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ operationId, content }),
+      },
+    ),
   events: (evaluationId: string, afterSequence: number) =>
-    apiRequest<Array<{ eventId: string; entityId: string; sequence: number; eventType: string }>>(
+    apiRequest<
+      Array<{
+        eventId: string;
+        entityId: string;
+        sequence: number;
+        eventType: string;
+      }>
+    >(
       `/v1/prekinder/evaluations/${evaluationId}/events?afterSequence=${afterSequence}`,
     ),
+  waves: (processId: string) =>
+    apiRequest<Wave[]>(`/v1/prekinder/processes/${processId}/waves`),
+  configureWave: (
+    waveId: string,
+    input: {
+      opensAt: string;
+      closesAt: string;
+      status: Wave["status"];
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<Wave>(`/v1/prekinder/waves/${waveId}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  flowApplications: (processId: string) =>
+    apiRequest<FlowApplication[]>(
+      `/v1/prekinder/applications?processId=${encodeURIComponent(processId)}`,
+    ),
+  submitApplication: (input: {
+    processId: string;
+    rut: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName: string;
+    birthDate: string;
+    familyEmail: string;
+    fatherEmail: string;
+    motherEmail: string;
+    eligibility: {
+      siblings: Array<{ name: string; rut: string; currentGrade: string }>;
+      employeeParent: string;
+      fatherAlumni: {
+        status: string;
+        graduationYear?: number;
+        lastGrade?: string;
+        withdrawalReason?: string;
+      };
+      motherAlumni: {
+        status: string;
+        graduationYear?: number;
+        lastGrade?: string;
+        withdrawalReason?: string;
+      };
+    };
+  }) =>
+    apiRequest<FlowApplication>("/v1/prekinder/applications", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  reviewEligibility: (
+    applicationId: string,
+    decision: "VERIFIED" | "REJECTED",
+    reason: string,
+    expectedVersion: number,
+  ) =>
+    apiRequest<FlowApplication>(
+      `/v1/prekinder/applications/${applicationId}/eligibility`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ decision, reason, expectedVersion }),
+      },
+    ),
+  professionals: () =>
+    apiRequest<Professional[]>("/v1/prekinder/professionals"),
+  saveProfessional: (
+    input: Partial<Professional> & {
+      displayName: string;
+      email: string;
+      roleCode: Professional["roleCode"];
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<Professional>("/v1/prekinder/professionals", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  rooms: (processId: string) =>
+    apiRequest<Room[]>(`/v1/prekinder/processes/${processId}/rooms`),
+  createRoom: (
+    processId: string,
+    input: { code: string; name: string; capacity: number },
+  ) =>
+    apiRequest<Room>(`/v1/prekinder/processes/${processId}/rooms`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  groups: (processId: string, date: string) =>
+    apiRequest<EvaluationGroup[]>(
+      `/v1/prekinder/processes/${processId}/groups?date=${date}`,
+    ),
+  createGroup: (input: {
+    processId: string;
+    roomId: string;
+    stage: EvaluationGroup["stage"];
+    code: string;
+    startsAt: string;
+    durationMinutes: number;
+    capacity: number;
+    requiredEvaluators: number;
+  }) =>
+    apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  rescheduleGroup: (
+    groupId: string,
+    input: {
+      roomId: string;
+      startsAt: string;
+      durationMinutes: number;
+      reason: string;
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<EvaluationGroup>(`/v1/prekinder/groups/${groupId}/schedule`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  configureGroup: (
+    groupId: string,
+    input: {
+      capacity: number;
+      requiredEvaluators: number;
+      reason: string;
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/configuration`,
+      { method: "PUT", body: JSON.stringify(input) },
+    ),
+  addMember: (groupId: string, applicationId: string) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/members/${applicationId}`,
+      { method: "POST" },
+    ),
+  assignEvaluator: (groupId: string, evaluatorId: string) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/evaluators/${evaluatorId}`,
+      { method: "POST" },
+    ),
+  confirmGroup: (groupId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/confirmation`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ expectedVersion }),
+      },
+    ),
+  agenda: (date: string) =>
+    apiRequest<AgendaGroup[]>(`/v1/prekinder/me/agenda?date=${date}`),
+  report: (reportId: string) =>
+    apiRequest<Report>(`/v1/prekinder/reports/${reportId}`),
+  saveResponse: (
+    reportId: string,
+    criterionId: string,
+    input: {
+      optionId: string | null;
+      notObserved: boolean;
+      expectedVersion: number;
+      operationId: string;
+    },
+  ) =>
+    apiRequest<Report>(
+      `/v1/prekinder/reports/${reportId}/criteria/${criterionId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(input),
+      },
+    ),
+  saveNote: (
+    reportId: string,
+    content: string,
+    expectedVersion: number,
+    operationId: string,
+  ) =>
+    apiRequest<Report>(`/v1/prekinder/reports/${reportId}/note`, {
+      method: "PUT",
+      body: JSON.stringify({ content, expectedVersion, operationId }),
+    }),
+  completeReport: (reportId: string, expectedVersion: number) =>
+    apiRequest<Report>(`/v1/prekinder/reports/${reportId}/completion`, {
+      method: "PUT",
+      body: JSON.stringify({ expectedVersion }),
+    }),
+  decide: (
+    applicationId: string,
+    decision: "ACCEPTED" | "REJECTED" | "WAITLIST",
+    note: string,
+  ) =>
+    apiRequest(`/v1/prekinder/applications/${applicationId}/decision`, {
+      method: "PUT",
+      body: JSON.stringify({ decision, note }),
+    }),
+  schedulePublication: (processId: string, scheduledAt: string) =>
+    apiRequest(`/v1/prekinder/processes/${processId}/publication-batches`, {
+      method: "POST",
+      body: JSON.stringify({ scheduledAt }),
+    }),
+  dashboard: (processId: string) =>
+    apiRequest<DashboardMetrics>(
+      `/v1/prekinder/processes/${processId}/dashboard`,
+    ),
+  myResults: () => apiRequest<PublishedResult[]>("/v1/prekinder/me/results"),
+  uploadDocument: (applicationId: string, category: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return apiRequest(
+      `/v1/prekinder/applications/${applicationId}/documents?category=${encodeURIComponent(category)}`,
+      { method: "POST", body },
+    );
+  },
 };
 
 export function websocketUrl(): string {
   const url = new URL(baseUrl());
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = '/v1/prekinder/realtime';
-  url.search = '';
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/v1/prekinder/realtime";
+  url.search = "";
   return url.toString();
 }
