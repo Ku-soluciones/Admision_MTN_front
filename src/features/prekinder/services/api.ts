@@ -70,11 +70,15 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
   retry = true,
+  tokenOverride?: string,
 ): Promise<T> {
-  let token = auth.currentUser
-    ? await auth.currentUser.getIdToken()
-    : authStore.getValidAccessToken(15_000);
+  // El BFF ya intercambió/verificó Firebase durante el login. Para las rutas
+  // Prekínder usamos primero su access token corto, de modo que toda la sesión
+  // se renueve por /v1/auth/refresh a través de NGINX. El idToken Firebase queda
+  // únicamente como respaldo para una sesión recién restaurada.
+  let token = tokenOverride ?? authStore.getValidAccessToken(15_000);
   if (!token) token = await refreshAccessToken();
+  if (!token && auth.currentUser) token = await auth.currentUser.getIdToken();
   if (!token) throw new ApiError(401, "Tu sesión expiró. Ingresa nuevamente.");
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
@@ -89,9 +93,13 @@ export async function apiRequest<T>(
       ...init.headers,
     },
   });
-  if (response.status === 401 && retry && !auth.currentUser) {
+  if (response.status === 401 && retry) {
     const renewed = await refreshAccessToken();
-    if (renewed) return apiRequest<T>(path, init, false);
+    if (renewed) return apiRequest<T>(path, init, false, renewed);
+    if (auth.currentUser) {
+      const firebaseToken = await auth.currentUser.getIdToken(true);
+      return apiRequest<T>(path, init, false, firebaseToken);
+    }
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
