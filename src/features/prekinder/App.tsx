@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PrekinderAdminGuard } from "./components/PrekinderAdminGuard";
+import { PrekinderApplicationGuard } from "./components/PrekinderApplicationGuard";
 import { PrekinderApplicationPage } from "./pages/PrekinderApplicationPage";
 import { EvaluatorDesk } from "./pages/EvaluatorDesk";
 import { EvaluatorReport } from "./pages/EvaluatorReport";
@@ -57,7 +58,9 @@ export default function PrekinderApp() {
             roles={["APODERADO"]}
             loginPath="/apoderado/login"
           >
-            <PrekinderApplicationPage />
+            <PrekinderApplicationGuard>
+              <PrekinderApplicationPage />
+            </PrekinderApplicationGuard>
           </PrekinderAdminGuard>
         }
       />

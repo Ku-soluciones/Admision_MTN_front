@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { prekinderApi, type PrekinderApplicationOption } from '../../prekinder/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
+import { useProcessActivePrekinder } from '../../../packages/shared-utils/src/hooks/useProcessActivePrekinder';
 
 const LOGIN_REDIRECT = `/apoderado/login?redirect=${encodeURIComponent('/postulacion/elegir')}`;
 
@@ -15,6 +16,11 @@ const ApplicationTypeChooser = () => {
         isLoading: generalProcessLoading,
         error: generalProcessError,
     } = useProcessActiveGuard();
+    const {
+        isProcessActive: prekinderProcessActive,
+        isLoading: prekinderFlagLoading,
+        error: prekinderFlagError,
+    } = useProcessActivePrekinder();
     const [options, setOptions] = useState<PrekinderApplicationOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -32,8 +38,15 @@ const ApplicationTypeChooser = () => {
     };
 
     useEffect(() => {
-        if (isAuthenticated) void loadAvailability();
-    }, [isAuthenticated]);
+        if (!isAuthenticated || prekinderFlagLoading) return;
+        if (!prekinderProcessActive) {
+            setOptions([]);
+            setLoading(false);
+            setError('');
+            return;
+        }
+        void loadAvailability();
+    }, [isAuthenticated, prekinderFlagLoading, prekinderProcessActive]);
 
     if (sessionLoading) {
         return (
@@ -46,7 +59,9 @@ const ApplicationTypeChooser = () => {
 
     if (!isAuthenticated) return <Navigate to={LOGIN_REDIRECT} replace />;
 
-    const activePrekinder = options[0];
+    const activePrekinder = prekinderProcessActive ? options[0] : undefined;
+    const prekinderAvailabilityLoading =
+        prekinderFlagLoading || (prekinderProcessActive && loading);
 
     return (
         <div className="bg-gray-50 px-4 py-10 sm:px-6 sm:py-16">
@@ -60,10 +75,12 @@ const ApplicationTypeChooser = () => {
                     </p>
                 </div>
 
-                {(error || generalProcessError) && (
+                {(error || prekinderFlagError || generalProcessError) && (
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert">
                         <span>
-                            {error || 'No pudimos confirmar la disponibilidad de los otros cursos.'}
+                            {error
+                                || (prekinderFlagError && 'No pudimos consultar la activación de Prekínder.')
+                                || 'No pudimos confirmar la disponibilidad de los otros cursos.'}
                         </span>
                         {error && (
                             <button
@@ -95,19 +112,23 @@ const ApplicationTypeChooser = () => {
                         </a>
                     ) : (
                         <div className="flex min-h-72 flex-col bg-gray-50 p-6 sm:p-8" aria-disabled="true">
-                            {loading ? (
+                            {prekinderAvailabilityLoading ? (
                                 <RefreshCw className="animate-spin text-azul-monte-tabor motion-reduce:animate-none" size={32} aria-hidden="true" />
                             ) : (
                                 <Clock3 className="text-gris-piedra" size={34} aria-hidden="true" />
                             )}
                             <h2 className="mt-6 font-serif text-2xl font-bold text-azul-monte-tabor">Prekínder</h2>
                             <p className="mt-2 text-sm leading-6 text-gris-piedra">
-                                {loading
-                                    ? 'Estamos verificando si existe una oleada disponible.'
-                                    : 'En este momento no existe una oleada abierta para nuevas postulaciones.'}
+                                {prekinderFlagLoading
+                                    ? 'Estamos verificando si el proceso se encuentra habilitado.'
+                                    : !prekinderProcessActive
+                                        ? 'El proceso de Prekínder no se encuentra habilitado en este momento.'
+                                        : loading
+                                            ? 'Estamos verificando si existe una oleada disponible.'
+                                            : 'En este momento no existe una oleada abierta para nuevas postulaciones.'}
                             </p>
                             <span className="mt-auto pt-6 text-sm font-bold text-gris-piedra">
-                                {loading ? 'Consultando disponibilidad' : 'Postulación no disponible'}
+                                {prekinderAvailabilityLoading ? 'Consultando disponibilidad' : 'Postulación no disponible'}
                             </span>
                         </div>
                     )}
