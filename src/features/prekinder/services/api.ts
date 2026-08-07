@@ -1,4 +1,5 @@
 import { authStore } from "../../../packages/backend-sdk/src/auth/store";
+import { runSharedRefresh } from "../../../packages/backend-sdk/src/auth/sharedRefreshQueue";
 import { auth } from "../../admin/src/lib/firebase";
 
 const LOCAL_GATEWAY = "http://localhost:8081";
@@ -15,55 +16,9 @@ function baseUrl(): string {
   return window.location.origin;
 }
 
-const refreshChannel =
-  typeof BroadcastChannel !== "undefined"
-    ? new BroadcastChannel("admitia-prekinder-auth")
-    : null;
-
-refreshChannel?.addEventListener("message", (event) => {
-  const data = event.data;
-  if (
-    data?.type === "ACCESS_REFRESHED" &&
-    typeof data.token === "string" &&
-    typeof data.expiresIn === "number"
-  ) {
-    authStore.updateAccessToken(data.token, data.expiresIn, data.user);
-  }
-});
-
-let refreshInFlight: Promise<string | null> | null = null;
-
-export function refreshAccessToken(): Promise<string | null> {
-  if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = coordinateRefresh().finally(() => {
-    refreshInFlight = null;
-  });
-  return refreshInFlight;
-}
-
-async function coordinateRefresh(): Promise<string | null> {
-  const execute = async () => {
-    const response = await fetch(`${baseUrl()}/v1/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data?.token || typeof data.expiresIn !== "number") return null;
-    authStore.updateAccessToken(data.token, data.expiresIn, data.user);
-    refreshChannel?.postMessage({
-      type: "ACCESS_REFRESHED",
-      token: data.token,
-      expiresIn: data.expiresIn,
-      user: data.user,
-    });
-    return data.token as string;
-  };
-  if ("locks" in navigator) {
-    return navigator.locks.request("admitia-prekinder-refresh", execute);
-  }
-  return execute();
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshed = await runSharedRefresh();
+  return refreshed?.token ?? null;
 }
 
 export async function apiRequest<T>(
