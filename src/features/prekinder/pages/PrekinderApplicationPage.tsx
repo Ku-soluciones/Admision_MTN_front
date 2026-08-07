@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import {
   prekinderApi,
-  type AdmissionProcess,
   type FlowApplication,
+  type PrekinderApplicationOption,
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
@@ -82,9 +82,8 @@ function category(form: FormState): Wave["waveType"] {
 }
 
 export function PrekinderApplicationPage() {
-  const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
+  const [options, setOptions] = useState<PrekinderApplicationOption[]>([]);
   const [processId, setProcessId] = useState("");
-  const [waves, setWaves] = useState<Wave[]>([]);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(empty);
   const [submitted, setSubmitted] = useState<FlowApplication | null>(null);
@@ -93,25 +92,17 @@ export function PrekinderApplicationPage() {
   const [error, setError] = useState("");
   useEffect(() => {
     void prekinderApi
-      .processes()
+      .applicationOptions()
       .then((next) => {
-        setProcesses(next);
-        setProcessId(
-          next.find((p) => p.acceptingApplications)?.processId ||
-            next[0]?.processId ||
-            "",
-        );
+        setOptions(next);
+        setProcessId(next[0]?.processId || "");
       })
       .catch((reason) => setError(reason.message));
   }, []);
-  useEffect(() => {
-    if (processId)
-      void prekinderApi
-        .waves(processId)
-        .then(setWaves)
-        .catch((reason) => setError(reason.message));
-  }, [processId]);
-  const active = waves.find((wave) => wave.active);
+  const selectedOption = options.find((option) => option.processId === processId);
+  const active = selectedOption
+    ? { waveType: selectedOption.waveType, closesAt: selectedOption.closesAt }
+    : undefined;
   const declared = category(form);
   const age = ageAt(form.birthDate);
   const ageValid = age === 3 || age === 4;
@@ -215,11 +206,12 @@ export function PrekinderApplicationPage() {
               value={processId}
               onChange={(e) => setProcessId(e.target.value)}
             >
-              {processes.map((process) => (
-                <option key={process.processId} value={process.processId}>
-                  {process.name}
+              {options.map((option) => (
+                <option key={option.processId} value={option.processId}>
+                  {option.name}
                 </option>
               ))}
+              {!options.length && <option value="">Sin proceso activo</option>}
             </select>
             <ol className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:mt-6 lg:block lg:space-y-2">
               {[
@@ -312,7 +304,7 @@ function WaveBanner({
   active,
   declared,
 }: {
-  active: Wave | undefined;
+  active: Pick<Wave, "waveType" | "closesAt"> | undefined;
   declared: Wave["waveType"];
 }) {
   const matches = active?.waveType === declared;

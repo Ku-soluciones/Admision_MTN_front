@@ -141,6 +141,16 @@ export type AdmissionProcess = {
   acceptingApplications: boolean;
 };
 
+export type PrekinderApplicationOption = {
+  processId: string;
+  academicYear: number;
+  name: string;
+  waveId: string;
+  waveType: "SIBLINGS" | "STAFF_OR_ALUMNI" | "NEW_FAMILIES";
+  opensAt: string;
+  closesAt: string;
+};
+
 export type PrekinderApplication = {
   applicationId: string;
   applicantId: string;
@@ -318,6 +328,10 @@ export type Comment = {
 
 export const prekinderApi = {
   processes: () => apiRequest<AdmissionProcess[]>("/v1/prekinder/processes"),
+  applicationOptions: () =>
+    apiRequest<PrekinderApplicationOption[]>(
+      "/v1/prekinder/application-options",
+    ),
   createProcess: (academicYear: number, name: string) =>
     apiRequest<AdmissionProcess>("/v1/prekinder/processes", {
       method: "POST",

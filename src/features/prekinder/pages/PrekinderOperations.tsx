@@ -95,7 +95,13 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
-export function PrekinderOperations() {
+type PrekinderOperationsProps = {
+  embedded?: boolean;
+};
+
+export function PrekinderOperations({
+  embedded = false,
+}: PrekinderOperationsProps) {
   const [section, setSection] = useState("Resumen");
   const [mobileNav, setMobileNav] = useState(false);
   const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
@@ -201,9 +207,12 @@ export function PrekinderOperations() {
     }
   }
 
+  const Content = embedded ? "section" : "main";
+  const SectionHeading = embedded ? "h2" : "h1";
+
   return (
-    <div className="pk-page">
-      <header className="pk-topbar sticky top-0 z-30">
+    <div className={embedded ? "min-h-full" : "pk-page"}>
+      {!embedded && <header className="pk-topbar sticky top-0 z-30">
         <div className="flex h-16 items-center gap-4 px-4 lg:px-7">
           <button
             className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 lg:hidden"
@@ -217,37 +226,50 @@ export function PrekinderOperations() {
             context="Centro de jornada"
             compactOnMobile
           />
-          <div className="ml-auto flex items-center gap-2">
-            <select
-              className="min-h-11 max-w-[220px] rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor"
-              value={processId}
-              onChange={(event) => setProcessId(event.target.value)}
-              aria-label="Proceso de admisión"
-            >
-              {processes.map((process) => (
-                <option key={process.processId} value={process.processId}>
-                  {process.name}
-                </option>
-              ))}
-              {!processes.length && <option value="">Sin proceso</option>}
-            </select>
-            <button
-              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
-              onClick={() => void loadProcess()}
-              disabled={busy}
-              aria-label="Actualizar"
-            >
-              <RefreshCw size={18} className={busy ? "animate-spin" : ""} />
-            </button>
-          </div>
+          <ProcessControls
+            className="ml-auto"
+            processes={processes}
+            processId={processId}
+            busy={busy}
+            onChange={setProcessId}
+            onRefresh={() => void loadProcess()}
+          />
         </div>
-      </header>
+      </header>}
 
-      <div className="flex">
-        <aside className="hidden min-h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
+      {embedded && (
+        <section className="mb-6 overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/70">
+          <div className="flex flex-wrap items-start gap-5 p-5 sm:p-6">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800">
+                Proceso independiente
+              </p>
+              <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                Admisión Prekínder
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Este espacio administra únicamente las postulaciones, jornadas,
+                evaluaciones y decisiones de Prekínder.
+              </p>
+            </div>
+            <ProcessControls
+              className="w-full sm:w-auto"
+              processes={processes}
+              processId={processId}
+              busy={busy}
+              onChange={setProcessId}
+              onRefresh={() => void loadProcess()}
+            />
+          </div>
+          <Navigation section={section} onSelect={setSection} compact />
+        </section>
+      )}
+
+      <div className={embedded ? "" : "flex"}>
+        {!embedded && <aside className="hidden min-h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
           <Navigation section={section} onSelect={setSection} />
-        </aside>
-        {mobileNav && (
+        </aside>}
+        {!embedded && mobileNav && (
           <div
             className="fixed inset-0 z-50 bg-slate-950/40 lg:hidden"
             onClick={() => setMobileNav(false)}
@@ -277,12 +299,12 @@ export function PrekinderOperations() {
           </div>
         )}
 
-        <main className="min-w-0 flex-1 p-4 lg:p-7">
+        <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 p-4 lg:p-7"}>
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="pk-section-title">
+              <SectionHeading className="pk-section-title">
                 {section}
-              </h1>
+              </SectionHeading>
             </div>
             {section === "Jornadas" && (
               <label className="text-xs font-bold text-slate-600">
@@ -403,8 +425,52 @@ export function PrekinderOperations() {
             />
           )}
           {section === "Auditoría" && <AuditNotice />}
-        </main>
+        </Content>
       </div>
+    </div>
+  );
+}
+
+function ProcessControls({
+  className = "",
+  processes,
+  processId,
+  busy,
+  onChange,
+  onRefresh,
+}: {
+  className?: string;
+  processes: AdmissionProcess[];
+  processId: string;
+  busy: boolean;
+  onChange: (processId: string) => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <label className="min-w-0 flex-1 sm:flex-none">
+        <span className="sr-only">Proceso de admisión</span>
+        <select
+          className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor sm:max-w-[240px]"
+          value={processId}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          {processes.map((process) => (
+            <option key={process.processId} value={process.processId}>
+              {process.name}
+            </option>
+          ))}
+          {!processes.length && <option value="">Sin proceso</option>}
+        </select>
+      </label>
+      <button
+        className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+        onClick={onRefresh}
+        disabled={busy}
+        aria-label="Actualizar información de Prekínder"
+      >
+        <RefreshCw size={18} className={busy ? "animate-spin" : ""} />
+      </button>
     </div>
   );
 }
@@ -412,20 +478,29 @@ export function PrekinderOperations() {
 function Navigation({
   section,
   onSelect,
+  compact = false,
 }: {
   section: string;
   onSelect: (section: string) => void;
+  compact?: boolean;
 }) {
   return (
-    <nav aria-label="Secciones de Prekínder" className="space-y-1">
+    <nav
+      aria-label="Secciones de Prekínder"
+      className={
+        compact
+          ? "pk-module-nav flex gap-1.5 overflow-x-auto border-t border-blue-200 px-5 py-4 sm:px-6"
+          : "space-y-1"
+      }
+    >
       {sections.map(([label, Icon]) => (
         <button
           key={label}
           onClick={() => onSelect(label)}
           aria-current={section === label ? "page" : undefined}
-          className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-bold transition-colors ${section === label ? "bg-azul-monte-tabor text-blanco-pureza" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
+          className={`flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-left text-sm font-bold transition-colors ${compact ? "shrink-0 border" : "w-full gap-3 border border-transparent"} ${section === label ? "border-azul-monte-tabor bg-azul-monte-tabor text-blanco-pureza" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
         >
-          <Icon size={18} />
+          <Icon size={18} className={compact ? "lg:hidden" : undefined} />
           {label}
         </button>
       ))}

@@ -13,7 +13,6 @@ import {
     passwordsMatch,
     evaluatePasswordStrength,
 } from '../../../packages/shared-ui/src/services/passwordService';
-import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
 import { authStore } from '../../../packages/backend-sdk/src/index';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
@@ -113,8 +112,6 @@ const ApoderadoLogin: React.FC = () => {
     const [isEmailVerified, setIsEmailVerified] = useState(false);
     const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
-    const { isProcessActive: processActive, isLoading: flagLoading } = useProcessActiveGuard();
-
     // Campos para registro
     const [registerData, setRegisterData] = useState({
         firstName: '',
@@ -133,7 +130,7 @@ const ApoderadoLogin: React.FC = () => {
     const { login, register } = useAuth();
     const { addNotification } = useNotifications();
 
-    const redirectTo = searchParams.get('redirect') || '/dashboard-apoderado';
+    const redirectTo = searchParams.get('redirect') || '/postulacion/elegir';
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -232,9 +229,15 @@ const ApoderadoLogin: React.FC = () => {
 
         try {
             await register(registerData, 'apoderado');
-            // Tras registro exitoso, redirigir al login del apoderado
-            // para que pueda iniciar sesión y acceder a su dashboard
-            window.location.href = appUrls.guardianLogin;
+            setEmail(registerData.email);
+            setPassword('');
+            setShowRegister(false);
+            setRegisterStep(1);
+            addNotification({
+                type: 'success',
+                title: 'Cuenta creada',
+                message: 'Inicia sesión para elegir el proceso de postulación.',
+            });
         } catch (err: any) {
             const msg = err.message || 'Error al crear la cuenta. Intente nuevamente.';
             setError(msg);
@@ -274,54 +277,6 @@ const ApoderadoLogin: React.FC = () => {
         passwordIsValid &&
         registerData.password === registerData.confirmPassword &&
         registerData.confirmPassword.length > 0;
-
-    if (flagLoading) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full text-center">
-                    <div className="animate-pulse text-azul-monte-tabor text-lg font-medium">
-                        Cargando...
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (processActive === false) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full space-y-8">
-                    <Card className="p-5 sm:p-8">
-                        <div className="text-center">
-                            <div className="flex justify-center mb-8">
-                                <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
-                            </div>
-                            <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
-                                Proceso No Disponible
-                            </h2>
-                            <p className="mt-4 text-lg text-gray-600">
-                                Actualmente no hay un proceso de postulación activo para familias.
-                            </p>
-                            <p className="mt-2 text-sm text-gray-500">
-                                Por favor, vuelva a intentarlo cuando se habilite un nuevo período de admisión.
-                            </p>
-                            <div className="mt-8">
-                                <a
-                                    href={appUrls.home}
-                                    className="inline-block bg-azul-monte-tabor text-white font-semibold px-6 py-3 rounded-lg hover:bg-opacity-90 transition-colors"
-                                >
-                                    ← Volver al inicio
-                                </a>
-                            </div>
-                        </div>
-                    </Card>
-                    <div className="text-center text-sm text-gris-piedra">
-                        <p>¿Consultas? <a href="mailto:admisiones@mtn.cl" className="text-azul-monte-tabor hover:underline font-semibold">admisiones@mtn.cl</a></p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

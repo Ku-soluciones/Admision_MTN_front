@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PrekinderAdminGuard } from "./components/PrekinderAdminGuard";
 import { PrekinderApplicationPage } from "./pages/PrekinderApplicationPage";
-import { PrekinderOperations } from "./pages/PrekinderOperations";
 import { EvaluatorDesk } from "./pages/EvaluatorDesk";
 import { EvaluatorReport } from "./pages/EvaluatorReport";
 import { PrekinderResultPage } from "./pages/PrekinderResultPage";
@@ -11,11 +10,7 @@ export default function PrekinderApp() {
     <Routes>
       <Route
         path="/prekinder"
-        element={
-          <PrekinderAdminGuard>
-            <PrekinderOperations />
-          </PrekinderAdminGuard>
-        }
+        element={<Navigate to="/admin?section=prekinder" replace />}
       />
       <Route
         path="/prekinder/evaluaciones"
@@ -77,7 +72,7 @@ export default function PrekinderApp() {
           </PrekinderAdminGuard>
         }
       />
-      <Route path="*" element={<Navigate to="/prekinder" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

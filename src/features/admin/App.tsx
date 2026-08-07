@@ -45,6 +45,7 @@ function App() {
         <Route path="/profesor" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
+        <Route path="/admin/prekinder" element={<Navigate to="/admin?section=prekinder" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
 
                 </Routes>

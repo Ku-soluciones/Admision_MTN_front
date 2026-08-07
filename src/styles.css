@@ -74,6 +74,12 @@ button:not(:disabled) {
     @apply text-sm leading-6 text-slate-600;
     max-width: 70ch;
   }
+  .pk-module-nav {
+    scrollbar-width: none;
+  }
+  .pk-module-nav::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

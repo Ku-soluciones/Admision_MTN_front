@@ -33,7 +33,11 @@ const ApoderadoLogin: React.FC = () => {
     const { login, register } = useAuth();
     const { addNotification } = useNotifications();
     
-    const redirectTo = searchParams.get('redirect') || '/dashboard-apoderado';
+    const redirectTo = searchParams.get('redirect') || '/postulacion/elegir';
+
+    React.useEffect(() => {
+        if (searchParams.get('register') === '1') setShowRegister(true);
+    }, [searchParams]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,7 +106,7 @@ const ApoderadoLogin: React.FC = () => {
             await register(registerData, 'APODERADO');
             // Para usuarios nuevos registrados, redirigir al formulario de postulación
             // no al dashboard directamente
-            navigate('/postulacion');
+            navigate(redirectTo);
         } catch (err: any) {
             const msg = err.message || 'Error al crear la cuenta. Intente nuevamente.';
             setError(msg);

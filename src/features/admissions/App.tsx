@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import ApplicationForm from './pages/ApplicationForm';
 import ComplementaryApplicationForm from '../admin/pages/ComplementaryApplicationForm';
 import ApoderadoLogin from './pages/ApoderadoLogin';
+import ApplicationTypeChooser from './pages/ApplicationTypeChooser';
 import { AppProvider } from '../admin/context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
@@ -45,6 +46,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/postulacion" element={<ApplicationForm />} />
+        <Route path="/postulacion/elegir" element={<ApplicationTypeChooser />} />
         <Route path="/postulacion/complementaria" element={<ComplementaryApplicationForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />
     

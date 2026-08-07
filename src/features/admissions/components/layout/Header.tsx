@@ -46,7 +46,7 @@ const Header: React.FC = () => {
                             </Button>
                         </a>
                         {isHomePage && (
-                            <a href={appUrls.guardianRegister}>
+                            <a href={appUrls.guardianApplicationEntry}>
                                 <Button variant="primary" size="sm" className="!text-blanco-pureza">
                                     Postular
                                 </Button>
@@ -115,7 +115,7 @@ const Header: React.FC = () => {
                             </Button>
                         </a>
                         {isHomePage && (
-                            <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                            <a href={appUrls.guardianApplicationEntry} onClick={() => setIsMobileMenuOpen(false)}>
                                 <Button variant="primary" className="w-full !text-blanco-pureza">
                                     Postular
                                 </Button>

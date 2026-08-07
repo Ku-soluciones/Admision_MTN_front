@@ -77,6 +77,11 @@ const AdmissionReportTabs = React.lazy(() =>
     .then((module) => ({ default: module.AdmissionReportTabs }))
 );
 
+const PrekinderOperations = React.lazy(() =>
+  import('../../prekinder/pages/PrekinderOperations')
+    .then((module) => ({ default: module.PrekinderOperations }))
+);
+
 const sections = [
   { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: ClipboardDocumentListIcon },
   { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: AcademicCapIcon },
@@ -123,6 +128,29 @@ const SidebarContent = React.memo(function SidebarContent({
             <div className="text-xs opacity-90">Reportes y gestión</div>
           </div>
         </button>
+        <div className="my-4 border-y border-gray-200 py-4">
+          <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-gris-piedra">
+            Proceso independiente
+          </p>
+          <button
+            onClick={() => { onSectionChange('prekinder'); onNavigate?.(); }}
+            className={`flex min-h-14 w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors ${
+              activeSection === 'prekinder'
+                ? 'border-azul-monte-tabor bg-azul-monte-tabor text-white'
+                : 'border-blue-200 bg-blue-50 text-azul-monte-tabor hover:border-azul-monte-tabor'
+            }`}
+            aria-label="Administrar el proceso independiente de Prekínder"
+            aria-current={activeSection === 'prekinder' ? 'page' : undefined}
+          >
+            <AcademicCapIcon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">Prekínder</span>
+              <span className={`block text-xs leading-4 ${activeSection === 'prekinder' ? 'text-blue-100' : 'text-blue-800'}`}>
+                Oleadas, jornadas y decisiones
+              </span>
+            </span>
+          </button>
+        </div>
         {sections.map(section => {
           const Icon = section.icon;
           return (
@@ -164,7 +192,9 @@ const SidebarContent = React.memo(function SidebarContent({
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSection, setActiveSection] = useState('admissionReports');
+  const [activeSection, setActiveSection] = useState(
+    () => searchParams.get('section') === 'prekinder' ? 'prekinder' : 'admissionReports'
+  );
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -268,8 +298,10 @@ const AdminDashboard: React.FC = () => {
 
   // Carga inicial: solo dashboard necesita aplicaciones y usuarios
   useEffect(() => {
-    loadApplications();
-    loadUsers();
+    if (activeSection !== 'prekinder') {
+      loadApplications();
+      loadUsers();
+    }
   }, []);
 
   // Carga por sección: cada sección carga lo que necesita al entrar
@@ -278,6 +310,8 @@ const AdminDashboard: React.FC = () => {
       loadAdminApplications();
     } else if (activeSection === 'evaluaciones') {
       loadApplications();
+    } else if (activeSection === 'usuarios') {
+      loadUsers();
     }
   }, [activeSection]);
 
@@ -548,6 +582,10 @@ Esta acción:
     const requestedSection = searchParams.get('section');
     if (requestedSection === 'admision') {
       setActiveSection('admissionReports');
+    } else if (requestedSection === 'prekinder') {
+      setActiveSection('prekinder');
+    } else if (activeSection === 'prekinder') {
+      setActiveSection('admissionReports');
     }
   }, [searchParams]);
 
@@ -558,6 +596,9 @@ Esta acción:
     const next = new URLSearchParams(searchParams);
     if (key === 'admissionReports') {
       next.set('section', 'admision');
+    } else if (key === 'prekinder') {
+      next.set('section', 'prekinder');
+      ['year', 'grade', 'status', 'action'].forEach((parameter) => next.delete(parameter));
     } else {
       ['section', 'year', 'grade', 'status', 'action'].forEach((parameter) => next.delete(parameter));
     }
@@ -579,6 +620,21 @@ Esta acción:
             <div className="space-y-6">
               <AdmissionReportTabs />
             </div>
+          </React.Suspense>
+        );
+
+      case 'prekinder':
+        return (
+          <React.Suspense
+            fallback={
+              <div
+                className="h-64 animate-pulse rounded-2xl border border-blue-100 bg-blue-50"
+                role="status"
+                aria-label="Cargando administración Prekínder"
+              />
+            }
+          >
+            <PrekinderOperations embedded />
           </React.Suspense>
         );
 
