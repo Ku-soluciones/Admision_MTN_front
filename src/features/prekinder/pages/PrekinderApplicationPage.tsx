@@ -330,8 +330,8 @@ function WaveBanner({
             {!active
               ? "Administración aún no ha publicado una ventana de postulación."
               : matches
-                ? "Tu declaración corresponde a esta oleada. Los antecedentes quedarán sujetos a revisión."
-                : `Tu declaración corresponde a “${waveNames[declared]}”, por lo que no puede enviarse durante esta oleada.`}
+                ? "Tu declaración corresponde a esta etapa. Los antecedentes quedarán sujetos a revisión."
+                : `Tu declaración corresponde a “${waveNames[declared]}”, por lo que no puede enviarse durante esta etapa.`}
           </p>
           {active?.closesAt && (
             <p
@@ -695,7 +695,7 @@ function Receipt({ submitted }: { submitted: FlowApplication }) {
       <h2 className="mt-5 text-2xl font-black">Postulación recibida</h2>
       <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">
         Guardamos la postulación en el proceso Prekínder. La elegibilidad
-        permanece pendiente de revisión y no cambia de oleada automáticamente.
+        permanece pendiente de revisión y no cambia de etapa automáticamente.
       </p>
       <div className="mx-auto mt-6 max-w-sm rounded-xl bg-slate-50 p-4 text-left">
         <p className="text-xs font-bold text-slate-400">

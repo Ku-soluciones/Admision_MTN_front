@@ -146,7 +146,7 @@ const SidebarContent = React.memo(function SidebarContent({
             <span className="min-w-0">
               <span className="block text-sm font-bold">Prekínder</span>
               <span className={`block text-xs leading-4 ${activeSection === 'prekinder' ? 'text-blue-100' : 'text-blue-800'}`}>
-                Oleadas, jornadas y decisiones
+                Etapas, jornadas y decisiones
               </span>
             </span>
           </button>

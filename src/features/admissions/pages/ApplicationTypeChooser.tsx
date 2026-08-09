@@ -103,7 +103,7 @@ const ApplicationTypeChooser = () => {
                             <School className="text-dorado-nazaret" size={34} aria-hidden="true" />
                             <h2 className="mt-6 font-serif text-2xl font-bold text-azul-monte-tabor">Prekínder</h2>
                             <p className="mt-2 text-sm leading-6 text-gris-piedra">
-                                {activePrekinder.name}. Completarás la postulación por oleadas y recibirás aquí las comunicaciones del proceso.
+                                {activePrekinder.name}. Completarás la postulación por etapas y recibirás aquí las comunicaciones del proceso.
                             </p>
                             <span className="mt-auto flex min-h-11 items-center justify-between pt-6 text-sm font-bold text-azul-monte-tabor">
                                 Comenzar postulación Prekínder
@@ -124,8 +124,8 @@ const ApplicationTypeChooser = () => {
                                     : !prekinderProcessActive
                                         ? 'El proceso de Prekínder no se encuentra habilitado en este momento.'
                                         : loading
-                                            ? 'Estamos verificando si existe una oleada disponible.'
-                                            : 'En este momento no existe una oleada abierta para nuevas postulaciones.'}
+                                            ? 'Estamos verificando si existe una etapa disponible.'
+                                            : 'En este momento no existe una etapa abierta para nuevas postulaciones.'}
                             </p>
                             <span className="mt-auto pt-6 text-sm font-bold text-gris-piedra">
                                 {prekinderAvailabilityLoading ? 'Consultando disponibilidad' : 'Postulación no disponible'}

@@ -31,7 +31,7 @@ import { PrekinderBrand } from "../components/PrekinderBrand";
 
 const sections = [
   ["Resumen", LayoutDashboard],
-  ["Oleadas", Activity],
+  ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Jornadas", CalendarDays],
   ["Profesionales", UsersRound],
@@ -78,6 +78,11 @@ function localInput(iso: string | null) {
     .toISOString()
     .slice(0, 16);
 }
+function futureLocalInput(days: number) {
+  return localInput(
+    new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+  );
+}
 function fullName(app: FlowApplication) {
   return [
     app.identity.firstName,
@@ -104,6 +109,7 @@ export function PrekinderOperations({
 }: PrekinderOperationsProps) {
   const [section, setSection] = useState("Resumen");
   const [mobileNav, setMobileNav] = useState(false);
+  const [baseLoading, setBaseLoading] = useState(true);
   const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
   const [processId, setProcessId] = useState("");
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -120,16 +126,25 @@ export function PrekinderOperations({
 
   const selected =
     groups.find((group) => group.groupId === selectedGroup) ?? null;
+  const currentProcess = useMemo(
+    () => processes.find((process) => process.processId === processId) ?? null,
+    [processes, processId],
+  );
   const eligible = applications.filter(
     (app) => app.eligibilityStatus === "VERIFIED",
   );
 
   async function loadBase() {
+    setBaseLoading(true);
     setError("");
     try {
       const next = await prekinderApi.processes();
       setProcesses(next);
-      setProcessId((current) => current || next[0]?.processId || "");
+      setProcessId((current) =>
+        next.some((process) => process.processId === current)
+          ? current
+          : next[0]?.processId || "",
+      );
       const people = await prekinderApi.professionals();
       setProfessionals(people);
     } catch (reason) {
@@ -138,6 +153,8 @@ export function PrekinderOperations({
           ? reason.message
           : "No pudimos cargar Prekínder.",
       );
+    } finally {
+      setBaseLoading(false);
     }
   }
 
@@ -207,6 +224,69 @@ export function PrekinderOperations({
     }
   }
 
+  async function refreshAll() {
+    await loadBase();
+    if (processId) await loadProcess();
+  }
+
+  async function createAdmissionProcess(academicYear: number, name: string) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const created = await prekinderApi.createProcess(academicYear, name);
+      setProcesses((current) => [
+        created,
+        ...current.filter((process) => process.processId !== created.processId),
+      ]);
+      setProcessId(created.processId);
+      setSection("Etapas");
+      setMessage(
+        "Proceso creado. Define su periodo general para continuar con las etapas.",
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof ApiError
+          ? reason.message
+          : "No pudimos crear el proceso. Revisa los datos e inténtalo nuevamente.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publishAdmissionProcess(startsAt: string, endsAt: string) {
+    if (!currentProcess) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const published = await prekinderApi.publishProcess(
+        currentProcess.processId,
+        startsAt,
+        endsAt,
+      );
+      setProcesses((current) =>
+        current.map((process) =>
+          process.processId === published.processId ? published : process,
+        ),
+      );
+      setSection("Etapas");
+      setMessage(
+        "Proceso habilitado. Ahora publica una etapa para recibir postulaciones.",
+      );
+      await loadProcess(published.processId);
+    } catch (reason) {
+      setError(
+        reason instanceof ApiError
+          ? reason.message
+          : "No pudimos habilitar el proceso. Revisa las fechas e inténtalo nuevamente.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const Content = embedded ? "section" : "main";
   const SectionHeading = embedded ? "h2" : "h1";
 
@@ -230,9 +310,9 @@ export function PrekinderOperations({
             className="ml-auto"
             processes={processes}
             processId={processId}
-            busy={busy}
+            busy={busy || baseLoading}
             onChange={setProcessId}
-            onRefresh={() => void loadProcess()}
+            onRefresh={() => void refreshAll()}
           />
         </div>
       </header>}
@@ -256,18 +336,27 @@ export function PrekinderOperations({
               className="w-full sm:w-auto"
               processes={processes}
               processId={processId}
-              busy={busy}
+              busy={busy || baseLoading}
               onChange={setProcessId}
-              onRefresh={() => void loadProcess()}
+              onRefresh={() => void refreshAll()}
             />
           </div>
-          <Navigation section={section} onSelect={setSection} compact />
+          <Navigation
+            section={section}
+            onSelect={setSection}
+            compact
+            disabled={!processId || currentProcess?.status === "DRAFT"}
+          />
         </section>
       )}
 
       <div className={embedded ? "" : "flex"}>
         {!embedded && <aside className="hidden min-h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
-          <Navigation section={section} onSelect={setSection} />
+          <Navigation
+            section={section}
+            onSelect={setSection}
+            disabled={!processId || currentProcess?.status === "DRAFT"}
+          />
         </aside>}
         {!embedded && mobileNav && (
           <div
@@ -290,6 +379,7 @@ export function PrekinderOperations({
               </button>
               <Navigation
                 section={section}
+                disabled={!processId || currentProcess?.status === "DRAFT"}
                 onSelect={(next) => {
                   setSection(next);
                   setMobileNav(false);
@@ -303,7 +393,13 @@ export function PrekinderOperations({
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <SectionHeading className="pk-section-title">
-                {section}
+                {baseLoading
+                  ? "Cargando Prekínder"
+                  : !processId
+                    ? "Crear proceso"
+                    : currentProcess?.status === "DRAFT"
+                      ? "Habilitar proceso"
+                      : section}
               </SectionHeading>
             </div>
             {section === "Jornadas" && (
@@ -326,7 +422,7 @@ export function PrekinderOperations({
               <span>{error}</span>
               <button
                 className="min-h-11 rounded-lg px-3 font-extrabold underline underline-offset-4"
-                onClick={() => void loadProcess()}
+                onClick={() => void refreshAll()}
               >
                 Reintentar
               </button>
@@ -342,6 +438,21 @@ export function PrekinderOperations({
             </div>
           )}
 
+          {baseLoading ? (
+            <LoadingProcessState />
+          ) : !processId ? (
+            <EmptyProcessState
+              busy={busy}
+              onCreate={createAdmissionProcess}
+            />
+          ) : currentProcess?.status === "DRAFT" ? (
+            <ProcessActivation
+              process={currentProcess}
+              busy={busy}
+              onPublish={publishAdmissionProcess}
+            />
+          ) : (
+            <>
           {section === "Resumen" && (
             <Overview
               metrics={metrics}
@@ -351,7 +462,7 @@ export function PrekinderOperations({
               onGo={setSection}
             />
           )}
-          {section === "Oleadas" && (
+          {section === "Etapas" && (
             <Waves
               waves={waves}
               busy={busy}
@@ -364,7 +475,7 @@ export function PrekinderOperations({
                       status,
                       expectedVersion: wave.version,
                     }),
-                  "Oleada actualizada.",
+                  "Etapa actualizada.",
                 )
               }
             />
@@ -425,9 +536,239 @@ export function PrekinderOperations({
             />
           )}
           {section === "Auditoría" && <AuditNotice />}
+            </>
+          )}
         </Content>
       </div>
     </div>
+  );
+}
+
+function LoadingProcessState() {
+  return (
+    <div
+      className="flex min-h-72 items-center justify-center rounded-2xl bg-white"
+      role="status"
+    >
+      <RefreshCw
+        className="mr-3 animate-spin text-azul-monte-tabor motion-reduce:animate-none"
+        size={22}
+        aria-hidden="true"
+      />
+      <span className="text-sm font-bold text-slate-700">
+        Cargando configuración de Prekínder
+      </span>
+    </div>
+  );
+}
+
+function EmptyProcessState({
+  busy,
+  onCreate,
+}: {
+  busy: boolean;
+  onCreate: (academicYear: number, name: string) => Promise<void>;
+}) {
+  const suggestedYear = Math.max(2027, new Date().getFullYear() + 1);
+  const [academicYear, setAcademicYear] = useState(suggestedYear);
+  const [name, setName] = useState(`Admisión Prekínder ${suggestedYear}`);
+  const canCreate =
+    academicYear >= 2027 && academicYear <= 2100 && Boolean(name.trim());
+
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+      <div className="grid lg:grid-cols-[minmax(0,0.85fr)_minmax(360px,1.15fr)]">
+        <div className="bg-azul-monte-tabor p-7 text-white sm:p-9">
+          <span className="grid h-12 w-12 place-items-center rounded-xl bg-white/10 text-blue-100">
+            <CalendarDays size={25} aria-hidden="true" />
+          </span>
+          <h2 className="mt-7 max-w-md text-2xl font-black tracking-[-0.02em] sm:text-3xl">
+            Crea el proceso que recibirás este año
+          </h2>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-blue-100">
+            El proceso reúne sus etapas, postulaciones, jornadas y decisiones.
+            Después de crearlo definirás cuándo estará disponible para las
+            familias.
+          </p>
+          <ol className="mt-8 space-y-4 text-sm font-bold text-blue-50">
+            <li className="flex items-center gap-3">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-xs text-azul-monte-tabor">
+                1
+              </span>
+              Crear el proceso anual
+            </li>
+            <li className="flex items-center gap-3 text-blue-200">
+              <span className="grid h-7 w-7 place-items-center rounded-full border border-blue-300 text-xs">
+                2
+              </span>
+              Definir el periodo general
+            </li>
+            <li className="flex items-center gap-3 text-blue-200">
+              <span className="grid h-7 w-7 place-items-center rounded-full border border-blue-300 text-xs">
+                3
+              </span>
+              Publicar la primera etapa
+            </li>
+          </ol>
+        </div>
+
+        <form
+          className="flex flex-col justify-center p-7 sm:p-9 lg:p-11"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (canCreate && !busy) void onCreate(academicYear, name.trim());
+          }}
+        >
+          <h2 className="text-xl font-black text-slate-950">
+            Datos del nuevo proceso
+          </h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+            Puedes cambiar el nombre; el año académico identifica el proceso
+            en todo el panel.
+          </p>
+          <div className="mt-7 grid gap-5 sm:grid-cols-[150px_1fr]">
+            <Field label="Año académico">
+              <input
+                className="control w-full"
+                type="number"
+                min={2027}
+                max={2100}
+                value={academicYear}
+                onChange={(event) =>
+                  setAcademicYear(Number(event.target.value))
+                }
+                required
+              />
+            </Field>
+            <Field label="Nombre del proceso">
+              <input
+                className="control w-full"
+                type="text"
+                maxLength={160}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Admisión Prekínder 2027"
+                required
+              />
+            </Field>
+          </div>
+          <button
+            className="primary mt-7 w-full sm:w-fit"
+            type="submit"
+            disabled={!canCreate || busy}
+          >
+            {busy ? (
+              <RefreshCw
+                className="mr-2 animate-spin motion-reduce:animate-none"
+                size={18}
+                aria-hidden="true"
+              />
+            ) : (
+              <CalendarDays className="mr-2" size={18} aria-hidden="true" />
+            )}
+            {busy ? "Creando proceso" : "Crear proceso"}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function ProcessActivation({
+  process,
+  busy,
+  onPublish,
+}: {
+  process: AdmissionProcess;
+  busy: boolean;
+  onPublish: (startsAt: string, endsAt: string) => Promise<void>;
+}) {
+  const [startsAt, setStartsAt] = useState(
+    localInput(process.startsAt) || futureLocalInput(0),
+  );
+  const [endsAt, setEndsAt] = useState(
+    localInput(process.endsAt) || futureLocalInput(90),
+  );
+  useEffect(() => {
+    setStartsAt(localInput(process.startsAt) || futureLocalInput(0));
+    setEndsAt(localInput(process.endsAt) || futureLocalInput(90));
+  }, [process.processId, process.startsAt, process.endsAt]);
+  const hasValidWindow =
+    Boolean(startsAt && endsAt) &&
+    new Date(endsAt).getTime() > new Date(startsAt).getTime();
+
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+      <div className="border-b border-slate-200 px-7 py-6 sm:px-9">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">
+              {process.name}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              El proceso está creado como borrador. Define su periodo general
+              para habilitar la configuración de etapas y la recepción de
+              postulaciones.
+            </p>
+          </div>
+          <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-extrabold text-amber-900">
+            Borrador
+          </span>
+        </div>
+      </div>
+      <form
+        className="grid gap-7 p-7 sm:p-9 lg:grid-cols-[1fr_1fr_auto] lg:items-end"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (hasValidWindow && !busy) {
+            void onPublish(
+              new Date(startsAt).toISOString(),
+              new Date(endsAt).toISOString(),
+            );
+          }
+        }}
+      >
+        <Field label="Inicio del proceso">
+          <input
+            className="control w-full"
+            type="datetime-local"
+            value={startsAt}
+            onChange={(event) => setStartsAt(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Cierre del proceso">
+          <input
+            className="control w-full"
+            type="datetime-local"
+            value={endsAt}
+            onChange={(event) => setEndsAt(event.target.value)}
+            required
+          />
+        </Field>
+        <button
+          className="primary w-full lg:w-auto"
+          type="submit"
+          disabled={!hasValidWindow || busy}
+        >
+          {busy ? (
+            <RefreshCw
+              className="mr-2 animate-spin motion-reduce:animate-none"
+              size={18}
+              aria-hidden="true"
+            />
+          ) : (
+            <Check className="mr-2" size={18} aria-hidden="true" />
+          )}
+          {busy ? "Habilitando" : "Habilitar proceso"}
+        </button>
+        {!hasValidWindow && (
+          <p className="text-sm font-semibold text-red-700 sm:col-span-2 lg:col-span-3" role="alert">
+            La fecha de cierre debe ser posterior a la fecha de inicio.
+          </p>
+        )}
+      </form>
+    </section>
   );
 }
 
@@ -454,6 +795,7 @@ function ProcessControls({
           className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor sm:max-w-[240px]"
           value={processId}
           onChange={(event) => onChange(event.target.value)}
+          disabled={!processes.length || busy}
         >
           {processes.map((process) => (
             <option key={process.processId} value={process.processId}>
@@ -479,10 +821,12 @@ function Navigation({
   section,
   onSelect,
   compact = false,
+  disabled = false,
 }: {
   section: string;
   onSelect: (section: string) => void;
   compact?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <nav
@@ -497,8 +841,9 @@ function Navigation({
         <button
           key={label}
           onClick={() => onSelect(label)}
+          disabled={disabled}
           aria-current={section === label ? "page" : undefined}
-          className={`flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-left text-sm font-bold transition-colors ${compact ? "shrink-0 border" : "w-full gap-3 border border-transparent"} ${section === label ? "border-azul-monte-tabor bg-azul-monte-tabor text-blanco-pureza" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
+          className={`flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-left text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 ${compact ? "shrink-0 border" : "w-full gap-3 border border-transparent"} ${section === label && !disabled ? "border-azul-monte-tabor bg-azul-monte-tabor text-blanco-pureza" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
         >
           <Icon size={18} className={compact ? "lg:hidden" : undefined} />
           {label}
@@ -588,9 +933,9 @@ function Overview({
           </div>
         </div>
         <div className="rounded-[14px] bg-azul-monte-tabor p-6 text-blanco-pureza shadow-[0_16px_36px_rgba(30,58,138,0.16)]">
-          <p className="text-sm font-bold text-blue-200">Oleada vigente</p>
+          <p className="text-sm font-bold text-blue-200">Etapa vigente</p>
           <h2 className="mt-3 text-2xl font-black">
-            {active ? waveNames[active.waveType] : "Sin oleada abierta"}
+            {active ? waveNames[active.waveType] : "Sin etapa abierta"}
           </h2>
           <p className="mt-3 text-sm leading-6 text-blue-100">
             {active
@@ -735,7 +1080,7 @@ function Applications({
         <div>
           <h2 className="font-black">Revisión de elegibilidad</h2>
           <p className="text-xs text-slate-500">
-            Una declaración rechazada no cambia de oleada.
+            Una declaración rechazada no cambia de etapa.
           </p>
         </div>
         <input
