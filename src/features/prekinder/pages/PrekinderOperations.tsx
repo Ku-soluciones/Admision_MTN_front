@@ -126,6 +126,7 @@ export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
   const demoMode =
+    window.location.pathname === "/admin/prekinder-demo" ||
     new URLSearchParams(window.location.search).get("prekinderDemo") === "true";
   const initialDate = today();
   const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];

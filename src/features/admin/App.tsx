@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AdminLogin from './pages/AdminLogin';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
@@ -12,6 +12,11 @@ import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+const DevPrekinderOperations = lazy(() =>
+  import('../prekinder/pages/PrekinderOperations')
+    .then((module) => ({ default: module.PrekinderOperations }))
+);
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-[#f7f3ea]">
@@ -46,6 +51,12 @@ function App() {
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
         <Route path="/admin/prekinder" element={<Navigate to="/admin?section=prekinder" replace />} />
+        <Route
+          path="/admin/prekinder-demo"
+          element={import.meta.env.DEV
+            ? <DevPrekinderOperations />
+            : <Navigate to="/login" replace />}
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
 
                 </Routes>
