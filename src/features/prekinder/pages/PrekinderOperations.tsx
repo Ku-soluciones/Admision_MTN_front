@@ -30,6 +30,7 @@ import {
 import { PrekinderBrand } from "../components/PrekinderBrand";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import { AcademicEvaluatorConsole } from "../components/admin/AcademicEvaluatorConsole";
+import { SpecialtyEvaluatorConsole } from "../components/admin/SpecialtyEvaluatorConsole";
 import {
   createMockGroups,
   mockApplications,
@@ -45,6 +46,12 @@ const sections = [
   ["Postulaciones", Users],
   ["Torre de control", CalendarDays],
   ["Evaluador académico", ClipboardCheck],
+  ["Psicomotricidad", ClipboardCheck],
+  ["Psicología", ShieldCheck],
+  ["Indicadores de ingreso", ClipboardCheck],
+  ["Observación grupal", UsersRound],
+  ["Apoyo al Aprendizaje", ShieldCheck],
+  ["DAP", ShieldCheck],
   ["Profesionales", UsersRound],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
@@ -119,6 +126,7 @@ export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
   const demoMode =
+    window.location.pathname === "/admin/prekinder-demo" ||
     new URLSearchParams(window.location.search).get("prekinderDemo") === "true";
   const initialDate = today();
   const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
@@ -126,6 +134,15 @@ export function PrekinderOperations({
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
     if (requestedView === "academic-evaluator") return "Evaluador académico";
+    const evaluatorViews: Record<string, string> = {
+      psychomotor: "Psicomotricidad",
+      psychology: "Psicología",
+      indicators: "Indicadores de ingreso",
+      "group-observation": "Observación grupal",
+      support: "Apoyo al Aprendizaje",
+      dap: "DAP",
+    };
+    if (requestedView && evaluatorViews[requestedView]) return evaluatorViews[requestedView];
     return "Resumen";
   });
   const [mobileNav, setMobileNav] = useState(false);
@@ -568,6 +585,12 @@ export function PrekinderOperations({
               rooms={rooms}
             />
           )}
+          {section === "Psicomotricidad" && <SpecialtyEvaluatorConsole profile="PSYCHOMOTOR" groups={groups} applications={eligible} rooms={rooms} />}
+          {section === "Psicología" && <SpecialtyEvaluatorConsole profile="PSYCHOLOGY" groups={groups} applications={eligible} rooms={rooms} />}
+          {section === "Indicadores de ingreso" && <SpecialtyEvaluatorConsole profile="INDICATORS" groups={groups} applications={eligible} rooms={rooms} />}
+          {section === "Observación grupal" && <SpecialtyEvaluatorConsole profile="GROUP_OBSERVATION" groups={groups} applications={eligible} rooms={rooms} />}
+          {section === "Apoyo al Aprendizaje" && <SpecialtyEvaluatorConsole profile="SUPPORT" groups={groups} applications={eligible} rooms={rooms} />}
+          {section === "DAP" && <SpecialtyEvaluatorConsole profile="DAP" groups={groups} applications={eligible} rooms={rooms} />}
           {section === "Profesionales" && (
             <Professionals
               professionals={professionals}
