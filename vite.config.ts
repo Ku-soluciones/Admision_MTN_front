@@ -13,9 +13,14 @@ function flagsDevMiddleware(env: Record<string, string>): Connect.NextHandleFunc
   const flagsSdkKey = env.FLAGS || process.env.FLAGS;
   const flagsClientPromise = flagsSdkKey
     ? (async () => {
-        const client = createClient(flagsSdkKey);
-        await client.initialize();
-        return client;
+        try {
+          const client = createClient(flagsSdkKey);
+          await client.initialize();
+          return client;
+        } catch (err) {
+          console.warn('[Flags Dev] No se pudo inicializar @vercel/flags-core:', err);
+          return null;
+        }
       })()
     : null;
 
