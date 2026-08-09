@@ -28,12 +28,23 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
+import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
+import { AcademicEvaluatorConsole } from "../components/admin/AcademicEvaluatorConsole";
+import {
+  createMockGroups,
+  mockApplications,
+  mockMetrics,
+  mockProcess,
+  mockRooms,
+  mockWaves,
+} from "../data/mockControlTower";
 
 const sections = [
   ["Resumen", LayoutDashboard],
   ["Etapas", Activity],
   ["Postulaciones", Users],
-  ["Jornadas", CalendarDays],
+  ["Torre de control", CalendarDays],
+  ["Evaluador académico", ClipboardCheck],
   ["Profesionales", UsersRound],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
@@ -107,19 +118,28 @@ type PrekinderOperationsProps = {
 export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
-  const [section, setSection] = useState("Resumen");
+  const demoMode =
+    new URLSearchParams(window.location.search).get("prekinderDemo") === "true";
+  const initialDate = today();
+  const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
+  const [section, setSection] = useState(() => {
+    const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
+    if (requestedView === "control-tower") return "Torre de control";
+    if (requestedView === "academic-evaluator") return "Evaluador académico";
+    return "Resumen";
+  });
   const [mobileNav, setMobileNav] = useState(false);
-  const [baseLoading, setBaseLoading] = useState(true);
-  const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
-  const [processId, setProcessId] = useState("");
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [waves, setWaves] = useState<Wave[]>([]);
-  const [applications, setApplications] = useState<FlowApplication[]>([]);
+  const [baseLoading, setBaseLoading] = useState(!demoMode);
+  const [processes, setProcesses] = useState<AdmissionProcess[]>(demoMode ? [mockProcess] : []);
+  const [processId, setProcessId] = useState(demoMode ? mockProcess.processId : "");
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(demoMode ? mockMetrics : null);
+  const [waves, setWaves] = useState<Wave[]>(demoMode ? mockWaves : []);
+  const [applications, setApplications] = useState<FlowApplication[]>(demoMode ? mockApplications : []);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [groups, setGroups] = useState<EvaluationGroup[]>([]);
-  const [date, setDate] = useState(today());
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<Room[]>(demoMode ? mockRooms : []);
+  const [groups, setGroups] = useState<EvaluationGroup[]>(initialDemoGroups);
+  const [date, setDate] = useState(initialDate);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(initialDemoGroups[0]?.groupId ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -191,11 +211,22 @@ export function PrekinderOperations({
   }
 
   useEffect(() => {
+    if (demoMode) return;
     void loadBase();
-  }, []);
+  }, [demoMode]);
   useEffect(() => {
+    if (demoMode) {
+      const nextGroups = createMockGroups(date);
+      setGroups(nextGroups);
+      setSelectedGroup((current) =>
+        nextGroups.some((group) => group.groupId === current)
+          ? current
+          : nextGroups[0]?.groupId ?? null,
+      );
+      return;
+    }
     if (processId) void loadProcess(processId, date);
-  }, [processId, date]);
+  }, [processId, date, demoMode]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -206,6 +237,10 @@ export function PrekinderOperations({
   }, [mobileNav]);
 
   async function action(work: () => Promise<unknown>, success: string) {
+    if (demoMode) {
+      setMessage(`${success} Vista demostrativa: el cambio no se guardó en la base de datos.`);
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -225,6 +260,13 @@ export function PrekinderOperations({
   }
 
   async function refreshAll() {
+    if (demoMode) {
+      const nextGroups = createMockGroups(date);
+      setGroups(nextGroups);
+      setSelectedGroup(nextGroups[0]?.groupId ?? null);
+      setMessage("Datos de demostración restablecidos.");
+      return;
+    }
     await loadBase();
     if (processId) await loadProcess();
   }
@@ -402,7 +444,7 @@ export function PrekinderOperations({
                       : section}
               </SectionHeading>
             </div>
-            {section === "Jornadas" && (
+            {section === "Torre de control" && (
               <label className="text-xs font-bold text-slate-600">
                 Fecha
                 <input
@@ -426,6 +468,12 @@ export function PrekinderOperations({
               >
                 Reintentar
               </button>
+            </div>
+          )}
+          {demoMode && (
+            <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
+              <span className="font-black">Modo demostración:</span>{" "}
+              proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
             </div>
           )}
           {message && (
@@ -500,18 +548,24 @@ export function PrekinderOperations({
               }
             />
           )}
-          {section === "Jornadas" && (
-            <DayCenter
+          {section === "Torre de control" && (
+            <PrekinderControlTower
               processId={processId}
               date={date}
               rooms={rooms}
               groups={groups}
               applications={eligible}
-              professionals={professionals}
               selected={selected}
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}
+            />
+          )}
+          {section === "Evaluador académico" && (
+            <AcademicEvaluatorConsole
+              groups={groups}
+              applications={eligible}
+              rooms={rooms}
             />
           )}
           {section === "Profesionales" && (
@@ -873,8 +927,8 @@ function Overview({
       metrics?.eligibilityPending ?? 0,
       "Postulaciones",
     ],
-    ["Grupos de hoy", metrics?.groupsToday ?? 0, "Jornadas"],
-    ["Informes pendientes", metrics?.reportsPending ?? 0, "Jornadas"],
+    ["Grupos de hoy", metrics?.groupsToday ?? 0, "Torre de control"],
+    ["Informes pendientes", metrics?.reportsPending ?? 0, "Torre de control"],
     ["Decisiones listas", metrics?.decisionsReady ?? 0, "Decisiones"],
   ] as const;
   const active = waves.find((wave) => wave.active);
@@ -906,7 +960,7 @@ function Overview({
               groups.slice(0, 5).map((group) => (
                 <button
                   key={group.groupId}
-                  onClick={() => onGo("Jornadas")}
+                  onClick={() => onGo("Torre de control")}
                   className="flex min-h-16 w-full items-center gap-4 text-left"
                 >
                   <span className="w-14 text-sm font-black text-azul-monte-tabor">

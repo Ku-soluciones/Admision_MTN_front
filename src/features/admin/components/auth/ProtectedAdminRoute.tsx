@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { appUrls } from '../../utils/appUrls';
 
@@ -9,14 +9,15 @@ interface ProtectedAdminRouteProps {
 
 const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) => {
     const { user, isAuthenticated, isLoading } = useAuth();
+    const location = useLocation();
     
     if (isLoading) {
         return <div>Cargando...</div>;
     }
     
     if (!isAuthenticated || !user) {
-        // Redirigir al login si no hay usuario autenticado
-        return <Navigate to="/login" replace />;
+        const requestedPath = `${location.pathname}${location.search}${location.hash}`;
+        return <Navigate to={`/login?redirect=${encodeURIComponent(requestedPath)}`} replace />;
     }
 
     // Verificar que tenga permisos de admin
