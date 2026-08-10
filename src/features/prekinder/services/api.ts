@@ -154,6 +154,47 @@ export type ApplicantIdentity = {
   motherEmail: string;
 };
 
+export type FamilyAdultDetails = {
+  fullName: string;
+  rut: string;
+  email: string;
+  phone: string;
+  address: string;
+  profession?: string;
+};
+
+export type ResponsibleAdultDetails = {
+  fullName: string;
+  rut: string;
+  email: string;
+  phone: string;
+  relationship: string;
+};
+
+export type PrekinderApplicationDetails = {
+  gender: "MALE" | "FEMALE";
+  studentEmail?: string;
+  address: {
+    street: string;
+    number: string;
+    apartment?: string;
+    country: string;
+    region?: string;
+    commune: string;
+  };
+  grade: "PRE_KINDER";
+  applicationYear: number;
+  currentSchool?: string;
+  additionalNotes?: string;
+  admissionPreference: "NINGUNA" | "HIJO_FUNCIONARIO" | "HIJO_EX_ALUMNO";
+  hasSiblingsInSchool: boolean;
+  siblingsInSchoolDetails?: string;
+  father: FamilyAdultDetails;
+  mother: FamilyAdultDetails;
+  supporter: ResponsibleAdultDetails;
+  guardian: ResponsibleAdultDetails;
+};
+
 export type FlowApplication = {
   applicationId: string;
   applicantId: string;
@@ -165,6 +206,7 @@ export type FlowApplication = {
   version: number;
   declarationVersion: number;
   identity: ApplicantIdentity;
+  applicationDetails: PrekinderApplicationDetails | null;
   createdAt: string;
 };
 
@@ -174,9 +216,43 @@ export type Professional = {
   displayName: string;
   email: string;
   specialty: string;
-  roleCode: "ADMIN" | "COORDINATOR" | "EVALUATOR";
+  roleCode: ProfessionalRoleCode | "ADMIN" | "COORDINATOR" | "EVALUATOR";
+  roleLabel: string;
+  roleGroup: ProfessionalRoleGroup | "PENDING";
+  instrumentCode: string | null;
   active: boolean;
   version: number;
+};
+
+export type ProfessionalRoleCode =
+  | "PK_ADMIN"
+  | "PK_COORDINATOR"
+  | "PK_RECEPTION"
+  | "PK_DATA_ENTRY"
+  | "PK_REVIEWER"
+  | "PK_COMMITTEE"
+  | "PK_FINAL_APPROVER"
+  | "PK_AUDITOR"
+  | "PK_EVALUATOR_ACADEMIC"
+  | "PK_EVALUATOR_PSYCHOMOTOR"
+  | "PK_EVALUATOR_PSYCHOLOGY"
+  | "PK_EVALUATOR_ENTRY_INDICATORS"
+  | "PK_EVALUATOR_GROUP_OBSERVATION"
+  | "PK_EVALUATOR_LEARNING_SUPPORT"
+  | "PK_EVALUATOR_DAP";
+
+export type ProfessionalRoleGroup =
+  | "ADMINISTRACION"
+  | "OPERACION"
+  | "EVALUACION"
+  | "DECISION_CONTROL";
+
+export type ProfessionalRoleDefinition = {
+  roleCode: ProfessionalRoleCode;
+  label: string;
+  groupCode: ProfessionalRoleGroup;
+  instrumentCode: string | null;
+  position: number;
 };
 
 export type Room = {
@@ -430,6 +506,7 @@ export const prekinderApi = {
     familyEmail: string;
     fatherEmail: string;
     motherEmail: string;
+    applicationDetails: PrekinderApplicationDetails;
     eligibility: {
       siblings: Array<{ name: string; rut: string; currentGrade: string }>;
       employeeParent: string;
@@ -466,11 +543,14 @@ export const prekinderApi = {
     ),
   professionals: () =>
     apiRequest<Professional[]>("/v1/prekinder/professionals"),
+  professionalRoles: () =>
+    apiRequest<ProfessionalRoleDefinition[]>("/v1/prekinder/professional-roles"),
   saveProfessional: (
     input: Partial<Professional> & {
+      processId: string;
       displayName: string;
       email: string;
-      roleCode: Professional["roleCode"];
+      roleCode: ProfessionalRoleCode;
       expectedVersion: number;
     },
   ) =>

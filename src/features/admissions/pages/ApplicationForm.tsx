@@ -21,6 +21,10 @@ import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
+import {
+    prekinderApi,
+    type PrekinderApplicationOption,
+} from '../../prekinder/services/api';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -118,8 +122,191 @@ const validationConfig = {
     guardianRelation: { required: true }
 };
 
+const prekinderWaveLabels: Record<PrekinderApplicationOption['waveType'], string> = {
+    SIBLINGS: 'Hermanos/as de alumnos vigentes',
+    STAFF_OR_ALUMNI: 'Hijos/as de funcionarios o exalumnos',
+    NEW_FAMILIES: 'Nuevas familias',
+};
+
+function hasPrekinderApplicationAge(birthDate: string): boolean {
+    if (!birthDate) return false;
+    const birth = new Date(`${birthDate}T12:00:00`);
+    if (Number.isNaN(birth.getTime())) return false;
+    const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date()).split('-').map(Number);
+    let age = year - birth.getFullYear();
+    if (month - 1 < birth.getMonth() || (month - 1 === birth.getMonth() && day < birth.getDate())) age--;
+    return age === 3 || age === 4;
+}
+
+function PrekinderEligibilityFields({
+    option,
+    loading,
+    error,
+    data,
+    updateField,
+}: {
+    option: PrekinderApplicationOption | null;
+    loading: boolean;
+    error: string;
+    data: any;
+    updateField: (name: string, value: any) => void;
+}) {
+    if (loading) {
+        return (
+            <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gris-piedra" role="status">
+                Consultando la etapa de postulación Prekínder…
+            </div>
+        );
+    }
+    if (error || !option) {
+        return (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                <strong>No puedes continuar:</strong> {error || 'No existe una etapa de postulación abierta.'}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                <p className="font-semibold">Etapa vigente: {prekinderWaveLabels[option.waveType]}</p>
+                <p className="mt-1">
+                    Esta condición es obligatoria y será verificada por el colegio antes de continuar el proceso.
+                </p>
+            </div>
+
+            {option.waveType === 'SIBLINGS' && (
+                <fieldset className="space-y-4">
+                    <legend className="text-sm font-medium text-gray-700">
+                        Hermano/a que actualmente estudia en el colegio <span className="text-red-500">*</span>
+                    </legend>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Input
+                            id="siblingName"
+                            label="Nombre completo"
+                            isRequired
+                            value={data.siblingName || ''}
+                            onChange={(event) => updateField('siblingName', event.target.value)}
+                        />
+                        <RutInput
+                            name="siblingRut"
+                            label="RUT"
+                            required
+                            value={data.siblingRut || ''}
+                            onChange={(value) => updateField('siblingRut', value)}
+                        />
+                    </div>
+                    <Input
+                        id="siblingCurrentGrade"
+                        label="Curso actual"
+                        placeholder="Ej: 2 Básico"
+                        isRequired
+                        value={data.siblingCurrentGrade || ''}
+                        onChange={(event) => updateField('siblingCurrentGrade', event.target.value)}
+                    />
+                </fieldset>
+            )}
+
+            {option.waveType === 'STAFF_OR_ALUMNI' && (
+                <div className="space-y-4">
+                    <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium text-gray-700">
+                            Tipo de relación familiar <span className="text-red-500">*</span>
+                        </legend>
+                        {[
+                            ['HIJO_FUNCIONARIO', 'Hijo/a de funcionario', 'Uno de los padres trabaja actualmente en el colegio'],
+                            ['HIJO_EX_ALUMNO', 'Hijo/a de exalumno', 'Uno de los padres estudió en el colegio'],
+                        ].map(([value, title, description]) => (
+                            <label key={value} className="flex cursor-pointer items-start rounded-lg border border-gray-300 p-3 hover:bg-gray-50">
+                                <input
+                                    type="radio"
+                                    name="admissionPreference"
+                                    value={value}
+                                    checked={data.admissionPreference === value}
+                                    onChange={(event) => {
+                                        updateField('admissionPreference', event.target.value);
+                                        if (event.target.value === 'HIJO_FUNCIONARIO') {
+                                            updateField('alumniParent', '');
+                                            updateField('alumniGraduationYear', '');
+                                        } else {
+                                            updateField('employeeParent', '');
+                                        }
+                                    }}
+                                    className="mt-0.5 h-4 w-4 border-gray-300 text-azul-monte-tabor focus:ring-azul-monte-tabor"
+                                />
+                                <span className="ml-3 text-sm text-gray-900">
+                                    <strong>{title}</strong> — {description}
+                                </span>
+                            </label>
+                        ))}
+                    </fieldset>
+
+                    {data.admissionPreference === 'HIJO_FUNCIONARIO' && (
+                        <Select
+                            id="employeeParent"
+                            label="Padre o madre que trabaja en el colegio"
+                            isRequired
+                            value={data.employeeParent || ''}
+                            onChange={(event) => updateField('employeeParent', event.target.value)}
+                            options={[
+                                { value: 'FATHER', label: 'Padre' },
+                                { value: 'MOTHER', label: 'Madre' },
+                                { value: 'BOTH', label: 'Ambos' },
+                            ]}
+                        />
+                    )}
+
+                    {data.admissionPreference === 'HIJO_EX_ALUMNO' && (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <Select
+                                id="alumniParent"
+                                label="Padre o madre exalumno/a"
+                                isRequired
+                                value={data.alumniParent || ''}
+                                onChange={(event) => updateField('alumniParent', event.target.value)}
+                                options={[
+                                    { value: 'FATHER', label: 'Padre' },
+                                    { value: 'MOTHER', label: 'Madre' },
+                                ]}
+                            />
+                            <Input
+                                id="alumniGraduationYear"
+                                label="Año de egreso"
+                                type="number"
+                                min="1950"
+                                max={new Date().getFullYear()}
+                                isRequired
+                                value={data.alumniGraduationYear || ''}
+                                onChange={(event) => updateField('alumniGraduationYear', event.target.value)}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {option.waveType === 'NEW_FAMILIES' && (
+                <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700">
+                    Esta etapa está destinada a familias sin hermanos vigentes ni vínculo de funcionario o exalumno.
+                </div>
+            )}
+        </div>
+    );
+}
+
 const ApplicationForm: React.FC = () => {
     const location = useLocation();
+    const isPrekinder = useMemo(
+        () => new URLSearchParams(location.search).get('proceso') === 'prekinder',
+        [location.search],
+    );
+    const [prekinderOptions, setPrekinderOptions] = useState<PrekinderApplicationOption[]>([]);
+    const [prekinderOptionsLoading, setPrekinderOptionsLoading] = useState(isPrekinder);
+    const [prekinderOptionsError, setPrekinderOptionsError] = useState('');
     const [currentStep, setCurrentStep] = useState(0);
     const [accountCreated, setAccountCreated] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,7 +329,7 @@ const ApplicationForm: React.FC = () => {
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
-    const [submittedApplicationId, setSubmittedApplicationId] = useState<number | null>(null);
+    const [submittedApplicationId, setSubmittedApplicationId] = useState<number | string | null>(null);
     const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, File>>(new Map());
     const [existingDocuments, setExistingDocuments] = useState<any[]>([]);
 
@@ -217,8 +404,57 @@ const ApplicationForm: React.FC = () => {
     const [data, setData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
 
+    const activePrekinderOption = prekinderOptions[0] ?? null;
+
+    useEffect(() => {
+        if (!isPrekinder) return;
+        let cancelled = false;
+        setPrekinderOptionsLoading(true);
+        setPrekinderOptionsError('');
+        prekinderApi.applicationOptions()
+            .then((options) => {
+                if (cancelled) return;
+                setPrekinderOptions(options);
+                if (!options.length) {
+                    setPrekinderOptionsError('En este momento no existe una etapa de postulación Prekínder abierta.');
+                    return;
+                }
+                const option = options[0];
+                setData((current: any) => ({
+                    ...current,
+                    grade: 'PRE_KINDER',
+                    applicationYear: String(option.academicYear),
+                    admissionPreference: option.waveType === 'STAFF_OR_ALUMNI'
+                        ? (current.admissionPreference === 'HIJO_FUNCIONARIO' || current.admissionPreference === 'HIJO_EX_ALUMNO'
+                            ? current.admissionPreference
+                            : '')
+                        : 'NINGUNA',
+                    hasSiblingsInSchool: option.waveType === 'SIBLINGS',
+                }));
+            })
+            .catch((reason) => {
+                if (!cancelled) {
+                    setPrekinderOptionsError(reason instanceof Error
+                        ? reason.message
+                        : 'No pudimos consultar la etapa de postulación Prekínder.');
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setPrekinderOptionsLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [isPrekinder]);
+
     // Opciones filtradas por género del estudiante
     const gradeOptionsFiltered = useMemo(() => {
+        if (isPrekinder) {
+            return [{
+                value: 'PRE_KINDER',
+                label: 'Prekínder',
+                disabled: false,
+                vacancyInfo: { hasM: true, hasF: true },
+            }];
+        }
         if (!data.gender) {
             // Sin género seleccionado: mostrar solo cursos con vacantes para ambos
             return gradeOptionsWithAvailability.filter(opt => {
@@ -233,7 +469,7 @@ const ApplicationForm: React.FC = () => {
             if (data.gender === 'FEMALE') return opt.vacancyInfo.hasF;
             return false;
         });
-    }, [gradeOptionsWithAvailability, data.gender]);
+    }, [gradeOptionsWithAvailability, data.gender, isPrekinder]);
     const [isCheckingRut, setIsCheckingRut] = useState(false);
 
     // Estado para autenticación
@@ -307,6 +543,9 @@ const ApplicationForm: React.FC = () => {
         touchField('rut');
         const rut = data.rut?.trim();
         if (!rut || !isValidRut(rut)) return; // solo consultar si el formato es válido
+        // Prekínder vive en una base aislada y valida duplicados de forma atómica
+        // al enviar. Consultar aquí la base legacy produciría falsos positivos.
+        if (isPrekinder) return;
 
         setIsCheckingRut(true);
         try {
@@ -327,7 +566,7 @@ const ApplicationForm: React.FC = () => {
         } finally {
             setIsCheckingRut(false);
         }
-    }, [data.rut]);
+    }, [data.rut, isPrekinder, touchField]);
 
     // Función para actualizar datos de autenticación
     const updateAuthField = useCallback((name: string, value: string) => {
@@ -808,8 +1047,9 @@ const ApplicationForm: React.FC = () => {
     // progreso de 9 pasos. Se limpia al enviar con éxito o en modo edición.
     const draftKey = useMemo(() => {
         const owner = user?.id ?? user?.email ?? 'guest';
-        return getStorageKey(`admission-draft:${owner}`);
-    }, [user?.id, user?.email]);
+        const flow = isPrekinder ? 'prekinder' : 'regular';
+        return getStorageKey(`admission-draft:${flow}:${owner}`);
+    }, [isPrekinder, user?.id, user?.email]);
 
     const didRestoreDraftRef = useRef(false);
     const skipNextSaveRef = useRef(false);
@@ -980,6 +1220,7 @@ const ApplicationForm: React.FC = () => {
                 if (errors.rut) {
                     return false;
                 }
+                if (isPrekinder && !hasPrekinderApplicationAge(data.birthDate)) return false;
                 // Nota: La validación de coherencia fecha-grado es solo informativa en Step 0
                 // porque el grado se elige en Step 2. No bloqueamos aquí.
                 // Validate optional email if provided
@@ -1003,6 +1244,27 @@ const ApplicationForm: React.FC = () => {
             case 2:
                 if (!data.grade || !data.applicationYear || !data.admissionPreference) {
                     return false;
+                }
+                if (isPrekinder) {
+                    if (!activePrekinderOption || prekinderOptionsLoading || prekinderOptionsError) return false;
+                    if (activePrekinderOption.waveType === 'SIBLINGS') {
+                        return data.hasSiblingsInSchool === true
+                            && Boolean(data.siblingName?.trim())
+                            && Boolean(data.siblingRut?.trim())
+                            && Boolean(data.siblingCurrentGrade?.trim());
+                    }
+                    if (activePrekinderOption.waveType === 'STAFF_OR_ALUMNI') {
+                        if (data.admissionPreference === 'HIJO_FUNCIONARIO') {
+                            return ['FATHER', 'MOTHER', 'BOTH'].includes(data.employeeParent);
+                        }
+                        if (data.admissionPreference === 'HIJO_EX_ALUMNO') {
+                            return ['FATHER', 'MOTHER'].includes(data.alumniParent)
+                                && Number(data.alumniGraduationYear) >= 1950
+                                && Number(data.alumniGraduationYear) <= new Date().getFullYear();
+                        }
+                        return false;
+                    }
+                    return data.admissionPreference === 'NINGUNA' && data.hasSiblingsInSchool !== true;
                 }
                 if (requiresCurrentSchool(data.grade || '') && !data.currentSchool?.trim()) {
                     return false;
@@ -1071,7 +1333,8 @@ const ApplicationForm: React.FC = () => {
             default:
                 return true;
         }
-    }, [data, currentStep, requiresCurrentSchool, errors]);
+    }, [data, currentStep, requiresCurrentSchool, errors, isPrekinder,
+        activePrekinderOption, prekinderOptionsLoading, prekinderOptionsError]);
 
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
@@ -1112,7 +1375,97 @@ const ApplicationForm: React.FC = () => {
                     let applicationRequest: any;
                     let response;
 
-                    if (isEditMode) {
+                    if (isPrekinder) {
+                        if (!activePrekinderOption) {
+                            throw new Error('No existe una etapa de postulación Prekínder abierta.');
+                        }
+                        const isAlumni = data.admissionPreference === 'HIJO_EX_ALUMNO';
+                        const alumniDeclaration = (parent: 'FATHER' | 'MOTHER') =>
+                            isAlumni && data.alumniParent === parent
+                                ? { status: 'GRADUATED_4TH', graduationYear: Number(data.alumniGraduationYear) }
+                                : { status: 'NO_ALUMNI' };
+                        const prekinderResponse = await prekinderApi.submitApplication({
+                            processId: activePrekinderOption.processId,
+                            rut: data.rut,
+                            firstName: data.firstName,
+                            paternalLastName: data.paternalLastName,
+                            maternalLastName: data.maternalLastName,
+                            birthDate: data.birthDate,
+                            familyEmail: data.guardianEmail || data.parent1Email || data.parent2Email,
+                            fatherEmail: data.parent1Email,
+                            motherEmail: data.parent2Email,
+                            applicationDetails: {
+                                gender: data.gender,
+                                studentEmail: data.studentEmail || undefined,
+                                address: {
+                                    street: data.studentAddressStreet,
+                                    number: data.studentAddressNumber,
+                                    apartment: data.studentAddressApartment || undefined,
+                                    country: data.pais || 'Chile',
+                                    region: data.region || undefined,
+                                    commune: data.studentAddressCommune,
+                                },
+                                grade: 'PRE_KINDER',
+                                applicationYear: Number(data.applicationYear),
+                                currentSchool: data.currentSchool || undefined,
+                                additionalNotes: data.additionalNotes || undefined,
+                                admissionPreference: data.admissionPreference,
+                                hasSiblingsInSchool: data.hasSiblingsInSchool === true,
+                                siblingsInSchoolDetails: data.hasSiblingsInSchool
+                                    ? `${data.siblingName}, ${data.siblingCurrentGrade} (${data.siblingRut})`
+                                    : undefined,
+                                father: {
+                                    fullName: data.parent1Name,
+                                    rut: data.parent1Rut,
+                                    email: data.parent1Email,
+                                    phone: data.parent1Phone,
+                                    address: data.parent1Address,
+                                    profession: data.parent1Profession || undefined,
+                                },
+                                mother: {
+                                    fullName: data.parent2Name,
+                                    rut: data.parent2Rut,
+                                    email: data.parent2Email,
+                                    phone: data.parent2Phone,
+                                    address: data.parent2Address,
+                                    profession: data.parent2Profession || undefined,
+                                },
+                                supporter: {
+                                    fullName: data.supporterName,
+                                    rut: data.supporterRut,
+                                    email: data.supporterEmail,
+                                    phone: data.supporterPhone,
+                                    relationship: data.supporterRelation,
+                                },
+                                guardian: {
+                                    fullName: data.guardianName,
+                                    rut: data.guardianRut,
+                                    email: data.guardianEmail,
+                                    phone: data.guardianPhone,
+                                    relationship: data.guardianRelation,
+                                },
+                            },
+                            eligibility: {
+                                siblings: activePrekinderOption.waveType === 'SIBLINGS'
+                                    ? [{
+                                        name: data.siblingName,
+                                        rut: data.siblingRut,
+                                        currentGrade: data.siblingCurrentGrade,
+                                    }]
+                                    : [],
+                                employeeParent: data.admissionPreference === 'HIJO_FUNCIONARIO'
+                                    ? data.employeeParent
+                                    : '',
+                                fatherAlumni: alumniDeclaration('FATHER'),
+                                motherAlumni: alumniDeclaration('MOTHER'),
+                            },
+                        });
+                        response = {
+                            id: prekinderResponse.applicationId,
+                            status: prekinderResponse.status,
+                            submissionDate: prekinderResponse.createdAt,
+                        };
+                    } else if (isEditMode) {
                         // Formato anidado para PUT (actualización)
                         applicationRequest = {
                             student: {
@@ -1235,7 +1588,9 @@ const ApplicationForm: React.FC = () => {
                     if (uploadedDocuments.size > 0) {
 
                         const uploadPromises = Array.from(uploadedDocuments.entries()).map(([docType, file]) => {
-                            return applicationService.uploadDocument(applicationId, file, docType);
+                            return isPrekinder
+                                ? prekinderApi.uploadDocument(String(applicationId), docType, file)
+                                : applicationService.uploadDocument(applicationId, file, docType);
                         });
 
                         await Promise.all(uploadPromises);
@@ -1848,6 +2203,15 @@ const ApplicationForm: React.FC = () => {
                                             </div>
                                         );
                                     }
+                                    if (isPrekinder && !hasPrekinderApplicationAge(data.birthDate)) {
+                                        return (
+                                            <div className="mt-2 rounded-lg border border-rojo-sagrado/40 bg-red-50 p-2" role="alert">
+                                                <p className="text-sm text-rojo-sagrado">
+                                                    Para postular a Prekínder debe tener 3 o 4 años cumplidos al momento de enviar.
+                                                </p>
+                                            </div>
+                                        );
+                                    }
                                     // Sólo evaluamos coherencia con grado si éste ya fue elegido en pasos siguientes
                                     if (data.grade) {
                                         const validation = validateBirthDateForGrade(data.birthDate, data.grade);
@@ -2039,6 +2403,7 @@ const ApplicationForm: React.FC = () => {
                             label="Nivel al que postula"
                             options={gradeOptionsFiltered}
                             isRequired
+                            disabled={isPrekinder}
                             value={data.grade || ''}
                             onChange={(e) => updateField('grade', e.target.value)}
                             onBlur={() => touchField('grade')}
@@ -2095,9 +2460,23 @@ const ApplicationForm: React.FC = () => {
                             onBlur={() => touchField('applicationYear')}
                             error={errors.applicationYear}
                             readOnly
-                            helpText={`Las postulaciones son siempre para el año ${new Date().getFullYear() + 1}`}
+                            helpText={isPrekinder
+                                ? `Proceso Prekínder ${activePrekinderOption?.academicYear || ''}`
+                                : `Las postulaciones son siempre para el año ${new Date().getFullYear() + 1}`}
                         />
 
+                        {isPrekinder && (
+                            <PrekinderEligibilityFields
+                                option={activePrekinderOption}
+                                loading={prekinderOptionsLoading}
+                                error={prekinderOptionsError}
+                                data={data}
+                                updateField={updateField}
+                            />
+                        )}
+
+                        {!isPrekinder && (
+                        <>
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-gray-700">
                                 Tipo de Relación Familiar <span className="text-red-500">*</span>
@@ -2216,6 +2595,8 @@ const ApplicationForm: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                        </>
+                        )}
 
                         <div className="mt-4">
                             <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -2786,10 +3167,12 @@ const ApplicationForm: React.FC = () => {
                 <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-azul-monte-tabor font-serif">
-                            Formulario de Postulación
+                            {isPrekinder ? 'Formulario de Postulación Prekínder' : 'Formulario de Postulación'}
                         </h1>
                         <p className="text-sm text-gris-piedra mt-1">
-                            Completa los datos paso a paso. Guardamos tu progreso automáticamente.
+                            {isPrekinder
+                                ? 'Completa los mismos antecedentes requeridos para los demás cursos. La etapa vigente define el vínculo obligatorio.'
+                                : 'Completa los datos paso a paso. Guardamos tu progreso automáticamente.'}
                         </p>
                     </div>
                     <div className="text-left sm:text-right">

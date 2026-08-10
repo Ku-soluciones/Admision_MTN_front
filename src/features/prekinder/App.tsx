@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PrekinderAdminGuard } from "./components/PrekinderAdminGuard";
-import { PrekinderApplicationGuard } from "./components/PrekinderApplicationGuard";
-import { PrekinderApplicationPage } from "./pages/PrekinderApplicationPage";
 import { EvaluatorDesk } from "./pages/EvaluatorDesk";
 import { EvaluatorReport } from "./pages/EvaluatorReport";
 import { PrekinderResultPage } from "./pages/PrekinderResultPage";
@@ -186,16 +184,7 @@ export default function PrekinderApp() {
 
         <Route
           path="/prekinder/postular"
-          element={
-            <PrekinderAdminGuard
-              roles={["APODERADO"]}
-              loginPath="/apoderado/login"
-            >
-              <PrekinderApplicationGuard>
-                <PrekinderApplicationPage />
-              </PrekinderApplicationGuard>
-            </PrekinderAdminGuard>
-          }
+          element={<Navigate to="/postulacion?proceso=prekinder" replace />}
         />
         <Route
           path="/prekinder/resultado"

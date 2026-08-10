@@ -24,6 +24,9 @@ import {
   type EvaluationGroup,
   type FlowApplication,
   type Professional,
+  type ProfessionalRoleCode,
+  type ProfessionalRoleDefinition,
+  type ProfessionalRoleGroup,
   type Room,
   type Wave,
 } from "../services/api";
@@ -133,6 +136,7 @@ export function PrekinderOperations({
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
     if (requestedView === "academic-evaluator") return "Evaluador académico";
+    if (requestedView === "professionals") return "Profesionales";
     const evaluatorViews: Record<string, string> = {
       psychomotor: "Psicomotricidad",
       psychology: "Psicología",
@@ -152,6 +156,7 @@ export function PrekinderOperations({
   const [waves, setWaves] = useState<Wave[]>(demoMode ? mockWaves : []);
   const [applications, setApplications] = useState<FlowApplication[]>(demoMode ? mockApplications : []);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [professionalRoles, setProfessionalRoles] = useState<ProfessionalRoleDefinition[]>([]);
   const [rooms, setRooms] = useState<Room[]>(demoMode ? mockRooms : []);
   const [groups, setGroups] = useState<EvaluationGroup[]>(initialDemoGroups);
   const [date, setDate] = useState(initialDate);
@@ -174,15 +179,19 @@ export function PrekinderOperations({
     setBaseLoading(true);
     setError("");
     try {
-      const next = await prekinderApi.processes();
+      const [next, people, roles] = await Promise.all([
+        prekinderApi.processes(),
+        prekinderApi.professionals(),
+        prekinderApi.professionalRoles(),
+      ]);
       setProcesses(next);
       setProcessId((current) =>
         next.some((process) => process.processId === current)
           ? current
           : next[0]?.processId || "",
       );
-      const people = await prekinderApi.professionals();
       setProfessionals(people);
+      setProfessionalRoles(roles);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -635,14 +644,29 @@ export function PrekinderOperations({
           {section === "DAP" && <SpecialtyEvaluatorConsole profile="DAP" groups={groups} applications={eligible} rooms={rooms} />}
           {section === "Profesionales" && (
             <Professionals
+              processId={processId}
               professionals={professionals}
+              roles={professionalRoles}
               busy={busy}
-              onSave={(input) =>
-                action(
-                  () => prekinderApi.saveProfessional(input),
-                  "Perfil profesional guardado.",
-                )
-              }
+              onSave={async (input) => {
+                if (demoMode) {
+                  setMessage("Perfil profesional guardado.");
+                  return true;
+                }
+                setBusy(true);
+                setError("");
+                try {
+                  await prekinderApi.saveProfessional(input);
+                  setProfessionals(await prekinderApi.professionals());
+                  setMessage("Perfil profesional guardado.");
+                  return true;
+                } catch (requestError) {
+                  setError(requestError instanceof Error ? requestError.message : "No fue posible guardar el perfil profesional.");
+                  return false;
+                } finally {
+                  setBusy(false);
+                }
+              }}
             />
           )}
           {section === "Pautas" && <Rubrics />}
@@ -1554,7 +1578,9 @@ function GroupInspector({
   );
   const availablePeople = professionals.filter(
     (person) =>
-      person.active && !group.evaluatorIds.includes(person.professionalId),
+      person.active &&
+      person.roleGroup === "EVALUACION" &&
+      !group.evaluatorIds.includes(person.professionalId),
   );
   return (
     <aside className="pk-panel p-6 shadow-[0_16px_36px_rgba(30,58,138,0.07)] 2xl:sticky 2xl:top-24 2xl:self-start">
@@ -1772,110 +1798,192 @@ function GroupInspector({
   );
 }
 
-function Professionals({
-  professionals,
-  busy,
-  onSave,
-}: {
+const professionalGroupLabels: Record<ProfessionalRoleGroup | "PENDING", string> = {
+  ADMINISTRACION: "Administración",
+  OPERACION: "Operación de jornadas",
+  EVALUACION: "Evaluación especializada",
+  DECISION_CONTROL: "Decisión y control",
+  PENDING: "Pendientes de homologación",
+};
+
+const professionalInstrumentLabels: Record<string, string> = {
+  ACADEMIC: "Evaluación académica",
+  PSYCHOMOTOR: "Evaluación psicomotriz",
+  PSYCHOLOGY: "Evaluación psicológica",
+  ENTRY_INDICATORS: "Indicadores de ingreso",
+  GROUP_OBSERVATION: "Observación grupal",
+  LEARNING_SUPPORT: "Apoyo al aprendizaje",
+  DAP: "DAP",
+};
+
+function Professionals({ processId, professionals, roles, busy, onSave }: {
+  processId: string;
   professionals: Professional[];
+  roles: ProfessionalRoleDefinition[];
   busy: boolean;
-  onSave: (
-    input: Partial<Professional> & {
-      displayName: string;
-      email: string;
-      roleCode: Professional["roleCode"];
-      expectedVersion: number;
-    },
-  ) => void;
+  onSave: (input: Partial<Professional> & {
+    processId: string;
+    displayName: string;
+    email: string;
+    roleCode: ProfessionalRoleCode;
+    expectedVersion: number;
+  }) => Promise<boolean>;
 }) {
+  const [editing, setEditing] = useState<Professional | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
+  const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
+  const availableRoles = roles.filter((role) => role.groupCode === group);
+  const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
+    groupCode,
+    people: professionals.filter((person) => person.roleGroup === groupCode),
+  })).filter((section) => section.people.length > 0);
+
+  function clearForm() {
+    setEditing(null);
+    setName("");
+    setEmail("");
+    setSpecialty("");
+    setGroup("");
+    setRoleCode("");
+  }
+
+  function edit(person: Professional) {
+    setEditing(person);
+    setName(person.displayName);
+    setEmail(person.email);
+    setSpecialty(person.specialty || "");
+    const definition = roles.find((role) => role.roleCode === person.roleCode);
+    setGroup(definition?.groupCode || "");
+    setRoleCode(definition?.roleCode || "");
+  }
+
   return (
-    <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <form
-        className="rounded-2xl border border-slate-200 bg-white p-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave({
-            displayName: name,
-            email,
-            specialty,
-            roleCode: "EVALUATOR",
-            active: true,
-            expectedVersion: 0,
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6 xl:sticky xl:top-24"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (!roleCode || !processId) return;
+          const saved = await onSave({
+            processId,
+            professionalId: editing?.professionalId,
+            legacyUserId: editing?.legacyUserId,
+            displayName: name.trim(),
+            email: email.trim(),
+            specialty: specialty.trim(),
+            roleCode,
+            active: editing?.active ?? true,
+            expectedVersion: editing?.version ?? 0,
           });
+          if (saved) clearForm();
         }}
       >
-        <h2 className="text-lg font-black">Nuevo profesional</h2>
+        <h2 className="text-lg font-black">{editing ? "Homologar profesional" : "Nuevo profesional"}</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
+        </p>
         <div className="mt-5 space-y-4">
-          <Field label="Nombre">
-            <input
+          <Field label="Nombre completo">
+            <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <Field label="Correo institucional">
+            <input required type="email" className="control w-full" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Área dentro del flujo">
+            <select
               required
               className="control w-full"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+              value={group}
+              onChange={(event) => {
+                setGroup(event.target.value as ProfessionalRoleGroup);
+                setRoleCode("");
+              }}
+            >
+              <option value="">Seleccionar área</option>
+              {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
+            </select>
           </Field>
-          <Field label="Correo">
-            <input
+          <Field label="Rol u ocupación">
+            <select
               required
-              type="email"
-              className="control w-full"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+              disabled={!group}
+              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+              value={roleCode}
+              onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
+            >
+              <option value="">Seleccionar rol</option>
+              {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
+            </select>
           </Field>
-          <Field label="Especialidad">
-            <input
-              className="control w-full"
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-              placeholder="Educadora, psicóloga…"
-            />
+          {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
+            <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
+              Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
+            </p>
+          )}
+          <Field label="Título o profesión (opcional)">
+            <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
           </Field>
-          <button disabled={busy} className="primary w-full">
-            Crear perfil
+          <button disabled={busy || !processId || !roleCode} className="primary w-full">
+            {editing ? "Guardar homologación" : "Crear perfil profesional"}
           </button>
+          {editing && <button type="button" className="secondary w-full" onClick={clearForm}>Cancelar edición</button>}
         </div>
       </form>
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 p-5">
-          <h2 className="font-black">Equipo Prekínder</h2>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">Equipo Prekínder</h2>
+          <p className="mt-1 text-sm text-slate-600">{professionals.length} profesionales organizados por función dentro del flujo.</p>
         </div>
-        <div className="divide-y divide-slate-100">
-          {professionals.map((person) => (
-            <div
-              key={person.professionalId}
-              className="flex min-h-20 items-center gap-4 px-5"
-            >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                {person.displayName
-                  .split(" ")
-                  .map((part) => part[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold">
-                  {person.displayName}
-                </span>
-                <span className="block truncate text-xs text-slate-500">
-                  {person.specialty || "Sin especialidad"} · {person.email}
-                </span>
-              </span>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}
-              >
-                {person.active ? "Activo" : "Inactivo"}
-              </span>
+        {!professionals.length && (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+            Aún no hay profesionales registrados para organizar.
+          </div>
+        )}
+        {groupedPeople.map(({ groupCode, people }) => (
+          <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
+              <span className="text-xs font-bold text-slate-500">{people.length}</span>
             </div>
-          ))}
-        </div>
+            <div className="divide-y divide-slate-100">
+              {people.map((person) => (
+                <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
+                    {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-bold">{person.displayName}</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
+                    <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
+                  </span>
+                  <div className="ml-14 flex items-center gap-2 sm:ml-0">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                      {person.active ? "Activo" : "Inactivo"}
+                    </span>
+                    <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
+                      {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
     </div>
   );
 }
+
+const professionalGroupOrder: ProfessionalRoleGroup[] = [
+  "ADMINISTRACION",
+  "OPERACION",
+  "EVALUACION",
+  "DECISION_CONTROL",
+];
 
 function Rubrics() {
   const data = [
