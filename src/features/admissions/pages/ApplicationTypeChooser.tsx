@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ArrowRight, Clock3, GraduationCap, RefreshCw, School } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { prekinderApi, type PrekinderApplicationOption } from '../../prekinder/services/api';
@@ -10,6 +10,7 @@ import { useProcessActivePrekinder } from '../../../packages/shared-utils/src/ho
 const LOGIN_REDIRECT = `/apoderado/login?redirect=${encodeURIComponent('/postulacion/elegir')}`;
 
 const ApplicationTypeChooser = () => {
+    const location = useLocation();
     const { isAuthenticated, isLoading: sessionLoading } = useAuth();
     const {
         isProcessActive: generalProcessActive,
@@ -134,8 +135,9 @@ const ApplicationTypeChooser = () => {
                     )}
 
                     {generalProcessActive ? (
-                        <a
-                            href={appUrls.admissions}
+                        <Link
+                            to="/postulacion"
+                            state={location.state}
                             className="group flex min-h-72 flex-col border-t border-gray-200 p-6 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-azul-monte-tabor sm:p-8 md:border-l md:border-t-0"
                         >
                             <GraduationCap className="text-dorado-nazaret" size={36} aria-hidden="true" />
@@ -147,7 +149,7 @@ const ApplicationTypeChooser = () => {
                                 Revisar cursos disponibles
                                 <ArrowRight className="transition-transform group-hover:translate-x-1" size={20} aria-hidden="true" />
                             </span>
-                        </a>
+                        </Link>
                     ) : (
                         <div className="flex min-h-72 flex-col border-t border-gray-200 bg-gray-50 p-6 sm:p-8 md:border-l md:border-t-0" aria-disabled="true">
                             {generalProcessLoading ? (

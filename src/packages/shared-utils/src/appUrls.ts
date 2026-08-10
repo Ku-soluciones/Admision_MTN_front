@@ -13,6 +13,7 @@ export const appUrls = {
   admissions: buildAppUrl('/postulacion'),
   freshAdmissions: `${buildAppUrl('/postulacion')}?fresh=1`,
   admissionsComplementary: buildAppUrl('/postulacion/complementaria'),
+  applicationEntry: buildAppUrl('/postulacion/inicio'),
   applicationChoice: buildAppUrl('/postulacion/elegir'),
   guardianApplicationEntry: `${buildAppUrl('/apoderado/login')}?register=1&redirect=${encodeURIComponent('/postulacion/elegir')}`,
   prekinderApplication: buildAppUrl('/prekinder/postular'),

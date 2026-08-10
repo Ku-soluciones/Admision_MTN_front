@@ -130,7 +130,7 @@ const ApoderadoLogin: React.FC = () => {
     const { login, register } = useAuth();
     const { addNotification } = useNotifications();
 
-    const redirectTo = searchParams.get('redirect') || '/postulacion/elegir';
+    const redirectTo = searchParams.get('redirect') || '/postulacion/inicio';
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -33,7 +33,7 @@ const ApoderadoLogin: React.FC = () => {
     const { login, register } = useAuth();
     const { addNotification } = useNotifications();
     
-    const redirectTo = searchParams.get('redirect') || '/postulacion/elegir';
+    const redirectTo = searchParams.get('redirect') || '/postulacion/inicio';
 
     React.useEffect(() => {
         if (searchParams.get('register') === '1') setShowRegister(true);
