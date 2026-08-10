@@ -125,9 +125,7 @@ type PrekinderOperationsProps = {
 export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
-  const demoMode =
-    window.location.pathname === "/admin/prekinder-demo" ||
-    new URLSearchParams(window.location.search).get("prekinderDemo") === "true";
+  const demoMode = true; // Mock data siempre activo en desarrollo
   const initialDate = today();
   const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
   const [section, setSection] = useState(() => {
@@ -365,8 +363,14 @@ export function PrekinderOperations({
             context="Centro de jornada"
             compactOnMobile
           />
+          <a
+            href="/admin"
+            className="ml-auto flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            ← Volver al Admin
+          </a>
           <ProcessControls
-            className="ml-auto"
+            className=""
             processes={processes}
             processId={processId}
             busy={busy || baseLoading}
@@ -1078,7 +1082,7 @@ function WaveEditor({
           {wave.position}
         </span>
         <span
-          className={`rounded-full px-3 py-1 text-xs font-extrabold ${wave.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}
+          className={`rounded-full px-3 py-1 text-xs font-extrabold ${wave.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}
         >
           {wave.active ? "Vigente" : statusLabel[wave.status] || wave.status}
         </span>
@@ -1418,7 +1422,7 @@ function DayCenter({
                           {formatTime(group.startsAt)}
                         </span>
                         <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-black ${statusTone[group.status] || statusTone.DRAFT}`}
+                          className={`rounded-full px-2 py-1 text-xs font-black ${statusTone[group.status] || statusTone.DRAFT}`}
                         >
                           {statusLabel[group.status] || group.status}
                         </span>
@@ -1823,7 +1827,7 @@ function Professionals({
                 </span>
               </span>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+                className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}
               >
                 {person.active ? "Activo" : "Inactivo"}
               </span>

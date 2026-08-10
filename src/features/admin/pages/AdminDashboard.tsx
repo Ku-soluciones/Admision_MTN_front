@@ -77,11 +77,6 @@ const AdmissionReportTabs = React.lazy(() =>
     .then((module) => ({ default: module.AdmissionReportTabs }))
 );
 
-const PrekinderOperations = React.lazy(() =>
-  import('../../prekinder/pages/PrekinderOperations')
-    .then((module) => ({ default: module.PrekinderOperations }))
-);
-
 const sections = [
   { key: 'postulaciones', label: 'Gestión de Postulaciones', icon: ClipboardDocumentListIcon },
   { key: 'evaluaciones',  label: 'Gestión de Evaluaciones',  icon: AcademicCapIcon },
@@ -583,7 +578,7 @@ Esta acción:
     if (requestedSection === 'admision') {
       setActiveSection('admissionReports');
     } else if (requestedSection === 'prekinder') {
-      setActiveSection('prekinder');
+      window.location.href = '/admin/prekinder';
     } else if (activeSection === 'prekinder') {
       setActiveSection('admissionReports');
     }
@@ -591,14 +586,17 @@ Esta acción:
 
   const handleSectionChange = (key: string) => {
     setInterviewToOpenId(null);
+
+    if (key === 'prekinder') {
+      window.location.href = '/admin/prekinder';
+      return;
+    }
+
     setActiveSection(key);
 
     const next = new URLSearchParams(searchParams);
     if (key === 'admissionReports') {
       next.set('section', 'admision');
-    } else if (key === 'prekinder') {
-      next.set('section', 'prekinder');
-      ['year', 'grade', 'status', 'action'].forEach((parameter) => next.delete(parameter));
     } else {
       ['section', 'year', 'grade', 'status', 'action'].forEach((parameter) => next.delete(parameter));
     }
@@ -620,21 +618,6 @@ Esta acción:
             <div className="space-y-6">
               <AdmissionReportTabs />
             </div>
-          </React.Suspense>
-        );
-
-      case 'prekinder':
-        return (
-          <React.Suspense
-            fallback={
-              <div
-                className="h-64 animate-pulse rounded-2xl border border-blue-100 bg-blue-50"
-                role="status"
-                aria-label="Cargando administración Prekínder"
-              />
-            }
-          >
-            <PrekinderOperations embedded />
           </React.Suspense>
         );
 
