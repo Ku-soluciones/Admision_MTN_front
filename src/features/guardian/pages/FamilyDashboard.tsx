@@ -50,6 +50,10 @@ import {
   loadGuardianDocumentGroups,
   type GuardianDocumentGroup,
 } from '../utils/guardianDocuments';
+import {
+  guardianPrekinderService,
+  type GuardianPrekinderApplication,
+} from '../services/guardianPrekinderService';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -78,6 +82,17 @@ const getDocumentStatusIcon = (status: Document['status']) => {
         default: return <FileTextIcon className="w-5 h-5 text-gris-piedra" />;
     }
 };
+
+const prekinderStatusLabel = (status: string) => ({
+  DRAFT: 'Borrador',
+  SUBMITTED: 'Formulario recibido',
+  UNDER_REVIEW: 'En revisión',
+  SCHEDULED: 'Jornada programada',
+  IN_EVALUATION: 'En evaluación',
+  OFFERED: 'Admitido',
+  WAITLISTED: 'Lista de espera',
+  NOT_ADMITTED: 'No admitido',
+}[status] || status);
 
 interface SidebarContentProps {
   user: { firstName?: string; lastName?: string } | null;
@@ -143,6 +158,7 @@ const FamilyDashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState('resumen');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [realApplications, setRealApplications] = useState<Application[]>([]);
+  const [prekinderApplications, setPrekinderApplications] = useState<GuardianPrekinderApplication[]>([]);
   const [selectedApplicationIndex, setSelectedApplicationIndex] = useState(0);
   const [documentGroups, setDocumentGroups] = useState<GuardianDocumentGroup[]>([]);
   const [documentLoadErrors, setDocumentLoadErrors] = useState(0);
@@ -218,6 +234,25 @@ const FamilyDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
+  }, [isAuthenticated, user]);
+
+  // Prekínder es una lectura adicional y aislada: si falla, el dashboard y las
+  // acciones de las postulaciones regulares continúan exactamente igual.
+  useEffect(() => {
+    let isMounted = true;
+    if (!isAuthenticated || !user) return undefined;
+
+    guardianPrekinderService.applications()
+      .then(items => {
+        if (!isMounted) return;
+        setPrekinderApplications(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPrekinderApplications([]);
+      });
+
+    return () => { isMounted = false; };
   }, [isAuthenticated, user]);
 
   // Load documents for every application so families with multiple applicants
@@ -350,8 +385,43 @@ const FamilyDashboard: React.FC = () => {
         return (
           <div className="space-y-6">
 
+            {prekinderApplications.length > 0 && (
+              <Card className="p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-azul-monte-tabor">Postulaciones Prekínder</h2>
+                    <p className="mt-1 text-sm text-gris-piedra">Información de solo lectura del proceso independiente de Prekínder.</p>
+                  </div>
+                  {prekinderApplications.length > 0 && (
+                    <Badge variant="info" size="sm">{prekinderApplications.length} registrada{prekinderApplications.length === 1 ? '' : 's'}</Badge>
+                  )}
+                </div>
+
+                <div className="divide-y divide-gray-200 rounded-xl border border-gray-200">
+                    {prekinderApplications.map(application => (
+                      <div key={application.applicationId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-azul-monte-tabor">
+                            {application.firstName} {application.paternalLastName} {application.maternalLastName}
+                          </p>
+                          <p className="mt-1 text-sm text-gris-piedra">
+                            {application.gradeApplied} · Proceso {application.academicYear}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="info" size="sm">Prekínder</Badge>
+                          <Badge variant={application.status === 'OFFERED' ? 'success' : application.status === 'NOT_ADMITTED' ? 'error' : 'warning'} size="sm">
+                            {prekinderStatusLabel(application.status)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </Card>
+            )}
+
             {/* Sección de Nueva Postulación o Resumen */}
-            {!hasRealApplication ? (
+            {!hasRealApplication && prekinderApplications.length === 0 ? (
               <Card className="p-8 text-center bg-gradient-to-br from-green-50 to-blue-50 border-2 border-dashed border-azul-monte-tabor">
                 <div className="max-w-md mx-auto">
                   <FileTextIcon className="w-16 h-16 text-azul-monte-tabor mx-auto mb-4" />
@@ -377,7 +447,7 @@ const FamilyDashboard: React.FC = () => {
                   )}
                 </div>
               </Card>
-            ) : (
+            ) : hasRealApplication ? (
               <div className="space-y-6">
                 {/* Lista de Hijos Postulantes */}
                 <Card className="p-6">
@@ -561,7 +631,7 @@ const FamilyDashboard: React.FC = () => {
 
             </Card>
               </div>
-            )}
+            ) : null}
           </div>
         );
       case 'datos':
