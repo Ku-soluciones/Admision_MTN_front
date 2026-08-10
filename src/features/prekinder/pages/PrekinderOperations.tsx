@@ -275,6 +275,54 @@ export function PrekinderOperations({
     }
   }
 
+  async function saveStage(
+    wave: Wave,
+    opensAt: string,
+    closesAt: string,
+    status: Wave["status"],
+  ) {
+    if (demoMode) {
+      setMessage("Etapa actualizada. Vista demostrativa: el cambio no se guardó en la base de datos.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await prekinderApi.configureWave(wave.waveId, {
+        opensAt,
+        closesAt,
+        status,
+        expectedVersion: wave.version,
+      });
+      const persistedStages = await prekinderApi.waves(wave.processId);
+      const persisted = persistedStages.find((item) => item.waveId === wave.waveId);
+      const sameInstant = (left: string | null, right: string) =>
+        left !== null && new Date(left).getTime() === new Date(right).getTime();
+      if (
+        !persisted ||
+        persisted.version !== updated.version ||
+        persisted.status !== status ||
+        !sameInstant(persisted.opensAt, opensAt) ||
+        !sameInstant(persisted.closesAt, closesAt)
+      ) {
+        throw new Error(
+          "El servidor respondió, pero la etapa no quedó persistida. No se confirmó el cambio.",
+        );
+      }
+      setWaves(persistedStages);
+      setMessage("Etapa guardada y verificada en la base de datos.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos guardar la etapa.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function refreshAll() {
     if (demoMode) {
       const nextGroups = createMockGroups(date);
@@ -536,18 +584,7 @@ export function PrekinderOperations({
             <Waves
               waves={waves}
               busy={busy}
-              onSave={(wave, opensAt, closesAt, status) =>
-                action(
-                  () =>
-                    prekinderApi.configureWave(wave.waveId, {
-                      opensAt,
-                      closesAt,
-                      status,
-                      expectedVersion: wave.version,
-                    }),
-                  "Etapa actualizada.",
-                )
-              }
+              onSave={saveStage}
             />
           )}
           {section === "Postulaciones" && (
@@ -1044,7 +1081,7 @@ function Waves({
     opensAt: string,
     closesAt: string,
     status: Wave["status"],
-  ) => void;
+  ) => Promise<void>;
 }) {
   return (
     <div className="grid gap-5 xl:grid-cols-3">
@@ -1066,7 +1103,7 @@ function WaveEditor({
     opensAt: string,
     closesAt: string,
     status: Wave["status"],
-  ) => void;
+  ) => Promise<void>;
 }) {
   const [opensAt, setOpensAt] = useState(localInput(wave.opensAt));
   const [closesAt, setClosesAt] = useState(localInput(wave.closesAt));
@@ -1121,7 +1158,7 @@ function WaveEditor({
         <button
           disabled={busy || !opensAt || !closesAt}
           onClick={() =>
-            onSave(
+            void onSave(
               wave,
               new Date(opensAt).toISOString(),
               new Date(closesAt).toISOString(),

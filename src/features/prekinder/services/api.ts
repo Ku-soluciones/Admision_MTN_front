@@ -37,6 +37,9 @@ export async function apiRequest<T>(
   if (!token) throw new ApiError(401, "Tu sesión expiró. Ingresa nuevamente.");
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
+    // Las lecturas administrativas se usan para confirmar escrituras recién
+    // realizadas; no deben reutilizar una representación anterior del proceso.
+    cache: init.cache ?? "no-store",
     credentials: "include",
     headers: {
       Accept: "application/json",
