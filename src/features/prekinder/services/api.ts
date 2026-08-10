@@ -219,6 +219,54 @@ export type AgendaGroup = {
   reports: ReportSummary[];
 };
 
+export type EvaluatorAssignment = {
+  assignmentId: string;
+  instrumentCode: string;
+  status: string;
+  version: number;
+  group: EvaluationGroup;
+  reports: ReportSummary[];
+};
+
+export type EvaluatorAgenda = {
+  profile: {
+    actorId: string;
+    instrumentCode: string;
+    instrumentName: string;
+  };
+  assignments: EvaluatorAssignment[];
+};
+
+export type ControlTowerDay = {
+  processId: string;
+  date: string;
+  timezone: string;
+  serverSequence: number;
+  summary: {
+    applicants: number;
+    present: number;
+    groupsInProgress: number;
+    groupsValidated: number;
+    openIncidents: number;
+  };
+  rooms: Array<{
+    roomId: string;
+    name: string;
+    groups: Array<{
+      groupId: string;
+      code: string;
+      startsAt: string;
+      endsAt: string;
+      status: string;
+      capacity: number;
+      memberCount: number;
+      attendance: { present: number; pending: number; absent: number };
+      instrumentProgress: Record<string, string>;
+      version: number;
+    }>;
+  }>;
+};
+
 export type Report = {
   header: {
     reportId: string;
@@ -502,6 +550,38 @@ export const prekinderApi = {
     ),
   agenda: (date: string) =>
     apiRequest<AgendaGroup[]>(`/v1/prekinder/me/agenda?date=${date}`),
+  evaluatorAgenda: (date: string, instrument: string, processId?: string) => {
+    const params = new URLSearchParams({ date, instrument });
+    if (processId) params.set("processId", processId);
+    return apiRequest<EvaluatorAgenda>(
+      `/v1/prekinder/me/evaluator-agenda?${params.toString()}`,
+    );
+  },
+  controlTower: (processId: string, date: string) =>
+    apiRequest<ControlTowerDay>(
+      `/v1/prekinder/processes/${processId}/control-tower?date=${encodeURIComponent(date)}`,
+    ),
+  updateAttendance: (
+    groupId: string,
+    applicationId: string,
+    input: {
+      status: "PENDING" | "PRESENT" | "LATE" | "ABSENT" | "COULD_NOT_ENTER";
+      reasonCode?: string | null;
+      expectedVersion: number;
+      operationId: string;
+    },
+  ) =>
+    apiRequest<{
+      groupId: string;
+      applicationId: string;
+      status: string;
+      reasonCode: string | null;
+      version: number;
+      recordedAt: string;
+    }>(`/v1/prekinder/groups/${groupId}/members/${applicationId}/attendance`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
   report: (reportId: string) =>
     apiRequest<Report>(`/v1/prekinder/reports/${reportId}`),
   saveResponse: (

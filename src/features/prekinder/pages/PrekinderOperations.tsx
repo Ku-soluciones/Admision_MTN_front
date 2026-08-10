@@ -125,7 +125,8 @@ type PrekinderOperationsProps = {
 export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
-  const demoMode = true; // Mock data siempre activo en desarrollo
+  const demoMode =
+    import.meta.env.DEV && import.meta.env.VITE_PREKINDER_DEMO === "true";
   const initialDate = today();
   const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
   const [section, setSection] = useState(() => {

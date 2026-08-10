@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   Clock3,
   RefreshCw,
@@ -10,8 +9,7 @@ import {
 } from "lucide-react";
 import {
   prekinderApi,
-  type AgendaGroup,
-  type EvaluationGroup,
+  type EvaluatorAssignment,
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
@@ -31,16 +29,6 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
-function fullName(app: { identity: { firstName?: string; paternalLastName?: string; maternalLastName?: string } }) {
-  return [app.identity.firstName, app.identity.paternalLastName, app.identity.maternalLastName]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function initials(app: { identity: { firstName?: string; paternalLastName?: string } }) {
-  return `${app.identity.firstName?.[0] ?? ""}${app.identity.paternalLastName?.[0] ?? ""}`;
-}
-
 interface PrekinderEvaluatorDashboardProps {
   profile: SpecialtyProfile;
 }
@@ -48,9 +36,7 @@ interface PrekinderEvaluatorDashboardProps {
 export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashboardProps) {
   const navigate = useNavigate();
   const [date, setDate] = useState(today());
-  const [agenda, setAgenda] = useState<AgendaGroup[]>([]);
-  const [groups, setGroups] = useState<EvaluationGroup[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -58,14 +44,8 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
     setLoading(true);
     setError("");
     try {
-      const [agendaData, groupsData, appsData] = await Promise.all([
-        prekinderApi.agenda(date),
-        prekinderApi.groups(null, date),
-        prekinderApi.flowApplications(null),
-      ]);
-      setAgenda(agendaData);
-      setGroups(groupsData);
-      setApplications(appsData);
+      const agendaData = await prekinderApi.evaluatorAgenda(date, profile);
+      setAssignments(agendaData.assignments);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error al cargar datos");
     } finally {
@@ -77,10 +57,7 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
     void load();
   }, [date, profile]);
 
-  const myGroups = groups.filter((g) => {
-    // Filter by profile - in real implementation this would check evaluator assignment
-    return true; // For now show all
-  });
+  const myGroups = assignments;
 
   return (
     <PrekinderEvaluatorLayout profile={profile}>
@@ -143,7 +120,7 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {myGroups.reduce((acc, g) => acc + g.memberIds.length, 0)}
+                  {myGroups.reduce((acc, assignment) => acc + assignment.reports.length, 0)}
                 </p>
                 <p className="text-sm text-gray-500">Postulantes</p>
               </div>
@@ -156,7 +133,11 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {agenda.filter((a) => a.reports.some((r) => r.status !== "COMPLETED")).length}
+                  {assignments.filter((assignment) =>
+                    assignment.reports.some((report) =>
+                      !["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"].includes(report.status),
+                    ),
+                  ).length}
                 </p>
                 <p className="text-sm text-gray-500">Pendientes</p>
               </div>
@@ -185,13 +166,12 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {myGroups.map((group) => {
-                const members = group.memberIds
-                  .map((id) => applications.find((a) => a.applicationId === id))
-                  .filter(Boolean);
+              {myGroups.map((assignment) => {
+                const group = assignment.group;
+                const members = assignment.reports;
                 return (
                   <button
-                    key={group.groupId}
+                    key={assignment.assignmentId}
                     onClick={() => navigate(`/prekinder/evaluador/grupo/${group.groupId}?profile=${profile}`)}
                     className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
                   >
@@ -212,9 +192,9 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
                           <div
                             key={m.applicationId}
                             className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 ring-2 ring-white"
-                            title={fullName(m)}
+                            title={m.applicantName}
                           >
-                            {initials(m)}
+                            {m.applicantName.split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("")}
                           </div>
                         ))}
                         {members.length > 5 && (
