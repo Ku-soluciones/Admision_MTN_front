@@ -33,8 +33,6 @@ import {
 import { PrekinderBrand } from "../components/PrekinderBrand";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
-import { AcademicEvaluatorConsole } from "../components/admin/AcademicEvaluatorConsole";
-import { SpecialtyEvaluatorConsole } from "../components/admin/SpecialtyEvaluatorConsole";
 import {
   createMockGroups,
   mockApplications,
@@ -49,13 +47,6 @@ const sections = [
   ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Torre de control", CalendarDays],
-  ["Evaluador académico", ClipboardCheck],
-  ["Psicomotricidad", ClipboardCheck],
-  ["Psicología", ShieldCheck],
-  ["Indicadores de ingreso", ClipboardCheck],
-  ["Observación grupal", UsersRound],
-  ["Apoyo al Aprendizaje", ShieldCheck],
-  ["DAP", ShieldCheck],
   ["Profesionales", UsersRound],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
@@ -136,17 +127,7 @@ export function PrekinderOperations({
   const [section, setSection] = useState(() => {
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
-    if (requestedView === "academic-evaluator") return "Evaluador académico";
     if (requestedView === "professionals") return "Profesionales";
-    const evaluatorViews: Record<string, string> = {
-      psychomotor: "Psicomotricidad",
-      psychology: "Psicología",
-      indicators: "Indicadores de ingreso",
-      "group-observation": "Observación grupal",
-      support: "Apoyo al Aprendizaje",
-      dap: "DAP",
-    };
-    if (requestedView && evaluatorViews[requestedView]) return evaluatorViews[requestedView];
     return "Resumen";
   });
   const [mobileNav, setMobileNav] = useState(false);
@@ -639,19 +620,6 @@ export function PrekinderOperations({
               onAction={action}
             />
           )}
-          {section === "Evaluador académico" && (
-            <AcademicEvaluatorConsole
-              groups={groups}
-              applications={eligible}
-              rooms={rooms}
-            />
-          )}
-          {section === "Psicomotricidad" && <SpecialtyEvaluatorConsole profile="PSYCHOMOTOR" groups={groups} applications={eligible} rooms={rooms} />}
-          {section === "Psicología" && <SpecialtyEvaluatorConsole profile="PSYCHOLOGY" groups={groups} applications={eligible} rooms={rooms} />}
-          {section === "Indicadores de ingreso" && <SpecialtyEvaluatorConsole profile="INDICATORS" groups={groups} applications={eligible} rooms={rooms} />}
-          {section === "Observación grupal" && <SpecialtyEvaluatorConsole profile="GROUP_OBSERVATION" groups={groups} applications={eligible} rooms={rooms} />}
-          {section === "Apoyo al Aprendizaje" && <SpecialtyEvaluatorConsole profile="SUPPORT" groups={groups} applications={eligible} rooms={rooms} />}
-          {section === "DAP" && <SpecialtyEvaluatorConsole profile="DAP" groups={groups} applications={eligible} rooms={rooms} />}
           {section === "Profesionales" && (
             <Professionals
               processId={processId}

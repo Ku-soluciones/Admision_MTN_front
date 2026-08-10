@@ -43,6 +43,10 @@ import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
 import PrekinderEvaluationWorkspace from './PrekinderEvaluationWorkspace';
+import {
+    prekinderApi,
+    type EvaluationInstrument,
+} from '../../prekinder/services/api';
 
 const baseSections = [
     { key: 'dashboard',    label: 'Dashboard General',        icon: DashboardIcon },
@@ -52,8 +56,31 @@ const baseSections = [
     { key: 'horarios',     label: 'Mis Horarios',             icon: ClockIcon },
     { key: 'reportes',     label: 'Reportes y Estadísticas',  icon: FileTextIcon },
     { key: 'configuracion',label: 'Información',               icon: BookOpenIcon },
-    { key: 'prekinder',    label: 'Jornada Prekínder',        icon: CheckCircleIcon },
 ];
+
+const prekinderSectionLabels: Record<string, string> = {
+    ACADEMIC: 'Evaluador académico',
+    PSYCHOMOTOR: 'Psicomotricidad',
+    PSYCHOLOGY: 'Psicología',
+    ENTRY_INDICATORS: 'Indicadores de ingreso',
+    GROUP_OBSERVATION: 'Observación grupal',
+    LEARNING_SUPPORT: 'Apoyo al Aprendizaje',
+    DAP: 'DAP',
+};
+
+const prekinderSectionIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+    ACADEMIC: FileTextIcon,
+    PSYCHOMOTOR: CheckCircleIcon,
+    PSYCHOLOGY: UsersIcon,
+    ENTRY_INDICATORS: FileTextIcon,
+    GROUP_OBSERVATION: UsersIcon,
+    LEARNING_SUPPORT: BookOpenIcon,
+    DAP: CheckCircleIcon,
+};
+
+function currentPrekinderDate(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+}
 
 interface SidebarNavProps {
     sections: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
@@ -140,7 +167,8 @@ const ProfessorDashboard: React.FC = () => {
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
         if (searchParams.get('section') === 'prekinder') {
-            return 'prekinder';
+            const instrument = searchParams.get('instrument');
+            return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
         }
         if (currentProfessor?.role === 'CYCLE_DIRECTOR' || currentProfessor?.role === 'PSYCHOLOGIST') {
             return 'entrevistas'; // Directores de ciclo y psicólogos ven entrevistas por defecto
@@ -154,8 +182,15 @@ const ProfessorDashboard: React.FC = () => {
     const handleSectionChange = useCallback((key: string) => {
         setActiveSection(key);
         const next = new URLSearchParams(searchParams);
-        if (key === 'prekinder') next.set('section', 'prekinder');
-        else next.delete('section');
+        if (key === 'prekinder' || key.startsWith('prekinder:')) {
+            next.set('section', 'prekinder');
+            const instrument = key.split(':')[1];
+            if (instrument) next.set('instrument', instrument);
+            else next.delete('instrument');
+        } else {
+            next.delete('section');
+            next.delete('instrument');
+        }
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
 
@@ -176,6 +211,39 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [prekinderInstruments, setPrekinderInstruments] = useState<EvaluationInstrument[]>([]);
+    const [prekinderAccessResolved, setPrekinderAccessResolved] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        void prekinderApi.evaluatorWorkspace(currentPrekinderDate())
+            .then((workspace) => {
+                if (!active) return;
+                setPrekinderInstruments(workspace.instruments.map(({ instrument }) => instrument));
+            })
+            .catch(() => {
+                if (active) setPrekinderInstruments([]);
+            })
+            .finally(() => {
+                if (active) setPrekinderAccessResolved(true);
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder')) return;
+        const requestedCode = activeSection.startsWith('prekinder:')
+            ? activeSection.slice('prekinder:'.length)
+            : '';
+        const requestedExists = prekinderInstruments.some(
+            (instrument) => instrument.instrumentCode === requestedCode,
+        );
+        if (requestedExists) return;
+        const first = prekinderInstruments[0];
+        handleSectionChange(first ? `prekinder:${first.instrumentCode}` : 'dashboard');
+    }, [activeSection, handleSectionChange, prekinderAccessResolved, prekinderInstruments]);
 
     // Estado para forzar recarga de datos (cache busting)
     const [refreshKey, setRefreshKey] = useState(0);
@@ -410,9 +478,17 @@ const ProfessorDashboard: React.FC = () => {
     const isAdminUser = useAuthStore((s) => s.user?.role === 'ADMIN')
         || currentProfessor?.role === 'ADMIN';
 
+    const prekinderSections = prekinderInstruments.map((instrument) => ({
+        key: `prekinder:${instrument.instrumentCode}`,
+        label: prekinderSectionLabels[instrument.instrumentCode] ?? instrument.displayName,
+        icon: prekinderSectionIcons[instrument.instrumentCode] ?? CheckCircleIcon,
+    }));
+    const professorSections = filteredSections.flatMap((section) =>
+        section.key === 'reportes' ? [...prekinderSections, section] : [section],
+    );
     const sections = isAdminUser
-        ? [...filteredSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
-        : filteredSections;
+        ? [...professorSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
+        : professorSections;
 
     const getSubjectName = (subjectId: string) => {
         const names: { [key: string]: string } = {
@@ -2047,6 +2123,13 @@ const ProfessorDashboard: React.FC = () => {
                     </Card>
                 );
             default:
+                if (activeSection.startsWith('prekinder:')) {
+                    return (
+                        <PrekinderEvaluationWorkspace
+                            initialInstrumentCode={activeSection.slice('prekinder:'.length)}
+                        />
+                    );
+                }
                 return renderEvaluaciones();
         }
     };

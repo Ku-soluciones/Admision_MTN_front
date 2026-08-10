@@ -39,7 +39,7 @@ export default function PrekinderEvaluationGroup() {
     const [changing, setChanging] = useState(false);
     const [error, setError] = useState('');
 
-    const returnTo = `/profesor?section=prekinder`;
+    const returnTo = `/profesor?section=prekinder&instrument=${encodeURIComponent(instrumentCode.toUpperCase())}`;
 
     async function load(silent = false) {
         if (!silent) setLoading(true);

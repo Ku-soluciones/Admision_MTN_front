@@ -61,11 +61,17 @@ function pendingReports(assignment: EvaluatorAssignment): number {
     return assignment.reports.filter((report) => !finishedStatuses.has(report.status)).length;
 }
 
-export default function PrekinderEvaluationWorkspace() {
+type PrekinderEvaluationWorkspaceProps = {
+    initialInstrumentCode?: string;
+};
+
+export default function PrekinderEvaluationWorkspace({
+    initialInstrumentCode = '',
+}: PrekinderEvaluationWorkspaceProps) {
     const navigate = useNavigate();
     const [date, setDate] = useState(today());
     const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(null);
-    const [selectedInstrument, setSelectedInstrument] = useState('');
+    const [selectedInstrument, setSelectedInstrument] = useState(initialInstrumentCode.toUpperCase());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -76,7 +82,9 @@ export default function PrekinderEvaluationWorkspace() {
             const next = await prekinderApi.evaluatorWorkspace(date);
             setWorkspace(next);
             setSelectedInstrument((current) =>
-                next.instruments.some((item) => item.instrument.instrumentCode === current)
+                next.instruments.some((item) => item.instrument.instrumentCode === initialInstrumentCode.toUpperCase())
+                    ? initialInstrumentCode.toUpperCase()
+                    : next.instruments.some((item) => item.instrument.instrumentCode === current)
                     ? current
                     : next.instruments[0]?.instrument.instrumentCode ?? '',
             );
@@ -101,6 +109,13 @@ export default function PrekinderEvaluationWorkspace() {
     useEffect(() => {
         void load();
     }, [date]);
+
+    useEffect(() => {
+        const requested = initialInstrumentCode.toUpperCase();
+        if (requested && workspace?.instruments.some((item) => item.instrument.instrumentCode === requested)) {
+            setSelectedInstrument(requested);
+        }
+    }, [initialInstrumentCode, workspace]);
 
     const selected = workspace?.instruments.find(
         (item) => item.instrument.instrumentCode === selectedInstrument,
