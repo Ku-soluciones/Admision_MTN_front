@@ -363,8 +363,14 @@ export function PrekinderOperations({
             context="Centro de jornada"
             compactOnMobile
           />
+          <a
+            href="/admin"
+            className="ml-auto flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            ← Volver al Admin
+          </a>
           <ProcessControls
-            className="ml-auto"
+            className=""
             processes={processes}
             processId={processId}
             busy={busy || baseLoading}

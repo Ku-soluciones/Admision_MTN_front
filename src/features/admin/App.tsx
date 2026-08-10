@@ -12,10 +12,17 @@ import Header from './components/layout/Header';
 import ToastContainer from './components/ui/ToastContainer';
 import GlobalToastHost from './components/ui/GlobalToastHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PrekinderAdminGuard } from '../prekinder/components/PrekinderAdminGuard';
 
-const DevPrekinderOperations = lazy(() =>
+const PrekinderOperations = lazy(() =>
   import('../prekinder/pages/PrekinderOperations')
     .then((module) => ({ default: module.PrekinderOperations }))
+);
+
+const PrekinderPage: React.FC = () => (
+  <PrekinderAdminGuard roles={['ADMIN', 'COORDINATOR', 'CYCLE_DIRECTOR']}>
+    <PrekinderOperations />
+  </PrekinderAdminGuard>
 );
 
 const LoadingFallback = () => (
@@ -50,13 +57,7 @@ function App() {
         <Route path="/profesor" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/apoderado/login" element={<ApoderadoLogin />} />
         <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
-        <Route path="/admin/prekinder" element={<Navigate to="/admin?section=prekinder" replace />} />
-        <Route
-          path="/admin/prekinder-demo"
-          element={import.meta.env.DEV
-            ? <DevPrekinderOperations />
-            : <Navigate to="/login" replace />}
-        />
+        <Route path="/admin/prekinder" element={<PrekinderPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
 
                 </Routes>
