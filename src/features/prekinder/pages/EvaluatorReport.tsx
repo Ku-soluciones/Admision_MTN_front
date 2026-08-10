@@ -7,8 +7,9 @@ import {
   LockKeyhole,
   TriangleAlert,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, prekinderApi, type Report } from "../services/api";
+import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 
 type SaveState =
   "idle" | "saving" | "saved" | "offline" | "conflict" | "closed";
@@ -16,11 +17,20 @@ type SaveState =
 export function EvaluatorReport() {
   const { reportId = "" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [report, setReport] = useState<Report | null>(null);
   const [state, setState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const noteTimer = useRef<number | null>(null);
+  const requestedReturn = searchParams.get("returnTo");
+  const returnTo = requestedReturn?.startsWith("/profesor/prekinder")
+    || requestedReturn?.startsWith("/prekinder/evaluador")
+    ? requestedReturn
+    : "/profesor?section=prekinder";
+  const realtimeState = usePrekinderRealtimeSync(report?.header.evaluatorId, () => {
+    if (state !== "saving") void load();
+  });
 
   async function load() {
     setError("");
@@ -122,14 +132,29 @@ export function EvaluatorReport() {
   async function complete() {
     if (!report) return;
     setState("saving");
+    if (noteTimer.current) {
+      window.clearTimeout(noteTimer.current);
+      noteTimer.current = null;
+    }
     try {
+      let expectedVersion = report.header.version;
+      if (note !== report.note.content) {
+        const withNote = await prekinderApi.saveNote(
+          reportId,
+          note,
+          report.note.version,
+          crypto.randomUUID(),
+        );
+        setReport(withNote);
+        expectedVersion = withNote.header.version;
+      }
       const next = await prekinderApi.completeReport(
         reportId,
-        report.header.version,
+        expectedVersion,
       );
       setReport(next);
       setState("saved");
-      window.setTimeout(() => navigate("/prekinder/evaluador"), 450);
+      window.setTimeout(() => navigate(returnTo), 450);
     } catch (reason) {
       handleError(reason);
     }
@@ -144,7 +169,7 @@ export function EvaluatorReport() {
             <p className="mt-4 font-bold">{error}</p>
             <button
               className="secondary mt-5"
-              onClick={() => navigate("/prekinder/evaluador")}
+              onClick={() => navigate(returnTo)}
             >
               Volver a la agenda
             </button>
@@ -154,7 +179,9 @@ export function EvaluatorReport() {
         )}
       </div>
     );
-  const completed = report.header.status === "COMPLETED";
+  const completed = ["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"].includes(
+    report.header.status,
+  );
   const answered = report.criteria.filter(
     (criterion) => criterion.selectedOptionId || criterion.notObserved,
   ).length;
@@ -164,7 +191,7 @@ export function EvaluatorReport() {
         <div className="mx-auto flex min-h-16 max-w-4xl items-center gap-3 px-4">
           <button
             className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200"
-            onClick={() => navigate("/prekinder/evaluador")}
+            onClick={() => navigate(returnTo)}
             aria-label="Volver"
           >
             <ArrowLeft />
@@ -181,6 +208,12 @@ export function EvaluatorReport() {
             </p>
           </div>
           <SaveIndicator state={state} />
+          <span
+            className={`hidden rounded-full px-2.5 py-1 text-xs font-black sm:inline-flex ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}
+            role="status"
+          >
+            {realtimeState === "live" ? "En vivo" : "Reconectando"}
+          </span>
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-7">

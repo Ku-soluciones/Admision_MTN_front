@@ -5,6 +5,8 @@ import ProfessorLoginPage from './pages/ProfessorLoginPage';
 import ProfessorDashboard from './pages/ProfessorDashboard';
 import EvaluationForm from './pages/EvaluationForm';
 import StudentProfile from './pages/StudentProfile';
+import PrekinderEvaluationGroup from './pages/PrekinderEvaluationGroup';
+import { EvaluatorReport } from '../prekinder/pages/EvaluatorReport';
 import AdmissionReportForm from './components/evaluations/AdmissionReportForm';
 import CycleDirectorReportForm from './components/evaluations/CycleDirectorReportForm';
 import CycleDirectorInterviewForm from './components/evaluations/CycleDirectorInterviewForm';
@@ -42,6 +44,9 @@ function App() {
         <Route path="/" element={<Navigate to="/profesor/login" replace />} />
         <Route path="/profesor/login" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
         <Route path="/profesor" element={<ProtectedProfessorRoute><ProfessorDashboard /></ProtectedProfessorRoute>} />
+        <Route path="/profesor/prekinder" element={<ProtectedProfessorRoute><Navigate to="/profesor?section=prekinder" replace /></ProtectedProfessorRoute>} />
+        <Route path="/profesor/prekinder/:instrumentCode/grupo/:groupId" element={<ProtectedProfessorRoute><PrekinderEvaluationGroup /></ProtectedProfessorRoute>} />
+        <Route path="/profesor/prekinder/informe/:reportId" element={<ProtectedProfessorRoute><EvaluatorReport /></ProtectedProfessorRoute>} />
         <Route path="/profesor/evaluacion/:evaluationId" element={<ProtectedProfessorRoute><EvaluationForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/informe/:examId" element={<ProtectedProfessorRoute><AdmissionReportForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/informe-director/:evaluationId" element={<ProtectedProfessorRoute><CycleDirectorReportForm /></ProtectedProfessorRoute>} />

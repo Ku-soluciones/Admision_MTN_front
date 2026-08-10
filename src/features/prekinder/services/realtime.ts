@@ -5,8 +5,10 @@ export type RealtimeState = 'connecting' | 'live' | 'degraded' | 'closed';
 export type MinimalEvent = { eventId: string; entityId: string; sequence: number; eventType: string };
 export type Operation = {
   operationId: string;
-  type: 'WATCH_EVALUATION' | 'COMMENT_CREATE' | 'COMMENT_REVISE' | 'COMMENT_TOMBSTONE';
+  type: 'WATCH_EVALUATION' | 'WATCH_ACTOR' | 'WATCH_PROCESS' | 'COMMENT_CREATE' | 'COMMENT_REVISE' | 'COMMENT_TOMBSTONE';
   evaluationId?: string;
+  actorId?: string;
+  processId?: string;
   commentId?: string;
   baseRevision?: number;
   content?: string;
@@ -66,6 +68,14 @@ export class PrekinderRealtimeClient {
 
   watch(evaluationId: string) {
     return this.send({ operationId: crypto.randomUUID(), type: 'WATCH_EVALUATION', evaluationId });
+  }
+
+  watchActor(actorId: string) {
+    return this.send({ operationId: crypto.randomUUID(), type: 'WATCH_ACTOR', actorId });
+  }
+
+  watchProcess(processId: string) {
+    return this.send({ operationId: crypto.randomUUID(), type: 'WATCH_PROCESS', processId });
   }
 
   send(operation: Omit<Operation, 'clientSequence'>): Promise<any> {

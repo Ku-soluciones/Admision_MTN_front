@@ -22,7 +22,7 @@ import {
     mockStudentProfiles
 } from '../../admin/services/staticData';
 import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
@@ -42,6 +42,7 @@ import { UserRole, USER_ROLE_LABELS } from '../../admin/types/user';
 import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
+import PrekinderEvaluationWorkspace from './PrekinderEvaluationWorkspace';
 
 const baseSections = [
     { key: 'dashboard',    label: 'Dashboard General',        icon: DashboardIcon },
@@ -51,6 +52,7 @@ const baseSections = [
     { key: 'horarios',     label: 'Mis Horarios',             icon: ClockIcon },
     { key: 'reportes',     label: 'Reportes y Estadísticas',  icon: FileTextIcon },
     { key: 'configuracion',label: 'Información',               icon: BookOpenIcon },
+    { key: 'prekinder',    label: 'Jornada Prekínder',        icon: CheckCircleIcon },
 ];
 
 interface SidebarNavProps {
@@ -124,6 +126,7 @@ const SidebarNav = React.memo(function SidebarNav({
 
 const ProfessorDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Obtener profesor actual del localStorage (con namespace de entorno)
     const [currentProfessor, setCurrentProfessor] = useState(() => {
@@ -136,6 +139,9 @@ const ProfessorDashboard: React.FC = () => {
 
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
+        if (searchParams.get('section') === 'prekinder') {
+            return 'prekinder';
+        }
         if (currentProfessor?.role === 'CYCLE_DIRECTOR' || currentProfessor?.role === 'PSYCHOLOGIST') {
             return 'entrevistas'; // Directores de ciclo y psicólogos ven entrevistas por defecto
         }
@@ -144,6 +150,14 @@ const ProfessorDashboard: React.FC = () => {
 
     const [activeSection, setActiveSection] = useState(getInitialSection());
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const handleSectionChange = useCallback((key: string) => {
+        setActiveSection(key);
+        const next = new URLSearchParams(searchParams);
+        if (key === 'prekinder') next.set('section', 'prekinder');
+        else next.delete('section');
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     // Usar useRef para estabilizar la referencia y evitar re-renders infinitos
     const currentProfessorRef = useRef(currentProfessor);
@@ -1964,6 +1978,8 @@ const ProfessorDashboard: React.FC = () => {
                 );
             case 'reportes':
                 return renderReportesEstadisticas();
+            case 'prekinder':
+                return <PrekinderEvaluationWorkspace />;
             case 'configuracion':
                 return (
                     <div className="space-y-6">
@@ -2077,7 +2093,7 @@ const ProfessorDashboard: React.FC = () => {
                 <SidebarNav
                     sections={sections}
                     activeSection={activeSection}
-                    onSectionChange={setActiveSection}
+                    onSectionChange={handleSectionChange}
                     onShowLogout={() => setShowLogoutConfirm(true)}
                     interviews={interviews}
                     badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
@@ -2091,7 +2107,7 @@ const ProfessorDashboard: React.FC = () => {
                     <SidebarNav
                         sections={sections}
                         activeSection={activeSection}
-                        onSectionChange={setActiveSection}
+                        onSectionChange={handleSectionChange}
                         onShowLogout={() => setShowLogoutConfirm(true)}
                         interviews={interviews}
                         badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}

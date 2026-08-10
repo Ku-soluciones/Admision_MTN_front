@@ -31,6 +31,7 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
+import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import { AcademicEvaluatorConsole } from "../components/admin/AcademicEvaluatorConsole";
 import { SpecialtyEvaluatorConsole } from "../components/admin/SpecialtyEvaluatorConsole";
@@ -203,9 +204,9 @@ export function PrekinderOperations({
     }
   }
 
-  async function loadProcess(id = processId, day = date) {
+  async function loadProcess(id = processId, day = date, silent = false) {
     if (!id) return;
-    setBusy(true);
+    if (!silent) setBusy(true);
     setError("");
     try {
       const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups] =
@@ -231,9 +232,13 @@ export function PrekinderOperations({
           : "No pudimos actualizar la jornada.",
       );
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
   }
+
+  const realtimeState = usePrekinderRealtimeSync(demoMode ? null : processId, () => {
+    if (!demoMode) void loadProcess(processId, date, true);
+  }, "process");
 
   useEffect(() => {
     if (demoMode) return;
@@ -523,6 +528,11 @@ export function PrekinderOperations({
                       : section}
               </SectionHeading>
             </div>
+            {!demoMode && processId && (
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
+                {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
+              </span>
+            )}
             {section === "Torre de control" && (
               <label className="text-xs font-bold text-slate-600">
                 Fecha

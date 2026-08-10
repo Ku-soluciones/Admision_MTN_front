@@ -316,6 +316,25 @@ export type EvaluatorAgenda = {
   assignments: EvaluatorAssignment[];
 };
 
+export type EvaluationInstrument = {
+  instrumentCode: string;
+  displayName: string;
+  captureMode: "GROUP_PARALLEL" | "INDIVIDUAL" | "DERIVED_INDIVIDUAL";
+  sensitive: boolean;
+  active: boolean;
+  position: number;
+};
+
+export type EvaluatorWorkspace = {
+  actorId: string;
+  date: string;
+  serverSequence: number;
+  instruments: Array<{
+    instrument: EvaluationInstrument;
+    assignments: EvaluatorAssignment[];
+  }>;
+};
+
 export type ControlTowerDay = {
   processId: string;
   date: string;
@@ -640,6 +659,37 @@ export const prekinderApi = {
       `/v1/prekinder/me/evaluator-agenda?${params.toString()}`,
     );
   },
+  evaluatorWorkspace: (date: string, processId?: string) => {
+    const params = new URLSearchParams({ date });
+    if (processId) params.set("processId", processId);
+    return apiRequest<EvaluatorWorkspace>(
+      `/v1/prekinder/me/evaluator-workspace?${params.toString()}`,
+    );
+  },
+  confirmEvaluatorAssignment: (assignmentId: string, expectedVersion: number) =>
+    apiRequest<EvaluatorAssignment>(
+      `/v1/prekinder/evaluator-assignments/${assignmentId}/confirm`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion, operationId: crypto.randomUUID() }),
+      },
+    ),
+  startEvaluatorAssignment: (assignmentId: string, expectedVersion: number) =>
+    apiRequest<EvaluatorAssignment>(
+      `/v1/prekinder/evaluator-assignments/${assignmentId}/start`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion, operationId: crypto.randomUUID() }),
+      },
+    ),
+  submitEvaluatorAssignment: (assignmentId: string, expectedVersion: number) =>
+    apiRequest<EvaluatorAssignment>(
+      `/v1/prekinder/evaluator-assignments/${assignmentId}/submit`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion, operationId: crypto.randomUUID() }),
+      },
+    ),
   controlTower: (processId: string, date: string) =>
     apiRequest<ControlTowerDay>(
       `/v1/prekinder/processes/${processId}/control-tower?date=${encodeURIComponent(date)}`,
