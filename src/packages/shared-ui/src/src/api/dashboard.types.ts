@@ -256,6 +256,37 @@ export interface ApplicantCardFamily {
   guardianPhone?: string;
 }
 
+export interface ApplicantCardQuestionnaireChild {
+  childName: string | null;
+  description: string | null;
+  dream: string | null;
+}
+
+export interface ApplicantCardQuestionnaireAnswers {
+  otherSchools: string | null;
+  fatherName: string | null;
+  fatherEducation: string | null;
+  fatherCurrentActivity: string | null;
+  motherName: string | null;
+  motherEducation: string | null;
+  motherCurrentActivity: string | null;
+  applicationReasons: string | null;
+  schoolChangeReason: string | null;
+  familyValues: string | null;
+  faithExperiences: string | null;
+  communityServiceExperiences: string | null;
+  childrenDescriptions: ApplicantCardQuestionnaireChild[];
+}
+
+export interface ApplicantCardFamilyQuestionnaire {
+  status: 'NOT_STARTED' | 'DRAFT' | 'SUBMITTED';
+  received: boolean;
+  submittedAt: string | null;
+  updatedAt: string | null;
+  reportLink: string | null;
+  answers?: ApplicantCardQuestionnaireAnswers;
+}
+
 export interface ApplicantCardPrekinderProcess {
   evaluationDate: string | null;
   evaluationTime: string | null;
@@ -302,10 +333,7 @@ export interface ApplicantCard {
   examAverage?: number | null;
   student: ApplicantCardStudent;
   family: ApplicantCardFamily;
-  familyQuestionnaire?: {
-    received: boolean | null;
-    reportLink: string | null;
-  };
+  familyQuestionnaire?: ApplicantCardFamilyQuestionnaire;
   prekinderProcess?: ApplicantCardPrekinderProcess;
   exams: ApplicantCardExam[];
   cycleDirector: ApplicantCardCycleDirector;

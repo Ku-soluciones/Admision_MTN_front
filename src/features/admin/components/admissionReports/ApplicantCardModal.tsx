@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef } from 'react';
 import { FiChevronDown, FiExternalLink, FiFileText, FiRefreshCw, FiX } from 'react-icons/fi';
 import type { ApplicantCard } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import { formatAdmissionDate, formatGenderLabel, formatGradeLabel, safeDisplayText, statusTone } from './admissionReportUtils';
+import { FamilyQuestionnaireSection } from './FamilyQuestionnaireSection';
 
 interface ApplicantCardModalProps {
   card: ApplicantCard | null;
@@ -138,12 +139,12 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                   <Field label="Nombre papás" value={parentNames(card)} />
                   <Field label="Mails" value={parentEmails(card)} />
                   <Field label="Teléfonos" value={parentPhones(card)} />
-                  <Field label="Cuestionario familia recibido" value={booleanLabel(card.familyQuestionnaire?.received)} />
                   <Field label="Hijo/a de exalumno (quién)" value={alumniLabel(card)} />
                   <Field label="Hermanos en el colegio (quiénes)" value={card.student.hasSiblingsInSchool ? safeDisplayText(card.student.siblingsInSchoolDetails, 'Sí, sin detalle') : 'No'} />
-                  <Field label="Cuestionario familia (informe)" value={<ReportLink href={card.familyQuestionnaire?.reportLink} />} fullWidth />
                 </dl>
               </CardSection>
+
+              <FamilyQuestionnaireSection questionnaire={card.familyQuestionnaire} />
 
               {isPrekinder ? (
                 <CardSection title="Proceso Prekínder" accent="teal">
