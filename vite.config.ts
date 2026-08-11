@@ -65,6 +65,22 @@ function flagsDevMiddleware(env: Record<string, string>): Connect.NextHandleFunc
 export default defineConfig(({ mode }) => {
   const envRoot = __dirname;
   const env = loadEnv(mode, envRoot, '');
+  const devApiProxyTarget = env.DEV_API_PROXY_TARGET;
+  const devApiProxyOrigin = env.DEV_API_PROXY_ORIGIN || 'https://admisiones.dev.admitia.dedyn.io';
+  const railwayProxy = devApiProxyTarget
+    ? {
+        target: devApiProxyTarget,
+        changeOrigin: true,
+        secure: true,
+        ws: true,
+        headers: {
+          // Railway autoriza el origen HTTPS de staging. Para el navegador la
+          // llamada sigue siendo same-origin contra localhost; este header sólo
+          // existe entre el proxy local de Vite y NGINX/BFF.
+          Origin: devApiProxyOrigin,
+        },
+      }
+    : undefined;
 
   return {
     root: __dirname,
@@ -87,6 +103,12 @@ export default defineConfig(({ mode }) => {
       port: 5200,
       host: true,
       strictPort: true,
+      proxy: railwayProxy
+        ? {
+            '/v1': railwayProxy,
+            '/api': railwayProxy,
+          }
+        : undefined,
     },
     preview: {
       port: 5300,
