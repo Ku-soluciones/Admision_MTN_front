@@ -4,6 +4,7 @@ import {
   ArrowRightLeft,
   BarChart3,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -34,6 +35,8 @@ type Props = {
   busy: boolean;
   onSelect: (id: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onDateChange: (date: string) => void;
+  demoMode?: boolean;
 };
 
 const fixedTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
@@ -88,20 +91,39 @@ export function PrekinderControlTower(props: Props) {
   const [view, setView] = useState<ControlView>("tower");
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   return (
-    <div className="grid gap-5 xl:grid-cols-[210px_minmax(0,1fr)]">
-      <aside className="h-fit overflow-hidden rounded-2xl border border-slate-200 bg-white xl:sticky xl:top-24">
-        <div className="border-b border-slate-200 p-4">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-blue-700">Operación de jornada</p>
-          <p className="mt-1 text-sm font-bold text-slate-900">Centro de coordinación</p>
+    <div className="space-y-5">
+      <aside>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Operación de jornada</p>
+            <p className="mt-1 text-sm text-slate-600">Centro de coordinación</p>
+          </div>
+          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3">
+            <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+            <label htmlFor="pk-tower-date" className="shrink-0 text-sm text-gray-600">Fecha</label>
+            <input
+              id="pk-tower-date"
+              className="border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+              type="date"
+              value={props.date}
+              onChange={(e) => props.onDateChange(e.target.value)}
+            />
+          </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto p-2 xl:block" aria-label="Vistas de la torre de control">
+        <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de la torre de control">
           {controlViews.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setView(id)} className={`flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-bold transition-colors xl:mb-1 xl:w-full ${view === id ? "bg-blue-50 text-blue-800" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`} aria-current={view === id ? "page" : undefined}>
-              <Icon size={17} />{label}
+            <button key={id} onClick={() => setView(id)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${view === id ? "border border-slate-300 bg-white font-bold text-slate-900" : "font-semibold text-slate-600 hover:text-slate-900"}`} aria-current={view === id ? "page" : undefined}>
+              <Icon size={16} />{label}
             </button>
           ))}
         </nav>
       </aside>
+      {props.demoMode && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
+          <span className="font-black">Modo demostración:</span>{" "}
+          proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
+        </div>
+      )}
       <div className="min-w-0">
         {view === "tower" && <TowerHome {...props} onOpenMonitor={() => setView("monitor")} />}
         {view === "reception" && <ReceptionView {...props} attendance={attendance} onAttendance={(id, value) => setAttendance((current) => ({ ...current, [id]: value }))} />}

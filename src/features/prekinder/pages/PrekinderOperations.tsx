@@ -31,6 +31,7 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
+import { LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import {
@@ -146,6 +147,7 @@ export function PrekinderOperations({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
 
   const selected =
     groups.find((group) => group.groupId === selectedGroup) ?? null;
@@ -206,6 +208,7 @@ export function PrekinderOperations({
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
+      setLastLoaded(new Date());
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -392,37 +395,18 @@ export function PrekinderOperations({
   const SectionHeading = embedded ? "h2" : "h1";
 
   return (
-    <div className={embedded ? "min-h-full" : "pk-page"}>
-      {!embedded && <header className="pk-topbar sticky top-0 z-30">
-        <div className="flex h-16 items-center gap-4 px-4 lg:px-7">
+    <div className={embedded ? "min-h-full" : "flex h-screen flex-col overflow-hidden bg-gray-50 text-gray-900"}>
+      {!embedded && (
+        <header className="flex h-12 shrink-0 items-center border-b border-slate-200 bg-white px-4 lg:hidden">
           <button
-            className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200 lg:hidden"
+            className="grid min-h-10 min-w-10 place-items-center rounded-lg"
             onClick={() => setMobileNav(true)}
             aria-label="Abrir navegación"
           >
             <Menu size={20} />
           </button>
-          <PrekinderBrand
-            title="Admisión Prekínder"
-            context="Centro de jornada"
-            compactOnMobile
-          />
-          <a
-            href="/admin"
-            className="ml-auto flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            ← Volver al Admin
-          </a>
-          <ProcessControls
-            className=""
-            processes={processes}
-            processId={processId}
-            busy={busy || baseLoading}
-            onChange={setProcessId}
-            onRefresh={() => void refreshAll()}
-          />
-        </div>
-      </header>}
+        </header>
+      )}
 
       {embedded && (
         <section className="mb-6 overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/70">
@@ -457,13 +441,26 @@ export function PrekinderOperations({
         </section>
       )}
 
-      <div className={embedded ? "" : "flex"}>
-        {!embedded && <aside className="hidden min-h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
+      <div className={embedded ? "" : "flex flex-1 overflow-hidden"}>
+        {!embedded && <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white lg:flex">
+          <div className="p-6 text-center">
+            <LogoIcon className="mx-auto w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0" />
+            <h2 className="text-xl font-bold text-azul-monte-tabor">Admisión Prekínder</h2>
+            <p className="text-sm text-gris-piedra mt-1">Centro de jornada</p>
+          </div>
           <Navigation
             section={section}
             onSelect={setSection}
             disabled={!processId || currentProcess?.status === "DRAFT"}
           />
+          <div className="mt-auto px-4 pb-6">
+            <a
+              href="/admin"
+              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              ← Volver al Admin
+            </a>
+          </div>
         </aside>}
         {!embedded && mobileNav && (
           <div
@@ -471,61 +468,82 @@ export function PrekinderOperations({
             onClick={() => setMobileNav(false)}
           >
             <aside
-              className="h-full w-72 bg-white p-4"
+              className="flex h-full w-72 flex-col bg-white"
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-label="Navegación de Prekínder"
             >
-              <button
-                className="mb-4 ml-auto grid min-h-11 min-w-11 place-items-center"
-                onClick={() => setMobileNav(false)}
-                aria-label="Cerrar navegación"
-              >
-                <X />
-              </button>
-              <Navigation
-                section={section}
-                disabled={!processId || currentProcess?.status === "DRAFT"}
-                onSelect={(next) => {
-                  setSection(next);
-                  setMobileNav(false);
-                }}
-              />
+              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <LogoIcon className="h-8 w-8 flex-shrink-0" />
+                  <p className="text-sm font-bold text-azul-monte-tabor">Admisión Prekínder</p>
+                </div>
+                <button
+                  className="grid min-h-11 min-w-11 place-items-center"
+                  onClick={() => setMobileNav(false)}
+                  aria-label="Cerrar navegación"
+                >
+                  <X />
+                </button>
+              </div>
+              <div className="px-4 pt-2">
+                <Navigation
+                  section={section}
+                  disabled={!processId || currentProcess?.status === "DRAFT"}
+                  onSelect={(next) => {
+                    setSection(next);
+                    setMobileNav(false);
+                  }}
+                />
+              </div>
+              <div className="mt-auto px-4 pb-6">
+                <a
+                  href="/admin"
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  ← Volver al Admin
+                </a>
+              </div>
             </aside>
           </div>
         )}
 
-        <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 p-4 lg:p-7"}>
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <SectionHeading className="pk-section-title">
-                {baseLoading
-                  ? "Cargando Prekínder"
-                  : !processId
-                    ? "Crear proceso"
-                    : currentProcess?.status === "DRAFT"
-                      ? "Habilitar proceso"
-                      : section}
-              </SectionHeading>
+        <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 overflow-y-auto p-4 lg:p-7"}>
+          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && (
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                {section === "Postulaciones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Postulaciones</p>
+                    <p className="mt-1 text-sm text-gray-600">Busca una postulación, ajusta los filtros o revisa su elegibilidad.</p>
+                  </>
+                ) : section === "Etapas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
+                    <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
+                  </>
+                ) : section === "Torre de control" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Torre de control</p>
+                ) : (
+                  <SectionHeading className="pk-section-title">
+                    {baseLoading
+                      ? "Cargando Prekínder"
+                      : !processId
+                        ? "Crear proceso"
+                        : currentProcess?.status === "DRAFT"
+                          ? "Habilitar proceso"
+                          : section}
+                  </SectionHeading>
+                )}
+              </div>
+              {!demoMode && processId && (
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
+                  {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
+                </span>
+              )}
             </div>
-            {!demoMode && processId && (
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
-              </span>
-            )}
-            {section === "Torre de control" && (
-              <label className="text-xs font-bold text-slate-600">
-                Fecha
-                <input
-                  className="mt-1 block min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                />
-              </label>
-            )}
-          </div>
+          )}
           {error && (
             <div
               className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900"
@@ -540,7 +558,7 @@ export function PrekinderOperations({
               </button>
             </div>
           )}
-          {demoMode && (
+          {demoMode && section !== "Resumen" && section !== "Torre de control" && (
             <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
               <span className="font-black">Modo demostración:</span>{" "}
               proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
@@ -578,6 +596,14 @@ export function PrekinderOperations({
               groups={groups}
               applications={applications}
               onGo={setSection}
+              processes={processes}
+              processId={processId}
+              busy={busy || baseLoading}
+              onProcessChange={setProcessId}
+              onRefresh={() => void refreshAll()}
+              lastLoaded={lastLoaded}
+              realtimeState={!demoMode ? realtimeState : null}
+              demoMode={demoMode}
             />
           )}
           {section === "Etapas" && (
@@ -618,6 +644,8 @@ export function PrekinderOperations({
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}
+              onDateChange={setDate}
+              demoMode={demoMode}
             />
           )}
           {section === "Profesionales" && (
@@ -955,7 +983,7 @@ function Navigation({
       className={
         compact
           ? "pk-module-nav flex gap-1.5 overflow-x-auto border-t border-blue-200 px-5 py-4 sm:px-6"
-          : "space-y-1"
+          : "px-4"
       }
     >
       {sections.map(([label, Icon]) => (
@@ -964,10 +992,17 @@ function Navigation({
           onClick={() => onSelect(label)}
           disabled={disabled}
           aria-current={section === label ? "page" : undefined}
-          className={`flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-left text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 ${compact ? "shrink-0 border" : "w-full gap-3 border border-transparent"} ${section === label && !disabled ? "border-azul-monte-tabor bg-azul-monte-tabor text-blanco-pureza" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
+          className={
+            compact
+              ? `flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 min-h-10 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 ${section === label && !disabled ? "border-azul-monte-tabor bg-azul-monte-tabor text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100"}`
+              : `w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors disabled:cursor-not-allowed disabled:text-slate-400 ${section === label && !disabled ? "bg-azul-monte-tabor text-white" : "text-gris-piedra hover:bg-gray-100"}`
+          }
         >
-          <Icon size={18} className={compact ? "lg:hidden" : undefined} />
-          {label}
+          <Icon
+            size={compact ? 16 : 14}
+            className={compact ? "lg:hidden" : "w-4 h-4 flex-shrink-0"}
+          />
+          <span className="text-sm">{label}</span>
         </button>
       ))}
     </nav>
@@ -980,13 +1015,37 @@ function Overview({
   groups,
   applications,
   onGo,
+  processes,
+  processId,
+  busy,
+  onProcessChange,
+  onRefresh,
+  lastLoaded,
+  realtimeState,
+  demoMode,
 }: {
   metrics: DashboardMetrics | null;
   waves: Wave[];
   groups: EvaluationGroup[];
   applications: FlowApplication[];
   onGo: (value: string) => void;
+  processes: AdmissionProcess[];
+  processId: string;
+  busy: boolean;
+  onProcessChange: (id: string) => void;
+  onRefresh: () => void;
+  lastLoaded: Date | null;
+  realtimeState: string | null;
+  demoMode: boolean;
 }) {
+  const lastUpdated = lastLoaded
+    ? new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Santiago",
+      }).format(lastLoaded)
+    : null;
+
   const cards = [
     ["Postulaciones", metrics?.applications ?? 0, "Postulaciones"],
     [
@@ -1001,6 +1060,52 @@ function Overview({
   const active = waves.find((wave) => wave.active);
   return (
     <div className="space-y-6">
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Resumen</p>
+            {lastUpdated && <p className="mt-1 text-sm text-gray-400">actualizado {lastUpdated}</p>}
+            <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+              <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+              <label htmlFor="pk-process-select" className="shrink-0 text-sm text-gray-600">Proceso</label>
+              <select
+                id="pk-process-select"
+                value={processId}
+                onChange={(e) => onProcessChange(e.target.value)}
+                disabled={!processes.length || busy}
+                className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0 disabled:cursor-not-allowed"
+              >
+                {processes.map((p) => (
+                  <option key={p.processId} value={p.processId}>{p.name}</option>
+                ))}
+                {!processes.length && <option value="">Sin proceso</option>}
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start">
+            {realtimeState && (
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
+                {realtimeState === "live" ? "En vivo" : "Reconectando"}
+              </span>
+            )}
+            <button
+              onClick={onRefresh}
+              disabled={busy}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Actualizar información de Prekínder"
+            >
+              <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
+              {busy ? "Actualizando" : "Actualizar"}
+            </button>
+          </div>
+        </div>
+      </section>
+      {demoMode && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
+          <span className="font-black">Modo demostración:</span>{" "}
+          proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
+        </div>
+      )}
       <section className="pk-panel grid grid-cols-2 overflow-hidden xl:grid-cols-5">
         {cards.map(([label, value, target]) => (
           <button
@@ -1176,6 +1281,8 @@ function WaveEditor({
   );
 }
 
+const APP_PAGE_SIZE = 10;
+
 function Applications({
   applications,
   busy,
@@ -1190,45 +1297,126 @@ function Applications({
   ) => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = applications.filter(
-    (app) =>
-      fullName(app).toLowerCase().includes(query.toLowerCase()) ||
-      app.identity.rut.includes(query),
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
+
+  const filtered = useMemo(
+    () =>
+      applications.filter((app) => {
+        const matchesQuery =
+          fullName(app).toLowerCase().includes(query.toLowerCase()) ||
+          app.identity.rut.includes(query);
+        const matchesStatus =
+          statusFilter === "ALL" || app.eligibilityStatus === statusFilter;
+        return matchesQuery && matchesStatus;
+      }),
+    [applications, query, statusFilter],
   );
+
+  useEffect(() => setPage(0), [query, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / APP_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paginated = filtered.slice(
+    currentPage * APP_PAGE_SIZE,
+    (currentPage + 1) * APP_PAGE_SIZE,
+  );
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 p-5">
+      <div className="flex flex-wrap items-start gap-4 border-b border-slate-200 p-5">
         <div>
-          <h2 className="font-black">Revisión de elegibilidad</h2>
-          <p className="text-xs text-slate-500">
-            Una declaración rechazada no cambia de etapa.
-          </p>
+          <h2 className="font-black">
+            Listado de postulaciones{" "}
+            <span className="text-sm font-normal text-slate-400">
+              {filtered.length} de {applications.length}
+            </span>
+          </h2>
         </div>
-        <input
-          className="control ml-auto max-w-xs"
-          placeholder="Buscar por nombre o RUT"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-      <div className="divide-y divide-slate-100">
-        {filtered.map((app) => (
-          <ApplicationRow
-            key={app.applicationId}
-            app={app}
-            busy={busy}
-            onReview={onReview}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <input
+            className="control"
+            placeholder="Nombre o RUT"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
-        ))}
-        {!filtered.length && (
-          <p className="p-10 text-center text-sm text-slate-500">
-            No hay postulaciones que coincidan.
-          </p>
-        )}
+          <select
+            className="control"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Todos los estados</option>
+            <option value="PENDING">Pendiente</option>
+            <option value="VERIFIED">Verificada</option>
+            <option value="REJECTED">Rechazada</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[32%]" />
+            <col className="w-[15%]" />
+            <col className="w-[13%]" />
+            <col className="w-[25%]" />
+            <col className="w-[15%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              {(["Postulante", "Vía", "Estado", "Antecedentes"] as const).map((col) => (
+                <th key={col} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {col}
+                </th>
+              ))}
+              <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                Acción
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {paginated.map((app) => (
+              <ApplicationRow
+                key={app.applicationId}
+                app={app}
+                busy={busy}
+                onReview={onReview}
+              />
+            ))}
+            {!filtered.length && (
+              <tr>
+                <td colSpan={5} className="p-10 text-center text-sm text-slate-500">
+                  No hay postulaciones que coincidan.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <button
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={currentPage === 0}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Anterior
+        </button>
+        <span className="text-sm text-slate-500">
+          Página {currentPage + 1} de {totalPages}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={currentPage >= totalPages - 1}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Siguiente →
+        </button>
       </div>
     </section>
   );
 }
+
 function ApplicationRow({
   app,
   busy,
@@ -1243,60 +1431,67 @@ function ApplicationRow({
   ) => void;
 }) {
   const [reason, setReason] = useState("");
+  const details = app.applicationDetails;
+  const gender = details?.gender;
+
   return (
-    <div className="grid gap-4 p-5 xl:grid-cols-[1.4fr_.8fr_1fr_auto] xl:items-center">
-      <div>
-        <p className="font-extrabold">{fullName(app)}</p>
-        <p className="mt-1 text-xs text-slate-500">
-          RUT {app.identity.rut} · Nacimiento{" "}
-          {new Intl.DateTimeFormat("es-CL").format(
-            new Date(`${app.identity.birthDate}T12:00:00`),
-          )}
+    <tr className="align-middle">
+      <td className="px-5 py-4">
+        <p className="font-extrabold uppercase">{fullName(app)}</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {gender === "MALE"
+            ? "Género: Masculino"
+            : gender === "FEMALE"
+              ? "Género: Femenino"
+              : `RUT ${app.identity.rut}`}
         </p>
-      </div>
-      <div>
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-          Origen
-        </p>
-        <p className="mt-1 text-sm font-semibold">
-          {waveNames[app.eligibilityCategory]}
-        </p>
-      </div>
-      <span
-        className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${statusTone[app.eligibilityStatus] || statusTone.DRAFT}`}
-      >
-        {statusLabel[app.eligibilityStatus] || app.eligibilityStatus}
-      </span>
-      {app.eligibilityStatus === "PENDING" ? (
-        <div className="flex flex-wrap gap-2 xl:justify-end">
-          <input
-            className="control max-w-44"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Motivo si rechaza"
-            aria-label="Motivo del rechazo"
-          />
-          <button
-            disabled={busy}
-            className="secondary"
-            onClick={() => onReview(app, "REJECTED", reason)}
-          >
-            Rechazar
-          </button>
-          <button
-            disabled={busy}
-            className="primary"
-            onClick={() => onReview(app, "VERIFIED", reason)}
-          >
-            Verificar
-          </button>
-        </div>
-      ) : (
-        <span className="text-right text-xs text-slate-400">
-          Revisión cerrada
+      </td>
+      <td className="px-5 py-4 text-sm text-slate-700">
+        {waveNames[app.eligibilityCategory] ?? app.eligibilityCategory}
+      </td>
+      <td className="px-5 py-4">
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${statusTone[app.eligibilityStatus] || statusTone.DRAFT}`}>
+          {statusLabel[app.eligibilityStatus] || app.eligibilityStatus}
         </span>
-      )}
-    </div>
+      </td>
+      <td className="px-5 py-4">
+        <div className="space-y-0.5 text-xs text-slate-600">
+          <p>
+            <span className="font-semibold">Hermanos:</span>{" "}
+            {details?.hasSiblingsInSchool ? "Sí" : "No"}
+          </p>
+          <p>
+            <span className="font-semibold">Preferencia:</span>{" "}
+            {details?.admissionPreference === "HIJO_EX_ALUMNO"
+              ? "Hijo/a exalumno"
+              : details?.admissionPreference === "HIJO_FUNCIONARIO"
+                ? "Hijo/a funcionario"
+                : "Ninguna"}
+          </p>
+        </div>
+      </td>
+      <td className="px-5 py-4">
+        {app.eligibilityStatus === "PENDING" ? (
+          <div className="flex flex-wrap gap-2">
+            <input
+              className="control max-w-44"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Motivo si rechaza"
+              aria-label="Motivo del rechazo"
+            />
+            <button disabled={busy} className="secondary" onClick={() => onReview(app, "REJECTED", reason)}>
+              Rechazar
+            </button>
+            <button disabled={busy} className="primary" onClick={() => onReview(app, "VERIFIED", reason)}>
+              Verificar
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">Revisión cerrada</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
