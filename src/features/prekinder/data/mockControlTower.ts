@@ -2,7 +2,7 @@ import type { AdmissionProcess, DashboardMetrics, EvaluationGroup, FlowApplicati
 
 export const mockProcess: AdmissionProcess = {
   processId: "demo-process-2027", academicYear: 2027,
-  name: "Admisión Prekínder 2027 · Demostración", status: "PUBLISHED",
+  name: "Admisión Prekínder 2027", status: "PUBLISHED",
   startsAt: "2026-08-01T12:00:00.000Z", endsAt: "2026-12-31T23:59:59.000Z",
   version: 1, applicationCount: 210, acceptingApplications: true,
 };
