@@ -192,6 +192,7 @@ class ProfessorAuthService {
     isProfessorRole(role: string): boolean {
         const professorRoles = [
             // Roles del backend (actuales)
+            'PREKINDER_PROFESSIONAL',
             'TEACHER',
             'COORDINATOR',
             'CYCLE_DIRECTOR',

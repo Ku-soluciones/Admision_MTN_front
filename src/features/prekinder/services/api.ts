@@ -69,6 +69,27 @@ export async function apiRequest<T>(
   return body.data as T;
 }
 
+async function publicApiRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${baseUrl()}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Request-ID": crypto.randomUUID(),
+      ...init.headers,
+    },
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      body?.error?.message || recoveryMessage(response.status),
+    );
+  }
+  return body.data as T;
+}
+
 function recoveryMessage(status: number): string {
   if (status === 409)
     return "El dato cambió. Resincroniza e intenta nuevamente.";
@@ -436,6 +457,17 @@ export type Comment = {
 };
 
 export const prekinderApi = {
+  completeProfessionalRegistration: (input: {
+    email: string;
+    password: string;
+  }) =>
+    publicApiRequest<{ userId: number; email: string; displayName: string }>(
+      "/v1/prekinder/professional-registration",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    ),
   processes: () => apiRequest<AdmissionProcess[]>("/v1/prekinder/processes"),
   applicationOptions: () =>
     apiRequest<PrekinderApplicationOption[]>(

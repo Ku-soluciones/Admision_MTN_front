@@ -34,7 +34,7 @@ export interface AuthUser {
   email: string;
   rut: string;
   phone?: string;
-  role: 'ADMIN' | 'TEACHER' | 'PSYCHOLOGIST' | 'CYCLE_DIRECTOR' | 'COORDINATOR' | 'APODERADO';
+  role: 'ADMIN' | 'TEACHER' | 'PREKINDER_PROFESSIONAL' | 'PSYCHOLOGIST' | 'CYCLE_DIRECTOR' | 'COORDINATOR' | 'APODERADO';
   subject?: 'GENERAL' | 'LANGUAGE' | 'MATHEMATICS' | 'ENGLISH' | 'ALL_SUBJECTS';
   educationalLevel?: 'PRESCHOOL' | 'BASIC' | 'HIGH_SCHOOL' | 'ALL_LEVELS';
   active: boolean;

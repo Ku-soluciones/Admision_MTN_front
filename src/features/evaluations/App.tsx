@@ -2,6 +2,7 @@ import React from 'react';
 import { Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ProfessorLoginPage from './pages/ProfessorLoginPage';
+import PrekinderProfessionalRegistrationPage from './pages/PrekinderProfessionalRegistrationPage';
 import ProfessorDashboard from './pages/ProfessorDashboard';
 import EvaluationForm from './pages/EvaluationForm';
 import StudentProfile from './pages/StudentProfile';
@@ -43,6 +44,7 @@ function App() {
 
         <Route path="/" element={<Navigate to="/profesor/login" replace />} />
         <Route path="/profesor/login" element={<ProcessActiveGuard><ProfessorLoginPage /></ProcessActiveGuard>} />
+        <Route path="/profesor/registro/prekinder" element={<PrekinderProfessionalRegistrationPage />} />
         <Route path="/profesor" element={<ProtectedProfessorRoute><ProfessorDashboard /></ProtectedProfessorRoute>} />
         <Route path="/profesor/prekinder" element={<ProtectedProfessorRoute><Navigate to="/profesor?section=prekinder" replace /></ProtectedProfessorRoute>} />
         <Route path="/profesor/prekinder/:instrumentCode/grupo/:groupId" element={<ProtectedProfessorRoute><PrekinderEvaluationGroup /></ProtectedProfessorRoute>} />

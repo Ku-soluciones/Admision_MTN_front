@@ -233,6 +233,17 @@ const ProfessorLoginPage: React.FC = () => {
                             Iniciar Sesión
                         </Button>
 
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm text-blue-950">
+                            <span>¿Coordinación creó tu perfil profesional Prekínder?</span>{' '}
+                            <button
+                                type="button"
+                                className="font-bold underline underline-offset-2"
+                                onClick={() => navigate('/profesor/registro/prekinder')}
+                            >
+                                Completar registro
+                            </button>
+                        </div>
+
                         <div className="text-center pt-6 border-t border-gray-200">
                             <a
                                 href={appUrls.home}
