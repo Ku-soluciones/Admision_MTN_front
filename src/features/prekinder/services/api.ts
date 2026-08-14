@@ -69,27 +69,6 @@ export async function apiRequest<T>(
   return body.data as T;
 }
 
-async function publicApiRequest<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${baseUrl()}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "X-Request-ID": crypto.randomUUID(),
-      ...init.headers,
-    },
-  });
-  const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      body?.error?.message || recoveryMessage(response.status),
-    );
-  }
-  return body.data as T;
-}
-
 function recoveryMessage(status: number): string {
   if (status === 409)
     return "El dato cambió. Resincroniza e intenta nuevamente.";
@@ -457,17 +436,6 @@ export type Comment = {
 };
 
 export const prekinderApi = {
-  completeProfessionalRegistration: (input: {
-    email: string;
-    password: string;
-  }) =>
-    publicApiRequest<{ userId: number; email: string; displayName: string }>(
-      "/v1/prekinder/professional-registration",
-      {
-        method: "POST",
-        body: JSON.stringify(input),
-      },
-    ),
   processes: () => apiRequest<AdmissionProcess[]>("/v1/prekinder/processes"),
   applicationOptions: () =>
     apiRequest<PrekinderApplicationOption[]>(
@@ -601,6 +569,7 @@ export const prekinderApi = {
       processId: string;
       displayName: string;
       email: string;
+      password?: string;
       roleCode: ProfessionalRoleCode;
       expectedVersion: number;
     },
@@ -609,6 +578,23 @@ export const prekinderApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateProfessionalPassword: (professionalId: string, password: string) =>
+    apiRequest<{ professionalId: string; passwordUpdated: boolean }>(
+      `/v1/prekinder/professionals/${professionalId}/password`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ password }),
+      },
+    ),
+  deleteProfessional: (professionalId: string, expectedVersion: number) =>
+    apiRequest<{
+      professionalId: string;
+      deleted: boolean;
+      firebaseAccountDeleted: boolean;
+    }>(
+      `/v1/prekinder/professionals/${professionalId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   rooms: (processId: string) =>
     apiRequest<Room[]>(`/v1/prekinder/processes/${processId}/rooms`),
   createRoom: (
@@ -632,6 +618,22 @@ export const prekinderApi = {
     durationMinutes: number;
     capacity: number;
     requiredEvaluators: number;
+  }) =>
+    apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  createAssignedGroup: (input: {
+    processId: string;
+    roomId: string;
+    stage: EvaluationGroup["stage"];
+    code: string;
+    startsAt: string;
+    durationMinutes: number;
+    capacity: number;
+    requiredEvaluators: number;
+    memberIds: string[];
+    evaluatorIds: string[];
   }) =>
     apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
       method: "POST",
