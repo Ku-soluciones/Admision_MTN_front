@@ -34,14 +34,6 @@ import { PrekinderBrand } from "../components/PrekinderBrand";
 import { LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
-import {
-  createMockGroups,
-  mockApplications,
-  mockMetrics,
-  mockProcess,
-  mockRooms,
-  mockWaves,
-} from "../data/mockControlTower";
 
 const sections = [
   ["Resumen", LayoutDashboard],
@@ -121,10 +113,7 @@ type PrekinderOperationsProps = {
 export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
-  const demoMode =
-    import.meta.env.DEV && import.meta.env.VITE_PREKINDER_DEMO === "true";
   const initialDate = today();
-  const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
   const [section, setSection] = useState(() => {
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
@@ -132,18 +121,19 @@ export function PrekinderOperations({
     return "Resumen";
   });
   const [mobileNav, setMobileNav] = useState(false);
-  const [baseLoading, setBaseLoading] = useState(!demoMode);
-  const [processes, setProcesses] = useState<AdmissionProcess[]>(demoMode ? [mockProcess] : []);
-  const [processId, setProcessId] = useState(demoMode ? mockProcess.processId : "");
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(demoMode ? mockMetrics : null);
-  const [waves, setWaves] = useState<Wave[]>(demoMode ? mockWaves : []);
-  const [applications, setApplications] = useState<FlowApplication[]>(demoMode ? mockApplications : []);
+  const [baseLoading, setBaseLoading] = useState(true);
+  const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
+  const [processId, setProcessId] = useState("");
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [waves, setWaves] = useState<Wave[]>([]);
+  const [applications, setApplications] = useState<FlowApplication[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [processProfessionals, setProcessProfessionals] = useState<Professional[]>([]);
   const [professionalRoles, setProfessionalRoles] = useState<ProfessionalRoleDefinition[]>([]);
-  const [rooms, setRooms] = useState<Room[]>(demoMode ? mockRooms : []);
-  const [groups, setGroups] = useState<EvaluationGroup[]>(initialDemoGroups);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [groups, setGroups] = useState<EvaluationGroup[]>([]);
   const [date, setDate] = useState(initialDate);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(initialDemoGroups[0]?.groupId ?? null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -220,27 +210,21 @@ export function PrekinderOperations({
     }
   }
 
-  const realtimeState = usePrekinderRealtimeSync(demoMode ? null : processId, () => {
-    if (!demoMode) void loadProcess(processId, date, true);
+  const realtimeState = usePrekinderRealtimeSync(processId, () => {
+    void loadProcess(processId, date, true);
   }, "process");
 
   useEffect(() => {
-    if (demoMode) return;
     void loadBase();
-  }, [demoMode]);
+  }, []);
   useEffect(() => {
-    if (demoMode) {
-      const nextGroups = createMockGroups(date);
-      setGroups(nextGroups);
-      setSelectedGroup((current) =>
-        nextGroups.some((group) => group.groupId === current)
-          ? current
-          : nextGroups[0]?.groupId ?? null,
-      );
-      return;
-    }
     if (processId) void loadProcess(processId, date);
-  }, [processId, date, demoMode]);
+  }, [processId, date]);
+  useEffect(() => {
+    if (!processId) return;
+    setProcessProfessionals([]);
+    prekinderApi.professionals(processId).then(setProcessProfessionals).catch(() => {});
+  }, [processId]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -251,10 +235,6 @@ export function PrekinderOperations({
   }, [mobileNav]);
 
   async function action(work: () => Promise<unknown>, success: string) {
-    if (demoMode) {
-      setMessage(`${success} Vista demostrativa: el cambio no se guardó en la base de datos.`);
-      return;
-    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -279,10 +259,6 @@ export function PrekinderOperations({
     closesAt: string,
     status: Wave["status"],
   ) {
-    if (demoMode) {
-      setMessage("Etapa actualizada. Vista demostrativa: el cambio no se guardó en la base de datos.");
-      return;
-    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -322,13 +298,6 @@ export function PrekinderOperations({
   }
 
   async function refreshAll() {
-    if (demoMode) {
-      const nextGroups = createMockGroups(date);
-      setGroups(nextGroups);
-      setSelectedGroup(nextGroups[0]?.groupId ?? null);
-      setMessage("Datos de demostración restablecidos.");
-      return;
-    }
     await loadBase();
     if (processId) await loadProcess();
   }
@@ -537,7 +506,7 @@ export function PrekinderOperations({
                   </SectionHeading>
                 )}
               </div>
-              {!demoMode && processId && (
+              {processId && (
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
                   {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
                 </span>
@@ -556,12 +525,6 @@ export function PrekinderOperations({
               >
                 Reintentar
               </button>
-            </div>
-          )}
-          {demoMode && section !== "Resumen" && section !== "Torre de control" && (
-            <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
-              <span className="font-black">Modo demostración:</span>{" "}
-              proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
             </div>
           )}
           {message && (
@@ -602,8 +565,7 @@ export function PrekinderOperations({
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
               lastLoaded={lastLoaded}
-              realtimeState={!demoMode ? realtimeState : null}
-              demoMode={demoMode}
+              realtimeState={realtimeState}
             />
           )}
           {section === "Etapas" && (
@@ -640,12 +602,12 @@ export function PrekinderOperations({
               rooms={rooms}
               groups={groups}
               applications={eligible}
+              professionals={processProfessionals}
               selected={selected}
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}
               onDateChange={setDate}
-              demoMode={demoMode}
             />
           )}
           {section === "Profesionales" && (
@@ -655,10 +617,6 @@ export function PrekinderOperations({
               roles={professionalRoles}
               busy={busy}
               onSave={async (input) => {
-                if (demoMode) {
-                  setMessage("Perfil profesional guardado.");
-                  return true;
-                }
                 setBusy(true);
                 setError("");
                 try {
@@ -1022,7 +980,6 @@ function Overview({
   onRefresh,
   lastLoaded,
   realtimeState,
-  demoMode,
 }: {
   metrics: DashboardMetrics | null;
   waves: Wave[];
@@ -1036,7 +993,6 @@ function Overview({
   onRefresh: () => void;
   lastLoaded: Date | null;
   realtimeState: string | null;
-  demoMode: boolean;
 }) {
   const lastUpdated = lastLoaded
     ? new Intl.DateTimeFormat("es-CL", {
@@ -1100,12 +1056,6 @@ function Overview({
           </div>
         </div>
       </section>
-      {demoMode && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
-          <span className="font-black">Modo demostración:</span>{" "}
-          proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
-        </div>
-      )}
       <section className="pk-panel grid grid-cols-2 overflow-hidden xl:grid-cols-5">
         {cards.map(([label, value, target]) => (
           <button
@@ -2005,6 +1955,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
   const [editing, setEditing] = useState<Professional | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
   const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
@@ -2018,6 +1969,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     setEditing(null);
     setName("");
     setEmail("");
+    setPassword("");
     setSpecialty("");
     setGroup("");
     setRoleCode("");
@@ -2027,6 +1979,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     setEditing(person);
     setName(person.displayName);
     setEmail(person.email);
+    setPassword("");
     setSpecialty(person.specialty || "");
     const definition = roles.find((role) => role.roleCode === person.roleCode);
     setGroup(definition?.groupCode || "");
@@ -2046,6 +1999,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             legacyUserId: editing?.legacyUserId,
             displayName: name.trim(),
             email: email.trim(),
+            password: password || undefined,
             specialty: specialty.trim(),
             roleCode,
             active: editing?.active ?? true,
@@ -2065,6 +2019,11 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
           <Field label="Correo institucional">
             <input required type="email" className="control w-full" value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>
+          {!editing && (
+            <Field label="Contraseña (opcional)">
+              <input type="password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+            </Field>
+          )}
           <Field label="Área dentro del flujo">
             <select
               required

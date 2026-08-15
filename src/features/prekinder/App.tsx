@@ -6,8 +6,16 @@ import { EvaluatorReport } from "./pages/EvaluatorReport";
 import { PrekinderResultPage } from "./pages/PrekinderResultPage";
 import { PrekinderEvaluatorGuard } from "./components/evaluator/PrekinderEvaluatorGuard";
 import { PrekinderEvaluatorLogin } from "./pages/evaluator/PrekinderEvaluatorLogin";
+import { PrekinderEvaluatorSelector } from "./pages/evaluator/PrekinderEvaluatorSelector";
 import { PrekinderEvaluatorDashboard } from "./pages/evaluator/PrekinderEvaluatorDashboard";
 import { PrekinderEvaluatorGroupPage } from "./pages/evaluator/PrekinderEvaluatorGroupPage";
+import { ConnectedAcademicConsole } from "./pages/evaluator/ConnectedAcademicConsole";
+import { ConnectedPsychologyConsole } from "./pages/evaluator/ConnectedPsychologyConsole";
+import { ConnectedPsychomotorConsole } from "./pages/evaluator/ConnectedPsychomotorConsole";
+import { ConnectedIndicatorsConsole } from "./pages/evaluator/ConnectedIndicatorsConsole";
+import { ConnectedGroupObservationConsole } from "./pages/evaluator/ConnectedGroupObservationConsole";
+import { ConnectedLearningSupportConsole } from "./pages/evaluator/ConnectedLearningSupportConsole";
+import { ConnectedDapConsole } from "./pages/evaluator/ConnectedDapConsole";
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -70,6 +78,10 @@ export default function PrekinderApp() {
           element={<PrekinderEvaluatorLogin />}
         />
         <Route
+          path="/prekinder/evaluador/selector"
+          element={<PrekinderEvaluatorSelector />}
+        />
+        <Route
           path="/prekinder/evaluador/academic"
           element={
             <PrekinderEvaluatorGuard profile="ACADEMIC">
@@ -82,6 +94,14 @@ export default function PrekinderApp() {
           element={
             <PrekinderEvaluatorGuard profile="ACADEMIC">
               <PrekinderEvaluatorGroupPage profile="ACADEMIC" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/academic/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="ACADEMIC">
+              <ConnectedAcademicConsole profile="ACADEMIC" />
             </PrekinderEvaluatorGuard>
           }
         />
@@ -118,6 +138,54 @@ export default function PrekinderApp() {
           }
         />
         <Route
+          path="/prekinder/evaluador/psychology/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="PSYCHOLOGY">
+              <ConnectedPsychologyConsole profile="PSYCHOLOGY" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/psychomotor/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="PSYCHOMOTOR">
+              <ConnectedPsychomotorConsole profile="PSYCHOMOTOR" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/indicators/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="INDICATORS">
+              <ConnectedIndicatorsConsole profile="INDICATORS" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/group-observation/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="GROUP_OBSERVATION">
+              <ConnectedGroupObservationConsole profile="GROUP_OBSERVATION" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/learning-support/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="LEARNING_SUPPORT">
+              <ConnectedLearningSupportConsole profile="LEARNING_SUPPORT" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/dap/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="DAP">
+              <ConnectedDapConsole profile="DAP" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
           path="/prekinder/evaluador/indicators"
           element={
             <PrekinderEvaluatorGuard profile="INDICATORS">
@@ -150,18 +218,18 @@ export default function PrekinderApp() {
           }
         />
         <Route
-          path="/prekinder/evaluador/support"
+          path="/prekinder/evaluador/learning-support"
           element={
-            <PrekinderEvaluatorGuard profile="SUPPORT">
-              <PrekinderEvaluatorDashboard profile="SUPPORT" />
+            <PrekinderEvaluatorGuard profile="LEARNING_SUPPORT">
+              <PrekinderEvaluatorDashboard profile="LEARNING_SUPPORT" />
             </PrekinderEvaluatorGuard>
           }
         />
         <Route
-          path="/prekinder/evaluador/support/grupo/:groupId"
+          path="/prekinder/evaluador/learning-support/grupo/:groupId"
           element={
-            <PrekinderEvaluatorGuard profile="SUPPORT">
-              <PrekinderEvaluatorGroupPage profile="SUPPORT" />
+            <PrekinderEvaluatorGuard profile="LEARNING_SUPPORT">
+              <PrekinderEvaluatorGroupPage profile="LEARNING_SUPPORT" />
             </PrekinderEvaluatorGuard>
           }
         />

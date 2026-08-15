@@ -560,8 +560,12 @@ export const prekinderApi = {
         body: JSON.stringify({ decision, reason, expectedVersion }),
       },
     ),
-  professionals: () =>
-    apiRequest<Professional[]>("/v1/prekinder/professionals"),
+  professionals: (processId?: string) =>
+    apiRequest<Professional[]>(
+      processId
+        ? `/v1/prekinder/professionals?processId=${encodeURIComponent(processId)}`
+        : "/v1/prekinder/professionals",
+    ),
   professionalRoles: () =>
     apiRequest<ProfessionalRoleDefinition[]>("/v1/prekinder/professional-roles"),
   saveProfessional: (
@@ -571,6 +575,7 @@ export const prekinderApi = {
       email: string;
       roleCode: ProfessionalRoleCode;
       expectedVersion: number;
+      password?: string;
     },
   ) =>
     apiRequest<Professional>("/v1/prekinder/professionals", {
