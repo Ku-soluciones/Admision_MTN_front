@@ -1,0 +1,353 @@
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
+import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
+import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+
+type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
+
+type Screen = "loading" | "agenda" | "confirm" | "evaluate";
+
+const criteria = [
+  { title: "Integración al grupo", description: "Cómo se integra el postulante con sus pares." },
+  { title: "Interacción con pares", description: "Calidad y frecuencia de la interacción con otros niños." },
+  { title: "Respeto de turnos", description: "Respeta turnos y reglas durante actividades grupales." },
+  { title: "Respuesta a la mediación", description: "Responde adecuadamente a la mediación del adulto." },
+  { title: "Participación en la actividad", description: "Nivel de participación activa en las actividades propuestas." },
+  { title: "Resolución de conflictos", description: "Cómo aborda y resuelve situaciones de conflicto." },
+] as const;
+
+function today() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
+}
+
+function formatTime(iso: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago",
+  }).format(new Date(iso));
+}
+
+interface Props {
+  profile: SpecialtyProfile;
+}
+
+export function ConnectedGroupObservationConsole({ profile }: Props) {
+  const { assignmentId } = useParams();
+  const navigate = useNavigate();
+  const [screen, setScreen] = useState<Screen>("loading");
+  const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
+  const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
+  const [criterionIndex, setCriterionIndex] = useState(0);
+  const [responses, setResponses] = useState<{ [assignId: string]: { [criterion: number]: { [appId: string]: Score } } }>({});
+  const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
+  const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { void loadAgenda(); }, [profile]);
+
+  async function loadAgenda() {
+    setScreen("loading");
+    try {
+      const data = await prekinderApi.evaluatorAgenda(today(), profile);
+      setAssignments(data.assignments);
+
+      if (assignmentId) {
+        const found = data.assignments.find((a) => a.assignmentId === assignmentId);
+        if (found) {
+          setSelectedAssignment(found);
+          setScreen("confirm");
+        } else {
+          setScreen("agenda");
+        }
+      } else {
+        setScreen("agenda");
+      }
+    } catch {
+      setAssignments([]);
+      setScreen("agenda");
+    }
+  }
+
+  const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
+    setSelectedAssignment(assignment);
+    setCriterionIndex(0);
+    setScreen("confirm");
+  }, []);
+
+  const backToAgenda = useCallback(() => {
+    setSelectedAssignment(null);
+    setCriterionIndex(0);
+    setScreen("agenda");
+  }, []);
+
+  const setScore = useCallback((applicationId: string, value: Score) => {
+    if (!selectedAssignment) return;
+    setResponses((current) => ({
+      ...current,
+      [selectedAssignment.assignmentId]: {
+        ...(current[selectedAssignment.assignmentId] ?? {} as { [criterion: number]: { [appId: string]: Score } }),
+        [criterionIndex]: {
+          ...(current[selectedAssignment.assignmentId]?.[criterionIndex] ?? {} as { [appId: string]: Score }),
+          [applicationId]: value,
+        },
+      },
+    }));
+  }, [selectedAssignment, criterionIndex]);
+
+  const setGroupComment = useCallback((applicationId: string, comment: string) => {
+    if (!selectedAssignment) return;
+    setComments((current) => ({
+      ...current,
+      [selectedAssignment.assignmentId]: {
+        ...(current[selectedAssignment.assignmentId] ?? {} as { [appId: string]: string }),
+        [applicationId]: comment,
+      },
+    }));
+  }, [selectedAssignment]);
+
+  const handleStart = useCallback(async () => {
+    if (!selectedAssignment) return;
+    setSaving(true);
+    try {
+      await prekinderApi.startEvaluatorAssignment(selectedAssignment.assignmentId, selectedAssignment.version);
+    } catch { /* continue anyway */ }
+    setSaving(false);
+    setScreen("evaluate");
+  }, [selectedAssignment]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!selectedAssignment) return;
+    setSaving(true);
+    try {
+      await prekinderApi.submitEvaluatorAssignment(selectedAssignment.assignmentId, selectedAssignment.version);
+    } catch { /* continue anyway */ }
+    setSaving(false);
+    setSubmitted((p) => ({ ...p, [selectedAssignment.assignmentId]: true }));
+    if (assignmentId) {
+      navigate(`/prekinder/evaluador/group-observation`);
+    } else {
+      backToAgenda();
+    }
+  }, [selectedAssignment, assignmentId, backToAgenda, navigate]);
+
+  const currentResponses = selectedAssignment
+    ? (responses[selectedAssignment.assignmentId]?.[criterionIndex] ?? {})
+    : {};
+  const members = selectedAssignment?.reports ?? [];
+  const completed = members.filter((m) => currentResponses[m.applicationId] !== undefined).length;
+  const groupComments = selectedAssignment
+    ? (comments[selectedAssignment.assignmentId] ?? {})
+    : {};
+
+  if (screen === "loading") {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-amber-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+        <div className="flex items-center gap-3">
+          <UserCheck size={20} />
+          <div>
+            <p className="text-sm font-black">Espacio exclusivo: Evaluador de Observación Grupal</p>
+            <p className="text-xs text-amber-800">{assignments.length} asignaciones para hoy</p>
+          </div>
+        </div>
+        <button
+          onClick={() => void loadAgenda()}
+          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-100"
+        >
+          Actualizar
+        </button>
+      </div>
+
+      {/* Agenda */}
+      {screen === "agenda" && (
+        <div>
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">Espacio del evaluador</p>
+            <h2 className="mt-1 text-3xl font-black text-slate-950">Mi jornada</h2>
+            <p className="mt-1 text-sm text-slate-600">Solo ves los bloques asignados. Cada grupo contiene hasta tres postulantes.</p>
+          </div>
+          {assignments.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">
+              <p>No hay grupos asignados para hoy.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {assignments.map((assignment) => {
+                const isSubmitted = submitted[assignment.assignmentId];
+                const isCompleted = assignment.reports.every((r) =>
+                  ["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"].includes(r.status),
+                );
+                return (
+                  <button
+                    key={assignment.assignmentId}
+                    className="grid w-full min-h-20 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-amber-400 md:grid-cols-[110px_1fr_140px]"
+                    onClick={() => openAssignment(assignment)}
+                  >
+                    <div className="border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r">
+                      {formatTime(assignment.group.startsAt)}
+                      <small className="block text-xs font-bold text-slate-500">30 min</small>
+                    </div>
+                    <div className="min-w-0 p-4">
+                      <b className="block text-sm text-slate-900">{assignment.group.code} - {assignment.group.roomName}</b>
+                      <small className="mt-1 block truncate text-slate-500">
+                        {assignment.reports.map((r) => r.applicantName).join(" - ")}
+                      </small>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 p-4">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${isSubmitted ? "bg-green-100 text-green-800" : isCompleted ? "bg-green-100 text-green-800" : "bg-amber-50 text-amber-800"}`}>
+                        {isSubmitted ? "Enviado" : isCompleted ? "Completado" : assignment.status}
+                      </span>
+                      <ChevronRight size={19} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirm */}
+      {screen === "confirm" && selectedAssignment && (
+        <div>
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+              {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName}
+            </p>
+            <h2 className="mt-1 text-3xl font-black text-slate-950">Confirmar grupo</h2>
+            <p className="mt-1 text-sm text-slate-600">Antes de evaluar, verifica que los postulantes correspondan al bloque.</p>
+          </div>
+          <section className="rounded-2xl border border-slate-200 bg-white">
+            <div className="grid gap-4 p-5 md:grid-cols-3">
+              {selectedAssignment.reports.map((report, index) => (
+                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 p-5 text-center">
+                  <span className="absolute left-3 top-3 grid h-6 w-6 place-items-center rounded bg-slate-100 text-xs font-black">{index + 1}</span>
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-amber-50 font-black text-amber-900">
+                    {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                  </span>
+                  <h3 className="mt-3 text-sm font-black text-slate-900">{report.applicantName}</h3>
+                  <p className="mt-3 text-xs font-bold text-emerald-700"><Check className="mr-1 inline" size={14} />Identidad confirmada</p>
+                </article>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 p-5">
+              <button className="secondary" onClick={backToAgenda}>Volver</button>
+              <button className="primary" disabled={saving} onClick={() => void handleStart()}>
+                {saving ? "Iniciando..." : <>Comenzar evaluación simultánea <ChevronRight className="ml-1 inline" size={17} /></>}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Evaluate */}
+      {screen === "evaluate" && selectedAssignment && (
+        <div>
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+                {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName} - {selectedAssignment.group.code}
+              </p>
+              <h2 className="mt-1 text-3xl font-black text-slate-950">Evaluación de Observación Grupal</h2>
+              <p className="mt-1 text-sm text-slate-600">Un criterio a la vez, con los tres postulantes visibles en paralelo.</p>
+            </div>
+            <span className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-900">
+              Criterio {criterionIndex + 1} de {criteria.length}
+            </span>
+          </div>
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 p-5">
+              <span className="grid h-14 w-14 place-items-center rounded-xl bg-amber-900 text-xl font-black text-white">{criterionIndex + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-500">Pauta observable</p>
+                <h3 className="text-xl font-black text-slate-950">{criteria[criterionIndex].title}</h3>
+                <p className="mt-1 text-sm text-slate-600">{criteria[criterionIndex].description}</p>
+              </div>
+              <strong className={completed === members.length ? "text-emerald-700" : "text-slate-600"}>
+                {completed}/{members.length} completos
+              </strong>
+            </div>
+
+            <div className="grid gap-4 p-5 xl:grid-cols-3">
+              {members.map((report) => {
+                const options = [
+                  { value: 0 as Score, title: "0", label: "No observado" },
+                  { value: 1 as Score, title: "1", label: "Necesita apoyo" },
+                  { value: 2 as Score, title: "2", label: "En desarrollo" },
+                  { value: 3 as Score, title: "3", label: "Adecuado" },
+                  { value: 4 as Score, title: "4", label: "Sobresaliente" },
+                  { value: "NOT_OBSERVED" as Score, title: "-", label: "No observable" },
+                ];
+                return (
+                  <article key={report.applicationId} className="rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-amber-50 text-sm font-black text-amber-900">
+                        {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                      </span>
+                      <div>
+                        <h4 className="font-black text-slate-900">{report.applicantName}</h4>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {options.map((opt) => (
+                        <button
+                          key={String(opt.value)}
+                          className={`min-h-14 rounded-lg border p-2 transition ${currentResponses[report.applicationId] === opt.value ? "border-2 border-amber-700 bg-amber-50 text-amber-950" : "border-slate-200 bg-white hover:border-amber-300"}`}
+                          onClick={() => setScore(report.applicationId, opt.value)}
+                        >
+                          <b className="block text-lg">{opt.title}</b>
+                          <small className="text-slate-600">{opt.label}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4">
+                      <label className="mb-1 block text-xs font-bold text-slate-600">Observaciones cualitativas</label>
+                      <textarea
+                        className="min-h-20 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm"
+                        value={groupComments[report.applicationId] ?? ""}
+                        onChange={(e) => setGroupComment(report.applicationId, e.target.value)}
+                        placeholder="Observaciones cualitativas sobre este postulante..."
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
+              <button className="secondary" disabled={criterionIndex === 0} onClick={() => setCriterionIndex((c) => c - 1)}>Anterior</button>
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <Check size={16} className="text-emerald-600" />Guardado en servidor
+              </span>
+              {criterionIndex < criteria.length - 1 ? (
+                <button
+                  className="primary"
+                  disabled={completed !== members.length}
+                  onClick={() => setCriterionIndex((c) => c + 1)}
+                >
+                  Siguiente criterio <ChevronRight className="ml-1 inline" size={17} />
+                </button>
+              ) : (
+                <button
+                  className="primary"
+                  disabled={completed !== members.length || saving}
+                  onClick={() => void handleSubmit()}
+                >
+                  {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
