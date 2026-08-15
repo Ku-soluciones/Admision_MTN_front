@@ -10,8 +10,11 @@ import {
   FileCheck2,
   LayoutDashboard,
   Menu,
+  KeyRound,
   RefreshCw,
   ShieldCheck,
+  Trash2,
+  TriangleAlert,
   Users,
   UsersRound,
   X,
@@ -20,6 +23,7 @@ import {
   ApiError,
   prekinderApi,
   type AdmissionProcess,
+  type ControlTowerDay,
   type DashboardMetrics,
   type EvaluationGroup,
   type FlowApplication,
@@ -182,19 +186,21 @@ export function PrekinderOperations({
     if (!silent) setBusy(true);
     setError("");
     try {
-      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups] =
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
           prekinderApi.flowApplications(id),
           prekinderApi.rooms(id),
           prekinderApi.groups(id, day),
+          prekinderApi.controlTower(id, day),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
       setApplications(nextApplications);
       setRooms(nextRooms);
       setGroups(nextGroups);
+      setControlTower(nextControlTower);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
@@ -242,12 +248,14 @@ export function PrekinderOperations({
       await work();
       setMessage(success);
       await loadProcess();
+      return true;
     } catch (reason) {
       setError(
         reason instanceof ApiError
           ? reason.message
           : "No pudimos guardar el cambio.",
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -557,6 +565,7 @@ export function PrekinderOperations({
               metrics={metrics}
               waves={waves}
               groups={groups}
+              controlTower={controlTower}
               applications={applications}
               onGo={setSection}
               processes={processes}
@@ -626,6 +635,46 @@ export function PrekinderOperations({
                   return true;
                 } catch (requestError) {
                   setError(requestError instanceof Error ? requestError.message : "No fue posible guardar el perfil profesional.");
+                  return false;
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              onPasswordUpdate={async (professionalId, password) => {
+                if (demoMode) {
+                  setMessage("Contraseña del profesional actualizada.");
+                  return true;
+                }
+                setBusy(true);
+                setError("");
+                try {
+                  await prekinderApi.updateProfessionalPassword(professionalId, password);
+                  setMessage("Contraseña actualizada. Las sesiones anteriores fueron cerradas.");
+                  return true;
+                } catch (requestError) {
+                  setError(requestError instanceof Error ? requestError.message : "No fue posible actualizar la contraseña.");
+                  return false;
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              onDelete={async (person) => {
+                if (demoMode) {
+                  setProfessionals((current) => current.filter((item) => item.professionalId !== person.professionalId));
+                  setMessage("Profesional eliminado.");
+                  return true;
+                }
+                setBusy(true);
+                setError("");
+                try {
+                  const result = await prekinderApi.deleteProfessional(person.professionalId, person.version);
+                  setProfessionals(await prekinderApi.professionals());
+                  setMessage(result.firebaseAccountDeleted
+                    ? "Profesional y cuenta Firebase eliminados."
+                    : "Perfil Prekínder eliminado; la cuenta compartida de otros cursos se conservó.");
+                  return true;
+                } catch (requestError) {
+                  setError(requestError instanceof Error ? requestError.message : "No fue posible eliminar al profesional.");
                   return false;
                 } finally {
                   setBusy(false);
@@ -1466,7 +1515,7 @@ function DayCenter({
   selected: EvaluationGroup | null;
   busy: boolean;
   onSelect: (id: string) => void;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [roomId, setRoomId] = useState("");
   const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
@@ -1667,7 +1716,7 @@ function GroupInspector({
   applications: FlowApplication[];
   professionals: Professional[];
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [applicationId, setApplicationId] = useState("");
   const [evaluatorId, setEvaluatorId] = useState("");
@@ -1939,7 +1988,7 @@ const professionalInstrumentLabels: Record<string, string> = {
   DAP: "DAP",
 };
 
-function Professionals({ processId, professionals, roles, busy, onSave }: {
+function Professionals({ processId, professionals, roles, busy, onSave, onPasswordUpdate, onDelete }: {
   processId: string;
   professionals: Professional[];
   roles: ProfessionalRoleDefinition[];
@@ -1951,6 +2000,8 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     roleCode: ProfessionalRoleCode;
     expectedVersion: number;
   }) => Promise<boolean>;
+  onPasswordUpdate: (professionalId: string, password: string) => Promise<boolean>;
+  onDelete: (person: Professional) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Professional | null>(null);
   const [name, setName] = useState("");
@@ -1959,6 +2010,8 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
   const [specialty, setSpecialty] = useState("");
   const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
   const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
+  const [pendingDelete, setPendingDelete] = useState<Professional | null>(null);
+  const needsAccess = !editing || !editing.legacyUserId;
   const availableRoles = roles.filter((role) => role.groupCode === group);
   const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
     groupCode,
@@ -2008,7 +2061,9 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
           if (saved) clearForm();
         }}
       >
-        <h2 className="text-lg font-black">{editing ? "Homologar profesional" : "Nuevo profesional"}</h2>
+        <h2 className="text-lg font-black">{editing
+          ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
+          : "Nuevo profesional"}</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
           El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
         </p>
@@ -2017,7 +2072,14 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
           <Field label="Correo institucional">
-            <input required type="email" className="control w-full" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input
+              required
+              type="email"
+              disabled={Boolean(editing && !needsAccess)}
+              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </Field>
           {!editing && (
             <Field label="Contraseña (opcional)">
@@ -2059,7 +2121,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
           </Field>
           <button disabled={busy || !processId || !roleCode} className="primary w-full">
-            {editing ? "Guardar homologación" : "Crear perfil profesional"}
+            {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
           </button>
           {editing && <button type="button" className="secondary w-full" onClick={clearForm}>Cancelar edición</button>}
         </div>
@@ -2099,6 +2161,16 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
                     <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
                       {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
                     </button>
+                    <button
+                      type="button"
+                      className="grid h-10 w-10 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => setPendingDelete(person)}
+                      disabled={busy}
+                      aria-label={`Eliminar a ${person.displayName}`}
+                      title="Eliminar profesional"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -2106,6 +2178,45 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
           </div>
         ))}
       </section>
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-professional-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-red-50 text-red-700">
+              <TriangleAlert size={21} />
+            </span>
+            <h2 id="delete-professional-title" className="mt-4 text-xl font-black text-slate-950">
+              Eliminar profesional
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Se eliminará el perfil Prekínder de <strong>{pendingDelete.displayName}</strong>. Si su cuenta fue creada exclusivamente para este flujo, también será eliminada de Firebase.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              El historial de evaluaciones se conserva. No se podrá eliminar mientras tenga grupos activos asignados.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" className="secondary" disabled={busy} onClick={() => setPendingDelete(null)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy}
+                onClick={async () => {
+                  const deleted = await onDelete(pendingDelete);
+                  if (deleted) {
+                    if (editing?.professionalId === pendingDelete.professionalId) clearForm();
+                    setPendingDelete(null);
+                  } else {
+                    setPendingDelete(null);
+                  }
+                }}
+              >
+                {busy ? "Eliminando…" : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2173,7 +2284,7 @@ function Decisions({
   processId: string;
   applications: FlowApplication[];
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
   return (
@@ -2233,7 +2344,7 @@ function DecisionRow({
 }: {
   app: FlowApplication;
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [decision, setDecision] = useState<
     "ACCEPTED" | "REJECTED" | "WAITLIST"

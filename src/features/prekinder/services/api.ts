@@ -573,6 +573,7 @@ export const prekinderApi = {
       processId: string;
       displayName: string;
       email: string;
+      password?: string;
       roleCode: ProfessionalRoleCode;
       expectedVersion: number;
       password?: string;
@@ -582,6 +583,23 @@ export const prekinderApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateProfessionalPassword: (professionalId: string, password: string) =>
+    apiRequest<{ professionalId: string; passwordUpdated: boolean }>(
+      `/v1/prekinder/professionals/${professionalId}/password`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ password }),
+      },
+    ),
+  deleteProfessional: (professionalId: string, expectedVersion: number) =>
+    apiRequest<{
+      professionalId: string;
+      deleted: boolean;
+      firebaseAccountDeleted: boolean;
+    }>(
+      `/v1/prekinder/professionals/${professionalId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   rooms: (processId: string) =>
     apiRequest<Room[]>(`/v1/prekinder/processes/${processId}/rooms`),
   createRoom: (
@@ -605,6 +623,22 @@ export const prekinderApi = {
     durationMinutes: number;
     capacity: number;
     requiredEvaluators: number;
+  }) =>
+    apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  createAssignedGroup: (input: {
+    processId: string;
+    roomId: string;
+    stage: EvaluationGroup["stage"];
+    code: string;
+    startsAt: string;
+    durationMinutes: number;
+    capacity: number;
+    requiredEvaluators: number;
+    memberIds: string[];
+    evaluatorIds: string[];
   }) =>
     apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
       method: "POST",
