@@ -451,13 +451,26 @@ function RoomRow({ room, times, groups, towerGroupsById, alertsByGroup, selected
   );
 }
 
-function GroupPanel({ selected: group, date, rooms, applications, professionals, busy, onAction }: Props) {
+function GroupPanel({ selected: group, date, rooms, applications, professionals, busy, onAction, controlTower, groups }: Props) {
   const [applicationId, setApplicationId] = useState("");
   const [evaluatorId, setEvaluatorId] = useState("");
   const [nextRoom, setNextRoom] = useState("");
   const [nextTime, setNextTime] = useState("");
   const [reason, setReason] = useState("");
   const [assignError, setAssignError] = useState("");
+
+  const towerGroupsById = useMemo(() => new Map(
+    (controlTower?.rooms ?? []).flatMap((room) => room.groups).map((g) => [g.groupId, g]),
+  ), [controlTower]);
+
+  const towerGroup = group ? towerGroupsById.get(group.groupId) : undefined;
+  const effectiveStatus = towerGroup?.status ?? group?.status ?? "DRAFT";
+
+  const alerts = useMemo(() => {
+    if (!group) return [];
+    return groupAlerts(group, towerGroup, Date.now());
+  }, [group, towerGroup]);
+
   useEffect(() => {
     setApplicationId("");
     setEvaluatorId("");
