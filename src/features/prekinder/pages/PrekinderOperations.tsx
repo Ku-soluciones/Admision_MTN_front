@@ -136,6 +136,7 @@ export function PrekinderOperations({
   const [professionalRoles, setProfessionalRoles] = useState<ProfessionalRoleDefinition[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [groups, setGroups] = useState<EvaluationGroup[]>([]);
+  const [controlTower, setControlTower] = useState<ControlTowerDay | null>(null);
   const [date, setDate] = useState(initialDate);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
