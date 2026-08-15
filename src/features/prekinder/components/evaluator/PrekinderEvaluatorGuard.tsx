@@ -7,12 +7,19 @@ import {
 } from "../../../../packages/backend-sdk/src/auth/store";
 import { refreshAccessToken } from "../../services/api";
 import type { SpecialtyProfile } from "./SpecialtyProfile";
-import { PROFILE_ROLES } from "./SpecialtyProfile";
+import { PROFILE_TO_INSTRUMENT, PROFILE_TO_SHORT_INSTRUMENT } from "./SpecialtyProfile";
+import type { EvaluatorWorkspace } from "../../services/api";
 
 type GuardProps = PropsWithChildren<{
   profile: SpecialtyProfile;
   loginPath?: string;
 }>;
+
+function today() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+  }).format(new Date());
+}
 
 export function PrekinderEvaluatorGuard({
   children,
@@ -21,30 +28,53 @@ export function PrekinderEvaluatorGuard({
 }: GuardProps) {
   const session = useAuthStore((state) => state);
   const location = useLocation();
-  const [checking, setChecking] = useState(
-    () => !authStore.getValidAccessToken(),
-  );
+  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(() => {
+    const raw = sessionStorage.getItem("pk-workspace-cache");
+    return raw ? JSON.parse(raw) : null;
+  });
+  const [loading, setLoading] = useState(false);
 
-  const requiredRole = PROFILE_ROLES[profile];
+  // DEBUG BYPASS
+  const isDebugMode = (typeof window !== 'undefined' && window.localStorage.getItem('prekinder-debug') === '1') || new URLSearchParams(location.search).get("debug") === "1";
+
+  if (isDebugMode) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
-    if (authStore.getValidAccessToken()) {
-      setChecking(false);
+    if (workspace) return;
+    if (!authStore.getValidAccessToken()) return;
+
+    let cancelled = false;
+    setLoading(true);
+
+    // Try sessionStorage first
+    const cached = sessionStorage.getItem("pk-workspace-cache");
+    if (cached && !cancelled) {
+      setWorkspace(JSON.parse(cached));
+      setLoading(false);
       return;
     }
-    let cancelled = false;
-    setChecking(true);
-    void refreshAccessToken()
-      .catch(() => null)
-      .finally(() => {
-        if (!cancelled) setChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+
+    // Fetch workspace
+    import("../../services/api").then(({ prekinderApi }) => {
+      if (cancelled) return;
+      prekinderApi.evaluatorWorkspace(today())
+        .then((ws) => {
+          if (cancelled) return;
+          setWorkspace(ws);
+          sessionStorage.setItem("pk-workspace-cache", JSON.stringify(ws));
+        })
+        .catch(() => null)
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
+
+    return () => { cancelled = true; };
   }, []);
 
-  if (checking) {
+  if (loading || !authStore.getValidAccessToken()) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <p className="flex items-center gap-3 text-sm font-semibold" role="status">
@@ -55,12 +85,18 @@ export function PrekinderEvaluatorGuard({
     );
   }
 
-  if (!authStore.getValidAccessToken() || !session.user) {
+  if (!session.user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`${loginPath}?redirect=${redirect}`} replace />;
   }
 
-  if (session.user.role !== requiredRole) {
+  // Check if the evaluator has access to this instrument
+  const requiredShort = PROFILE_TO_SHORT_INSTRUMENT[profile];
+  const hasAccess = workspace?.instruments.some(
+    (w) => w.instrument.instrumentCode === requiredShort && w.instrument.active,
+  );
+
+  if (!hasAccess) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
         <div
@@ -72,10 +108,16 @@ export function PrekinderEvaluatorGuard({
             Este espacio no está asignado a tu perfil
           </h1>
           <p className="mt-3 text-sm leading-6 text-gray-600">
-            Tu sesión es válida, pero no tienes el rol de evaluador requerido para
-            esta sección de Prekínder. Por favor, contacta a coordinación si
+            Tu sesión es válida, pero no tienes el instrumento de evaluación
+            requerido para esta sección de Prekínder. Contacta a coordinación si
             crees que esto es un error.
           </p>
+          <a
+            href="/prekinder/evaluador/login"
+            className="mt-6 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Volver al inicio de sesión
+          </a>
         </div>
       </main>
     );

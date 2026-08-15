@@ -45,7 +45,6 @@ type Props = {
   onSelect: (id: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onDateChange: (date: string) => void;
-  demoMode?: boolean;
 };
 
 const fixedTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
@@ -198,12 +197,6 @@ export function PrekinderControlTower(props: Props) {
           ))}
         </nav>
       </aside>
-      {props.demoMode && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
-          <span className="font-black">Modo demostración:</span>{" "}
-          proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
-        </div>
-      )}
       <div className="min-w-0">
         {view === "tower" && <TowerHome {...props} onOpenMonitor={() => setView("monitor")} />}
         {view === "reception" && <ReceptionView {...props} attendance={attendance} onAttendance={(id, value) => setAttendance((current) => ({ ...current, [id]: value }))} />}
@@ -458,18 +451,20 @@ function RoomRow({ room, times, groups, towerGroupsById, alertsByGroup, selected
   );
 }
 
-function GroupPanel({ selected: group, date, rooms, groups, controlTower, applications, professionals, busy, onAction }: Props) {
+function GroupPanel({ selected: group, date, rooms, applications, professionals, busy, onAction }: Props) {
   const [applicationId, setApplicationId] = useState("");
   const [evaluatorId, setEvaluatorId] = useState("");
   const [nextRoom, setNextRoom] = useState("");
   const [nextTime, setNextTime] = useState("");
   const [reason, setReason] = useState("");
+  const [assignError, setAssignError] = useState("");
   useEffect(() => {
     setApplicationId("");
     setEvaluatorId("");
     setNextRoom(group?.roomId ?? "");
     setNextTime(group ? formatTime(group.startsAt) : "");
     setReason("");
+    setAssignError("");
   }, [group?.groupId, group?.version]);
 
   if (!group) return (
@@ -481,25 +476,8 @@ function GroupPanel({ selected: group, date, rooms, groups, controlTower, applic
   );
 
   const members = group.memberIds.map((id) => applications.find((app) => app.applicationId === id)).filter(Boolean) as FlowApplication[];
-  const available = applications.filter((app) => !group.memberIds.includes(app.applicationId)
-    && !groups.some((other) => other.groupId !== group.groupId
-      && other.memberIds.includes(app.applicationId)
-      && intervalsOverlap(group.startsAt, group.endsAt, other.startsAt, other.endsAt)));
-  const assignedEvaluators = group.evaluatorIds.map((id) => ({
-    id,
-    person: professionals.find((person) => person.professionalId === id),
-  }));
-  const availableEvaluators = professionals.filter((person) =>
-    person.active
-    && person.roleGroup === "EVALUACION"
-    && !group.evaluatorIds.includes(person.professionalId)
-    && !groups.some((other) => other.groupId !== group.groupId
-      && other.evaluatorIds.includes(person.professionalId)
-      && intervalsOverlap(group.startsAt, group.endsAt, other.startsAt, other.endsAt)),
-  );
-  const towerGroup = controlTower?.rooms.flatMap((room) => room.groups).find((item) => item.groupId === group.groupId);
-  const effectiveStatus = towerGroup?.status ?? group.status;
-  const alerts = groupAlerts(group, towerGroup, Date.now());
+  const available = applications.filter((app) => !group.memberIds.includes(app.applicationId));
+  const availablePeople = professionals.filter((p) => p.active && p.roleGroup === "EVALUACION" && !group.evaluatorIds.includes(p.professionalId));
   const canConfirm = group.status === "DRAFT" && group.memberIds.length > 0 && group.evaluatorIds.length === group.requiredEvaluators;
   const meta = statusMeta[effectiveStatus] ?? statusMeta.DRAFT;
 
@@ -523,13 +501,10 @@ function GroupPanel({ selected: group, date, rooms, groups, controlTower, applic
         </div>
 
         <div className="border-t border-slate-200 pt-5">
-          <div className="mb-3 flex items-center justify-between"><h3 className="font-black text-slate-900">Equipo evaluador</h3><span className="text-sm font-bold text-slate-500">{group.evaluatorIds.length}/{group.requiredEvaluators}</span></div>
-          <div className="space-y-2">
-            {assignedEvaluators.map(({ id, person }) => <div key={id} className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-teal-100 text-xs font-black text-teal-800"><UsersRound size={17} /></span><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{person?.displayName ?? "Profesional asignado"}</p><p className="truncate text-xs text-slate-500">{person ? person.roleLabel || person.specialty : "Perfil no disponible en esta vista"}</p></div></div>)}
-            {!assignedEvaluators.length && <p className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Sin evaluadores asignados</p>}
-          </div>
-          <div className="mt-3 flex gap-2"><select className="control min-w-0 flex-1" value={evaluatorId} onChange={(event) => setEvaluatorId(event.target.value)}><option value="">Agregar evaluador disponible</option>{availableEvaluators.map((person) => <option key={person.professionalId} value={person.professionalId}>{person.displayName} · {person.roleLabel || person.specialty}</option>)}</select><button className="primary shrink-0" disabled={busy || !evaluatorId || terminalStatuses.includes(group.status) || group.evaluatorIds.length >= group.requiredEvaluators} onClick={() => onAction(() => prekinderApi.assignEvaluator(group.groupId, evaluatorId), "Evaluador asignado al grupo.")}>Agregar</button></div>
-          {!availableEvaluators.length && group.evaluatorIds.length < group.requiredEvaluators && <p className="mt-2 text-xs leading-5 text-amber-700">No hay otros evaluadores disponibles para este horario.</p>}
+          <div className="mb-3 flex items-center justify-between"><h3 className="font-black text-slate-900">Profesionales</h3><span className="text-sm font-bold text-slate-500">{group.evaluatorIds.length}/{group.requiredEvaluators}</span></div>
+          <select className="control w-full" value={evaluatorId} onChange={(e) => setEvaluatorId(e.target.value)}><option value="">Seleccionar profesional</option>{availablePeople.map((p) => <option key={p.professionalId} value={p.professionalId}>{p.displayName} · {p.specialty}</option>)}</select>
+          <button className="primary mt-2 w-full" disabled={busy || !evaluatorId || group.evaluatorIds.length >= group.requiredEvaluators} onClick={() => { setAssignError(""); onAction(async () => { try { await prekinderApi.assignEvaluator(group.groupId, evaluatorId); } catch (err: any) { setAssignError(err?.message || "No se pudo asignar el profesional. Verifica que tenga un rol evaluador activo para este proceso."); throw err; } }, "Profesional asignado."); }}>Asignar profesional</button>
+          {assignError && <p className="mt-2 text-sm text-red-600">{assignError}</p>}
         </div>
 
         <div className="border-t border-slate-200 pt-5">
@@ -540,7 +515,7 @@ function GroupPanel({ selected: group, date, rooms, groups, controlTower, applic
           <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
 
-        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Preparación para evaluación</p><p className="mt-1 text-xs leading-5 text-slate-600">{canConfirm ? "El grupo cumple las condiciones y puede quedar listo." : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}. Completa ambos grupos para continuar.`}</p><button className="primary mt-3 w-full" disabled={busy || !canConfirm} onClick={() => onAction(() => prekinderApi.confirmGroup(group.groupId, group.version), "Grupo listo para evaluación.")}><CheckCircle2 className="mr-2 inline" size={17} />Marcar listo para evaluación</button></div>
+        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Preparación para evaluación</p><p className="mt-1 text-xs leading-5 text-slate-600">{canConfirm ? "El grupo cumple las condiciones y puede quedar listo." : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}</p><button className="primary mt-3 w-full" disabled={busy || !canConfirm} onClick={() => onAction(() => prekinderApi.confirmGroup(group.groupId, group.version), "Grupo listo para evaluación.")}><CheckCircle2 className="mr-2 inline" size={17} />Marcar listo para evaluación</button></div>
       </div>
     </aside>
   );

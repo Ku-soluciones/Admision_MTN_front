@@ -226,7 +226,10 @@ class ProfessorAuthService {
             // Legacy roles (compatibilidad)
             'TEACHER_LANGUAGE',
             'TEACHER_MATHEMATICS',
-            'TEACHER_ENGLISH'
+            'TEACHER_ENGLISH',
+
+            // Pre-Kinder evaluadores (nueva plataforma)
+            'PREKINDER_PROFESSIONAL',
         ];
         return professorRoles.includes(role);
     }
