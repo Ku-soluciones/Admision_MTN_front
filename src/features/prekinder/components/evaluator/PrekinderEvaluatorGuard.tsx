@@ -60,7 +60,9 @@ export function PrekinderEvaluatorGuard({
     return <Navigate to={`${loginPath}?redirect=${redirect}`} replace />;
   }
 
-  if (session.user.role !== requiredRole) {
+  // PREKINDER_PROFESSIONAL es un rol genérico que puede acceder a cualquier instrumento
+  const isGenericEvaluator = session.user.role === "PREKINDER_PROFESSIONAL";
+  if (!isGenericEvaluator && session.user.role !== requiredRole) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
         <div
