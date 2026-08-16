@@ -9,6 +9,29 @@ import { professorAuthService } from '../services/professorAuthService';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 import { GRADE_LEVEL_LABELS } from '../../../packages/shared-utils/src/gradeLevels';
+import { prekinderApi } from '../../prekinder/services/api';
+
+function today() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+  }).format(new Date());
+}
+
+const INSTRUMENT_TO_ROUTE: Record<string, string> = {
+  ACADEMIC: 'academic',
+  PSYCHOMOTOR: 'psychomotor',
+  PSYCHOLOGY: 'psychology',
+  INDICATORS: 'indicators',
+  GROUP_OBSERVATION: 'group-observation',
+  SUPPORT: 'learning-support',
+  DAP: 'dap',
+};
+
+function instrumentToRoute(instrumentCode: string): string {
+  const route = INSTRUMENT_TO_ROUTE[instrumentCode];
+  if (!route) return '/prekinder/evaluador';
+  return `/prekinder/evaluador/${route}`;
+}
 
 const ProfessorLoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -87,7 +110,37 @@ const ProfessorLoginPage: React.FC = () => {
                         message: `Hola ${respFirstName} ${respLastName}`
                     });
 
-                    navigate('/profesor');
+                    // Pre-Kinder evaluadores van a su portal propio
+                    if (respRole === 'PREKINDER_PROFESSIONAL') {
+                        try {
+                            const workspace = await prekinderApi.evaluatorWorkspace(today());
+                            const instruments = workspace.instruments
+                                .map((i) => i.instrument)
+                                .filter((inst) => inst.active);
+
+                            if (instruments.length === 0) {
+                                const msg = 'No tienes instrumentos asignados. Contacta a coordinación.';
+                                setLoginError(msg);
+                                addNotification({ type: 'error', title: 'Sin acceso', message: msg });
+                                return;
+                            }
+
+                            sessionStorage.setItem('pk-workspace-cache', JSON.stringify(workspace));
+
+                            if (instruments.length === 1) {
+                                navigate(instrumentToRoute(instruments[0].instrumentCode), { replace: true });
+                            } else {
+                                sessionStorage.setItem('pk-pending-workspace', JSON.stringify(workspace));
+                                navigate('/prekinder/evaluador/selector', { replace: true });
+                            }
+                        } catch {
+                            const msg = 'No pudimos cargar tu espacio de trabajo. Intenta nuevamente.';
+                            setLoginError(msg);
+                            addNotification({ type: 'error', title: 'Error', message: msg });
+                        }
+                    } else {
+                        navigate('/profesor');
+                    }
                     
                 } else {
                     const msg = 'Su cuenta no tiene acceso a este portal. Contacte al administrador.';

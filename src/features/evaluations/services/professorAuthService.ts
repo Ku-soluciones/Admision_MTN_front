@@ -197,6 +197,7 @@ class ProfessorAuthService {
             'CYCLE_DIRECTOR',
             'PSYCHOLOGIST',
             'INTERVIEWER',
+            'PREKINDER_PROFESSIONAL',
 
             // Profesores por ciclo (legacy/específicos)
             'TEACHER_EARLY_CYCLE',
