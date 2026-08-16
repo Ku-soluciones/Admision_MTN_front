@@ -40,7 +40,7 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
     try {
       const agenda = await prekinderApi.evaluatorAgenda(today(), profile);
       const found = agenda.find(
-        (item) => item.group.groupId === groupId,
+        (item) => item.instrumentCode === profile && item.group.groupId === groupId,
       );
       setGroup(found ?? null);
       if (!found) {

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   prekinderApi,
-  type AgendaGroup,
+  type EvaluatorAssignment,
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
@@ -36,7 +36,7 @@ interface PrekinderEvaluatorDashboardProps {
 export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashboardProps) {
   const navigate = useNavigate();
   const [date, setDate] = useState(today());
-  const [assignments, setAssignments] = useState<AgendaGroup[]>([]);
+  const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -171,7 +171,7 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
                 const members = assignment.reports;
                 return (
                   <button
-                    key={assignment.group.groupId}
+                    key={assignment.assignmentId}
                     onClick={() => navigate(`/prekinder/evaluador/grupo/${group.groupId}?profile=${profile}`)}
                     className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
                   >
