@@ -356,6 +356,44 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
               {group.evaluatorIds.length}/{group.requiredEvaluators}
             </span>
           </div>
+
+          {/* Lista de asignados */}
+          {group.evaluatorIds.length > 0 ? (
+            <div className="mb-3 space-y-2">
+              {group.evaluatorIds.map((evId) => {
+                const person = professionals.find((p) => p.professionalId === evId);
+                return (
+                  <div key={evId} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-black text-slate-900">
+                        {person?.displayName ?? evId}
+                      </p>
+                      <p className="text-xs text-slate-500">{person?.specialty ?? "—"}</p>
+                    </div>
+                    <button
+                      className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      disabled={busy || terminalStatuses.includes(group.status)}
+                      onClick={() =>
+                        onAction(
+                          () => prekinderApi.removeEvaluator(group.groupId, evId),
+                          "Profesional removido del grupo.",
+                        )
+                      }
+                      title="Remover profesional"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mb-3 rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+              Sin profesionales asignados
+            </p>
+          )}
+
+          {/* Agregar nuevo */}
           <select
             className="control w-full"
             value={evaluatorId}
