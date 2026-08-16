@@ -660,15 +660,8 @@ export const prekinderApi = {
   evaluatorAgenda: (date: string, instrument: string, processId?: string) => {
     const params = new URLSearchParams({ date, instrument });
     if (processId) params.set("processId", processId);
-    return apiRequest<EvaluatorAgenda>(
-      `/v1/prekinder/me/evaluator-agenda?${params.toString()}`,
-    );
-  },
-  evaluatorWorkspace: (date: string, processId?: string) => {
-    const params = new URLSearchParams({ date });
-    if (processId) params.set("processId", processId);
-    return apiRequest<EvaluatorWorkspace>(
-      `/v1/prekinder/me/evaluator-workspace?${params.toString()}`,
+    return apiRequest<AgendaGroup[]>(
+      `/v1/prekinder/me/agenda?${params.toString()}`,
     );
   },
   confirmEvaluatorAssignment: (assignmentId: string, expectedVersion: number) =>
