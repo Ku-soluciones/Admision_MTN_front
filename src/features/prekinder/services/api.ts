@@ -316,6 +316,16 @@ export type EvaluatorAgenda = {
   assignments: EvaluatorAssignment[];
 };
 
+// Agenda items returned by /me/agenda with instrumentCode
+export type AgendaWithInstrument = {
+  instrumentCode: string;
+  assignmentId: string;
+  version: number;
+  group: EvaluationGroup;
+  editableNow: boolean;
+  reports: ReportSummary[];
+};
+
 export type EvaluationInstrument = {
   instrumentCode: string;
   displayName: string;
@@ -691,11 +701,12 @@ export const prekinderApi = {
     ),
   agenda: (date: string) =>
     apiRequest<AgendaGroup[]>(`/v1/prekinder/me/agenda?date=${date}`),
-  evaluatorAgenda: (date: string, instrument: string, processId?: string) => {
-    const params = new URLSearchParams({ date, instrument });
+  evaluatorAgenda: (date: string, instrument?: string, processId?: string) => {
+    const params = new URLSearchParams({ date });
+    if (instrument) params.set("instrument", instrument);
     if (processId) params.set("processId", processId);
-    return apiRequest<EvaluatorAgenda>(
-      `/v1/prekinder/me/evaluator-agenda?${params.toString()}`,
+    return apiRequest<AgendaWithInstrument[]>(
+      `/v1/prekinder/me/agenda?${params.toString()}`,
     );
   },
   evaluatorWorkspace: (date: string, processId?: string) => {

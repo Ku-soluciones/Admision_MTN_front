@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   prekinderApi,
-  type EvaluatorAssignment,
+  type AgendaWithInstrument,
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
@@ -36,7 +36,7 @@ interface PrekinderEvaluatorDashboardProps {
 export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashboardProps) {
   const navigate = useNavigate();
   const [date, setDate] = useState(today());
-  const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
+  const [assignments, setAssignments] = useState<AgendaWithInstrument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,7 +45,9 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
     setError("");
     try {
       const agendaData = await prekinderApi.evaluatorAgenda(date, profile);
-      setAssignments(agendaData.assignments);
+      // Filter by current instrument profile
+      const filtered = agendaData.filter((item) => item.instrumentCode === profile);
+      setAssignments(filtered);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error al cargar datos");
     } finally {

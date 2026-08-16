@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
-import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
+import { prekinderApi, type AgendaWithInstrument } from "../../services/api";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 
 type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
@@ -39,8 +39,8 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   const { assignmentId } = useParams();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("loading");
-  const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
-  const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
+  const [assignments, setAssignments] = useState<AgendaWithInstrument[]>([]);
+  const [selectedAssignment, setSelectedAssignment] = useState<AgendaWithInstrument | null>(null);
   const [criterionIndex, setCriterionIndex] = useState(0);
   const [responses, setResponses] = useState<{ [assignId: string]: { [criterion: number]: { [appId: string]: Score } } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
@@ -53,11 +53,12 @@ export function ConnectedAcademicConsole({ profile }: Props) {
     setScreen("loading");
     try {
       const data = await prekinderApi.evaluatorAgenda(today(), profile);
-      setAssignments(data.assignments);
+      const filtered = data.filter((item) => item.instrumentCode === profile);
+      setAssignments(filtered);
 
       // Si vino con assignmentId en la URL, auto-seleccionar
       if (assignmentId) {
-        const found = data.assignments.find((a) => a.assignmentId === assignmentId);
+        const found = filtered.find((a) => a.group.groupId === assignmentId);
         if (found) {
           setSelectedAssignment(found);
           setScreen("confirm");
@@ -73,7 +74,7 @@ export function ConnectedAcademicConsole({ profile }: Props) {
     }
   }
 
-  const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
+  const openAssignment = useCallback((assignment: AgendaWithInstrument) => {
     setSelectedAssignment(assignment);
     setCriterionIndex(0);
     setScreen("confirm");

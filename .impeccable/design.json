@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-18T22:30:00.000Z",
+  "title": "Design System: MTN Admission System",
+  "extensions": {
+    "colorMeta": {
+      "azul-monte-tabor": {
+        "role": "primary",
+        "displayName": "Institutional Blue",
+        "canonical": "#1e3a8a",
+        "tonalRamp": ["#1e3a8a", "#1e3a8a", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa"]
+      },
+      "dorado-nazaret": {
+        "role": "secondary",
+        "displayName": "Prestigious Gold",
+        "canonical": "#f59e0b",
+        "tonalRamp": ["#f59e0b", "#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f", "#fbbf24", "#fcd34d"]
+      },
+      "blanco-pureza": {
+        "role": "neutral",
+        "displayName": "Pure White",
+        "canonical": "#ffffff"
+      },
+      "gris-piedra": {
+        "role": "neutral",
+        "displayName": "Stone Gray",
+        "canonical": "#6b7280",
+        "tonalRamp": ["#6b7280", "#6b7280", "#4b5563", "#374151", "#1f2937", "#111827", "#9ca3af", "#d1d5db"]
+      },
+      "verde-esperanza": {
+        "role": "success",
+        "displayName": "Hope Green",
+        "canonical": "#059669",
+        "tonalRamp": ["#059669", "#059669", "#047857", "#065f46", "#064e3b", "#064e3b", "#10b981", "#34d399"]
+      },
+      "rojo-sagrado": {
+        "role": "error",
+        "displayName": "Sacred Red",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#dc2626", "#dc2626", "#b91c1c", "#991b1b", "#7f1d1d", "#7f1d1d", "#ef4444", "#f87171"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles, hero headlines. Bold institutional presence."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headers, card titles. Primary structural heading."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Component titles, subsection headers, modal headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Primary content text with optimized line length for readability."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, captions, metadata. Serif accent for academic feel."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.1)",
+        "purpose": "Cards at rest — subtle lift suggesting paper on desk."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 20px 25px -5px rgba(0,0,0,0.1)",
+        "purpose": "Interactive card on hover — confirms clickability."
+      },
+      {
+        "name": "modal",
+        "value": "0 25px 50px -12px rgba(0,0,0,0.25)",
+        "purpose": "Modal overlays — deep separation from page."
+      },
+      {
+        "name": "button",
+        "value": "0 4px 6px -1px rgba(0,0,0,0.1)",
+        "purpose": "Buttons — press-ready state."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.33, 1, 0.68, 1)",
+        "purpose": "Default easing for state transitions. Smooth deceleration."
+      },
+      {
+        "name": "duration-fast",
+        "value": "160ms",
+        "purpose": "Quick feedback for button states, focus rings."
+      },
+      {
+        "name": "duration-normal",
+        "value": "200ms",
+        "purpose": "Standard transitions for hover states, color changes."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Gold primary CTA button with blue text for key actions.",
+      "html": "<button class=\"ds-btn-primary\">Primary Action</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; padding: 10px 20px; background: #f59e0b; color: #1e3a8a; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: all 160ms ease-out; } .ds-btn-primary:hover { background: #d97706; transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus { outline: none; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Blue secondary button with white text for standard actions.",
+      "html": "<button class=\"ds-btn-secondary\">Secondary Action</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; padding: 10px 20px; background: #1e3a8a; color: #ffffff; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); cursor: pointer; transition: all 160ms ease-out; } .ds-btn-secondary:hover { background: #1e40af; } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus { outline: none; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1e3a8a; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Transparent ghost button for secondary actions.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; padding: 10px 20px; background: transparent; color: #6b7280; border: none; border-radius: 8px; box-shadow: none; cursor: pointer; transition: all 160ms ease-out; } .ds-btn-ghost:hover { background: #f3f4f6; color: #374151; } .ds-btn-ghost:focus { outline: none; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6b7280; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White card container with shadow elevation.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Card Title</h3><p class=\"ds-card-body\">Card content goes here.</p></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 24px; transition: box-shadow 200ms ease-out; } .ds-card:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); } .ds-card-title { font-family: Montserrat, sans-serif; font-size: 1.25rem; font-weight: 600; color: #1e3a8a; margin: 0 0 12px 0; } .ds-card-body { font-family: Montserrat, sans-serif; font-size: 1rem; color: #374151; margin: 0; line-height: 1.6; }"
+    },
+    {
+      "name": "Badge - Success",
+      "kind": "chip",
+      "refersTo": "badge-success",
+      "description": "Green success status badge.",
+      "html": "<span class=\"ds-badge-success\">Completado</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; font-family: Lato, sans-serif; font-size: 0.875rem; font-weight: 500; padding: 4px 12px; background: #059669; color: #ffffff; border-radius: 9999px; }"
+    },
+    {
+      "name": "Badge - Warning",
+      "kind": "chip",
+      "refersTo": "badge-warning",
+      "description": "Gold warning status badge.",
+      "html": "<span class=\"ds-badge-warning\">Pendiente</span>",
+      "css": ".ds-badge-warning { display: inline-flex; align-items: center; font-family: Lato, sans-serif; font-size: 0.875rem; font-weight: 500; padding: 4px 12px; background: #f59e0b; color: #1e3a8a; border-radius: 9999px; }"
+    },
+    {
+      "name": "Badge - Error",
+      "kind": "chip",
+      "refersTo": "badge-error",
+      "description": "Red error status badge.",
+      "html": "<span class=\"ds-badge-error\">Rechazado</span>",
+      "css": ".ds-badge-error { display: inline-flex; align-items: center; font-family: Lato, sans-serif; font-size: 0.875rem; font-weight: 500; padding: 4px 12px; background: #dc2626; color: #ffffff; border-radius: 9999px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text input with label and focus state.",
+      "html": "<div class=\"ds-input-group\"><label class=\"ds-input-label\">Correo electrónico *</label><input class=\"ds-input\" type=\"email\" placeholder=\"nombre@ejemplo.com\" /></div>",
+      "css": ".ds-input-group { display: flex; flex-direction: column; width: 100%; } .ds-input-label { font-family: Lato, sans-serif; font-size: 0.875rem; font-weight: 500; color: #6b7280; margin-bottom: 4px; } .ds-input { width: 100%; min-height: 44px; padding: 10px 16px; font-family: Montserrat, sans-serif; font-size: 1rem; color: #374151; background: #ffffff; border: 1px solid #d1d5db; border-radius: 8px; transition: border-color 200ms, box-shadow 200ms; } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus { outline: none; border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1); } .ds-input:focus-invalid { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }"
+    },
+    {
+      "name": "Navigation Bar",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Institutional blue navigation header.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-brand\">MTN Admisión</span><div class=\"ds-nav-links\"><a class=\"ds-nav-link ds-nav-link-active\" href=\"#\">Inicio</a><a class=\"ds-nav-link\" href=\"#\">Proceso</a></div></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: #1e3a8a; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); } .ds-nav-brand { font-family: Montserrat, sans-serif; font-size: 1.25rem; font-weight: 700; color: #ffffff; } .ds-nav-links { display: flex; gap: 24px; } .ds-nav-link { font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; color: rgba(255,255,255,0.8); text-decoration: none; transition: color 160ms; } .ds-nav-link:hover { color: #ffffff; } .ds-nav-link-active { color: #ffffff; font-weight: 700; border-bottom: 2px solid #f59e0b; padding-bottom: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Institutional Gate",
+    "overview": "The MTN Admission System feels like passing through the entrance of a prestigious educational institution — dignified, serious, and authoritative. The deep blue and gold palette evokes trust and prestige, while the clean interface communicates competence and clarity. Every interaction reinforces that MTN is an established, thoughtful school making rigorous admission decisions.\n\nThis is not a consumer app and not a generic SaaS dashboard. The visual language draws from institutional architecture: the gravitas of a university portal, the clarity of official forms, the trustworthiness of an academic record. Users should feel they are engaging with a serious institution, not a startup product.",
+    "keyCharacteristics": [
+      "Noble Authority — Deep blue conveys trust and depth; gold adds prestigious accent",
+      "Structured Clarity — Card-based layouts with clear hierarchy, generous whitespace",
+      "Functional Dignity — Professional without being cold; serious without being oppressive",
+      "Tactile Confidence — Buttons have weight and response; cards lift on hover"
+    ],
+    "rules": [
+      {
+        "name": "The 10% Rule",
+        "body": "Gold appears on ≤10% of any given screen. Its rarity is the point — when gold appears, it signals importance.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hierarchy Rule",
+        "body": "Blue is the default interactive color. Gold is reserved for primary CTAs. Green and red are purely semantic (success/error). Never use these colors decoratively.",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Rule",
+        "body": "Body text is always at least 4.5:1 contrast against its background. Never sacrifice readability for aesthetics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Shadows appear only on hover or as a response to state (modals, dropdowns, active elements). A card that isn't interactive shouldn't have shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One-Elevation Rule",
+        "body": "Only one element should be elevated at a time (the modal, the topmost card, the active dropdown). Multiple simultaneous shadows create visual confusion.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use gold sparingly. When gold appears, it signals importance. If gold appears everywhere, it means nothing.",
+      "Do use card shadows to confirm interactivity. A card that triggers an action should feel liftable.",
+      "Do maintain high contrast. Body text ≥4.5:1, large text ≥3:1.",
+      "Do use the institutional blue for primary actions and navigation. It conveys trust.",
+      "Do use semantic colors (green/red) consistently for status: green = approved/done, red = rejected/error.",
+      "Do use Montserrat for all UI text. The consistency builds institutional voice."
+    ],
+    "donts": [
+      "Don't use generic SaaS dashboard aesthetics — gray backgrounds, tiny icons, corporate blandness.",
+      "Don't use playful elements: cartoon mascots, bouncy animations, bright gradients.",
+      "Don't use decorative gold. Gold is for CTAs and accents only — never for backgrounds or borders.",
+      "Don't use glassmorphism, blur effects, or transparency as decoration.",
+      "Don't use more than one elevation level per screen section.",
+      "Don't use thin or light body text. Gray text must maintain 4.5:1 contrast."
+    ]
+  }
+}
