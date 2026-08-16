@@ -4,6 +4,23 @@ import { ShieldCheck } from "lucide-react";
 import { LogoIcon } from "../../../admin/components/icons/Icons";
 import { professorAuthService } from "../../../evaluations/services/professorAuthService";
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from "../../../../packages/backend-sdk/src/index";
+import { prekinderApi } from "../../services/api";
+
+function today() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+  }).format(new Date());
+}
+
+const INSTRUMENT_TO_ROUTE: Record<string, string> = {
+  ACADEMIC: "academic",
+  PSYCHOMOTOR: "psychomotor",
+  PSYCHOLOGY: "psychology",
+  INDICATORS: "indicators",
+  GROUP_OBSERVATION: "group-observation",
+  SUPPORT: "support",
+  DAP: "dap",
+};
 
 export function PrekinderEvaluatorLogin() {
   const navigate = useNavigate();
@@ -53,6 +70,43 @@ export function PrekinderEvaluatorLogin() {
           email: respEmail,
           role: respRole,
         }));
+
+        // PREKINDER_PROFESSIONAL va a su portal de instrumentos
+        if (respRole === "PREKINDER_PROFESSIONAL") {
+          try {
+            const workspace = await prekinderApi.evaluatorWorkspace(today());
+            const instruments = workspace.instruments
+              .map((i) => i.instrument)
+              .filter((inst) => inst.active);
+
+            if (instruments.length === 0) {
+              setError("No tienes instrumentos asignados. Contacta a coordinación.");
+              return;
+            }
+
+            sessionStorage.setItem("pk-workspace-cache", JSON.stringify(workspace));
+
+            if (instruments.length === 1) {
+              const route = INSTRUMENT_TO_ROUTE[instruments[0].instrumentCode];
+              if (route) {
+                navigate(`/prekinder/evaluador/${route}`, { replace: true });
+              } else {
+                navigate(redirect, { replace: true });
+              }
+            } else {
+              // Por ahora redirigir al primero; el selector se implementará después
+              const route = INSTRUMENT_TO_ROUTE[instruments[0].instrumentCode];
+              if (route) {
+                navigate(`/prekinder/evaluador/${route}`, { replace: true });
+              } else {
+                navigate(redirect, { replace: true });
+              }
+            }
+          } catch {
+            setError("No pudimos cargar tu espacio de trabajo. Intenta nuevamente.");
+          }
+          return;
+        }
 
         navigate(redirect, { replace: true });
       } else {
