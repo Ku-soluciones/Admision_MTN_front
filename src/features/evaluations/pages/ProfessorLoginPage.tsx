@@ -9,8 +9,7 @@ import { professorAuthService } from '../services/professorAuthService';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 import { GRADE_LEVEL_LABELS } from '../../../packages/shared-utils/src/gradeLevels';
-import { prekinderApi } from '../../prekinder/services/api';
-import type { EvaluationInstrument } from '../../prekinder/services/api';
+import { prekinderApi, type EvaluationInstrument } from '../../prekinder/services/api';
 import { INSTRUMENT_TO_PROFILE } from '../../prekinder/components/evaluator/SpecialtyProfile';
 
 function today() {
