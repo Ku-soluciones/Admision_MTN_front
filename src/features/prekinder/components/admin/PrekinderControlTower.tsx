@@ -4,7 +4,6 @@ import {
   ArrowRightLeft,
   BarChart3,
   CalendarClock,
-  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -93,22 +92,9 @@ export function PrekinderControlTower(props: Props) {
   return (
     <div className="space-y-5">
       <aside>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Operación de jornada</p>
-            <p className="mt-1 text-sm text-slate-600">Centro de coordinación</p>
-          </div>
-          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3">
-            <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-            <label htmlFor="pk-tower-date" className="shrink-0 text-sm text-gray-600">Fecha</label>
-            <input
-              id="pk-tower-date"
-              className="border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
-              type="date"
-              value={props.date}
-              onChange={(e) => props.onDateChange(e.target.value)}
-            />
-          </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Operación de jornada</p>
+          <p className="mt-1 text-sm text-slate-600">Centro de coordinación</p>
         </div>
         <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de la torre de control">
           {controlViews.map(({ id, label, icon: Icon }) => (

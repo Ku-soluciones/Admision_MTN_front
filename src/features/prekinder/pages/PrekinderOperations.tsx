@@ -10,8 +10,10 @@ import {
   FileCheck2,
   LayoutDashboard,
   Menu,
+  Pencil,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   Users,
   UsersRound,
   X,
@@ -31,7 +33,7 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
-import { LogoIcon } from "../../admin/components/icons/Icons";
+import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import {
@@ -48,6 +50,7 @@ const sections = [
   ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Torre de control", CalendarDays],
+  ["Salas", DoorOpen],
   ["Profesionales", UsersRound],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
@@ -220,7 +223,7 @@ export function PrekinderOperations({
     }
   }
 
-  const realtimeState = usePrekinderRealtimeSync(demoMode ? null : processId, () => {
+  usePrekinderRealtimeSync(demoMode ? null : processId, () => {
     if (!demoMode) void loadProcess(processId, date, true);
   }, "process");
 
@@ -456,9 +459,13 @@ export function PrekinderOperations({
           <div className="mt-auto px-4 pb-6">
             <a
               href="/admin"
-              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
             >
-              ← Volver al Admin
+              <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">Volver a:</span>
+                <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+              </span>
             </a>
           </div>
         </aside>}
@@ -500,9 +507,13 @@ export function PrekinderOperations({
               <div className="mt-auto px-4 pb-6">
                 <a
                   href="/admin"
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
                 >
-                  ← Volver al Admin
+                  <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold">Volver a:</span>
+                    <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+                  </span>
                 </a>
               </div>
             </aside>
@@ -523,6 +534,31 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
                     <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
                   </>
+                ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
+                    <p className="mt-1 text-sm text-gray-600">Crea y administra las salas disponibles para la jornada de evaluación.</p>
+                  </>
+                ) : section === "Profesionales" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Profesionales</p>
+                    <p className="mt-1 text-sm text-gray-600">Registra y organiza al equipo que participa en el proceso de admisión.</p>
+                  </>
+                ) : section === "Pautas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
+                  </>
+                ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Decisiones</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa los resultados y define la decisión final de cada postulación.</p>
+                  </>
+                ) : section === "Auditoría" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Auditoría</p>
+                    <p className="mt-1 text-sm text-gray-600">Consulta el historial de cambios y acciones registradas del proceso.</p>
+                  </>
                 ) : section === "Torre de control" && processId && currentProcess?.status !== "DRAFT" ? (
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Torre de control</p>
                 ) : (
@@ -537,11 +573,6 @@ export function PrekinderOperations({
                   </SectionHeading>
                 )}
               </div>
-              {!demoMode && processId && (
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                  {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
-                </span>
-              )}
             </div>
           )}
           {error && (
@@ -602,7 +633,6 @@ export function PrekinderOperations({
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
               lastLoaded={lastLoaded}
-              realtimeState={!demoMode ? realtimeState : null}
               demoMode={demoMode}
             />
           )}
@@ -648,6 +678,7 @@ export function PrekinderOperations({
               demoMode={demoMode}
             />
           )}
+          {section === "Salas" && <Rooms />}
           {section === "Profesionales" && (
             <Professionals
               processId={processId}
@@ -1021,7 +1052,6 @@ function Overview({
   onProcessChange,
   onRefresh,
   lastLoaded,
-  realtimeState,
   demoMode,
 }: {
   metrics: DashboardMetrics | null;
@@ -1035,7 +1065,6 @@ function Overview({
   onProcessChange: (id: string) => void;
   onRefresh: () => void;
   lastLoaded: Date | null;
-  realtimeState: string | null;
   demoMode: boolean;
 }) {
   const lastUpdated = lastLoaded
@@ -1083,11 +1112,6 @@ function Overview({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start">
-            {realtimeState && (
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                {realtimeState === "live" ? "En vivo" : "Reconectando"}
-              </span>
-            )}
             <button
               onClick={onRefresh}
               disabled={busy}
@@ -1989,6 +2013,172 @@ const professionalInstrumentLabels: Record<string, string> = {
   DAP: "DAP",
 };
 
+type MockRoom = {
+  id: string;
+  name: string;
+  capacity: number;
+  details: string;
+};
+
+function Rooms() {
+  const [mockRooms, setMockRooms] = useState<MockRoom[]>([]);
+  const [editing, setEditing] = useState<MockRoom | null>(null);
+  const [name, setName] = useState("");
+  const [capacity, setCapacity] = useState(3);
+  const [details, setDetails] = useState("");
+
+  function clearForm() {
+    setEditing(null);
+    setName("");
+    setCapacity(3);
+    setDetails("");
+  }
+
+  function edit(room: MockRoom) {
+    setEditing(room);
+    setName(room.name);
+    setCapacity(room.capacity);
+    setDetails(room.details);
+  }
+
+  function remove(roomId: string) {
+    setMockRooms((current) => current.filter((room) => room.id !== roomId));
+    if (editing?.id === roomId) clearForm();
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950 xl:col-span-2" role="status">
+        <span className="font-black">Vista de interfaz:</span>{" "}
+        las salas creadas aquí no se guardan todavía en la base de datos. Es un
+        borrador para validar el diseño antes de conectar el backend.
+      </div>
+      <form
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const trimmedName = name.trim();
+          if (!trimmedName || capacity < 1) return;
+          if (editing) {
+            setMockRooms((current) =>
+              current.map((room) =>
+                room.id === editing.id
+                  ? { ...room, name: trimmedName, capacity, details: details.trim() }
+                  : room,
+              ),
+            );
+          } else {
+            setMockRooms((current) => [
+              ...current,
+              {
+                id: `sala-${Date.now()}`,
+                name: trimmedName,
+                capacity,
+                details: details.trim(),
+              },
+            ]);
+          }
+          clearForm();
+        }}
+      >
+        <h2 className="text-lg font-black">{editing ? "Editar sala" : "Nueva sala"}</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          Define el nombre, la cantidad de alumnos que recibe y cualquier
+          detalle relevante para quienes agendan las jornadas.
+        </p>
+        <div className="mt-5 space-y-4">
+          <Field label="Nombre de la sala">
+            <input
+              required
+              className="control w-full"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ej. Sala 107"
+            />
+          </Field>
+          <Field label="Número de alumnos">
+            <input
+              required
+              type="number"
+              min={1}
+              max={40}
+              className="control w-full"
+              value={capacity}
+              onChange={(event) => setCapacity(Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Detalles de la sala (opcional)">
+            <textarea
+              className="control w-full py-2"
+              rows={3}
+              value={details}
+              onChange={(event) => setDetails(event.target.value)}
+              placeholder="Ej. Primer piso, junto a patio techado, con mesas circulares"
+            />
+          </Field>
+          <button disabled={!name.trim() || capacity < 1} className="primary w-full">
+            {editing ? "Guardar cambios" : "Crear sala"}
+          </button>
+          {editing && (
+            <button type="button" className="secondary w-full" onClick={clearForm}>
+              Cancelar edición
+            </button>
+          )}
+        </div>
+      </form>
+
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Salas del proceso</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {mockRooms.length} salas creadas en esta vista.
+        </p>
+        {!mockRooms.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
+            Aún no hay salas creadas. Usa el formulario para agregar la primera.
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {mockRooms.map((room) => (
+              <article key={room.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-900">
+                    <DoorOpen size={18} />
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100"
+                      onClick={() => edit(room)}
+                      aria-label={`Editar ${room.name}`}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid h-9 w-9 place-items-center rounded-lg text-red-600 transition-colors hover:bg-red-50"
+                      onClick={() => remove(room.id)}
+                      aria-label={`Eliminar ${room.name}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <h3 className="mt-4 font-black">{room.name}</h3>
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+                  <Users size={13} /> {room.capacity} alumnos
+                </p>
+                {room.details && (
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{room.details}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function Professionals({ processId, professionals, roles, busy, onSave }: {
   processId: string;
   professionals: Professional[];
@@ -2036,7 +2226,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
   return (
     <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <form
-        className="h-fit rounded-2xl border border-slate-200 bg-white p-6 xl:sticky xl:top-24"
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!roleCode || !processId) return;
@@ -2106,46 +2296,49 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
         </div>
       </form>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-950">Equipo Prekínder</h2>
-          <p className="mt-1 text-sm text-slate-600">{professionals.length} profesionales organizados por función dentro del flujo.</p>
-        </div>
-        {!professionals.length && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Equipo Prekínder</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {professionals.length} profesionales organizados por función dentro del flujo.
+        </p>
+        {!professionals.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
             Aún no hay profesionales registrados para organizar.
           </div>
-        )}
-        {groupedPeople.map(({ groupCode, people }) => (
-          <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
-              <span className="text-xs font-bold text-slate-500">{people.length}</span>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {people.map((person) => (
-                <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                    {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold">{person.displayName}</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
-                    <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
-                  </span>
-                  <div className="ml-14 flex items-center gap-2 sm:ml-0">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                      {person.active ? "Activo" : "Inactivo"}
-                    </span>
-                    <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
-                      {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
-                    </button>
-                  </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {groupedPeople.map(({ groupCode, people }) => (
+              <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                  <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
+                  <span className="text-xs font-bold text-slate-500">{people.length}</span>
                 </div>
-              ))}
-            </div>
+                <div className="divide-y divide-slate-100">
+                  {people.map((person) => (
+                    <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
+                        {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-bold">{person.displayName}</span>
+                        <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
+                        <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
+                      </span>
+                      <div className="ml-14 flex items-center gap-2 sm:ml-0">
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                          {person.active ? "Activo" : "Inactivo"}
+                        </span>
+                        <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
+                          {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </section>
     </div>
   );
@@ -2220,7 +2413,7 @@ function Decisions({
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
             <h2 className="font-black">Publicación programada</h2>
             <p className="mt-1 text-xs text-slate-500">
