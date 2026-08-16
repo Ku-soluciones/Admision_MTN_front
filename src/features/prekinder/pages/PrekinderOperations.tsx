@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarDays,
   Check,
   ChevronRight,
@@ -10,10 +13,8 @@ import {
   FileCheck2,
   LayoutDashboard,
   Menu,
-  Pencil,
   RefreshCw,
   ShieldCheck,
-  Trash2,
   Users,
   UsersRound,
   X,
@@ -678,7 +679,15 @@ export function PrekinderOperations({
               demoMode={demoMode}
             />
           )}
-          {section === "Salas" && <Rooms />}
+          {section === "Salas" && (
+            <Rooms
+              processId={processId}
+              rooms={rooms}
+              busy={busy}
+              demoMode={demoMode}
+              onAction={action}
+            />
+          )}
           {section === "Profesionales" && (
             <Professionals
               processId={processId}
@@ -2013,78 +2022,75 @@ const professionalInstrumentLabels: Record<string, string> = {
   DAP: "DAP",
 };
 
-type MockRoom = {
-  id: string;
-  name: string;
-  capacity: number;
-  details: string;
-};
+function generateRoomCode(name: string) {
+  const base = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 20);
+  const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+  return base ? `${base}-${suffix}` : `SALA-${suffix}`;
+}
 
-function Rooms() {
-  const [mockRooms, setMockRooms] = useState<MockRoom[]>([]);
-  const [editing, setEditing] = useState<MockRoom | null>(null);
+function Rooms({
+  processId,
+  rooms,
+  busy,
+  demoMode,
+  onAction,
+}: {
+  processId: string;
+  rooms: Room[];
+  busy: boolean;
+  demoMode: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+}) {
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState(3);
-  const [details, setDetails] = useState("");
+  const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" } | null>(null);
 
-  function clearForm() {
-    setEditing(null);
-    setName("");
-    setCapacity(3);
-    setDetails("");
-  }
+  const sortedRooms = useMemo(() => {
+    if (!sort) return rooms;
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...rooms].sort((a, b) =>
+      sort.key === "name"
+        ? a.name.localeCompare(b.name) * factor
+        : (a.capacity - b.capacity) * factor,
+    );
+  }, [rooms, sort]);
 
-  function edit(room: MockRoom) {
-    setEditing(room);
-    setName(room.name);
-    setCapacity(room.capacity);
-    setDetails(room.details);
-  }
-
-  function remove(roomId: string) {
-    setMockRooms((current) => current.filter((room) => room.id !== roomId));
-    if (editing?.id === roomId) clearForm();
+  function toggleSort(key: "name" | "capacity") {
+    setSort((current) =>
+      current?.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
   }
 
   return (
     <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950 xl:col-span-2" role="status">
-        <span className="font-black">Vista de interfaz:</span>{" "}
-        las salas creadas aquí no se guardan todavía en la base de datos. Es un
-        borrador para validar el diseño antes de conectar el backend.
-      </div>
       <form
         className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
         onSubmit={(event) => {
           event.preventDefault();
           const trimmedName = name.trim();
-          if (!trimmedName || capacity < 1) return;
-          if (editing) {
-            setMockRooms((current) =>
-              current.map((room) =>
-                room.id === editing.id
-                  ? { ...room, name: trimmedName, capacity, details: details.trim() }
-                  : room,
-              ),
-            );
-          } else {
-            setMockRooms((current) => [
-              ...current,
-              {
-                id: `sala-${Date.now()}`,
+          if (!trimmedName || capacity < 1 || !processId) return;
+          void onAction(
+            () =>
+              prekinderApi.createRoom(processId, {
+                code: generateRoomCode(trimmedName),
                 name: trimmedName,
                 capacity,
-                details: details.trim(),
-              },
-            ]);
-          }
-          clearForm();
+              }),
+            "Sala creada y guardada en la base de datos.",
+          );
         }}
       >
-        <h2 className="text-lg font-black">{editing ? "Editar sala" : "Nueva sala"}</h2>
+        <h2 className="text-lg font-black">Nueva sala</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
-          Define el nombre, la cantidad de alumnos que recibe y cualquier
-          detalle relevante para quienes agendan las jornadas.
+          Define el nombre y la cantidad de alumnos que recibe.
         </p>
         <div className="mt-5 space-y-4">
           <Field label="Nombre de la sala">
@@ -2096,7 +2102,7 @@ function Rooms() {
               placeholder="Ej. Sala 107"
             />
           </Field>
-          <Field label="Número de alumnos">
+          <Field label="Capacidad de alumnos">
             <input
               required
               type="number"
@@ -2107,71 +2113,85 @@ function Rooms() {
               onChange={(event) => setCapacity(Number(event.target.value))}
             />
           </Field>
-          <Field label="Detalles de la sala (opcional)">
-            <textarea
-              className="control w-full py-2"
-              rows={3}
-              value={details}
-              onChange={(event) => setDetails(event.target.value)}
-              placeholder="Ej. Primer piso, junto a patio techado, con mesas circulares"
-            />
-          </Field>
-          <button disabled={!name.trim() || capacity < 1} className="primary w-full">
-            {editing ? "Guardar cambios" : "Crear sala"}
+          <button disabled={busy || !name.trim() || capacity < 1} className="primary w-full">
+            Crear sala
           </button>
-          {editing && (
-            <button type="button" className="secondary w-full" onClick={clearForm}>
-              Cancelar edición
-            </button>
-          )}
         </div>
       </form>
 
       <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-black">Salas del proceso</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
-          {mockRooms.length} salas creadas en esta vista.
+          {rooms.length} salas creadas para este proceso.
         </p>
-        {!mockRooms.length ? (
+        {demoMode && (
+          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
+            <span className="font-black">Modo demostración:</span> las salas mostradas son de ejemplo, ningún cambio se guarda en Admitia.
+          </div>
+        )}
+        {!rooms.length ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
             Aún no hay salas creadas. Usa el formulario para agregar la primera.
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {mockRooms.map((room) => (
-              <article key={room.id} className="rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-900">
-                    <DoorOpen size={18} />
-                  </span>
-                  <div className="flex items-center gap-1">
+          <div className="mt-4 overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                     <button
                       type="button"
-                      className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100"
-                      onClick={() => edit(room)}
-                      aria-label={`Editar ${room.name}`}
+                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      onClick={() => toggleSort("name")}
                     >
-                      <Pencil size={16} />
+                      Nombre
+                      {sort?.key === "name" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
                     </button>
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Código
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                     <button
                       type="button"
-                      className="grid h-9 w-9 place-items-center rounded-lg text-red-600 transition-colors hover:bg-red-50"
-                      onClick={() => remove(room.id)}
-                      aria-label={`Eliminar ${room.name}`}
+                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      onClick={() => toggleSort("capacity")}
                     >
-                      <Trash2 size={16} />
+                      Capacidad de alumnos
+                      {sort?.key === "capacity" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
                     </button>
-                  </div>
-                </div>
-                <h3 className="mt-4 font-black">{room.name}</h3>
-                <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
-                  <Users size={13} /> {room.capacity} alumnos
-                </p>
-                {room.details && (
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{room.details}</p>
-                )}
-              </article>
-            ))}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedRooms.map((room) => (
+                  <tr key={room.roomId}>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-3 font-black">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-900">
+                          <DoorOpen size={16} />
+                        </span>
+                        {room.name}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{room.code}</td>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-800">
+                        <Users size={14} /> {room.capacity}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
