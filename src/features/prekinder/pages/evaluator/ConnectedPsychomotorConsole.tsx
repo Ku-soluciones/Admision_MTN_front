@@ -5,6 +5,7 @@ import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 
 type Score = 0 | 1 | 2 | 3 | "NOT_OBSERVED";
+type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
 
 type Screen = "loading" | "agenda" | "confirm" | "evaluate";
 
@@ -64,6 +65,13 @@ const criteria = [
       { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado", description: "" },
     ],
   },
+  { title: "Saltos y equilibrio", description: "Coordinación y control postural durante actividades motoras." },
+  { title: "Lanzamiento y coordinación", description: "Precisión en el manejo de objetos y coordinación óculo-manual." },
+  { title: "Imitación motora", description: "Capacidad de reproducir movimientos observados." },
+  { title: "Control inhibitorio", description: "Capacidad de frenado y autorregulación del movimiento." },
+  { title: "Desplazamiento y orientación", description: "Movilidad espacial y orientación en el entorno." },
+  { title: "Coordinación bilateral", description: "Uso integrado de ambos lados del cuerpo." },
+  { title: "Motricidad fina", description: "Destreza en movimientos precisos de manos y dedos." },
 ] as const;
 
 function today() {
@@ -88,6 +96,8 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
   const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
+  const [criterionIndex, setCriterionIndex] = useState(0);
+  const [responses, setResponses] = useState<{ [assignId: string]: { [criterion: number]: { [appId: string]: Score } } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
@@ -121,6 +131,7 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
     setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
+    setCriterionIndex(0);
     setScreen("confirm");
   }, []);
 
@@ -146,6 +157,23 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
       };
     });
   }, [selectedAssignment]);
+    setCriterionIndex(0);
+    setScreen("agenda");
+  }, []);
+
+  const setScore = useCallback((applicationId: string, value: Score) => {
+    if (!selectedAssignment) return;
+    setResponses((current) => ({
+      ...current,
+      [selectedAssignment.assignmentId]: {
+        ...(current[selectedAssignment.assignmentId] ?? {} as { [criterion: number]: { [appId: string]: Score } }),
+        [criterionIndex]: {
+          ...(current[selectedAssignment.assignmentId]?.[criterionIndex] ?? {} as { [appId: string]: Score }),
+          [applicationId]: value,
+        },
+      },
+    }));
+  }, [selectedAssignment, criterionIndex]);
 
   const setGroupComment = useCallback((applicationId: string, comment: string) => {
     if (!selectedAssignment) return;
@@ -153,6 +181,7 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
       ...current,
       [selectedAssignment.assignmentId]: {
         ...(current[selectedAssignment.assignmentId] ?? {}),
+        ...(current[selectedAssignment.assignmentId] ?? {} as { [appId: string]: string }),
         [applicationId]: comment,
       },
     }));
@@ -197,6 +226,14 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
     const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[m.applicationId];
     return scores && scores.length === criteria.length && scores.every((s) => s !== undefined);
   });
+  const currentResponses = selectedAssignment
+    ? (responses[selectedAssignment.assignmentId]?.[criterionIndex] ?? {})
+    : {};
+  const members = selectedAssignment?.reports ?? [];
+  const completed = members.filter((m) => currentResponses[m.applicationId] !== undefined).length;
+  const groupComments = selectedAssignment
+    ? (comments[selectedAssignment.assignmentId] ?? {})
+    : {};
 
   if (screen === "loading") {
     return (
@@ -210,16 +247,19 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan-200 bg-cyan-900 p-4 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-cyan-950">
         <div className="flex items-center gap-3">
           <UserCheck size={20} />
           <div>
             <p className="text-sm font-black">Espacio exclusivo: Evaluador de Psicomotricidad</p>
             <p className="text-xs text-cyan-300">{assignments.length} asignaciones para hoy</p>
+            <p className="text-xs text-cyan-800">{assignments.length} asignaciones para hoy</p>
           </div>
         </div>
         <button
           onClick={() => void loadAgenda()}
           className="rounded-lg bg-white px-3 py-2 text-xs font-black text-cyan-900 hover:bg-cyan-50"
+          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-cyan-800 hover:bg-cyan-100"
         >
           Actualizar
         </button>
@@ -294,6 +334,13 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                   </span>
                   <h3 className="mt-3 text-base font-black leading-tight text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{report.applicantName}</h3>
                   <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600"><Check size={13} />Identidad confirmada</p>
+                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 p-5 text-center">
+                  <span className="absolute left-3 top-3 grid h-6 w-6 place-items-center rounded bg-slate-100 text-xs font-black">{index + 1}</span>
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-cyan-50 font-black text-cyan-900">
+                    {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                  </span>
+                  <h3 className="mt-3 text-sm font-black text-slate-900">{report.applicantName}</h3>
+                  <p className="mt-3 text-xs font-bold text-emerald-700"><Check className="mr-1 inline" size={14} />Identidad confirmada</p>
                 </article>
               ))}
             </div>
@@ -301,6 +348,7 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
               <button className="secondary" onClick={backToAgenda}>Volver</button>
               <button className="primary" disabled={saving} onClick={() => void handleStart()}>
                 {saving ? "Iniciando..." : <>Comenzar evaluación individual <ChevronRight className="ml-1 inline" size={17} /></>}
+                {saving ? "Iniciando..." : <>Comenzar evaluación simultánea <ChevronRight className="ml-1 inline" size={17} /></>}
               </button>
             </div>
           </section>
@@ -431,6 +479,97 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                 <button
                   className="primary"
                   disabled={!allMembersComplete || saving}
+      {screen === "evaluate" && selectedAssignment && (
+        <div>
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">
+                {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName} - {selectedAssignment.group.code}
+              </p>
+              <h2 className="mt-1 text-3xl font-black text-slate-950">Evaluación de Psicomotricidad</h2>
+              <p className="mt-1 text-sm text-slate-600">Un criterio a la vez, con los tres postulantes visibles en paralelo.</p>
+            </div>
+            <span className="rounded-xl bg-cyan-50 px-4 py-3 text-sm font-black text-cyan-900">
+              Criterio {criterionIndex + 1} de {criteria.length}
+            </span>
+          </div>
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 p-5">
+              <span className="grid h-14 w-14 place-items-center rounded-xl bg-cyan-900 text-xl font-black text-white">{criterionIndex + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-500">Pauta observable</p>
+                <h3 className="text-xl font-black text-slate-950">{criteria[criterionIndex].title}</h3>
+                <p className="mt-1 text-sm text-slate-600">{criteria[criterionIndex].description}</p>
+              </div>
+              <strong className={completed === members.length ? "text-emerald-700" : "text-slate-600"}>
+                {completed}/{members.length} completos
+              </strong>
+            </div>
+
+            <div className="grid gap-4 p-5 xl:grid-cols-3">
+              {members.map((report) => {
+                const options = [
+                  { value: 0 as Score, title: "0", label: "No logrado" },
+                  { value: 1 as Score, title: "1", label: "En proceso inicial" },
+                  { value: 2 as Score, title: "2", label: "En proceso medio" },
+                  { value: 3 as Score, title: "3", label: "Casi logrado" },
+                  { value: 4 as Score, title: "4", label: "Logrado" },
+                  { value: "NOT_OBSERVED" as Score, title: "-", label: "No observado" },
+                ];
+                return (
+                  <article key={report.applicationId} className="rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-cyan-50 text-sm font-black text-cyan-900">
+                        {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                      </span>
+                      <div>
+                        <h4 className="font-black text-slate-900">{report.applicantName}</h4>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {options.map((opt) => (
+                        <button
+                          key={String(opt.value)}
+                          className={`min-h-14 rounded-lg border p-2 transition ${currentResponses[report.applicationId] === opt.value ? "border-2 border-cyan-700 bg-cyan-50 text-cyan-950" : "border-slate-200 bg-white hover:border-cyan-300"}`}
+                          onClick={() => setScore(report.applicationId, opt.value)}
+                        >
+                          <b className="block text-lg">{opt.title}</b>
+                          <small className="text-slate-600">{opt.label}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4">
+                      <label className="mb-1 block text-xs font-bold text-slate-600">Observaciones cualitativas</label>
+                      <textarea
+                        className="min-h-20 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm"
+                        value={groupComments[report.applicationId] ?? ""}
+                        onChange={(e) => setGroupComment(report.applicationId, e.target.value)}
+                        placeholder="Observaciones cualitativas sobre este postulante..."
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
+              <button className="secondary" disabled={criterionIndex === 0} onClick={() => setCriterionIndex((c) => c - 1)}>Anterior</button>
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <Check size={16} className="text-emerald-600" />Guardado en servidor
+              </span>
+              {criterionIndex < criteria.length - 1 ? (
+                <button
+                  className="primary"
+                  disabled={completed !== members.length}
+                  onClick={() => setCriterionIndex((c) => c + 1)}
+                >
+                  Siguiente criterio <ChevronRight className="ml-1 inline" size={17} />
+                </button>
+              ) : (
+                <button
+                  className="primary"
+                  disabled={completed !== members.length || saving}
                   onClick={() => void handleSubmit()}
                 >
                   {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
@@ -438,6 +577,9 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
               </div>
             </section>
           </div>
+              )}
+            </div>
+          </section>
         </div>
       )}
     </div>

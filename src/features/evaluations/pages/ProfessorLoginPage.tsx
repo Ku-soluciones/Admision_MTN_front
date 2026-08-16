@@ -9,7 +9,8 @@ import { professorAuthService } from '../services/professorAuthService';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, clearOtherSessions } from '../../../packages/backend-sdk/src/index';
 import { GRADE_LEVEL_LABELS } from '../../../packages/shared-utils/src/gradeLevels';
-import { prekinderApi } from '../../prekinder/services/api';
+import { prekinderApi, type EvaluationInstrument } from '../../prekinder/services/api';
+import { INSTRUMENT_TO_PROFILE } from '../../prekinder/components/evaluator/SpecialtyProfile';
 
 function today() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -17,20 +18,19 @@ function today() {
   }).format(new Date());
 }
 
-const INSTRUMENT_TO_ROUTE: Record<string, string> = {
-  ACADEMIC: 'academic',
-  PSYCHOMOTOR: 'psychomotor',
-  PSYCHOLOGY: 'psychology',
-  INDICATORS: 'indicators',
-  GROUP_OBSERVATION: 'group-observation',
-  SUPPORT: 'learning-support',
-  DAP: 'dap',
-};
-
-function instrumentToRoute(instrumentCode: string): string {
-  const route = INSTRUMENT_TO_ROUTE[instrumentCode];
-  if (!route) return '/prekinder/evaluador';
-  return `/prekinder/evaluador/${route}`;
+function instrumentToRoute(instrument: EvaluationInstrument): string {
+  const profile = INSTRUMENT_TO_PROFILE[instrument.instrumentCode];
+  if (!profile) return '/prekinder/evaluador';
+  const routes: Record<string, string> = {
+    ACADEMIC: 'academic',
+    PSYCHOMOTOR: 'psychomotor',
+    PSYCHOLOGY: 'psychology',
+    INDICATORS: 'indicators',
+    GROUP_OBSERVATION: 'group-observation',
+    LEARNING_SUPPORT: 'learning-support',
+    DAP: 'dap',
+  };
+  return `/prekinder/evaluador/${routes[profile] ?? profile.toLowerCase().replace(/_/g, '-')}`;
 }
 
 const ProfessorLoginPage: React.FC = () => {
@@ -112,6 +112,7 @@ const ProfessorLoginPage: React.FC = () => {
 
                     // Pre-Kinder evaluadores van a su portal propio
                     if (respRole === 'PREKINDER_PROFESSIONAL') {
+                        // Obtener workspace y redirigir directamente al portal del instrumento
                         try {
                             const workspace = await prekinderApi.evaluatorWorkspace(today());
                             const instruments = workspace.instruments
@@ -125,10 +126,11 @@ const ProfessorLoginPage: React.FC = () => {
                                 return;
                             }
 
+                            // Guardar workspace en sessionStorage para el Guard
                             sessionStorage.setItem('pk-workspace-cache', JSON.stringify(workspace));
 
                             if (instruments.length === 1) {
-                                navigate(instrumentToRoute(instruments[0].instrumentCode), { replace: true });
+                                navigate(instrumentToRoute(instruments[0]), { replace: true });
                             } else {
                                 sessionStorage.setItem('pk-pending-workspace', JSON.stringify(workspace));
                                 navigate('/prekinder/evaluador/selector', { replace: true });
@@ -137,6 +139,7 @@ const ProfessorLoginPage: React.FC = () => {
                             const msg = 'No pudimos cargar tu espacio de trabajo. Intenta nuevamente.';
                             setLoginError(msg);
                             addNotification({ type: 'error', title: 'Error', message: msg });
+                            return;
                         }
                     } else {
                         navigate('/profesor');

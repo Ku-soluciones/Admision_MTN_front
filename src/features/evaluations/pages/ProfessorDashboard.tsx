@@ -166,6 +166,10 @@ const ProfessorDashboard: React.FC = () => {
 
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
+        if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL') {
+            const instrument = searchParams.get('instrument');
+            return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
+        }
         if (searchParams.get('section') === 'prekinder') {
             const instrument = searchParams.get('instrument');
             return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
@@ -242,8 +246,16 @@ const ProfessorDashboard: React.FC = () => {
         );
         if (requestedExists) return;
         const first = prekinderInstruments[0];
-        handleSectionChange(first ? `prekinder:${first.instrumentCode}` : 'dashboard');
-    }, [activeSection, handleSectionChange, prekinderAccessResolved, prekinderInstruments]);
+        const fallback = currentProfessor?.role === 'PREKINDER_PROFESSIONAL' ? 'prekinder' : 'dashboard';
+        if (!first && activeSection === fallback) return;
+        handleSectionChange(first ? `prekinder:${first.instrumentCode}` : fallback);
+    }, [activeSection, currentProfessor?.role, handleSectionChange, prekinderAccessResolved, prekinderInstruments]);
+
+    useEffect(() => {
+        if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL' && !activeSection.startsWith('prekinder')) {
+            handleSectionChange('prekinder');
+        }
+    }, [activeSection, currentProfessor?.role, handleSectionChange]);
 
     // Estado para forzar recarga de datos (cache busting)
     const [refreshKey, setRefreshKey] = useState(0);
@@ -385,10 +397,35 @@ const ProfessorDashboard: React.FC = () => {
             try {
                 if (isMounted) setIsLoading(true);
 
+                // Las cuentas creadas desde el flujo aislado de Prekínder no consultan
+                // evaluaciones, entrevistas ni estadísticas de los demás cursos.
+                if (currentProfessorRef.current?.role === 'PREKINDER_PROFESSIONAL') {
+                    if (isMounted) {
+                        setEvaluations([]);
+                        setInterviews([]);
+                        setEvaluationStats({ total: 0, pending: 0, inProgress: 0, completed: 0, averageScore: 0 });
+                    }
+                    return;
+                }
+
                 // Fetch fresh professor data to guarantee correct ID regardless of localStorage state
                 const freshProfessor = await professorAuthService.getCurrentProfessor();
                 if (!freshProfessor) {
                     if (isMounted) setIsLoading(false);
+                    return;
+                }
+
+                // También aislar el flujo cuando el rol aún no estaba disponible
+                // en localStorage y acaba de resolverse desde el BFF.
+                if (freshProfessor.role === 'PREKINDER_PROFESSIONAL') {
+                    if (isMounted) {
+                        const updated = { ...currentProfessorRef.current, ...freshProfessor };
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(updated));
+                        setCurrentProfessor(updated);
+                        setEvaluations([]);
+                        setInterviews([]);
+                        setEvaluationStats({ total: 0, pending: 0, inProgress: 0, completed: 0, averageScore: 0 });
+                    }
                     return;
                 }
 
@@ -486,7 +523,12 @@ const ProfessorDashboard: React.FC = () => {
     const professorSections = filteredSections.flatMap((section) =>
         section.key === 'reportes' ? [...prekinderSections, section] : [section],
     );
-    const sections = isAdminUser
+    const prekinderOnlySections = prekinderSections.length > 0
+        ? prekinderSections
+        : [{ key: 'prekinder', label: 'Evaluación Prekínder', icon: CheckCircleIcon }];
+    const sections = currentProfessor?.role === 'PREKINDER_PROFESSIONAL'
+        ? prekinderOnlySections
+        : isAdminUser
         ? [...professorSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
         : professorSections;
 

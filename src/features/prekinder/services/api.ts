@@ -560,8 +560,12 @@ export const prekinderApi = {
         body: JSON.stringify({ decision, reason, expectedVersion }),
       },
     ),
-  professionals: () =>
-    apiRequest<Professional[]>("/v1/prekinder/professionals"),
+  professionals: (processId?: string) =>
+    apiRequest<Professional[]>(
+      processId
+        ? `/v1/prekinder/professionals?processId=${encodeURIComponent(processId)}`
+        : "/v1/prekinder/professionals",
+    ),
   professionalRoles: () =>
     apiRequest<ProfessionalRoleDefinition[]>("/v1/prekinder/professional-roles"),
   saveProfessional: (
@@ -569,14 +573,33 @@ export const prekinderApi = {
       processId: string;
       displayName: string;
       email: string;
+      password?: string;
       roleCode: ProfessionalRoleCode;
       expectedVersion: number;
+      password?: string;
     },
   ) =>
     apiRequest<Professional>("/v1/prekinder/professionals", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateProfessionalPassword: (professionalId: string, password: string) =>
+    apiRequest<{ professionalId: string; passwordUpdated: boolean }>(
+      `/v1/prekinder/professionals/${professionalId}/password`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ password }),
+      },
+    ),
+  deleteProfessional: (professionalId: string, expectedVersion: number) =>
+    apiRequest<{
+      professionalId: string;
+      deleted: boolean;
+      firebaseAccountDeleted: boolean;
+    }>(
+      `/v1/prekinder/professionals/${professionalId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   rooms: (processId: string) =>
     apiRequest<Room[]>(`/v1/prekinder/processes/${processId}/rooms`),
   createRoom: (
@@ -603,6 +626,40 @@ export const prekinderApi = {
   }) =>
     apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
       method: "POST",
+      body: JSON.stringify(input),
+    }),
+  createAssignedGroup: (input: {
+    processId: string;
+    roomId: string;
+    stage: EvaluationGroup["stage"];
+    code: string;
+    startsAt: string;
+    durationMinutes: number;
+    capacity: number;
+    requiredEvaluators: number;
+    memberIds: string[];
+    evaluatorIds: string[];
+  }) =>
+    apiRequest<EvaluationGroup>("/v1/prekinder/groups", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateGroup: (
+    groupId: string,
+    input: {
+      roomId: string;
+      startsAt: string;
+      durationMinutes: number;
+      capacity: number;
+      requiredEvaluators: number;
+      memberIds: string[];
+      evaluatorIds: string[];
+      reason: string;
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<EvaluationGroup>(`/v1/prekinder/groups/${groupId}`, {
+      method: "PUT",
       body: JSON.stringify(input),
     }),
   rescheduleGroup: (
@@ -632,15 +689,30 @@ export const prekinderApi = {
       `/v1/prekinder/groups/${groupId}/configuration`,
       { method: "PUT", body: JSON.stringify(input) },
     ),
+  deleteGroup: (groupId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   addMember: (groupId: string, applicationId: string) =>
     apiRequest<EvaluationGroup>(
       `/v1/prekinder/groups/${groupId}/members/${applicationId}`,
       { method: "POST" },
     ),
+  removeMember: (groupId: string, applicationId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/members/${applicationId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   assignEvaluator: (groupId: string, evaluatorId: string) =>
     apiRequest<EvaluationGroup>(
       `/v1/prekinder/groups/${groupId}/evaluators/${evaluatorId}`,
       { method: "POST" },
+    ),
+  removeEvaluator: (groupId: string, evaluatorId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/evaluators/${evaluatorId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
     ),
   confirmGroup: (groupId: string, expectedVersion: number) =>
     apiRequest<EvaluationGroup>(

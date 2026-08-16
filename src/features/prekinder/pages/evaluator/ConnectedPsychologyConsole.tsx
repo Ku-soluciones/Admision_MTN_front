@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Check, CheckCircle2, ChevronRight, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
+import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
 import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 
@@ -10,70 +10,60 @@ type Screen = "loading" | "agenda" | "confirm" | "evaluate";
 
 const criteria = [
   {
-    title: "Lenguaje y comprensión",
-    description: "Comprensión de instrucciones y uso del lenguaje oral y escrito.",
+    title: "Adaptación a situación de examen",
     options: [
-      { value: 0 as Score, title: "0", label: "No demuestra comprensión." },
-      { value: 1 as Score, title: "1", label: "Comprensión muy limitada." },
-      { value: 2 as Score, title: "2", label: "Comprensión parcial de instrucciones." },
-      { value: 3 as Score, title: "3", label: "Comprende instrucciones con algún apoyo." },
-      { value: 4 as Score, title: "4", label: "Comprende y sigue instrucciones sin apoyo." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+      { value: 0 as Score, title: "0", label: "No logra separarse y no entra." },
+      { value: 1 as Score, title: "1", label: "Entra llorando y no logra calmarse; no realiza el examen." },
+      { value: 2 as Score, title: "2", label: "Entra llorando, logra calmarse y realiza el examen." },
+      { value: 3 as Score, title: "3", label: "Entra llorando y se calma rápidamente." },
+      { value: 4 as Score, title: "4", label: "Logra separarse y entra tranquilo." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
     ],
   },
   {
-    title: "Atención y mediación",
-    description: "Capacidad de mantener atención sostenida y responder a la mediación del adulto.",
+    title: "Comunicación",
     options: [
-      { value: 0 as Score, title: "0", label: "No mantiene atención, no responde a mediación." },
-      { value: 1 as Score, title: "1", label: "Atención muy fugaz, requiere apoyo constante." },
-      { value: 2 as Score, title: "2", label: "Atención inestable, responde parcialmente." },
-      { value: 3 as Score, title: "3", label: "Mantiene atención con mediación intermitente." },
-      { value: 4 as Score, title: "4", label: "Mantiene atención sostenida de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+      { value: 0 as Score, title: "0", label: "No hay intención comunicativa." },
+      { value: 1 as Score, title: "1", label: "Hay comunicación no verbal." },
+      { value: 2 as Score, title: "2", label: "Dificultades en comprensión y expresión del lenguaje." },
+      { value: 3 as Score, title: "3", label: "Dificultades de lenguaje esperable para la edad." },
+      { value: 4 as Score, title: "4", label: "Establece adecuada comunicación." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
     ],
   },
   {
-    title: "Respuesta a apoyos",
-    description: "Cómo responde a los apoyos, estrategias y andamiajes presentados.",
+    title: "Vinculación con el otro (evaluador)",
     options: [
-      { value: 0 as Score, title: "0", label: "No responde a los apoyos presentados." },
-      { value: 1 as Score, title: "1", label: "Respeta marginalmente a los apoyos." },
-      { value: 2 as Score, title: "2", label: "Utiliza algunos apoyos de forma inconsistente." },
-      { value: 3 as Score, title: "3", label: "Utiliza apoyos de forma adecuada." },
-      { value: 4 as Score, title: "4", label: "Utiliza y solicita apoyos de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+      { value: 0 as Score, title: "0", label: "No hay contacto visual." },
+      { value: 1 as Score, title: "1", label: "Hay contacto visual con mediación." },
+      { value: 2 as Score, title: "2", label: "Hay contacto visual intermitente." },
+      { value: 3 as Score, title: "3", label: "Vinculación adaptativa." },
+      { value: 4 as Score, title: "4", label: "Vinculación positiva." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
     ],
   },
   {
-    title: "Flexibilidad cognitiva",
-    description: "Capacidad de adaptarse a situaciones nuevas, cambiantes o inesperadas.",
+    title: "Ejecución frente al examen",
     options: [
-      { value: 0 as Score, title: "0", label: "Rigidez total ante cambios." },
-      { value: 1 as Score, title: "1", label: "Dificultad significativa para adaptarse." },
-      { value: 2 as Score, title: "2", label: "Se adapta parcialmente tras mucho apoyo." },
-      { value: 3 as Score, title: "3", label: "Se adapta a cambios con apoyo moderado." },
-      { value: 4 as Score, title: "4", label: "Se adapta con flexibilidad a situaciones nuevas." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+      { value: 0 as Score, title: "0", label: "Desmotivado. No realiza examen." },
+      { value: 1 as Score, title: "1", label: "Realiza parcialmente el examen, con mediación." },
+      { value: 2 as Score, title: "2", label: "Realiza examen con mediación constante." },
+      { value: 3 as Score, title: "3", label: "Realiza examen con mediación intermitente." },
+      { value: 4 as Score, title: "4", label: "Se muestra motivado, disfruta de la instancia." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
     ],
   },
   {
-    title: "Necesidad de apoyo",
-    description: "Grado de apoyo requerido para completar las actividades y tareas propuestas.",
+    title: "Seguimiento de instrucciones",
     options: [
-      { value: 0 as Score, title: "0", label: "Requiere apoyo extenso y constante." },
-      { value: 1 as Score, title: "1", label: "Requiere apoyo significativo." },
-      { value: 2 as Score, title: "2", label: "Requiere apoyo moderado." },
-      { value: 3 as Score, title: "3", label: "Requiere apoyo leve o esporádico." },
-      { value: 4 as Score, title: "4", label: "Trabaja de forma autónoma sin apoyo." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+      { value: 0 as Score, title: "0", label: "No sigue instrucciones (desconectado)." },
+      { value: 1 as Score, title: "1", label: "No sigue instrucciones porque no quiere." },
+      { value: 2 as Score, title: "2", label: "Cumple instrucción con mediación." },
+      { value: 3 as Score, title: "3", label: "Cumple la tarea, pero se desvía; hay que repetirle las instrucciones." },
+      { value: 4 as Score, title: "4", label: "Cumple las instrucciones." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
     ],
   },
-  { title: "Lenguaje y comprensión", description: "Comprensión de instrucciones y uso del lenguaje." },
-  { title: "Atención y mediación", description: "Capacidad de mantener atención y responder a la mediación." },
-  { title: "Respuesta a apoyos", description: "Cómo responde a los apoyos y estrategias presentadas." },
-  { title: "Flexibilidad cognitiva", description: "Capacidad de adaptarse a situaciones nuevas o cambiantes." },
-  { title: "Necesidad de apoyo", description: "Grado de apoyo requerido para completar las actividades." },
 ] as const;
 
 function today() {
@@ -90,7 +80,7 @@ interface Props {
   profile: SpecialtyProfile;
 }
 
-export function ConnectedLearningSupportConsole({ profile }: Props) {
+export function ConnectedPsychologyConsole({ profile }: Props) {
   const { assignmentId } = useParams();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("loading");
@@ -98,9 +88,7 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
   const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
-  const [criterionIndex, setCriterionIndex] = useState(0);
-  const [responses, setResponses] = useState<{ [assignId: string]: { [criterion: number]: { [appId: string]: Score } } }>({});
-  const [notes, setNotes] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
+  const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
 
@@ -133,7 +121,6 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
     setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
-    setCriterionIndex(0);
     setScreen("confirm");
   }, []);
 
@@ -159,32 +146,14 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
       };
     });
   }, [selectedAssignment]);
-    setCriterionIndex(0);
-    setScreen("agenda");
-  }, []);
 
-  const setScore = useCallback((applicationId: string, value: Score) => {
+  const setGroupComment = useCallback((applicationId: string, comment: string) => {
     if (!selectedAssignment) return;
-    setResponses((current) => ({
-      ...current,
-      [selectedAssignment.assignmentId]: {
-        ...(current[selectedAssignment.assignmentId] ?? {} as { [criterion: number]: { [appId: string]: Score } }),
-        [criterionIndex]: {
-          ...(current[selectedAssignment.assignmentId]?.[criterionIndex] ?? {} as { [appId: string]: Score }),
-          [applicationId]: value,
-        },
-      },
-    }));
-  }, [selectedAssignment, criterionIndex]);
-
-  const setNote = useCallback((applicationId: string, note: string) => {
-    if (!selectedAssignment) return;
-    setNotes((current) => ({
+    setComments((current) => ({
       ...current,
       [selectedAssignment.assignmentId]: {
         ...(current[selectedAssignment.assignmentId] ?? {}),
-        ...(current[selectedAssignment.assignmentId] ?? {} as { [appId: string]: string }),
-        [applicationId]: note,
+        [applicationId]: comment,
       },
     }));
   }, [selectedAssignment]);
@@ -208,8 +177,7 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
     setSaving(false);
     setSubmitted((p) => ({ ...p, [selectedAssignment.assignmentId]: true }));
     if (assignmentId) {
-      navigate(`/prekinder/evaluador/learning-support`);
-      navigate(`/prekinder/evaluador/support`);
+      navigate(`/prekinder/evaluador/psychology`);
     } else {
       backToAgenda();
     }
@@ -220,20 +188,13 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
   const activeScores = selectedAssignment && activeApplicant
     ? (responses[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? Array(criteria.length).fill(undefined))
     : Array(criteria.length).fill(undefined);
-  const activeNote = selectedAssignment && activeApplicant
-    ? (notes[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
+  const activeComment = selectedAssignment && activeApplicant
+    ? (comments[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
     : "";
   const allMembersComplete = members.every((m) => {
     const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[m.applicationId];
     return scores && scores.length === criteria.length && scores.every((s) => s !== undefined);
   });
-  const currentResponses = selectedAssignment && activeApplicant
-    ? (responses[selectedAssignment.assignmentId]?.[criterionIndex]?.[activeApplicant.applicationId])
-    : undefined;
-  const currentNote = selectedAssignment && activeApplicant
-    ? (notes[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
-    : "";
-  const allCompleted = members.every((m) => responses[selectedAssignment?.assignmentId ?? ""]?.[criterionIndex]?.[m.applicationId] !== undefined);
 
   if (screen === "loading") {
     return (
@@ -245,20 +206,17 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-950 p-4 text-white">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-blue-200 bg-[#1e3a8a] p-4 text-white">
         <div className="flex items-center gap-3">
-          <LockKeyhole size={20} />
+          <UserCheck size={20} />
           <div>
-            <p className="text-sm font-black">Espacio exclusivo: Profesional de Apoyo al Aprendizaje</p>
-            <p className="text-xs text-blue-300">Acceso restringido · {assignments.length} asignaciones para hoy</p>
-            <p className="text-xs text-blue-800">Acceso restringido · {assignments.length} asignaciones para hoy</p>
+            <p className="text-sm font-black">Espacio exclusivo: Evaluador de Psicologia</p>
+            <p className="text-xs text-blue-200">{assignments.length} asignaciones para hoy</p>
           </div>
         </div>
         <button
           onClick={() => void loadAgenda()}
-          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-blue-950 hover:bg-blue-100"
-          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-blue-800 hover:bg-violet-100"
+          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-[#1e3a8a] hover:bg-blue-50"
         >
           Actualizar
         </button>
@@ -269,12 +227,12 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
         <div>
           <div className="mb-5">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Espacio del evaluador</p>
-            <h2 className="mt-1 text-3xl font-black text-slate-950">Mis casos derivados</h2>
-            <p className="mt-1 text-sm text-slate-600">Solo postulantes derivados y autorizados para esta especialidad.</p>
+            <h2 className="mt-1 text-3xl font-black text-slate-950">Mi jornada</h2>
+            <p className="mt-1 text-sm text-slate-600">Solo ves los bloques asignados. Cada grupo contiene hasta tres postulantes.</p>
           </div>
           {assignments.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
-              <p>No hay casos derivados para hoy.</p>
+              <p>No hay grupos asignados para hoy.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -333,13 +291,6 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
                   </span>
                   <h3 className="mt-3 text-base font-black leading-tight text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{report.applicantName}</h3>
                   <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600"><Check size={13} />Identidad confirmada</p>
-                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 p-5 text-center">
-                  <span className="absolute left-3 top-3 grid h-6 w-6 place-items-center rounded bg-slate-100 text-xs font-black">{index + 1}</span>
-                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                    {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
-                  </span>
-                  <h3 className="mt-3 text-sm font-black text-slate-900">{report.applicantName}</h3>
-                  <p className="mt-3 text-xs font-bold text-emerald-700"><Check className="mr-1 inline" size={14} />Identidad confirmada</p>
                 </article>
               ))}
             </div>
@@ -359,22 +310,11 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-700">
-                {formatTime(selectedAssignment.group.startsAt)} · {selectedAssignment.group.roomName} · {selectedAssignment.group.code} · Acceso restringido
+                {formatTime(selectedAssignment.group.startsAt)} · {selectedAssignment.group.roomName} · {selectedAssignment.group.code}
               </p>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>Evaluación Individual · Apoyo al Aprendizaje</h2>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>Evaluación de Psicología</h2>
               <p className="mt-1 text-sm text-slate-500">Completa todos los criterios antes de enviar la evaluación.</p>
             </div>
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">
-                {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName} - Acceso restringido
-              </p>
-              <h2 className="mt-1 text-3xl font-black text-slate-950">Evaluación Individual · Apoyo al Aprendizaje</h2>
-              <p className="mt-1 text-sm text-slate-600">Registra únicamente evidencia observable y pertinente.</p>
-            </div>
-            <span className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-900">
-              Criterio {criterionIndex + 1} de {criteria.length}
-            </span>
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[270px_1fr]">
@@ -416,9 +356,9 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
             {/* Full evaluation for selected applicant */}
             <section className="rounded-2xl border border-slate-200 bg-white shadow-lg">
               {/* Prominent student header */}
-              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-blue-800 to-blue-900 p-6">
+              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-[#1e3a8a] to-[#1e4a9a] p-6">
                 <div className="flex items-center gap-5">
-                  <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-blue-900" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                  <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-[#1e3a8a]" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                     {activeApplicant.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -426,20 +366,14 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
                     <h3 className="text-3xl font-black leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>
                       {activeApplicant.applicantName}
                     </h3>
-                    <p className="mt-1 text-sm font-medium text-blue-200">Apoyo al Aprendizaje · Evaluación Individual · Acceso Restringido</p>
+                    <p className="mt-1 text-sm font-medium text-blue-200">Psicología · Evaluación Individual</p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end gap-1">
-                    <span className="rounded-full bg-blue-400 px-4 py-2 text-sm font-black text-blue-900">
+                    <span className="rounded-full bg-[#f59e0b] px-4 py-2 text-sm font-black text-[#1e3a8a]">
                       {members.findIndex((m) => m.applicationId === activeApplicant.applicationId) + 1} / {members.length}
                     </span>
                   </div>
                 </div>
-              </div>
-
-              {/* Restricted access notice */}
-              <div className="flex items-center gap-3 border-b border-blue-100 bg-blue-50 px-5 py-3">
-                <ShieldCheck size={17} className="text-blue-700 flex-shrink-0" />
-                <p className="text-xs font-semibold text-blue-800">Esta observación no aparece en vistas operativas generales. Solo el equipo diretivo tiene acceso.</p>
               </div>
 
               <div className="divide-y divide-slate-100">
@@ -447,16 +381,13 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
                   <div key={cIdx} className="p-5">
                     <div className="mb-4 flex items-start gap-3">
                       <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-blue-900 text-sm font-black text-white">{cIdx + 1}</span>
-                      <div>
-                        <p className="pt-1 text-base font-bold leading-snug text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{criterion.title}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{criterion.description}</p>
-                      </div>
+                      <p className="pt-1 text-base font-bold leading-snug text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{criterion.title}</p>
                     </div>
                     <div className="grid grid-cols-3 gap-2 xl:grid-cols-6">
                       {criterion.options.map((opt) => (
                         <button
                           key={String(opt.value)}
-                          className={`min-h-14 rounded-xl border-2 p-3 text-center transition-all ${activeScores[cIdx] === opt.value ? "border-blue-700 bg-blue-700 text-white shadow-md" : "border-slate-200 bg-white hover:border-blue-400 hover:shadow-sm"}`}
+                          className={`min-h-14 rounded-xl border-2 p-3 text-center transition-all ${activeScores[cIdx] === opt.value ? "border-[#1e3a8a] bg-[#1e3a8a] text-white shadow-md" : "border-slate-200 bg-white hover:border-blue-400 hover:shadow-sm"}`}
                           onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
                         >
                           <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
@@ -468,17 +399,17 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
                 ))}
               </div>
 
-              {/* Observación profesional */}
+              {/* Observaciones */}
               <div className="border-t border-slate-200 bg-slate-50/50 p-5">
                 <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Observación profesional
+                  Observaciones cualitativas del postulante
                 </label>
                 <textarea
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-[#1e3a8a] focus:ring-2 focus:ring-blue-100"
                   rows={4}
-                  value={activeNote}
-                  onChange={(e) => setNote(activeApplicant.applicationId, e.target.value)}
-                  placeholder="Evidencia observable, contexto y mediaciones realizadas…"
+                  value={activeComment}
+                  onChange={(e) => setGroupComment(activeApplicant.applicationId, e.target.value)}
+                  placeholder="Evidencia observable, contexto y comportamientos relevantes de este postulante..."
                 />
               </div>
 
@@ -494,92 +425,6 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
                 >
                   {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
                 </button>
-              <h3 className="px-3 py-2 font-black text-blue-900">Postulantes asignados</h3>
-              {members.map((person) => (
-                <button
-                  key={person.applicationId}
-                  onClick={() => setActiveApplicantId(person.applicationId)}
-                  className={`mb-1 flex w-full items-center gap-3 rounded-lg p-3 text-left transition ${person.applicationId === activeApplicant.applicationId ? "bg-blue-50 text-blue-900" : "hover:bg-slate-50"}`}
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-xs font-black text-blue-700">
-                    {person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-sm">{person.applicantName}</b>
-                  </span>
-                  <ChevronRight size={16} />
-                </button>
-              ))}
-            </aside>
-
-            {/* Evaluation panel */}
-            <section className="rounded-2xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-slate-500">Criterio {criterionIndex + 1} de {criteria.length}</p>
-                    <h3 className="text-xl font-black text-slate-950">{criteria[criterionIndex].title}</h3>
-                    <p className="mt-1 text-sm text-slate-600">Postulante: {activeApplicant.applicantName}</p>
-                  </div>
-                  <span className="rounded-lg bg-blue-50 p-2 text-blue-800"><LockKeyhole size={20} /></span>
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="mb-4 grid grid-cols-2 gap-2">
-                  {([
-                    { value: 0 as Score, title: "0", label: "No logrado" },
-                    { value: 1 as Score, title: "1", label: "En proceso inicial" },
-                    { value: 2 as Score, title: "2", label: "En proceso medio" },
-                    { value: 3 as Score, title: "3", label: "Casi logrado" },
-                    { value: 4 as Score, title: "4", label: "Logrado" },
-                    { value: "NOT_OBSERVED" as Score, title: "-", label: "No observable" },
-                  ]).map((option) => (
-                    <button
-                      key={String(option.value)}
-                      className={`min-h-16 rounded-lg border p-2 transition ${currentResponses === option.value ? "border-2 border-blue-700 bg-blue-50 text-blue-950" : "border-slate-200 bg-white hover:border-blue-300"}`}
-                      onClick={() => setScore(activeApplicant.applicationId, option.value)}
-                    >
-                      <b className="block text-lg">{option.title}</b>
-                      <small className="text-slate-500">{option.label}</small>
-                    </button>
-                  ))}
-                </div>
-                <label className="mt-5 block text-sm font-bold text-slate-700">
-                  Observación profesional
-                  <textarea
-                    className="control mt-1 min-h-28 w-full py-3"
-                    value={currentNote}
-                    onChange={(e) => setNote(activeApplicant.applicationId, e.target.value)}
-                    placeholder="Evidencia observable, contexto y mediaciones realizadas…"
-                  />
-                </label>
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-900">
-                  <ShieldCheck size={17} />Esta observación no aparece en vistas operativas generales.
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
-                <button className="secondary" disabled={criterionIndex === 0} onClick={() => setCriterionIndex((c) => c - 1)}>Anterior</button>
-                <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                  <Check size={16} className="text-emerald-600" />Guardado en servidor
-                </span>
-                {criterionIndex < criteria.length - 1 ? (
-                  <button
-                    className="primary"
-                    disabled={!allCompleted}
-                    onClick={() => setCriterionIndex((c) => c + 1)}
-                  >
-                    Siguiente criterio <ChevronRight className="ml-1 inline" size={17} />
-                  </button>
-                ) : (
-                  <button
-                    className="primary"
-                    disabled={!allCompleted || saving}
-                    onClick={() => void handleSubmit()}
-                  >
-                    {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
-                  </button>
-                )}
               </div>
             </section>
           </div>

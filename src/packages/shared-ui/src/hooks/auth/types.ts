@@ -12,6 +12,7 @@ export type UserRole =
   | 'APODERADO'
   | 'ADMIN'
   | 'TEACHER'
+  | 'PREKINDER_PROFESSIONAL'
   | 'COORDINATOR'
   | 'CYCLE_DIRECTOR'
   | 'PSYCHOLOGIST'

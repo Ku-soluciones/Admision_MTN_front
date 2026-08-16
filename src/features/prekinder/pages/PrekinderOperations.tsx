@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarDays,
   Check,
   ChevronRight,
@@ -10,8 +13,12 @@ import {
   FileCheck2,
   LayoutDashboard,
   Menu,
+  KeyRound,
   RefreshCw,
   ShieldCheck,
+  Trash2,
+  TriangleAlert,
+  UserCog,
   Users,
   UsersRound,
   X,
@@ -20,6 +27,7 @@ import {
   ApiError,
   prekinderApi,
   type AdmissionProcess,
+  type ControlTowerDay,
   type DashboardMetrics,
   type EvaluationGroup,
   type FlowApplication,
@@ -31,24 +39,19 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
-import { LogoIcon } from "../../admin/components/icons/Icons";
+import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
-import {
-  createMockGroups,
-  mockApplications,
-  mockMetrics,
-  mockProcess,
-  mockRooms,
-  mockWaves,
-} from "../data/mockControlTower";
+import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 
 const sections = [
   ["Resumen", LayoutDashboard],
   ["Etapas", Activity],
   ["Postulaciones", Users],
+  ["Grupos", UsersRound],
   ["Torre de control", CalendarDays],
-  ["Profesionales", UsersRound],
+  ["Salas", DoorOpen],
+  ["Profesionales", UserCog],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
   ["Auditoría", ShieldCheck],
@@ -121,29 +124,29 @@ type PrekinderOperationsProps = {
 export function PrekinderOperations({
   embedded = false,
 }: PrekinderOperationsProps) {
-  const demoMode =
-    import.meta.env.DEV && import.meta.env.VITE_PREKINDER_DEMO === "true";
   const initialDate = today();
-  const initialDemoGroups = demoMode ? createMockGroups(initialDate) : [];
   const [section, setSection] = useState(() => {
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
+    if (requestedView === "groups") return "Grupos";
     if (requestedView === "professionals") return "Profesionales";
     return "Resumen";
   });
   const [mobileNav, setMobileNav] = useState(false);
-  const [baseLoading, setBaseLoading] = useState(!demoMode);
-  const [processes, setProcesses] = useState<AdmissionProcess[]>(demoMode ? [mockProcess] : []);
-  const [processId, setProcessId] = useState(demoMode ? mockProcess.processId : "");
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(demoMode ? mockMetrics : null);
-  const [waves, setWaves] = useState<Wave[]>(demoMode ? mockWaves : []);
-  const [applications, setApplications] = useState<FlowApplication[]>(demoMode ? mockApplications : []);
+  const [baseLoading, setBaseLoading] = useState(true);
+  const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
+  const [processId, setProcessId] = useState("");
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [waves, setWaves] = useState<Wave[]>([]);
+  const [applications, setApplications] = useState<FlowApplication[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [processProfessionals, setProcessProfessionals] = useState<Professional[]>([]);
   const [professionalRoles, setProfessionalRoles] = useState<ProfessionalRoleDefinition[]>([]);
-  const [rooms, setRooms] = useState<Room[]>(demoMode ? mockRooms : []);
-  const [groups, setGroups] = useState<EvaluationGroup[]>(initialDemoGroups);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [groups, setGroups] = useState<EvaluationGroup[]>([]);
+  const [controlTower, setControlTower] = useState<ControlTowerDay | null>(null);
   const [date, setDate] = useState(initialDate);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(initialDemoGroups[0]?.groupId ?? null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -192,19 +195,23 @@ export function PrekinderOperations({
     if (!silent) setBusy(true);
     setError("");
     try {
-      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups] =
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower, nextProcessProfessionals] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
           prekinderApi.flowApplications(id),
           prekinderApi.rooms(id),
           prekinderApi.groups(id, day),
+          prekinderApi.controlTower(id, day),
+          prekinderApi.professionals(id),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
       setApplications(nextApplications);
       setRooms(nextRooms);
       setGroups(nextGroups);
+      setControlTower(nextControlTower);
+      setProcessProfessionals(nextProcessProfessionals);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
@@ -220,27 +227,16 @@ export function PrekinderOperations({
     }
   }
 
-  const realtimeState = usePrekinderRealtimeSync(demoMode ? null : processId, () => {
-    if (!demoMode) void loadProcess(processId, date, true);
+  const realtimeState = usePrekinderRealtimeSync(processId, () => {
+    void loadProcess(processId, date, true);
   }, "process");
 
   useEffect(() => {
-    if (demoMode) return;
     void loadBase();
-  }, [demoMode]);
+  }, []);
   useEffect(() => {
-    if (demoMode) {
-      const nextGroups = createMockGroups(date);
-      setGroups(nextGroups);
-      setSelectedGroup((current) =>
-        nextGroups.some((group) => group.groupId === current)
-          ? current
-          : nextGroups[0]?.groupId ?? null,
-      );
-      return;
-    }
     if (processId) void loadProcess(processId, date);
-  }, [processId, date, demoMode]);
+  }, [processId, date]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -251,10 +247,6 @@ export function PrekinderOperations({
   }, [mobileNav]);
 
   async function action(work: () => Promise<unknown>, success: string) {
-    if (demoMode) {
-      setMessage(`${success} Vista demostrativa: el cambio no se guardó en la base de datos.`);
-      return;
-    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -262,12 +254,14 @@ export function PrekinderOperations({
       await work();
       setMessage(success);
       await loadProcess();
+      return true;
     } catch (reason) {
       setError(
         reason instanceof ApiError
           ? reason.message
           : "No pudimos guardar el cambio.",
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -279,10 +273,6 @@ export function PrekinderOperations({
     closesAt: string,
     status: Wave["status"],
   ) {
-    if (demoMode) {
-      setMessage("Etapa actualizada. Vista demostrativa: el cambio no se guardó en la base de datos.");
-      return;
-    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -322,13 +312,6 @@ export function PrekinderOperations({
   }
 
   async function refreshAll() {
-    if (demoMode) {
-      const nextGroups = createMockGroups(date);
-      setGroups(nextGroups);
-      setSelectedGroup(nextGroups[0]?.groupId ?? null);
-      setMessage("Datos de demostración restablecidos.");
-      return;
-    }
     await loadBase();
     if (processId) await loadProcess();
   }
@@ -456,9 +439,13 @@ export function PrekinderOperations({
           <div className="mt-auto px-4 pb-6">
             <a
               href="/admin"
-              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
             >
-              ← Volver al Admin
+              <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">Volver a:</span>
+                <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+              </span>
             </a>
           </div>
         </aside>}
@@ -500,9 +487,13 @@ export function PrekinderOperations({
               <div className="mt-auto px-4 pb-6">
                 <a
                   href="/admin"
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
                 >
-                  ← Volver al Admin
+                  <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold">Volver a:</span>
+                    <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+                  </span>
                 </a>
               </div>
             </aside>
@@ -523,6 +514,31 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
                     <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
                   </>
+                ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
+                    <p className="mt-1 text-sm text-gray-600">Crea y administra las salas disponibles para la jornada de evaluación.</p>
+                  </>
+                ) : section === "Profesionales" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Profesionales</p>
+                    <p className="mt-1 text-sm text-gray-600">Registra y organiza al equipo que participa en el proceso de admisión.</p>
+                  </>
+                ) : section === "Pautas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
+                  </>
+                ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Decisiones</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa los resultados y define la decisión final de cada postulación.</p>
+                  </>
+                ) : section === "Auditoría" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Auditoría</p>
+                    <p className="mt-1 text-sm text-gray-600">Consulta el historial de cambios y acciones registradas del proceso.</p>
+                  </>
                 ) : section === "Torre de control" && processId && currentProcess?.status !== "DRAFT" ? (
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Torre de control</p>
                 ) : (
@@ -537,7 +553,7 @@ export function PrekinderOperations({
                   </SectionHeading>
                 )}
               </div>
-              {!demoMode && processId && (
+              {processId && (
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
                   {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
                 </span>
@@ -556,12 +572,6 @@ export function PrekinderOperations({
               >
                 Reintentar
               </button>
-            </div>
-          )}
-          {demoMode && section !== "Resumen" && section !== "Torre de control" && (
-            <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
-              <span className="font-black">Modo demostración:</span>{" "}
-              proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
             </div>
           )}
           {message && (
@@ -594,6 +604,7 @@ export function PrekinderOperations({
               metrics={metrics}
               waves={waves}
               groups={groups}
+              controlTower={controlTower}
               applications={applications}
               onGo={setSection}
               processes={processes}
@@ -602,8 +613,7 @@ export function PrekinderOperations({
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
               lastLoaded={lastLoaded}
-              realtimeState={!demoMode ? realtimeState : null}
-              demoMode={demoMode}
+              realtimeState={realtimeState}
             />
           )}
           {section === "Etapas" && (
@@ -633,6 +643,23 @@ export function PrekinderOperations({
               }
             />
           )}
+          {section === "Grupos" && (
+            <PrekinderGroups
+              processId={processId}
+              date={date}
+              rooms={rooms}
+              groups={groups}
+              applications={applications}
+              professionals={processProfessionals}
+              busy={busy}
+              onDateChange={setDate}
+              onAction={action}
+              onOpenGroup={(groupId) => {
+                setSelectedGroup(groupId);
+                setSection("Torre de control");
+              }}
+            />
+          )}
           {section === "Torre de control" && (
             <PrekinderControlTower
               processId={processId}
@@ -640,12 +667,21 @@ export function PrekinderOperations({
               rooms={rooms}
               groups={groups}
               applications={eligible}
+              professionals={processProfessionals}
               selected={selected}
+              controlTower={controlTower}
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}
               onDateChange={setDate}
-              demoMode={demoMode}
+            />
+          )}
+          {section === "Salas" && (
+            <Rooms
+              processId={processId}
+              rooms={rooms}
+              busy={busy}
+              onAction={action}
             />
           )}
           {section === "Profesionales" && (
@@ -655,10 +691,6 @@ export function PrekinderOperations({
               roles={professionalRoles}
               busy={busy}
               onSave={async (input) => {
-                if (demoMode) {
-                  setMessage("Perfil profesional guardado.");
-                  return true;
-                }
                 setBusy(true);
                 setError("");
                 try {
@@ -668,6 +700,37 @@ export function PrekinderOperations({
                   return true;
                 } catch (requestError) {
                   setError(requestError instanceof Error ? requestError.message : "No fue posible guardar el perfil profesional.");
+                  return false;
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              onPasswordUpdate={async (professionalId, password) => {
+                setBusy(true);
+                setError("");
+                try {
+                  await prekinderApi.updateProfessionalPassword(professionalId, password);
+                  setMessage("Contraseña actualizada. Las sesiones anteriores fueron cerradas.");
+                  return true;
+                } catch (requestError) {
+                  setError(requestError instanceof Error ? requestError.message : "No fue posible actualizar la contraseña.");
+                  return false;
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              onDelete={async (person) => {
+                setBusy(true);
+                setError("");
+                try {
+                  const result = await prekinderApi.deleteProfessional(person.professionalId, person.version);
+                  setProfessionals(await prekinderApi.professionals());
+                  setMessage(result.firebaseAccountDeleted
+                    ? "Profesional y cuenta Firebase eliminados."
+                    : "Perfil Prekínder eliminado; la cuenta compartida de otros cursos se conservó.");
+                  return true;
+                } catch (requestError) {
+                  setError(requestError instanceof Error ? requestError.message : "No fue posible eliminar al profesional.");
                   return false;
                 } finally {
                   setBusy(false);
@@ -1022,7 +1085,6 @@ function Overview({
   onRefresh,
   lastLoaded,
   realtimeState,
-  demoMode,
 }: {
   metrics: DashboardMetrics | null;
   waves: Wave[];
@@ -1036,7 +1098,6 @@ function Overview({
   onRefresh: () => void;
   lastLoaded: Date | null;
   realtimeState: string | null;
-  demoMode: boolean;
 }) {
   const lastUpdated = lastLoaded
     ? new Intl.DateTimeFormat("es-CL", {
@@ -1083,11 +1144,6 @@ function Overview({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start">
-            {realtimeState && (
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                {realtimeState === "live" ? "En vivo" : "Reconectando"}
-              </span>
-            )}
             <button
               onClick={onRefresh}
               disabled={busy}
@@ -1100,12 +1156,6 @@ function Overview({
           </div>
         </div>
       </section>
-      {demoMode && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="status">
-          <span className="font-black">Modo demostración:</span>{" "}
-          proceso ficticio con 210 postulantes, 70 grupos y 10 salas. Ninguna acción modifica Admitia.
-        </div>
-      )}
       <section className="pk-panel grid grid-cols-2 overflow-hidden xl:grid-cols-5">
         {cards.map(([label, value, target]) => (
           <button
@@ -1516,7 +1566,7 @@ function DayCenter({
   selected: EvaluationGroup | null;
   busy: boolean;
   onSelect: (id: string) => void;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [roomId, setRoomId] = useState("");
   const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
@@ -1717,7 +1767,7 @@ function GroupInspector({
   applications: FlowApplication[];
   professionals: Professional[];
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [applicationId, setApplicationId] = useState("");
   const [evaluatorId, setEvaluatorId] = useState("");
@@ -1989,7 +2039,181 @@ const professionalInstrumentLabels: Record<string, string> = {
   DAP: "DAP",
 };
 
-function Professionals({ processId, professionals, roles, busy, onSave }: {
+function generateRoomCode(name: string) {
+  const base = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 20);
+  const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+  return base ? `${base}-${suffix}` : `SALA-${suffix}`;
+}
+
+function Rooms({
+  processId,
+  rooms,
+  busy,
+  onAction,
+}: {
+  processId: string;
+  rooms: Room[];
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+}) {
+  const [name, setName] = useState("");
+  const [capacity, setCapacity] = useState(3);
+  const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" } | null>(null);
+
+  const sortedRooms = useMemo(() => {
+    if (!sort) return rooms;
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...rooms].sort((a, b) =>
+      sort.key === "name"
+        ? a.name.localeCompare(b.name) * factor
+        : (a.capacity - b.capacity) * factor,
+    );
+  }, [rooms, sort]);
+
+  function toggleSort(key: "name" | "capacity") {
+    setSort((current) =>
+      current?.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <form
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const trimmedName = name.trim();
+          if (!trimmedName || capacity < 1 || !processId) return;
+          const created = await onAction(
+            () =>
+              prekinderApi.createRoom(processId, {
+                code: generateRoomCode(trimmedName),
+                name: trimmedName,
+                capacity,
+            }),
+            "Sala creada y guardada en la base de datos.",
+          );
+          if (created) {
+            setName("");
+            setCapacity(3);
+          }
+        }}
+      >
+        <h2 className="text-lg font-black">Nueva sala</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          Define el nombre y la cantidad de alumnos que recibe.
+        </p>
+        <div className="mt-5 space-y-4">
+          <Field label="Nombre de la sala">
+            <input
+              required
+              className="control w-full"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ej. Sala 107"
+            />
+          </Field>
+          <Field label="Capacidad de alumnos">
+            <input
+              required
+              type="number"
+              min={1}
+              max={40}
+              className="control w-full"
+              value={capacity}
+              onChange={(event) => setCapacity(Number(event.target.value))}
+            />
+          </Field>
+          <button disabled={busy || !name.trim() || capacity < 1} className="primary w-full">
+            Crear sala
+          </button>
+        </div>
+      </form>
+
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Salas del proceso</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {rooms.length} salas creadas para este proceso.
+        </p>
+        {!rooms.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
+            Aún no hay salas creadas. Usa el formulario para agregar la primera.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      onClick={() => toggleSort("name")}
+                    >
+                      Nombre
+                      {sort?.key === "name" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Código
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      onClick={() => toggleSort("capacity")}
+                    >
+                      Capacidad de alumnos
+                      {sort?.key === "capacity" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedRooms.map((room) => (
+                  <tr key={room.roomId}>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-3 font-black">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-900">
+                          <DoorOpen size={16} />
+                        </span>
+                        {room.name}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{room.code}</td>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-800">
+                        <Users size={14} /> {room.capacity}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Professionals({ processId, professionals, roles, busy, onSave, onPasswordUpdate, onDelete }: {
   processId: string;
   professionals: Professional[];
   roles: ProfessionalRoleDefinition[];
@@ -2001,13 +2225,18 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     roleCode: ProfessionalRoleCode;
     expectedVersion: number;
   }) => Promise<boolean>;
+  onPasswordUpdate: (professionalId: string, password: string) => Promise<boolean>;
+  onDelete: (person: Professional) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Professional | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
   const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
+  const [pendingDelete, setPendingDelete] = useState<Professional | null>(null);
+  const needsAccess = !editing || !editing.legacyUserId;
   const availableRoles = roles.filter((role) => role.groupCode === group);
   const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
     groupCode,
@@ -2018,6 +2247,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     setEditing(null);
     setName("");
     setEmail("");
+    setPassword("");
     setSpecialty("");
     setGroup("");
     setRoleCode("");
@@ -2027,6 +2257,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
     setEditing(person);
     setName(person.displayName);
     setEmail(person.email);
+    setPassword("");
     setSpecialty(person.specialty || "");
     const definition = roles.find((role) => role.roleCode === person.roleCode);
     setGroup(definition?.groupCode || "");
@@ -2036,7 +2267,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
   return (
     <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <form
-        className="h-fit rounded-2xl border border-slate-200 bg-white p-6 xl:sticky xl:top-24"
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!roleCode || !processId) return;
@@ -2046,6 +2277,7 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             legacyUserId: editing?.legacyUserId,
             displayName: name.trim(),
             email: email.trim(),
+            password: editing ? undefined : password || undefined,
             specialty: specialty.trim(),
             roleCode,
             active: editing?.active ?? true,
@@ -2054,7 +2286,9 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
           if (saved) clearForm();
         }}
       >
-        <h2 className="text-lg font-black">{editing ? "Homologar profesional" : "Nuevo profesional"}</h2>
+        <h2 className="text-lg font-black">{editing
+          ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
+          : "Nuevo profesional"}</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
           El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
         </p>
@@ -2063,8 +2297,47 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
           <Field label="Correo institucional">
-            <input required type="email" className="control w-full" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input
+              required
+              type="email"
+              disabled={Boolean(editing && !needsAccess)}
+              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </Field>
+          {!editing && (
+            <Field label="Contraseña (opcional)">
+              <input type="password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+            </Field>
+          )}
+          {editing?.legacyUserId && (
+            <Field label="Nueva contraseña (opcional)">
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  className="control min-w-0 flex-1"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="secondary inline-flex items-center gap-2 px-3"
+                  disabled={busy || password.length < 6}
+                  onClick={async () => {
+                    if (await onPasswordUpdate(editing.professionalId, password)) {
+                      setPassword("");
+                    }
+                  }}
+                >
+                  <KeyRound size={16} />
+                  Cambiar
+                </button>
+              </div>
+            </Field>
+          )}
           <Field label="Área dentro del flujo">
             <select
               required
@@ -2100,53 +2373,105 @@ function Professionals({ processId, professionals, roles, busy, onSave }: {
             <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
           </Field>
           <button disabled={busy || !processId || !roleCode} className="primary w-full">
-            {editing ? "Guardar homologación" : "Crear perfil profesional"}
+            {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
           </button>
           {editing && <button type="button" className="secondary w-full" onClick={clearForm}>Cancelar edición</button>}
         </div>
       </form>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-950">Equipo Prekínder</h2>
-          <p className="mt-1 text-sm text-slate-600">{professionals.length} profesionales organizados por función dentro del flujo.</p>
-        </div>
-        {!professionals.length && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Equipo Prekínder</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {professionals.length} profesionales organizados por función dentro del flujo.
+        </p>
+        {!professionals.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
             Aún no hay profesionales registrados para organizar.
           </div>
-        )}
-        {groupedPeople.map(({ groupCode, people }) => (
-          <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
-              <span className="text-xs font-bold text-slate-500">{people.length}</span>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {people.map((person) => (
-                <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                    {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold">{person.displayName}</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
-                    <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
-                  </span>
-                  <div className="ml-14 flex items-center gap-2 sm:ml-0">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                      {person.active ? "Activo" : "Inactivo"}
-                    </span>
-                    <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
-                      {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
-                    </button>
-                  </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {groupedPeople.map(({ groupCode, people }) => (
+              <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                  <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
+                  <span className="text-xs font-bold text-slate-500">{people.length}</span>
                 </div>
-              ))}
+                <div className="divide-y divide-slate-100">
+                  {people.map((person) => (
+                    <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
+                        {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-bold">{person.displayName}</span>
+                        <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
+                        <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
+                      </span>
+                      <div className="ml-14 flex items-center gap-2 sm:ml-0">
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                          {person.active ? "Activo" : "Inactivo"}
+                        </span>
+                        <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
+                          {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
+                        </button>
+                        <button
+                          type="button"
+                          className="grid h-10 w-10 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => setPendingDelete(person)}
+                          disabled={busy}
+                          aria-label={`Eliminar a ${person.displayName}`}
+                          title="Eliminar profesional"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-professional-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-red-50 text-red-700">
+              <TriangleAlert size={21} />
+            </span>
+            <h2 id="delete-professional-title" className="mt-4 text-xl font-black text-slate-950">
+              Eliminar profesional
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Se eliminará el perfil Prekínder de <strong>{pendingDelete.displayName}</strong>. Si su cuenta fue creada exclusivamente para este flujo, también será eliminada de Firebase.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              El historial de evaluaciones se conserva. No se podrá eliminar mientras tenga grupos activos asignados.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" className="secondary" disabled={busy} onClick={() => setPendingDelete(null)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={busy}
+                onClick={async () => {
+                  const deleted = await onDelete(pendingDelete);
+                  if (deleted) {
+                    if (editing?.professionalId === pendingDelete.professionalId) clearForm();
+                    setPendingDelete(null);
+                  } else {
+                    setPendingDelete(null);
+                  }
+                }}
+              >
+                {busy ? "Eliminando…" : "Sí, eliminar"}
+              </button>
             </div>
           </div>
-        ))}
-      </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -2214,13 +2539,13 @@ function Decisions({
   processId: string;
   applications: FlowApplication[];
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
             <h2 className="font-black">Publicación programada</h2>
             <p className="mt-1 text-xs text-slate-500">
@@ -2274,7 +2599,7 @@ function DecisionRow({
 }: {
   app: FlowApplication;
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<void>;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [decision, setDecision] = useState<
     "ACCEPTED" | "REJECTED" | "WAITLIST"
