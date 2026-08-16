@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  UserCog,
   Users,
   UsersRound,
   X,
@@ -38,13 +39,15 @@ import { PrekinderBrand } from "../components/PrekinderBrand";
 import { LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
+import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 
 const sections = [
   ["Resumen", LayoutDashboard],
   ["Etapas", Activity],
   ["Postulaciones", Users],
+  ["Grupos", UsersRound],
   ["Torre de control", CalendarDays],
-  ["Profesionales", UsersRound],
+  ["Profesionales", UserCog],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
   ["Auditoría", ShieldCheck],
@@ -121,6 +124,7 @@ export function PrekinderOperations({
   const [section, setSection] = useState(() => {
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
+    if (requestedView === "groups") return "Grupos";
     if (requestedView === "professionals") return "Profesionales";
     return "Resumen";
   });
@@ -187,7 +191,7 @@ export function PrekinderOperations({
     if (!silent) setBusy(true);
     setError("");
     try {
-      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower] =
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower, nextProcessProfessionals] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
@@ -195,6 +199,7 @@ export function PrekinderOperations({
           prekinderApi.rooms(id),
           prekinderApi.groups(id, day),
           prekinderApi.controlTower(id, day),
+          prekinderApi.professionals(id),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
@@ -202,6 +207,7 @@ export function PrekinderOperations({
       setRooms(nextRooms);
       setGroups(nextGroups);
       setControlTower(nextControlTower);
+      setProcessProfessionals(nextProcessProfessionals);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
@@ -227,11 +233,6 @@ export function PrekinderOperations({
   useEffect(() => {
     if (processId) void loadProcess(processId, date);
   }, [processId, date]);
-  useEffect(() => {
-    if (!processId) return;
-    setProcessProfessionals([]);
-    prekinderApi.professionals(processId).then(setProcessProfessionals).catch(() => {});
-  }, [processId]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -605,6 +606,23 @@ export function PrekinderOperations({
               }
             />
           )}
+          {section === "Grupos" && (
+            <PrekinderGroups
+              processId={processId}
+              date={date}
+              rooms={rooms}
+              groups={groups}
+              applications={applications}
+              professionals={processProfessionals}
+              busy={busy}
+              onDateChange={setDate}
+              onAction={action}
+              onOpenGroup={(groupId) => {
+                setSelectedGroup(groupId);
+                setSection("Torre de control");
+              }}
+            />
+          )}
           {section === "Torre de control" && (
             <PrekinderControlTower
               processId={processId}
@@ -614,6 +632,7 @@ export function PrekinderOperations({
               applications={eligible}
               professionals={processProfessionals}
               selected={selected}
+              controlTower={controlTower}
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}

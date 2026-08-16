@@ -644,6 +644,24 @@ export const prekinderApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateGroup: (
+    groupId: string,
+    input: {
+      roomId: string;
+      startsAt: string;
+      durationMinutes: number;
+      capacity: number;
+      requiredEvaluators: number;
+      memberIds: string[];
+      evaluatorIds: string[];
+      reason: string;
+      expectedVersion: number;
+    },
+  ) =>
+    apiRequest<EvaluationGroup>(`/v1/prekinder/groups/${groupId}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
   rescheduleGroup: (
     groupId: string,
     input: {
@@ -671,15 +689,30 @@ export const prekinderApi = {
       `/v1/prekinder/groups/${groupId}/configuration`,
       { method: "PUT", body: JSON.stringify(input) },
     ),
+  deleteGroup: (groupId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   addMember: (groupId: string, applicationId: string) =>
     apiRequest<EvaluationGroup>(
       `/v1/prekinder/groups/${groupId}/members/${applicationId}`,
       { method: "POST" },
     ),
+  removeMember: (groupId: string, applicationId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/members/${applicationId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   assignEvaluator: (groupId: string, evaluatorId: string) =>
     apiRequest<EvaluationGroup>(
       `/v1/prekinder/groups/${groupId}/evaluators/${evaluatorId}`,
       { method: "POST" },
+    ),
+  removeEvaluator: (groupId: string, evaluatorId: string, expectedVersion: number) =>
+    apiRequest<EvaluationGroup>(
+      `/v1/prekinder/groups/${groupId}/evaluators/${evaluatorId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
     ),
   confirmGroup: (groupId: string, expectedVersion: number) =>
     apiRequest<EvaluationGroup>(
