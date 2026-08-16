@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Clock3, Users } from "lucide-react";
 import {
   prekinderApi,
-  type EvaluatorAssignment,
+  type AgendaWithInstrument,
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
@@ -30,7 +30,7 @@ interface PrekinderEvaluatorGroupPageProps {
 export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroupPageProps) {
   const { groupId = "" } = useParams();
   const navigate = useNavigate();
-  const [group, setGroup] = useState<EvaluatorAssignment | null>(null);
+  const [group, setGroup] = useState<AgendaWithInstrument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -38,11 +38,10 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
     setLoading(true);
     setError("");
     try {
-      const agenda = await prekinderApi.evaluatorAgenda(
-        today(),
-        profile,
+      const agenda = await prekinderApi.evaluatorAgenda(today(), profile);
+      const found = agenda.find(
+        (item) => item.instrumentCode === profile && item.group.groupId === groupId,
       );
-      const found = agenda.assignments.find((item) => item.group.groupId === groupId);
       setGroup(found ?? null);
       if (!found) {
         setError("Grupo no encontrado en la agenda de hoy.");
