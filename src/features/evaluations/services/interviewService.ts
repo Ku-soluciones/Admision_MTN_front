@@ -972,6 +972,30 @@ class InterviewService {
       };
     }
   }
+
+  // Obtener documentos de una aplicación para el portal del director de ciclo
+  async getDocumentsByApplication(applicationId: number): Promise<any[]> {
+    try {
+      const response = await api.get(`/v1/documents/application/${applicationId}`);
+
+      // El backend puede devolver diferentes formatos
+      if (response.data?.success && Array.isArray(response.data?.data)) {
+        return response.data.data;
+      }
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
+    } catch (error: any) {
+      // Si hay error de auth, devolver array vacío en vez de throw
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.error('Error de autenticación al obtener documentos');
+        return [];
+      }
+      console.error('Error al obtener documentos:', error);
+      return [];
+    }
+  }
 }
 
 export const interviewService = new InterviewService();
