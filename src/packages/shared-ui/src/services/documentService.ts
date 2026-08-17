@@ -23,6 +23,8 @@ export interface DocumentResponse {
     documentType: string;
     isRequired: boolean;
     createdAt: string;
+    approvalStatus?: 'APPROVED' | 'REJECTED' | 'PENDING';
+    rejectionReason?: string;
 }
 
 export interface UploadResponse {
