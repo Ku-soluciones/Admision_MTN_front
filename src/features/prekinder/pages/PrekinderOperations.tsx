@@ -15,7 +15,6 @@ import {
   Menu,
   KeyRound,
   RefreshCw,
-  ShieldCheck,
   Trash2,
   TriangleAlert,
   UserCog,
@@ -54,7 +53,6 @@ const sections = [
   ["Profesionales", UserCog],
   ["Pautas", ClipboardCheck],
   ["Decisiones", FileCheck2],
-  ["Auditoría", ShieldCheck],
 ] as const;
 
 const waveNames: Record<string, string> = {
@@ -227,7 +225,7 @@ export function PrekinderOperations({
     }
   }
 
-  const realtimeState = usePrekinderRealtimeSync(processId, () => {
+  usePrekinderRealtimeSync(processId, () => {
     void loadProcess(processId, date, true);
   }, "process");
 
@@ -560,11 +558,6 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Decisiones</p>
                     <p className="mt-1 text-sm text-gray-600">Revisa los resultados y define la decisión final de cada postulación.</p>
                   </>
-                ) : section === "Auditoría" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Auditoría</p>
-                    <p className="mt-1 text-sm text-gray-600">Consulta el historial de cambios y acciones registradas del proceso.</p>
-                  </>
                 ) : section === "Torre de control" && processId && currentProcess?.status !== "DRAFT" ? (
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Torre de control</p>
                 ) : (
@@ -579,11 +572,6 @@ export function PrekinderOperations({
                   </SectionHeading>
                 )}
               </div>
-              {processId && (
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                  {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
-                </span>
-              )}
             </div>
           )}
           {error && (
@@ -639,7 +627,6 @@ export function PrekinderOperations({
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
               lastLoaded={lastLoaded}
-              realtimeState={realtimeState}
             />
           )}
           {section === "Etapas" && (
@@ -773,7 +760,6 @@ export function PrekinderOperations({
               onAction={action}
             />
           )}
-          {section === "Auditoría" && <AuditNotice />}
             </>
           )}
         </Content>
@@ -1110,7 +1096,6 @@ function Overview({
   onProcessChange,
   onRefresh,
   lastLoaded,
-  realtimeState,
 }: {
   metrics: DashboardMetrics | null;
   waves: Wave[];
@@ -1123,7 +1108,6 @@ function Overview({
   onProcessChange: (id: string) => void;
   onRefresh: () => void;
   lastLoaded: Date | null;
-  realtimeState: string | null;
 }) {
   const lastUpdated = lastLoaded
     ? new Intl.DateTimeFormat("es-CL", {
@@ -2683,20 +2667,6 @@ function DecisionRow({
         Guardar
       </button>
     </div>
-  );
-}
-
-function AuditNotice() {
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8">
-      <ShieldCheck size={36} className="text-azul-monte-tabor" />
-      <h2 className="mt-5 text-xl font-black">Historial protegido y activo</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-        Cada cambio de configuración, revisión, asignación, informe, extensión,
-        decisión y publicación conserva responsable, fecha y motivo. Los datos
-        personales y documentos no se incluyen en los registros técnicos.
-      </p>
-    </section>
   );
 }
 
