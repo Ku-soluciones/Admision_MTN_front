@@ -117,41 +117,21 @@ export function PrekinderGroups(props: Props) {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 rounded-2xl bg-slate-950 p-5 text-white sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-[-0.025em] sm:text-3xl">
-            Grupos de evaluación
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-            Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="flex min-h-11 items-center gap-2 rounded-xl bg-white/10 px-3 text-sm font-bold">
-            <CalendarDays size={17} aria-hidden="true" />
-            <span className="sr-only">Fecha de la jornada</span>
-            <input
-              className="min-w-0 bg-transparent text-white outline-none [color-scheme:dark]"
-              type="date"
-              value={props.date}
-              onChange={(event) => {
-                if (event.target.value) {
-                  setEditor(null);
-                  props.onDateChange(event.target.value);
-                }
-              }}
-            />
-          </label>
-          <button
-            className="primary min-h-11"
-            disabled={props.busy || props.rooms.length === 0}
-            onClick={() => setEditor({ mode: "create" })}
-          >
-            <Plus className="mr-2 inline" size={17} />
-            Armar grupo
-          </button>
-        </div>
-      </header>
+      <label className="flex min-h-9 w-fit items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
+        <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+        <span className="shrink-0">Fecha de la jornada</span>
+        <input
+          className="min-w-0 bg-transparent text-sm font-semibold text-gray-950 outline-none"
+          type="date"
+          value={props.date}
+          onChange={(event) => {
+            if (event.target.value) {
+              setEditor(null);
+              props.onDateChange(event.target.value);
+            }
+          }}
+        />
+      </label>
 
       <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-3">
         <Summary label="Grupos activos" value={activeGroups.length} detail={`${props.rooms.length} salas disponibles`} />
@@ -180,19 +160,29 @@ export function PrekinderGroups(props: Props) {
               aria-label="Buscar grupos"
             />
           </div>
-          <select
-            className="control sm:w-52"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            aria-label="Filtrar por estado"
-          >
-            <option value="ACTIVE">Grupos activos</option>
-            <option value="DRAFT">En preparación</option>
-            <option value="CONFIRMED">Listos</option>
-            <option value="COMPLETED">Finalizados</option>
-            <option value="CANCELLED">Eliminados</option>
-            <option value="ALL">Todos los estados</option>
-          </select>
+          <div className="flex gap-2">
+            <select
+              className="control sm:w-52"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              aria-label="Filtrar por estado"
+            >
+              <option value="ACTIVE">Grupos activos</option>
+              <option value="DRAFT">En preparación</option>
+              <option value="CONFIRMED">Listos</option>
+              <option value="COMPLETED">Finalizados</option>
+              <option value="CANCELLED">Eliminados</option>
+              <option value="ALL">Todos los estados</option>
+            </select>
+            <button
+              className="primary min-h-11 shrink-0"
+              disabled={props.busy || props.rooms.length === 0}
+              onClick={() => setEditor({ mode: "create" })}
+            >
+              <Plus className="mr-2 inline" size={17} />
+              Armar grupo
+            </button>
+          </div>
         </div>
 
         {visibleGroups.length === 0 ? (
