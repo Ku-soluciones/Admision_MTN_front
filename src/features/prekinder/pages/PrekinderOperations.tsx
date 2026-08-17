@@ -267,6 +267,27 @@ export function PrekinderOperations({
     }
   }
 
+  async function actionSilent(work: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await work();
+      setMessage(success);
+      await loadProcess();
+      return { ok: true as const };
+    } catch (reason) {
+      return {
+        ok: false as const,
+        error:
+          reason instanceof ApiError
+            ? reason.message
+            : "No pudimos guardar el cambio.",
+      };
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveStage(
     wave: Wave,
     opensAt: string,
@@ -514,6 +535,11 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
                     <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
                   </>
+                ) : section === "Grupos" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
+                    <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
+                  </>
                 ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
@@ -681,7 +707,7 @@ export function PrekinderOperations({
               processId={processId}
               rooms={rooms}
               busy={busy}
-              onAction={action}
+              onAction={actionSilent}
             />
           )}
           {section === "Profesionales" && (
@@ -1125,7 +1151,7 @@ function Overview({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Resumen</p>
-            {lastUpdated && <p className="mt-1 text-sm text-gray-400">actualizado {lastUpdated}</p>}
+            <p className="mt-1 text-sm text-gray-600">Visualiza el estado general del proceso y accede rápido a cada sección.</p>
             <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
               <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
               <label htmlFor="pk-process-select" className="shrink-0 text-sm text-gray-600">Proceso</label>
@@ -1144,6 +1170,7 @@ function Overview({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start">
+            {lastUpdated && <p className="text-sm text-gray-400">actualizado {lastUpdated}</p>}
             <button
               onClick={onRefresh}
               disabled={busy}
@@ -2060,10 +2087,14 @@ function Rooms({
   processId: string;
   rooms: Room[];
   busy: boolean;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  onAction: (
+    work: () => Promise<unknown>,
+    success: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }) {
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState(3);
+  const [formError, setFormError] = useState("");
   const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" } | null>(null);
 
   const sortedRooms = useMemo(() => {
@@ -2092,7 +2123,8 @@ function Rooms({
           event.preventDefault();
           const trimmedName = name.trim();
           if (!trimmedName || capacity < 1 || !processId) return;
-          const created = await onAction(
+          setFormError("");
+          const result = await onAction(
             () =>
               prekinderApi.createRoom(processId, {
                 code: generateRoomCode(trimmedName),
@@ -2101,9 +2133,11 @@ function Rooms({
             }),
             "Sala creada y guardada en la base de datos.",
           );
-          if (created) {
+          if (result.ok) {
             setName("");
             setCapacity(3);
+          } else {
+            setFormError(result.error);
           }
         }}
       >
@@ -2129,9 +2163,17 @@ function Rooms({
               max={40}
               className="control w-full"
               value={capacity}
-              onChange={(event) => setCapacity(Number(event.target.value))}
+              onChange={(event) => {
+                setCapacity(Number(event.target.value));
+                setFormError("");
+              }}
             />
           </Field>
+          {formError && (
+            <p className="text-sm font-semibold text-red-700" role="alert">
+              {formError}
+            </p>
+          )}
           <button disabled={busy || !name.trim() || capacity < 1} className="primary w-full">
             Crear sala
           </button>
