@@ -1580,6 +1580,7 @@ function DayCenter({
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [roomId, setRoomId] = useState("");
+  const [interviewDate, setInterviewDate] = useState(date);
   const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
   const [time, setTime] = useState("09:00");
   const [code, setCode] = useState("");
@@ -1597,6 +1598,15 @@ function DayCenter({
     <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_350px]">
       <section className="pk-panel min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-5">
+          <Field label="Fecha de rendición de entrevista">
+            <input
+              className="control"
+              type="date"
+              required
+              value={interviewDate}
+              onChange={(event) => setInterviewDate(event.target.value)}
+            />
+          </Field>
           <Field label="Sala">
             <select
               className="control"
@@ -1666,7 +1676,7 @@ function DayCenter({
           </Field>
           <button
             disabled={
-              busy || !roomId || !code || capacity < 1 || requiredEvaluators < 1
+              busy || !interviewDate || !roomId || !code || capacity < 1 || requiredEvaluators < 1
             }
             className="primary"
             onClick={() =>
@@ -1677,7 +1687,7 @@ function DayCenter({
                     roomId,
                     stage,
                     code,
-                    startsAt: new Date(`${date}T${time}:00`).toISOString(),
+                    startsAt: new Date(`${interviewDate}T${time}:00`).toISOString(),
                     durationMinutes: 30,
                     capacity,
                     requiredEvaluators,

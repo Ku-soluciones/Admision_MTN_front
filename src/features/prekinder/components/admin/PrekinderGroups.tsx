@@ -119,7 +119,7 @@ export function PrekinderGroups(props: Props) {
     <div className="space-y-5">
       <label className="flex min-h-9 w-fit items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
         <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-        <span className="shrink-0">Fecha de la jornada</span>
+        <span className="shrink-0">Fecha de rendición de entrevista</span>
         <input
           className="min-w-0 bg-transparent text-sm font-semibold text-gray-950 outline-none"
           type="date"
@@ -336,7 +336,7 @@ function GroupEditor({
 }: Props & { editor: Exclude<EditorState, null>; onClose: () => void }) {
   const editing = editor.mode === "edit" ? editor.group : null;
   const [stage, setStage] = useState<EvaluationGroup["stage"]>(editing?.stage ?? "GROUP_3");
-  const [roomId, setRoomId] = useState(editing?.roomId ?? props.rooms.find((room) => room.active)?.roomId ?? "");
+  const [roomId, setRoomId] = useState(editing?.roomId ?? "");
   const [time, setTime] = useState(editing ? formatTime(editing.startsAt) : "09:00");
   const [code, setCode] = useState(editing?.code ?? "");
   const [capacity, setCapacity] = useState(editing?.capacity ?? 3);
@@ -344,7 +344,7 @@ function GroupEditor({
   const [memberIds, setMemberIds] = useState<string[]>(editing?.memberIds ?? []);
   const [evaluatorIds, setEvaluatorIds] = useState<string[]>(editing?.evaluatorIds ?? []);
 
-  const startCandidate = time ? new Date(`${props.date}T${time}:00`) : null;
+  const startCandidate = props.date && time ? new Date(`${props.date}T${time}:00`) : null;
   const startsAt = startCandidate && !Number.isNaN(startCandidate.getTime())
     ? startCandidate.toISOString()
     : null;
@@ -474,6 +474,17 @@ function GroupEditor({
               <option value="GROUP_9">Interacción grupal · base 9</option>
             </select>
           </Field>
+          <Field label="Fecha de rendición de entrevista">
+            <input
+              className="control w-full"
+              type="date"
+              required
+              value={props.date}
+              onChange={(event) => {
+                if (event.target.value) props.onDateChange(event.target.value);
+              }}
+            />
+          </Field>
           <Field label="Sala">
             <select className="control w-full" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
               <option value="">Seleccionar sala</option>
@@ -525,8 +536,12 @@ function GroupEditor({
 
       <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-slate-600" role="status">
-          {!time
-            ? "Completa la hora de inicio."
+          {!props.date
+            ? "Selecciona la fecha de rendición de la entrevista."
+            : !roomId
+              ? "Selecciona la sala donde se rendirá la entrevista."
+              : !time
+                ? "Completa la hora de inicio."
             : memberIds.length === 0
               ? "Selecciona al menos un postulante."
               : memberIds.length > capacity
@@ -539,7 +554,7 @@ function GroupEditor({
                       ? `Quita ${evaluatorIds.length - requiredEvaluators} evaluadores para respetar el límite.`
                       : editing
                         ? "Código y tipo se mantienen; la planificación y composición están listas para guardar."
-                        : "La composición está completa y lista para guardar."}
+                        : "La sala, fecha y composición están completas y listas para guardar."}
         </p>
         <div className="flex justify-end gap-2">
           <button className="secondary" onClick={onClose}>Cancelar</button>

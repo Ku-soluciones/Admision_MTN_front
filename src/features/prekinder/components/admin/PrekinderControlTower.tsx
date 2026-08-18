@@ -59,6 +59,17 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
+function formatDay(date: string) {
+  if (!date) return "la jornada seleccionada";
+  return new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Santiago",
+  }).format(new Date(`${date}T12:00:00`));
+}
+
 function fullName(app: FlowApplication) {
   return [
     app.identity.firstName,
@@ -233,8 +244,30 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Operación en vivo</p><h2 className="mt-1 text-2xl font-black text-slate-950">Torre de control</h2><p className="mt-1 text-sm text-slate-600">{groups.length} grupos en {rooms.length} salas, organizados en bloques de 30 minutos.</p></div>
-        <button className="primary" onClick={props.onOpenMonitor}>Ver monitor</button>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Operación en vivo</p>
+          <h2 className="mt-1 text-2xl font-black text-slate-950">Torre de control</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Estás revisando el <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>: {groups.length} grupos en {rooms.length} salas.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="block text-xs font-black text-slate-600">
+            Día de la jornada
+            <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-100">
+              <CalendarDays size={17} className="shrink-0 text-blue-700" aria-hidden="true" />
+              <input
+                className="min-w-0 bg-transparent text-sm font-black text-slate-950 outline-none"
+                type="date"
+                value={props.date}
+                onChange={(event) => {
+                  if (event.target.value) props.onDateChange(event.target.value);
+                }}
+              />
+            </span>
+          </label>
+          <button className="primary" onClick={props.onOpenMonitor}>Ver monitor</button>
+        </div>
       </div>
       <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={CalendarClock} label="Bloques del día" value={groups.length} detail={`${rooms.length} salas activas`} />
@@ -252,7 +285,9 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">Torre de control</p>
               <h2 className="mt-1 text-xl font-black text-slate-950">Salas y bloques de la jornada</h2>
-              <p className="mt-1 text-sm text-slate-600">Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Distribución del <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>. Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Ocupado
@@ -573,6 +608,7 @@ function CreateGroupDialog({
   initialTime,
   busy,
   onAction,
+  onDateChange,
   onClose,
 }: Props & { roomId: string; initialTime: string; onClose: () => void }) {
   const [code, setCode] = useState("");
@@ -582,7 +618,8 @@ function CreateGroupDialog({
   const [evaluatorIds, setEvaluatorIds] = useState<string[]>([]);
   const [childQuery, setChildQuery] = useState("");
   const [evaluatorQuery, setEvaluatorQuery] = useState("");
-  const room = rooms.find((item) => item.roomId === roomId);
+  const [selectedRoomId, setSelectedRoomId] = useState(roomId);
+  const room = rooms.find((item) => item.roomId === selectedRoomId);
   const requiredEvaluators = stage === "GROUP_3" ? 3 : 6;
   const startsAt = new Date(`${date}T${initialTime}:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
@@ -621,7 +658,8 @@ function CreateGroupDialog({
 
   const capacityIsValid = capacity >= memberIds.length && capacity <= Math.min(30, room?.capacity ?? 0);
   const canCreate = Boolean(
-    room
+    date
+    && room
     && code.trim()
     && capacityIsValid
     && memberIds.length > 0
@@ -645,7 +683,7 @@ function CreateGroupDialog({
     const saved = await onAction(
       () => prekinderApi.createAssignedGroup({
         processId,
-        roomId,
+        roomId: selectedRoomId,
         stage,
         code: code.trim(),
         startsAt,
@@ -666,13 +704,42 @@ function CreateGroupDialog({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 id="create-group-title" className="text-xl font-black tracking-[-0.02em] text-slate-950 sm:text-2xl">Generar grupo de evaluación</h2>
-            <p className="mt-1 text-sm text-slate-600">Compón el grupo de niños y su equipo evaluador para {room?.name ?? "la sala seleccionada"}, a las {initialTime}.</p>
+            <p className="mt-1 text-sm text-slate-600">Selecciona la sala y la fecha de rendición de la entrevista antes de componer el grupo.</p>
           </div>
           <button className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700" onClick={onClose} disabled={busy} aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-3 sm:px-6">
+          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-5">
+            <label className="block text-sm font-bold text-slate-700">Fecha de rendición de entrevista
+              <input
+                className="control mt-1 w-full"
+                type="date"
+                required
+                value={date}
+                onChange={(event) => {
+                  if (event.target.value) onDateChange(event.target.value);
+                }}
+              />
+            </label>
+            <label className="block text-sm font-bold text-slate-700">Sala
+              <select
+                className="control mt-1 w-full"
+                required
+                value={selectedRoomId}
+                onChange={(event) => {
+                  const nextRoomId = event.target.value;
+                  const nextRoom = rooms.find((item) => item.roomId === nextRoomId);
+                  setSelectedRoomId(nextRoomId);
+                  setCapacity((current) => Math.min(current, nextRoom?.capacity ?? current));
+                }}
+              >
+                <option value="">Seleccionar sala</option>
+                {rooms.filter((item) => item.active).map((item) => (
+                  <option key={item.roomId} value={item.roomId}>{item.name} · cap. {item.capacity}</option>
+                ))}
+              </select>
+            </label>
             <label className="block text-sm font-bold text-slate-700">Código del grupo
               <input className="control mt-1 w-full" value={code} maxLength={64} onChange={(event) => setCode(event.target.value)} placeholder="Ej. PK-A-0900" autoFocus />
             </label>
@@ -733,9 +800,9 @@ function CreateGroupDialog({
 
         <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0 text-sm">
-            <p className="font-black text-slate-900">{room?.name} · {initialTime}–{formatTime(endsAt)}</p>
+            <p className="font-black text-slate-900">{date} · {room?.name ?? "Sala pendiente"} · {initialTime}–{formatTime(endsAt)}</p>
             <p className={`mt-0.5 ${canCreate ? "text-emerald-700" : "text-slate-500"}`} aria-live="polite">
-              {canCreate ? "Composición completa y lista para guardar." : memberIds.length === 0 ? "Selecciona al menos un niño." : evaluatorIds.length !== requiredEvaluators ? `Selecciona ${requiredEvaluators - evaluatorIds.length} evaluador${requiredEvaluators - evaluatorIds.length === 1 ? "" : "es"} más.` : !capacityIsValid ? "Revisa la capacidad del grupo y de la sala." : "Ingresa un código para el grupo."}
+              {canCreate ? "Sala, fecha y composición completas; el grupo está listo para guardar." : !date ? "Selecciona la fecha de rendición de la entrevista." : !room ? "Selecciona la sala donde se rendirá la entrevista." : memberIds.length === 0 ? "Selecciona al menos un niño." : evaluatorIds.length !== requiredEvaluators ? `Selecciona ${requiredEvaluators - evaluatorIds.length} evaluador${requiredEvaluators - evaluatorIds.length === 1 ? "" : "es"} más.` : !capacityIsValid ? "Revisa la capacidad del grupo y de la sala." : "Ingresa un código para el grupo."}
             </p>
           </div>
           <div className="flex shrink-0 justify-end gap-2">
