@@ -610,6 +610,19 @@ export const prekinderApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateRoom: (
+    roomId: string,
+    input: { code: string; name: string; capacity: number; expectedVersion: number },
+  ) =>
+    apiRequest<Room>(`/v1/prekinder/rooms/${roomId}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deleteRoom: (roomId: string, expectedVersion: number) =>
+    apiRequest<Room>(
+      `/v1/prekinder/rooms/${roomId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
   groups: (processId: string, date: string) =>
     apiRequest<EvaluationGroup[]>(
       `/v1/prekinder/processes/${processId}/groups?date=${date}`,

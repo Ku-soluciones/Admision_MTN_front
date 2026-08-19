@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Menu,
   KeyRound,
+  Pencil,
   RefreshCw,
   Trash2,
   TriangleAlert,
@@ -271,6 +272,25 @@ export function PrekinderOperations({
     try {
       await work();
       setMessage(success);
+      await loadProcess();
+      return { ok: true as const };
+    } catch (reason) {
+      return {
+        ok: false as const,
+        error:
+          reason instanceof ApiError
+            ? reason.message
+            : "No pudimos guardar el cambio.",
+      };
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function actionQuiet(work: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    try {
+      await work();
       await loadProcess();
       return { ok: true as const };
     } catch (reason) {
@@ -694,7 +714,7 @@ export function PrekinderOperations({
               processId={processId}
               rooms={rooms}
               busy={busy}
-              onAction={actionSilent}
+              onAction={actionQuiet}
             />
           )}
           {section === "Profesionales" && (
@@ -2086,20 +2106,32 @@ function Rooms({
     success: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }) {
+  const [editing, setEditing] = useState<Room | null>(null);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState(3);
   const [formError, setFormError] = useState("");
   const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timeout = setTimeout(() => setSuccessMessage(""), 3000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
+
+  const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
 
   const sortedRooms = useMemo(() => {
-    if (!sort) return rooms;
+    if (!sort) return activeRooms;
     const factor = sort.dir === "asc" ? 1 : -1;
-    return [...rooms].sort((a, b) =>
+    return [...activeRooms].sort((a, b) =>
       sort.key === "name"
         ? a.name.localeCompare(b.name) * factor
         : (a.capacity - b.capacity) * factor,
     );
-  }, [rooms, sort]);
+  }, [activeRooms, sort]);
 
   function toggleSort(key: "name" | "capacity") {
     setSort((current) =>
@@ -2109,33 +2141,62 @@ function Rooms({
     );
   }
 
+  function editRoom(room: Room) {
+    setEditing(room);
+    setName(room.name);
+    setCapacity(room.capacity);
+    setFormError("");
+  }
+
+  function clearForm() {
+    setEditing(null);
+    setName("");
+    setCapacity(3);
+    setFormError("");
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="space-y-3">
       <form
         className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
         onSubmit={async (event) => {
           event.preventDefault();
           const trimmedName = name.trim();
-          if (!trimmedName || capacity < 1 || !processId) return;
+          if (!trimmedName || capacity < 0 || !processId) return;
           setFormError("");
-          const result = await onAction(
-            () =>
-              prekinderApi.createRoom(processId, {
-                code: generateRoomCode(trimmedName),
-                name: trimmedName,
-                capacity,
-            }),
-            "Sala creada y guardada en la base de datos.",
-          );
+          const successText = editing
+            ? `Sala ${trimmedName} actualizada.`
+            : "Sala creada.";
+          const result = editing
+            ? await onAction(
+                () =>
+                  prekinderApi.updateRoom(editing.roomId, {
+                    code: editing.code,
+                    name: trimmedName,
+                    capacity,
+                    expectedVersion: editing.version,
+                  }),
+                successText,
+              )
+            : await onAction(
+                () =>
+                  prekinderApi.createRoom(processId, {
+                    code: generateRoomCode(trimmedName),
+                    name: trimmedName,
+                    capacity,
+                  }),
+                successText,
+              );
           if (result.ok) {
-            setName("");
-            setCapacity(3);
+            clearForm();
+            setSuccessMessage(successText);
           } else {
             setFormError(result.error);
           }
         }}
       >
-        <h2 className="text-lg font-black">Nueva sala</h2>
+        <h2 className="text-lg font-black">{editing ? `Editar ${editing.name}` : "Nueva sala"}</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
           Define el nombre y la cantidad de alumnos que recibe.
         </p>
@@ -2153,7 +2214,7 @@ function Rooms({
             <input
               required
               type="number"
-              min={1}
+              min={0}
               max={40}
               className="control w-full"
               value={capacity}
@@ -2168,18 +2229,35 @@ function Rooms({
               {formError}
             </p>
           )}
-          <button disabled={busy || !name.trim() || capacity < 1} className="primary w-full">
-            Crear sala
-          </button>
+          <div className="flex gap-2">
+            <button disabled={busy || !name.trim() || capacity < 0} className="primary w-full">
+              {editing ? "Guardar cambios" : "Crear sala"}
+            </button>
+            {editing && (
+              <button type="button" className="secondary" disabled={busy} onClick={clearForm}>
+                Cancelar
+              </button>
+            )}
+          </div>
         </div>
       </form>
+      {successMessage && (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"
+          role="status"
+        >
+          <Check size={16} />
+          {successMessage}
+        </div>
+      )}
+      </div>
 
       <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-black">Salas del proceso</h2>
         <p className="mt-1 text-sm leading-5 text-slate-600">
-          {rooms.length} salas creadas para este proceso.
+          {activeRooms.length} salas creadas para este proceso.
         </p>
-        {!rooms.length ? (
+        {!activeRooms.length ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
             Aún no hay salas creadas. Usa el formulario para agregar la primera.
           </div>
@@ -2202,13 +2280,10 @@ function Rooms({
                       )}
                     </button>
                   </th>
-                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Código
-                  </th>
-                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      className="mx-auto flex items-center gap-1.5 hover:text-slate-700"
                       onClick={() => toggleSort("capacity")}
                     >
                       Capacidad de alumnos
@@ -2219,24 +2294,86 @@ function Rooms({
                       )}
                     </button>
                   </th>
+                  <th className="px-5 py-3 text-center text-xs font-bold tracking-wider text-slate-500">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {sortedRooms.map((room) => (
                   <tr key={room.roomId}>
                     <td className="px-5 py-4">
-                      <span className="flex items-center gap-3 font-black">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-900">
-                          <DoorOpen size={16} />
-                        </span>
-                        {room.name}
-                      </span>
+                      <span className="font-black">{room.name}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm text-slate-500">{room.code}</td>
-                    <td className="px-5 py-4">
-                      <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-800">
+                    <td className="px-5 py-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-800">
                         <Users size={14} /> {room.capacity}
                       </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      {deletingId === room.roomId ? (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              type="button"
+                              className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={busy}
+                              onClick={async () => {
+                                setDeleteError("");
+                                const successText = `Sala ${room.name} eliminada.`;
+                                const result = await onAction(
+                                  () => prekinderApi.deleteRoom(room.roomId, room.version),
+                                  successText,
+                                );
+                                if (result.ok) {
+                                  setDeletingId(null);
+                                  if (editing?.roomId === room.roomId) clearForm();
+                                  setSuccessMessage(successText);
+                                } else {
+                                  setDeleteError(result.error);
+                                }
+                              }}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary px-3 py-2 text-xs"
+                              disabled={busy}
+                              onClick={() => {
+                                setDeletingId(null);
+                                setDeleteError("");
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                          {deleteError && (
+                            <p className="max-w-[220px] text-center text-xs font-semibold text-red-700" role="alert">
+                              {deleteError}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center gap-2">
+                          <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => editRoom(room)}>
+                            <Pencil className="mr-1 inline" size={14} />Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={busy}
+                            onClick={() => {
+                              setDeletingId(room.roomId);
+                              setDeleteError("");
+                            }}
+                            aria-label={`Eliminar ${room.name}`}
+                            title="Eliminar sala"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
