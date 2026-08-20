@@ -151,6 +151,17 @@ export function PrekinderOperations({
   const [error, setError] = useState("");
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
 
+  useEffect(() => {
+    setMessage("");
+    setError("");
+  }, [section]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timeout = setTimeout(() => setMessage(""), 3000);
+    return () => clearTimeout(timeout);
+  }, [message]);
+
   const selected =
     groups.find((group) => group.groupId === selectedGroup) ?? null;
   const currentProcess = useMemo(
