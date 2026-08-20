@@ -2572,15 +2572,12 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
                 <div className="divide-y divide-slate-100">
                   {people.map((person) => (
                     <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                        {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-bold">{person.displayName}</span>
                         <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
                         <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
                       </span>
-                      <div className="ml-14 flex items-center gap-2 sm:ml-0">
+                      <div className="flex items-center gap-2">
                         <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
                           {person.active ? "Activo" : "Inactivo"}
                         </span>

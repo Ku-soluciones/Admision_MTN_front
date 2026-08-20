@@ -211,6 +211,7 @@ export function PrekinderControlTower(props: Props) {
 function TowerHome(props: Props & { onOpenMonitor: () => void }) {
   const { groups, rooms, applications, selected, controlTower } = props;
   const [creating, setCreating] = useState<{ roomId: string; time: string } | null>(null);
+  const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
 
   const towerGroupsById = useMemo(() => new Map(
     (controlTower?.rooms ?? []).flatMap((room) => room.groups).map((group) => [group.groupId, group]),
@@ -248,7 +249,7 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
           <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Operación en vivo</p>
           <h2 className="mt-1 text-2xl font-black text-slate-950">Torre de control</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Estás revisando el <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>: {groups.length} grupos en {rooms.length} salas.
+            Estás revisando el <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>: {groups.length} grupos en {activeRooms.length} salas.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -295,7 +296,7 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
             </div>
           </div>
 
-          {!rooms.length ? (
+          {!activeRooms.length ? (
             <div className="p-12 text-center">
               <DoorOpen className="mx-auto text-slate-300" size={38} />
               <h3 className="mt-4 font-black text-slate-900">No hay salas disponibles para esta jornada</h3>
@@ -308,7 +309,7 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
                 {times.map((time) => (
                   <div key={time} className="border-b border-slate-200 p-3 text-center text-sm font-black text-slate-800">{time}</div>
                 ))}
-                {rooms.map((room) => (
+                {activeRooms.map((room) => (
                   <RoomRow key={room.roomId} room={room} times={times} groups={groups} towerGroupsById={towerGroupsById} alertsByGroup={alertsByGroup} selectedId={selected?.groupId} onSelect={props.onSelect} onCreate={(time) => setCreating({ roomId: room.roomId, time })} />
                 ))}
               </div>
@@ -403,7 +404,7 @@ function MonitorView({ rooms, groups, controlTower, onOpenGroup }: Props & { onO
   const completed = groups.filter((group) => statusOf(group) === "COMPLETED").length;
   return <div><PageTitle eyebrow="Seguimiento operacional" title="Monitor de avance" description="Detecta atrasos, pendientes y carga de trabajo por sala durante la jornada." />
     <section className="mb-5 grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-3"><Metric icon={Activity} label="Avance jornada" value={groups.length ? Math.round(completed / groups.length * 100) : 0} detail="Porcentaje de grupos finalizados" /><Metric icon={ClipboardCheck} label="En ejecución" value={groups.filter((group) => statusOf(group) === "IN_PROGRESS").length} detail="Grupos activos" /><Metric icon={CircleAlert} label="Incidencias abiertas" value={controlTower?.summary.openIncidents ?? 0} detail="Registradas en esta jornada" /></section>
-    <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-black">Avance por sala</h3><div className="mt-4 divide-y divide-slate-100">{rooms.map((room) => { const roomGroups = groups.filter((group) => group.roomId === room.roomId); const done = roomGroups.filter((group) => statusOf(group) === "COMPLETED").length; const next = roomGroups.find((group) => statusOf(group) !== "COMPLETED") ?? roomGroups[0]; return <button key={room.roomId} className="grid min-h-16 w-full items-center gap-4 text-left md:grid-cols-[170px_1fr_70px]" disabled={!next} onClick={() => next && onOpenGroup(next.groupId)}><span className="font-black text-slate-900">{room.name}</span><span className="h-2 overflow-hidden rounded-full bg-slate-100"><i className="block h-full rounded-full bg-blue-600" style={{ width: `${roomGroups.length ? done / roomGroups.length * 100 : 0}%` }} /></span><strong className="text-right text-sm text-blue-800">{done}/{roomGroups.length}</strong></button>; })}</div></section>
+    <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-black">Avance por sala</h3><div className="mt-4 divide-y divide-slate-100">{rooms.filter((room) => room.active).map((room) => { const roomGroups = groups.filter((group) => group.roomId === room.roomId); const done = roomGroups.filter((group) => statusOf(group) === "COMPLETED").length; const next = roomGroups.find((group) => statusOf(group) !== "COMPLETED") ?? roomGroups[0]; return <button key={room.roomId} className="grid min-h-16 w-full items-center gap-4 text-left md:grid-cols-[170px_1fr_70px]" disabled={!next} onClick={() => next && onOpenGroup(next.groupId)}><span className="font-black text-slate-900">{room.name}</span><span className="h-2 overflow-hidden rounded-full bg-slate-100"><i className="block h-full rounded-full bg-blue-600" style={{ width: `${roomGroups.length ? done / roomGroups.length * 100 : 0}%` }} /></span><strong className="text-right text-sm text-blue-800">{done}/{roomGroups.length}</strong></button>; })}</div></section>
   </div>;
 }
 
@@ -545,7 +546,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
         <div className="border-t border-slate-200 pt-5">
           <h3 className="font-black text-slate-900">Cambio operativo</h3>
           <p className="mt-1 text-xs leading-5 text-slate-500">El backend valida cruces de sala y horario antes de guardar.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2"><select className="control" value={nextRoom} onChange={(event) => setNextRoom(event.target.value)}>{rooms.map((room) => <option key={room.roomId} value={room.roomId}>{room.name}</option>)}</select><input className="control" type="time" value={nextTime} onChange={(event) => setNextTime(event.target.value)} /></div>
+          <div className="mt-3 grid grid-cols-2 gap-2"><select className="control" value={nextRoom} onChange={(event) => setNextRoom(event.target.value)}>{rooms.filter((room) => room.active || room.roomId === group.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.name}</option>)}</select><input className="control" type="time" value={nextTime} onChange={(event) => setNextTime(event.target.value)} /></div>
           <input className="control mt-2 w-full" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Motivo del cambio" />
           <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
