@@ -1380,19 +1380,46 @@ function Applications({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ key: "name" | "via" | "estado"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
 
-  const filtered = useMemo(
-    () =>
-      applications.filter((app) => {
+  function toggleSort(key: "name" | "via" | "estado") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  const filtered = useMemo(() => {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return applications
+      .filter((app) => {
         const matchesQuery =
           fullName(app).toLowerCase().includes(query.toLowerCase()) ||
           app.identity.rut.includes(query);
         const matchesStatus =
           statusFilter === "ALL" || app.eligibilityStatus === statusFilter;
         return matchesQuery && matchesStatus;
-      }),
-    [applications, query, statusFilter],
-  );
+      })
+      .sort((a, b) => {
+        const value =
+          sort.key === "name"
+            ? fullName(a).localeCompare(fullName(b), "es")
+            : sort.key === "via"
+              ? (waveNames[a.eligibilityCategory] ?? a.eligibilityCategory).localeCompare(
+                  waveNames[b.eligibilityCategory] ?? b.eligibilityCategory,
+                  "es",
+                )
+              : (statusLabel[a.eligibilityStatus] ?? a.eligibilityStatus).localeCompare(
+                  statusLabel[b.eligibilityStatus] ?? b.eligibilityStatus,
+                  "es",
+                );
+        return value * factor;
+      });
+  }, [applications, query, statusFilter, sort]);
 
   useEffect(() => setPage(0), [query, statusFilter]);
 
@@ -1445,11 +1472,31 @@ function Applications({
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {(["Postulante", "Vía", "Estado", "Antecedentes"] as const).map((col) => (
-                <th key={col} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                  {col}
+              {(
+                [
+                  ["Postulante", "name"],
+                  ["Vía", "via"],
+                  ["Estado", "estado"],
+                ] as const
+              ).map(([label, key]) => (
+                <th key={key} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 uppercase hover:text-slate-700"
+                    onClick={() => toggleSort(key)}
+                  >
+                    {label}
+                    {sort.key === key ? (
+                      sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                    ) : (
+                      <ArrowUpDown size={13} className="text-slate-300" />
+                    )}
+                  </button>
                 </th>
               ))}
+              <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                Antecedentes
+              </th>
               <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Acción
               </th>
@@ -2110,7 +2157,10 @@ function Rooms({
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState(3);
   const [formError, setFormError] = useState("");
-  const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" } | null>(null);
+  const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -2124,7 +2174,6 @@ function Rooms({
   const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
 
   const sortedRooms = useMemo(() => {
-    if (!sort) return activeRooms;
     const factor = sort.dir === "asc" ? 1 : -1;
     return [...activeRooms].sort((a, b) =>
       sort.key === "name"
@@ -2135,7 +2184,7 @@ function Rooms({
 
   function toggleSort(key: "name" | "capacity") {
     setSort((current) =>
-      current?.key === key
+      current.key === key
         ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" },
     );
@@ -2269,7 +2318,7 @@ function Rooms({
                   <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 hover:text-slate-700"
+                      className="flex items-center gap-1.5 uppercase hover:text-slate-700"
                       onClick={() => toggleSort("name")}
                     >
                       Nombre
@@ -2283,7 +2332,7 @@ function Rooms({
                   <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
                     <button
                       type="button"
-                      className="mx-auto flex items-center gap-1.5 hover:text-slate-700"
+                      className="mx-auto flex items-center gap-1.5 uppercase hover:text-slate-700"
                       onClick={() => toggleSort("capacity")}
                     >
                       Capacidad de alumnos
@@ -2294,7 +2343,7 @@ function Rooms({
                       )}
                     </button>
                   </th>
-                  <th className="px-5 py-3 text-center text-xs font-bold tracking-wider text-slate-500">
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
                     Acciones
                   </th>
                 </tr>
@@ -2409,12 +2458,37 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
   const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
   const [pendingDelete, setPendingDelete] = useState<Professional | null>(null);
+  const [sort, setSort] = useState<{ key: "name" | "cargo" | "estado"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const needsAccess = !editing || !editing.legacyUserId;
   const availableRoles = roles.filter((role) => role.groupCode === group);
   const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
     groupCode,
     people: professionals.filter((person) => person.roleGroup === groupCode),
   })).filter((section) => section.people.length > 0);
+
+  function toggleSort(key: "name" | "cargo" | "estado") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  function sortPeople(people: Professional[]) {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...people].sort((a, b) => {
+      const value =
+        sort.key === "name"
+          ? a.displayName.localeCompare(b.displayName, "es")
+          : sort.key === "cargo"
+            ? a.roleLabel.localeCompare(b.roleLabel, "es")
+            : (a.active ? "Activo" : "Inactivo").localeCompare(b.active ? "Activo" : "Inactivo", "es");
+      return value * factor;
+    });
+  }
 
   function clearForm() {
     setEditing(null);
@@ -2571,14 +2645,35 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
                 <div className="overflow-x-auto">
                   <div className="min-w-[900px]">
                     <div className="grid grid-cols-[minmax(160px,1.1fr)_minmax(160px,1fr)_minmax(160px,1fr)_100px_170px] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-                      <span className="whitespace-nowrap">Profesional</span>
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("name")}>
+                        Profesional
+                        {sort?.key === "name" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
                       <span className="whitespace-nowrap">Correo</span>
-                      <span className="whitespace-nowrap">Cargo</span>
-                      <span className="whitespace-nowrap">Estado</span>
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("cargo")}>
+                        Cargo
+                        {sort?.key === "cargo" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("estado")}>
+                        Estado
+                        {sort?.key === "estado" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
                       <span className="whitespace-nowrap">Acción</span>
                     </div>
                     <div className="divide-y divide-slate-100">
-                      {people.map((person) => (
+                      {sortPeople(people).map((person) => (
                         <div key={person.professionalId} className="grid grid-cols-[minmax(160px,1.1fr)_minmax(160px,1fr)_minmax(160px,1fr)_100px_170px] items-center gap-4 px-5 py-4">
                           <span className="min-w-0">
                             <span className="block truncate font-bold">{person.displayName}</span>
@@ -2723,6 +2818,10 @@ function Decisions({
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
+  const sortedApplications = useMemo(
+    () => [...applications].sort((a, b) => fullName(a).localeCompare(fullName(b), "es")),
+    [applications],
+  );
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -2761,7 +2860,7 @@ function Decisions({
         </div>
       </section>
       <section className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        {applications.map((app) => (
+        {sortedApplications.map((app) => (
           <DecisionRow
             key={app.applicationId}
             app={app}
