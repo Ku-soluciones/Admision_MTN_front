@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Clock3, Users } from "lucide-react";
 import {
   prekinderApi,
-  type AgendaWithInstrument,
+  type EvaluatorAssignment,
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
-import { PROFILE_LABELS } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_LABELS, PROFILE_TO_SHORT_INSTRUMENT } from "../../components/evaluator/SpecialtyProfile";
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("es-CL", {
@@ -29,8 +29,9 @@ interface PrekinderEvaluatorGroupPageProps {
 
 export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroupPageProps) {
   const { groupId = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [group, setGroup] = useState<AgendaWithInstrument | null>(null);
+  const [group, setGroup] = useState<EvaluatorAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -38,13 +39,15 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
     setLoading(true);
     setError("");
     try {
-      const agenda = await prekinderApi.evaluatorAgenda(today(), profile);
-      const found = agenda.find(
-        (item) => item.instrumentCode === profile && item.group.groupId === groupId,
-      );
-      setGroup(found ?? null);
+      const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
+      const date = searchParams.get("date") ?? today();
+      const agendaData = await prekinderApi.evaluatorAgenda(date, shortInstrument);
+      const found = agendaData.assignments.find(
+        (a) => a.group.groupId === groupId,
+      ) ?? null;
+      setGroup(found);
       if (!found) {
-        setError("Grupo no encontrado en la agenda de hoy.");
+        setError("Grupo no encontrado en la agenda de " + date + ".");
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error al cargar el grupo");
@@ -55,7 +58,7 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
 
   useEffect(() => {
     void load();
-  }, [groupId, profile]);
+  }, [groupId, profile, searchParams]);
 
   return (
     <PrekinderEvaluatorLayout profile={profile}>

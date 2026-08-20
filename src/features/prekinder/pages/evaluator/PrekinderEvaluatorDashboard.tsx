@@ -13,7 +13,7 @@ import {
 } from "../../services/api";
 import { PrekinderEvaluatorLayout } from "../../components/evaluator/PrekinderEvaluatorLayout";
 import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
-import { PROFILE_LABELS } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_LABELS, PROFILE_TO_SHORT_INSTRUMENT } from "../../components/evaluator/SpecialtyProfile";
 
 function today() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -40,11 +40,18 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Check mock mode status
+  const isMock = sessionStorage.getItem("pk-mock-mode") === "1";
+  const isDebug = window.localStorage.getItem("prekinder-debug") === "1";
+  console.debug("[DEBUG Dashboard] MOUNTED profile:", profile, "date:", date, "isMock:", isMock, "isDebug:", isDebug);
+
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const agendaData = await prekinderApi.evaluatorAgenda(date, profile);
+      console.debug("[DEBUG evaluatorAgenda] date:", date, "profile:", profile);
+      const agendaData = await prekinderApi.evaluatorAgenda(date, PROFILE_TO_SHORT_INSTRUMENT[profile]);
+      console.debug("[DEBUG evaluatorAgenda] response:", JSON.stringify(agendaData, null, 2));
       setAssignments(agendaData.assignments);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error al cargar datos");
@@ -172,7 +179,7 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
                 return (
                   <button
                     key={assignment.assignmentId}
-                    onClick={() => navigate(`/prekinder/evaluador/grupo/${group.groupId}?profile=${profile}`)}
+                    onClick={() => navigate(`/prekinder/evaluador/${profile.toLowerCase().replace("_", "-")}/grupo/${group.groupId}?date=${date}`)}
                     className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
                   >
                     <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-50">
