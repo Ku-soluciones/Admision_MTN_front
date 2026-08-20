@@ -11,7 +11,7 @@ type GuardProps = PropsWithChildren<{ roles?: string[]; loginPath?: string }>;
 
 export function PrekinderAdminGuard({
   children,
-  roles = ["ADMIN", "COORDINATOR", "CYCLE_DIRECTOR"],
+  roles = ["ADMIN", "COORDINATOR", "CYCLE_DIRECTOR", "PREKINDER_PROFESSIONAL"],
   loginPath = "/login",
 }: GuardProps) {
   const session = useAuthStore((state) => state);
