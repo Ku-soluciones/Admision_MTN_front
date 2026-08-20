@@ -24,6 +24,18 @@ const LoadingFallback = () => (
   </div>
 );
 
+const LEGACY_EVALUATOR_ROLES = [
+  "TEACHER",
+  "TEACHER_EARLY_CYCLE",
+  "PSYCHOLOGIST",
+  "INTERVIEWER",
+  "PREKINDER_PROFESSIONAL",
+  "EVALUATOR",
+  "CYCLE_DIRECTOR",
+  "COORDINATOR",
+  "ADMIN",
+];
+
 export default function PrekinderApp() {
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -41,16 +53,7 @@ export default function PrekinderApp() {
         <Route
           path="/prekinder/evaluador"
           element={
-            <PrekinderAdminGuard
-              roles={[
-                "TEACHER",
-                "PSYCHOLOGIST",
-                "INTERVIEWER",
-                "CYCLE_DIRECTOR",
-                "ADMIN",
-                "COORDINATOR",
-              ]}
-            >
+            <PrekinderAdminGuard roles={LEGACY_EVALUATOR_ROLES}>
               <EvaluatorDesk />
             </PrekinderAdminGuard>
           }
@@ -58,16 +61,7 @@ export default function PrekinderApp() {
         <Route
           path="/prekinder/evaluador/informe/:reportId"
           element={
-            <PrekinderAdminGuard
-              roles={[
-                "TEACHER",
-                "PSYCHOLOGIST",
-                "INTERVIEWER",
-                "CYCLE_DIRECTOR",
-                "ADMIN",
-                "COORDINATOR",
-              ]}
-            >
+            <PrekinderAdminGuard allowAnyAuthenticated loginPath="/prekinder/evaluador/login">
               <EvaluatorReport />
             </PrekinderAdminGuard>
           }

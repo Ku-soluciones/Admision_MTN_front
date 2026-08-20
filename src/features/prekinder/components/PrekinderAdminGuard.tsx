@@ -11,7 +11,11 @@ import {
 } from "../../../packages/backend-sdk/src/index";
 import { refreshAccessToken } from "../services/api";
 
-type GuardProps = PropsWithChildren<{ roles?: string[]; loginPath?: string }>;
+type GuardProps = PropsWithChildren<{
+  roles?: string[];
+  loginPath?: string;
+  allowAnyAuthenticated?: boolean;
+}>;
 
 function normalizeRole(value: unknown): string {
   return String(value ?? "").trim().toUpperCase();
@@ -47,6 +51,7 @@ export function PrekinderAdminGuard({
   children,
   roles = ["ADMIN", "COORDINATOR", "CYCLE_DIRECTOR", "PREKINDER_PROFESSIONAL"],
   loginPath = "/login",
+  allowAnyAuthenticated = false,
 }: GuardProps) {
   const session = useAuthStore((state) => state);
   const location = useLocation();
@@ -85,6 +90,10 @@ export function PrekinderAdminGuard({
   if (!authStore.getValidAccessToken() || !session.user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`${loginPath}?redirect=${redirect}`} replace />;
+  }
+
+  if (allowAnyAuthenticated) {
+    return <>{children}</>;
   }
 
   const allowedRoles = roles.map((role) => normalizeRole(role));
