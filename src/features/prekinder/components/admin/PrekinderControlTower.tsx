@@ -136,6 +136,76 @@ const instrumentStatusMeta: Record<string, { label: string; className: string }>
   VALIDATED: { label: "Validada", className: "bg-emerald-50 text-emerald-800" },
 };
 
+function translateConfirmError(err: unknown): { title: string; detail: string } | null {
+  if (!err) return null;
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("duplicate key") || msg.includes("llave duplicada")) {
+    return { title: "Duplicado", detail: "El evaluador ya está asignado a este grupo." };
+  }
+  if (msg.includes("foreign key") || msg.includes("llave foránea")) {
+    return { title: "Dato inválido", detail: "El evaluador o el grupo no existen. Verifica que estén activos." };
+  }
+  if (msg.includes(" Check\"")) {
+    return { title: "Validación rechazada", detail: "El servidor rechazó la operación. Verifica que el grupo y sus datos sean correctos." };
+  }
+  if (msg.includes("connection") || msg.includes("timeout") || msg.includes("network")) {
+    return { title: "Sin conexión", detail: "No se pudo contactar al servidor. Intenta nuevamente en unos segundos." };
+  }
+  return null;
+}
+
+function ConfirmGroupSection({ group, canConfirm, busy, onAction }: { group: EvaluationGroup; canConfirm: boolean; busy: boolean; onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>; }) {
+  const [error, setError] = useState<{ title: string; detail: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  function handleConfirm() {
+    if (!canConfirm || confirming) return;
+    setError(null);
+    setConfirming(true);
+    onAction(
+      async () => {
+        try {
+          await prekinderApi.confirmGroup(group.groupId, group.version);
+        } catch (err) {
+          const translated = translateConfirmError(err);
+          if (translated) {
+            setError(translated);
+          }
+          throw err;
+        }
+      },
+      "Grupo listo para evaluación.",
+    ).then((ok) => {
+      if (!ok) setConfirming(false);
+    });
+  }
+
+  return (
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm font-black text-slate-900">Preparación para evaluación</p>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        {canConfirm
+          ? "El grupo cumple las condiciones y puede quedar listo."
+          : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}
+      </p>
+      {error && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+          <p className="text-sm font-black text-red-800">{error.title}</p>
+          <p className="mt-0.5 text-xs text-red-700">{error.detail}</p>
+        </div>
+      )}
+      <button
+        className="primary mt-3 w-full"
+        disabled={busy || !canConfirm || confirming}
+        onClick={handleConfirm}
+      >
+        <CheckCircle2 className="mr-2 inline" size={17} />
+        {confirming ? "Confirmando…" : "Marcar listo para evaluación"}
+      </button>
+    </div>
+  );
+}
+
 function groupAlerts(group: EvaluationGroup, towerGroup: TowerGroup | undefined, now: number): GroupAlert[] {
   const alerts: GroupAlert[] = [];
   const base = { groupId: group.groupId, code: group.code, roomName: group.roomName };
@@ -551,7 +621,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
           <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
 
-        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Preparación para evaluación</p><p className="mt-1 text-xs leading-5 text-slate-600">{canConfirm ? "El grupo cumple las condiciones y puede quedar listo." : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}</p><button className="primary mt-3 w-full" disabled={busy || !canConfirm} onClick={() => onAction(() => prekinderApi.confirmGroup(group.groupId, group.version), "Grupo listo para evaluación.")}><CheckCircle2 className="mr-2 inline" size={17} />Marcar listo para evaluación</button></div>
+        <ConfirmGroupSection group={group} canConfirm={canConfirm} busy={busy} onAction={onAction} />
       </div>
     </aside>
   );

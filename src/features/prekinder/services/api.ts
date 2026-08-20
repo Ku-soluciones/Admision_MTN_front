@@ -60,6 +60,7 @@ export async function apiRequest<T>(
     }
   }
   const body = await response.json().catch(() => null);
+  console.debug("[DEBUG apiRequest] path:", path, "status:", response.status, "body:", JSON.stringify(body, null, 2)?.slice(0, 500));
   if (!response.ok) {
     throw new ApiError(
       response.status,
@@ -740,9 +741,9 @@ export const prekinderApi = {
   evaluatorAgenda: (date: string, instrument: string, processId?: string) => {
     const params = new URLSearchParams({ date, instrument });
     if (processId) params.set("processId", processId);
-    return apiRequest<EvaluatorAgenda>(
-      `/v1/prekinder/me/evaluator-agenda?${params.toString()}`,
-    );
+    const url = `/v1/prekinder/me/evaluator-agenda?${params.toString()}`;
+    console.debug("[DEBUG api.evaluatorAgenda] fetching:", url);
+    return apiRequest<EvaluatorAgenda>(url);
   },
   evaluatorWorkspace: (date: string, processId?: string) => {
     const params = new URLSearchParams({ date });

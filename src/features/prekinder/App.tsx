@@ -16,6 +16,7 @@ import { ConnectedIndicatorsConsole } from "./pages/evaluator/ConnectedIndicator
 import { ConnectedGroupObservationConsole } from "./pages/evaluator/ConnectedGroupObservationConsole";
 import { ConnectedLearningSupportConsole } from "./pages/evaluator/ConnectedLearningSupportConsole";
 import { ConnectedDapConsole } from "./pages/evaluator/ConnectedDapConsole";
+import { MockDevLauncher } from "./pages/dev/MockDevLauncher";
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -250,6 +251,10 @@ export default function PrekinderApp() {
           }
         />
 
+        <Route
+          path="/prekinder/dev/mock-evaluations"
+          element={<MockDevLauncher />}
+        />
         <Route
           path="/prekinder/postular"
           element={<Navigate to="/postulacion?proceso=prekinder" replace />}

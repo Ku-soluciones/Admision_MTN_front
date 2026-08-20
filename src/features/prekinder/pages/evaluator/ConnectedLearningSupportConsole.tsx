@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, ChevronRight, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
-import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { isMockMode, buildMockAgenda } from "../dev/mockApi";
 
 type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
 
@@ -101,8 +102,20 @@ export function ConnectedLearningSupportConsole({ profile }: Props) {
 
   async function loadAgenda() {
     setScreen("loading");
+    if (isMockMode()) {
+      const data = buildMockAgenda(profile);
+      setAssignments(data.assignments);
+      if (assignmentId) {
+        const found = data.assignments.find((a) => a.assignmentId === assignmentId);
+        if (found) { setSelectedAssignment(found); setActiveApplicantId(found.reports[0]?.applicationId ?? null); setScreen("confirm"); }
+        else setScreen("agenda");
+      } else {
+        setScreen("agenda");
+      }
+      return;
+    }
     try {
-      const data = await prekinderApi.evaluatorAgenda(today(), profile);
+      const data = await prekinderApi.evaluatorAgenda(today(), PROFILE_TO_SHORT_INSTRUMENT[profile]);
       setAssignments(data.assignments);
 
       if (assignmentId) {
