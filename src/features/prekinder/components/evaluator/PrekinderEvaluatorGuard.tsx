@@ -41,46 +41,30 @@ export function PrekinderEvaluatorGuard({
   const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(cachedWorkspace);
   const [checking, setChecking] = useState(true);
 
-  // DEBUG BYPASS
-  const isDebugMode = (typeof window !== 'undefined' && window.localStorage.getItem('prekinder-debug') === '1') || new URLSearchParams(location.search).get("debug") === "1" || sessionStorage.getItem("pk-mock-mode") === "1";
-
   useEffect(() => {
     let cancelled = false;
     async function verifyAccess() {
       setChecking(true);
       try {
         if (!authStore.getValidAccessToken()) {
-          console.debug("[DEBUG PrekinderEvaluatorGuard] no token, refreshing...");
           await refreshAccessToken();
         }
-        console.debug("[DEBUG PrekinderEvaluatorGuard] token OK, workspace:", workspace ? "cached" : "null");
         if (!authStore.getValidAccessToken() || workspace) return;
-        console.debug("[DEBUG PrekinderEvaluatorGuard] fetching evaluatorWorkspace for date:", today());
         const nextWorkspace = await prekinderApi.evaluatorWorkspace(today());
-        console.debug("[DEBUG PrekinderEvaluatorGuard] workspace response:", JSON.stringify(nextWorkspace, null, 2)?.slice(0, 500));
         if (cancelled) return;
         setWorkspace(nextWorkspace);
         sessionStorage.setItem("pk-workspace-cache", JSON.stringify(nextWorkspace));
-      } catch (err) {
-        console.error("[DEBUG PrekinderEvaluatorGuard] error:", err);
+      } catch {
+        // La vista de acceso denegado maneja la recuperación sin exponer datos de sesión.
       } finally {
         if (!cancelled) setChecking(false);
       }
     }
-    if (isDebugMode) {
-      console.debug("[DEBUG PrekinderEvaluatorGuard] debug mode active");
-      setChecking(false);
-    } else {
-      void verifyAccess();
-    }
+    void verifyAccess();
     return () => {
       cancelled = true;
     };
-  }, [isDebugMode, workspace]);
-
-  if (isDebugMode) {
-    return <>{children}</>;
-  }
+  }, [workspace]);
 
   if (checking) {
     return (
@@ -100,12 +84,9 @@ export function PrekinderEvaluatorGuard({
 
   // Check if the evaluator has access to this instrument
   const requiredShort = PROFILE_TO_SHORT_INSTRUMENT[profile];
-  console.debug("[DEBUG PrekinderEvaluatorGuard] profile:", profile, "requiredShort:", requiredShort);
-  console.debug("[DEBUG PrekinderEvaluatorGuard] workspace instruments:", JSON.stringify(workspace?.instruments, null, 2));
   const hasAccess = workspace?.instruments.some(
     (w) => w.instrument.instrumentCode === requiredShort && w.instrument.active,
   );
-  console.debug("[DEBUG PrekinderEvaluatorGuard] hasAccess:", hasAccess);
 
   if (!hasAccess) {
     return (

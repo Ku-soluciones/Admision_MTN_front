@@ -12,7 +12,7 @@ function futureDate(hours = 0) {
 }
 
 export function isMockMode(): boolean {
-  return sessionStorage.getItem("pk-mock-mode") === "1";
+  return import.meta.env.DEV && sessionStorage.getItem("pk-mock-mode") === "1";
 }
 
 export function setMockMode() {

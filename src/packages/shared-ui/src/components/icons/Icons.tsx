@@ -154,7 +154,7 @@ export const MathIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
         <path d="M4 2h16c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="currentColor" fillOpacity="0.1"/>
         <path d="M4 2h16c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z"/>
         {/* Símbolo π más estilizado */}
-        <text x="12" y="15" textAnchor="middle" fontSize="14" fontFamily="serif" fill="currentColor" fontWeight="normal" transform="scale(1,1.3)" transformOrigin="12 15">π</text>
+        <text x="12" y="15" textAnchor="middle" fontSize="14" fontFamily="serif" fill="currentColor" fontWeight="normal" transform="translate(0,-4.5) scale(1,1.3)">π</text>
     </svg>
 );
 

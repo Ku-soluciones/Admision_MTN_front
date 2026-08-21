@@ -40,18 +40,11 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Check mock mode status
-  const isMock = sessionStorage.getItem("pk-mock-mode") === "1";
-  const isDebug = window.localStorage.getItem("prekinder-debug") === "1";
-  console.debug("[DEBUG Dashboard] MOUNTED profile:", profile, "date:", date, "isMock:", isMock, "isDebug:", isDebug);
-
   async function load() {
     setLoading(true);
     setError("");
     try {
-      console.debug("[DEBUG evaluatorAgenda] date:", date, "profile:", profile);
       const agendaData = await prekinderApi.evaluatorAgenda(date, PROFILE_TO_SHORT_INSTRUMENT[profile]);
-      console.debug("[DEBUG evaluatorAgenda] response:", JSON.stringify(agendaData, null, 2));
       setAssignments(agendaData.assignments);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error al cargar datos");

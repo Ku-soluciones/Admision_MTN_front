@@ -16,6 +16,8 @@ import {
   KeyRound,
   Pencil,
   RefreshCw,
+  Settings2,
+  Mail,
   Trash2,
   TriangleAlert,
   UserCog,
@@ -35,6 +37,13 @@ import {
   type ProfessionalRoleCode,
   type ProfessionalRoleDefinition,
   type ProfessionalRoleGroup,
+  type ProcessConfiguration,
+  type ProcessReadiness,
+  type PublicationBatch,
+  type PublicationPreview,
+  type RubricAssignment,
+  type RubricSummary,
+  type CommunicationTemplate,
   type Room,
   type Wave,
 } from "../services/api";
@@ -46,6 +55,7 @@ import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 
 const sections = [
   ["Resumen", LayoutDashboard],
+  ["Configuración", Settings2],
   ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Grupos", UsersRound],
@@ -53,6 +63,7 @@ const sections = [
   ["Salas", DoorOpen],
   ["Profesionales", UserCog],
   ["Pautas", ClipboardCheck],
+  ["Comunicaciones", Mail],
   ["Decisiones", FileCheck2],
 ] as const;
 
@@ -144,6 +155,10 @@ export function PrekinderOperations({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [groups, setGroups] = useState<EvaluationGroup[]>([]);
   const [controlTower, setControlTower] = useState<ControlTowerDay | null>(null);
+  const [configuration, setConfiguration] = useState<ProcessConfiguration | null>(null);
+  const [readiness, setReadiness] = useState<ProcessReadiness | null>(null);
+  const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
+  const [publicationBatches, setPublicationBatches] = useState<PublicationBatch[]>([]);
   const [date, setDate] = useState(initialDate);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -205,7 +220,8 @@ export function PrekinderOperations({
     if (!silent) setBusy(true);
     setError("");
     try {
-      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower, nextProcessProfessionals] =
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower,
+        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextBatches] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
@@ -214,6 +230,10 @@ export function PrekinderOperations({
           prekinderApi.groups(id, day),
           prekinderApi.controlTower(id, day),
           prekinderApi.professionals(id),
+          prekinderApi.processConfiguration(id),
+          prekinderApi.readiness(id),
+          prekinderApi.communicationTemplates(id),
+          prekinderApi.publicationBatches(id),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
@@ -222,6 +242,10 @@ export function PrekinderOperations({
       setGroups(nextGroups);
       setControlTower(nextControlTower);
       setProcessProfessionals(nextProcessProfessionals);
+      setConfiguration(nextConfiguration);
+      setReadiness(nextReadiness);
+      setCommunicationTemplates(nextCommunications);
+      setPublicationBatches(nextBatches);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
@@ -637,9 +661,19 @@ export function PrekinderOperations({
               onCreate={createAdmissionProcess}
             />
           ) : currentProcess?.status === "DRAFT" ? (
-            <ProcessActivation
+            <ProcessSetup
               process={currentProcess}
+              configuration={configuration}
+              readiness={readiness}
+              waves={waves}
+              communications={communicationTemplates}
               busy={busy}
+              onSaveConfiguration={(input) => action(
+                () => prekinderApi.saveProcessConfiguration(processId, input),
+                "Configuración guardada.",
+              )}
+              onSaveWave={saveStage}
+              onChanged={() => loadProcess(processId)}
               onPublish={publishAdmissionProcess}
             />
           ) : (
@@ -649,14 +683,24 @@ export function PrekinderOperations({
               metrics={metrics}
               waves={waves}
               groups={groups}
-              controlTower={controlTower}
               applications={applications}
               onGo={setSection}
               processes={processes}
+              currentProcess={currentProcess}
               processId={processId}
               busy={busy || baseLoading}
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
+              onLifecycle={async (operation) => {
+                if (!currentProcess) return;
+                const succeeded = await action(
+                  () => operation === "close"
+                    ? prekinderApi.closeProcess(currentProcess.processId, currentProcess.version)
+                    : prekinderApi.archiveProcess(currentProcess.processId, currentProcess.version),
+                  operation === "close" ? "Proceso cerrado." : "Proceso archivado.",
+                );
+                if (succeeded) await loadBase();
+              }}
               lastLoaded={lastLoaded}
             />
           )}
@@ -665,6 +709,13 @@ export function PrekinderOperations({
               waves={waves}
               busy={busy}
               onSave={saveStage}
+            />
+          )}
+          {section === "Configuración" && configuration && (
+            <ConfigurationEditor
+              configuration={configuration}
+              busy={busy}
+              onSave={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
             />
           )}
           {section === "Postulaciones" && (
@@ -782,11 +833,15 @@ export function PrekinderOperations({
               }}
             />
           )}
-          {section === "Pautas" && <Rubrics />}
+          {section === "Pautas" && <Rubrics processId={processId} busy={busy} onChanged={() => loadProcess(processId)} />}
+          {section === "Comunicaciones" && (
+            <Communications templates={communicationTemplates} busy={busy} onAction={action} />
+          )}
           {section === "Decisiones" && (
             <Decisions
               processId={processId}
               applications={applications}
+              batches={publicationBatches}
               busy={busy}
               onAction={action}
             />
@@ -929,13 +984,156 @@ function EmptyProcessState({
   );
 }
 
+function ProcessSetup({
+  process,
+  configuration,
+  readiness,
+  waves,
+  communications,
+  busy,
+  onSaveConfiguration,
+  onSaveWave,
+  onChanged,
+  onPublish,
+}: {
+  process: AdmissionProcess;
+  configuration: ProcessConfiguration | null;
+  readiness: ProcessReadiness | null;
+  waves: Wave[];
+  communications: CommunicationTemplate[];
+  busy: boolean;
+  onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+  onSaveWave: (wave: Wave, opensAt: string, closesAt: string, status: Wave["status"]) => Promise<void>;
+  onChanged: () => Promise<void>;
+  onPublish: (startsAt: string, endsAt: string) => Promise<void>;
+}) {
+  const openPhase = readiness?.phases.OPEN_APPLICATIONS;
+  return (
+    <div className="space-y-7">
+      <section className="overflow-hidden rounded-2xl bg-azul-monte-tabor text-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+        <div className="grid gap-6 p-7 lg:grid-cols-[1fr_360px] lg:p-9">
+          <div>
+            <h2 className="max-w-2xl text-2xl font-black tracking-[-0.02em] sm:text-3xl">
+              Prepara {process.name} antes de abrirlo
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">
+              El sistema valida calendario, pago y comunicaciones. Puedes guardar cada bloque y retomar sin perder la configuración.
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/10 p-5" role="status" aria-live="polite">
+            <p className="text-sm font-bold text-blue-100">Preparación para apertura</p>
+            <p className="mt-2 text-3xl font-black">
+              {openPhase?.items.filter((item) => item.complete).length ?? 0}/{openPhase?.items.length ?? 0}
+            </p>
+            <p className="mt-1 text-sm text-blue-100">
+              {openPhase?.ready ? "Lista para habilitar" : "Aún hay requisitos pendientes"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {openPhase && <ReadinessChecklist readiness={readiness} />}
+      {configuration && (
+        <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
+      )}
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Calendario de postulación</h2>
+        <p className="mt-2 text-sm text-slate-600">Las tres ventanas deben tener inicio y cierre antes de abrir el proceso.</p>
+        <div className="mt-5"><Waves waves={waves} busy={busy} onSave={onSaveWave} /></div>
+      </section>
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2>
+        <p className="mt-2 text-sm text-slate-600">Asocia una versión publicada para cada instrumento. Las evaluaciones conservarán esta versión.</p>
+        <div className="mt-5"><Rubrics processId={process.processId} busy={busy} onChanged={onChanged} /></div>
+      </section>
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Comunicaciones</h2>
+        <p className="mt-2 text-sm text-slate-600">Revisa las versiones que recibirán las familias durante el ciclo.</p>
+        <div className="mt-5"><Communications templates={communications} busy={busy} onAction={async (work) => {
+          try { await work(); await onChanged(); return true; } catch { return false; }
+        }} /></div>
+      </section>
+      <ProcessActivation process={process} busy={busy} ready={Boolean(openPhase?.ready)} onPublish={onPublish} />
+    </div>
+  );
+}
+
+function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null }) {
+  const phases = readiness ? Object.values(readiness.phases) : [];
+  return (
+    <section className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+      <h2 className="text-lg font-black text-slate-950">Checklist del ciclo</h2>
+      <div className="mt-5 grid gap-6 lg:grid-cols-3">
+        {phases.map((phase) => (
+          <div key={phase.items[0]?.phase}>
+            <p className="text-sm font-extrabold text-slate-800">
+              {phase.items[0]?.phase === "OPEN_APPLICATIONS" ? "Abrir postulaciones" : phase.items[0]?.phase === "RUN_EVALUATIONS" ? "Operar evaluaciones" : "Publicar resultados"}
+            </p>
+            <ul className="mt-3 space-y-3">
+              {phase.items.map((item) => (
+                <li key={item.code} className="flex gap-3 text-sm">
+                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${item.complete ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                    {item.complete ? <Check size={13} /> : <Clock3 size={12} />}
+                  </span>
+                  <span><strong className="block text-slate-800">{item.label}</strong><span className="text-xs leading-5 text-slate-500">{item.detail}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ConfigurationEditor({ configuration, busy, onSave }: {
+  configuration: ProcessConfiguration;
+  busy: boolean;
+  onSave: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+}) {
+  const [form, setForm] = useState(configuration);
+  useEffect(() => setForm(configuration), [configuration]);
+  const update = <K extends keyof ProcessConfiguration>(key: K, value: ProcessConfiguration[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <form className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]" onSubmit={(event) => {
+      event.preventDefault();
+      const { processId: _processId, ...payload } = form;
+      void onSave(payload);
+    }}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><h2 className="text-lg font-black text-slate-950">Políticas del proceso</h2><p className="mt-1 text-sm text-slate-600">Pago, inclusión, edad y ponderación quedan versionados.</p></div>
+        <label className="flex min-h-11 items-center gap-3 rounded-lg bg-slate-50 px-4 text-sm font-bold text-slate-700">
+          <input type="checkbox" checked={form.paymentEnabled} onChange={(event) => update("paymentEnabled", event.target.checked)} /> Cobro obligatorio
+        </label>
+      </div>
+      <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Monto"><input className="control w-full" type="number" min="1" disabled={!form.paymentEnabled} value={form.paymentAmount ?? ""} onChange={(e) => update("paymentAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
+        <Field label="Moneda"><select className="control w-full" value={form.paymentCurrency} onChange={(e) => update("paymentCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
+        <Field label="Vencimiento (días)"><input className="control w-full" type="number" min="1" max="30" value={form.paymentDueDays} onChange={(e) => update("paymentDueDays", Number(e.target.value))} /></Field>
+        <Field label="Glosa"><input className="control w-full" maxLength={180} value={form.paymentGlosa} onChange={(e) => update("paymentGlosa", e.target.value)} /></Field>
+        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="84" value={form.minimumAgeMonths} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Ponderación postulante"><input className="control w-full" type="number" min="0" max="1" step="0.05" value={form.applicantWeight} onChange={(e) => { const value = Number(e.target.value); update("applicantWeight", value); update("familyWeight", Number((1 - value).toFixed(2))); }} /></Field>
+        <Field label="Ponderación familia"><input className="control w-full" readOnly value={form.familyWeight} /></Field>
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
+        <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label>
+        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount)}>{busy ? "Guardando…" : "Guardar políticas"}</button>
+      </div>
+    </form>
+  );
+}
+
 function ProcessActivation({
   process,
   busy,
+  ready,
   onPublish,
 }: {
   process: AdmissionProcess;
   busy: boolean;
+  ready: boolean;
   onPublish: (startsAt: string, endsAt: string) => Promise<void>;
 }) {
   const [startsAt, setStartsAt] = useState(
@@ -1004,7 +1202,7 @@ function ProcessActivation({
         <button
           className="primary w-full lg:w-auto"
           type="submit"
-          disabled={!hasValidWindow || busy}
+          disabled={!hasValidWindow || !ready || busy}
         >
           {busy ? (
             <RefreshCw
@@ -1017,6 +1215,7 @@ function ProcessActivation({
           )}
           {busy ? "Habilitando" : "Habilitar proceso"}
         </button>
+        {!ready && <p className="text-sm font-semibold text-amber-800 lg:col-span-3" role="status">Completa los requisitos de apertura indicados en la checklist.</p>}
         {!hasValidWindow && (
           <p className="text-sm font-semibold text-red-700 sm:col-span-2 lg:col-span-3" role="alert">
             La fecha de cierre debe ser posterior a la fecha de inicio.
@@ -1122,10 +1321,12 @@ function Overview({
   applications,
   onGo,
   processes,
+  currentProcess,
   processId,
   busy,
   onProcessChange,
   onRefresh,
+  onLifecycle,
   lastLoaded,
 }: {
   metrics: DashboardMetrics | null;
@@ -1134,10 +1335,12 @@ function Overview({
   applications: FlowApplication[];
   onGo: (value: string) => void;
   processes: AdmissionProcess[];
+  currentProcess: AdmissionProcess | null;
   processId: string;
   busy: boolean;
   onProcessChange: (id: string) => void;
   onRefresh: () => void;
+  onLifecycle: (operation: "close" | "archive") => Promise<void>;
   lastLoaded: Date | null;
 }) {
   const lastUpdated = lastLoaded
@@ -1195,6 +1398,8 @@ function Overview({
               <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
               {busy ? "Actualizando" : "Actualizar"}
             </button>
+            {currentProcess?.status === "PUBLISHED" && <button className="secondary" disabled={busy} onClick={() => void onLifecycle("close")}>Cerrar proceso</button>}
+            {currentProcess?.status === "CLOSED" && <button className="secondary" disabled={busy} onClick={() => void onLifecycle("archive")}>Archivar proceso</button>}
           </div>
         </div>
       </section>
@@ -2252,7 +2457,7 @@ function Rooms({
             clearForm();
             setSuccessMessage(successText);
           } else {
-            setFormError(result.error);
+            setFormError("error" in result ? result.error : "No pudimos guardar la sala.");
           }
         }}
       >
@@ -2390,7 +2595,7 @@ function Rooms({
                                   if (editing?.roomId === room.roomId) clearForm();
                                   setSuccessMessage(successText);
                                 } else {
-                                  setDeleteError(result.error);
+                                  setDeleteError("error" in result ? result.error : "No pudimos eliminar la sala.");
                                 }
                               }}
                             >
@@ -2455,6 +2660,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
     processId: string;
     displayName: string;
     email: string;
+    password?: string;
     roleCode: ProfessionalRoleCode;
     expectedVersion: number;
   }) => Promise<boolean>;
@@ -2770,65 +2976,134 @@ const professionalGroupOrder: ProfessionalRoleGroup[] = [
   "DECISION_CONTROL",
 ];
 
-function Rubrics() {
-  const data = [
-    {
-      name: "Observación focal",
-      base: "Base sugerida: 3 postulantes · 3 profesionales",
-      count: 6,
-      items:
-        "Comunicación · Lenguaje · Adaptación/regulación · Psicomotricidad · Seguimiento de instrucciones · Autonomía",
-    },
-    {
-      name: "Interacción grupal",
-      base: "Base sugerida: 9 postulantes · 6 profesionales",
-      count: 6,
-      items:
-        "Interacción con pares · Participación · Cooperación · Regulación · Transiciones · Comunicación grupal",
-    },
-  ];
+const instrumentLabels: Record<string, string> = {
+  ENTRY_INDICATORS: "Indicadores de ingreso", ACADEMIC: "Académica", PSYCHOMOTOR: "Psicomotricidad",
+  PSYCHOLOGY: "Psicología", GROUP_OBSERVATION: "Observación grupal", FAMILY_INTERVIEW: "Entrevista familiar",
+  LEARNING_SUPPORT: "Apoyo", DAP: "DAP",
+};
+
+function Rubrics({ processId, busy, onChanged }: { processId: string; busy: boolean; onChanged: () => Promise<void> }) {
+  const [catalog, setCatalog] = useState<RubricSummary[]>([]);
+  const [assignments, setAssignments] = useState<RubricAssignment[]>([]);
+  const [versions, setVersions] = useState<Record<string, Array<{ versionId: string; version: number; status: string; criteriaCount: number }>>>({});
+  const [name, setName] = useState("");
+  const [instrument, setInstrument] = useState("ENTRY_INDICATORS");
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localError, setLocalError] = useState("");
+  async function load() {
+    const [nextCatalog, nextAssignments] = await Promise.all([prekinderApi.rubrics(), prekinderApi.rubricAssignments(processId)]);
+    const details = await Promise.all(nextCatalog.map((rubric) => prekinderApi.rubricDetail(rubric.rubricId)));
+    setCatalog(nextCatalog); setAssignments(nextAssignments);
+    setVersions(Object.fromEntries(details.map((detail) => [detail.rubric.rubricId, detail.versions])));
+  }
+  useEffect(() => { void load().catch((reason) => setLocalError(reason instanceof Error ? reason.message : "No pudimos cargar las pautas.")); }, [processId]);
+  async function run(work: () => Promise<unknown>) {
+    setLocalBusy(true); setLocalError("");
+    try { await work(); await load(); await onChanged(); }
+    catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos actualizar la pauta."); }
+    finally { setLocalBusy(false); }
+  }
+  async function createRubric() {
+    const created = await prekinderApi.createRubric(name.trim(), instrument);
+    await prekinderApi.saveRubricVersion(created.versionId, {
+      name: name.trim(), expectedRubricVersion: 0,
+      criteria: [{ criterionId: "", code: "OBSERVACION_GENERAL", name: "Observación general", descriptor: "Registra el nivel observado durante la actividad.", position: 0, required: true,
+        options: [0, 1, 2, 3].map((value) => ({ optionId: "", value, label: `Nivel ${value}`, descriptor: value === 0 ? "No observado" : `Nivel de logro ${value}`, professionallyValidated: false, position: value })) }],
+    });
+    setName("");
+  }
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      {data.map((rubric) => (
-        <article
-          key={rubric.name}
-          className="rounded-2xl border border-slate-200 bg-white p-7"
-        >
-          <div className="flex justify-between">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">
-              Publicada · v1
-            </span>
-            <span className="text-xs font-bold text-slate-400">Inmutable</span>
-          </div>
-          <h2 className="mt-5 text-2xl font-black">{rubric.name}</h2>
-          <p className="mt-1 text-xs font-bold text-blue-800">{rubric.base}</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            {rubric.items}
-          </p>
-          <div className="mt-6 border-t border-slate-100 pt-5 text-sm">
-            <strong>{rubric.count} criterios</strong>
-            <span className="ml-2 text-slate-500">
-              Escala observable 0–3 + No observado
-            </span>
-          </div>
-        </article>
-      ))}
+    <div className="space-y-5">
+      {localError && <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{localError}</p>}
+      <form className="grid gap-4 rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:grid-cols-[1fr_240px_auto] md:items-end" onSubmit={(event) => { event.preventDefault(); if (name.trim()) void run(createRubric); }}>
+        <Field label="Nombre de la nueva pauta"><input className="control w-full" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} placeholder="Pauta de observación 2027" /></Field>
+        <Field label="Instrumento"><select className="control w-full" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
+        <button className="primary" disabled={busy || localBusy || !name.trim()}>Crear borrador</button>
+      </form>
+      <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+        {!catalog.length ? <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p> : catalog.map((rubric) => {
+          const rubricVersions = versions[rubric.rubricId] ?? [];
+          const draft = rubricVersions.find((version) => version.status === "DRAFT");
+          const published = rubricVersions.find((version) => version.status === "PUBLISHED");
+          const assigned = assignments.find((item) => item.instrumentCode === rubric.instrumentCode && item.rubricId === rubric.rubricId);
+          return <article key={rubric.rubricId} className="border-b border-slate-100 p-6 last:border-b-0">
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap gap-2"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-900">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>{published && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">Publicada · v{published.version}</span>}{draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador · v{draft.version}</span>}</div>
+                <h3 className="mt-3 text-lg font-black text-slate-950">{rubric.name}</h3>
+                <p className="mt-1 text-sm text-slate-500">{rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios {assigned ? "· asociada a este proceso" : ""}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, rubric.instrumentCode, published.versionId))}>Asociar</button>}
+                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void run(() => prekinderApi.duplicateRubric(rubric.rubricId))}>Nueva versión</button>}
+                {draft && <button className="primary" disabled={busy || localBusy || draft.criteriaCount === 0} onClick={() => void run(() => prekinderApi.publishRubricVersion(draft.versionId))}>Publicar borrador</button>}
+              </div>
+            </div>
+          </article>;
+        })}
+      </section>
     </div>
+  );
+}
+
+function Communications({ templates, busy, onAction }: {
+  templates: CommunicationTemplate[];
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+}) {
+  const latest = Object.values(templates.reduce<Record<string, CommunicationTemplate>>((result, template) => {
+    const current = result[template.eventCode];
+    if (!current || template.contentVersion > current.contentVersion) result[template.eventCode] = template;
+    return result;
+  }, {}));
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+      {!latest.length ? <p className="p-8 text-center text-sm text-slate-500">No hay plantillas configuradas.</p> : latest.map((template) => <CommunicationRow key={template.contentVersionId} template={template} busy={busy} onAction={onAction} />)}
+    </section>
+  );
+}
+
+function CommunicationRow({ template, busy, onAction }: {
+  template: CommunicationTemplate;
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+}) {
+  const [subject, setSubject] = useState(template.subject);
+  const [body, setBody] = useState(template.bodyHtml);
+  useEffect(() => { setSubject(template.subject); setBody(template.bodyHtml); }, [template.contentVersionId]);
+  const draft = template.contentStatus === "DRAFT";
+  return (
+    <article className="border-b border-slate-100 p-6 last:border-b-0">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1"><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${draft ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"}`}>{draft ? "Borrador" : "Publicada"} · v{template.contentVersion}</span><h3 className="mt-3 font-black text-slate-950">{template.name}</h3></div>
+        {!draft && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.duplicateCommunication(template.templateId), "Versión borrador creada.")}>Crear nueva versión</button>}
+      </div>
+      {draft ? <div className="mt-5 grid gap-4">
+        <Field label="Asunto"><input className="control w-full" maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
+        <Field label="Cuerpo HTML"><textarea className="control min-h-32 w-full" maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
+        <p className="text-xs text-slate-500">Variables permitidas: applicantName, processName, portalUrl, deadline.</p>
+        <div className="flex flex-wrap justify-end gap-2"><button className="secondary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(() => prekinderApi.saveCommunication(template.contentVersionId, subject, body), "Borrador guardado.")}>Guardar borrador</button><button className="primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(async () => { await prekinderApi.saveCommunication(template.contentVersionId, subject, body); return prekinderApi.publishCommunication(template.contentVersionId); }, "Plantilla publicada.")}>Guardar y publicar</button></div>
+      </div> : <><p className="mt-2 text-sm text-slate-600">{template.subject}</p><p className="mt-2 text-xs text-slate-500">Variables: {template.allowedVariables.join(", ") || "sin variables"}</p></>}
+    </article>
   );
 }
 
 function Decisions({
   processId,
   applications,
+  batches,
   busy,
   onAction,
 }: {
   processId: string;
   applications: FlowApplication[];
+  batches: PublicationBatch[];
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
+  const [mode, setMode] = useState<"IMMEDIATE" | "SCHEDULED">("IMMEDIATE");
+  const [preview, setPreview] = useState<PublicationPreview | null>(null);
   const sortedApplications = useMemo(
     () => [...applications].sort((a, b) => fullName(a).localeCompare(fullName(b), "es")),
     [applications],
@@ -2836,39 +3111,36 @@ function Decisions({
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <div className="mr-auto">
-            <h2 className="font-black">Publicación programada</h2>
+            <h2 className="font-black">Liberación masiva de resultados</h2>
             <p className="mt-1 text-xs text-slate-500">
-              El lote captura sólo decisiones completas. El portal será la
-              fuente oficial.
+              Previsualiza el lote antes de confirmar. El portal se publica primero y el correo se entrega mediante la cola segura.
             </p>
           </div>
-          <Field label="Fecha y hora">
+          <Field label="Modalidad"><select className="control" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}><option value="IMMEDIATE">Inmediata</option><option value="SCHEDULED">Programada</option></select></Field>
+          {mode === "SCHEDULED" && <Field label="Fecha y hora">
             <input
               className="control"
               type="datetime-local"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
             />
-          </Field>
+          </Field>}
           <button
-            className="primary"
-            disabled={busy || !scheduledAt}
-            onClick={() =>
-              onAction(
-                () =>
-                  prekinderApi.schedulePublication(
-                    processId,
-                    new Date(scheduledAt).toISOString(),
-                  ),
-                "Lote de publicación programado.",
-              )
-            }
+            className="secondary"
+            disabled={busy}
+            onClick={() => void onAction(async () => { const result = await prekinderApi.publicationPreview(processId); setPreview(result); return result; }, "Previsualización actualizada.")}
           >
-            Programar lote
+            Previsualizar
           </button>
+          <button className="primary" disabled={busy || !preview || preview.blocked.length > 0 || preview.eligible.length === 0 || (mode === "SCHEDULED" && !scheduledAt)} onClick={() => void onAction(() => prekinderApi.createPublicationBatch(processId, { previewId: preview!.previewId, idempotencyKey: crypto.randomUUID(), mode, scheduledAt: mode === "SCHEDULED" ? new Date(scheduledAt).toISOString() : null }), mode === "IMMEDIATE" ? "Publicación inmediata confirmada." : "Publicación programada.")}>Confirmar lote</button>
         </div>
+        {preview && <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3" aria-live="polite"><div><p className="text-2xl font-black text-emerald-700">{preview.eligible.length}</p><p className="text-xs text-slate-500">elegibles</p></div><div><p className="text-2xl font-black text-red-700">{preview.blocked.length}</p><p className="text-xs text-slate-500">bloqueadas</p></div><div><p className="text-2xl font-black text-slate-500">{preview.skipped.length}</p><p className="text-xs text-slate-500">ya publicadas o programadas</p></div>{preview.blocked.length > 0 && <p className="sm:col-span-3 text-sm font-semibold text-red-800" role="alert">Resuelve las decisiones o destinatarios faltantes y vuelve a previsualizar.</p>}</div>}
+      </section>
+      <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+        <div className="border-b border-slate-100 p-5"><h2 className="font-black text-slate-950">Historial de lotes</h2></div>
+        {!batches.length ? <p className="p-7 text-center text-sm text-slate-500">Todavía no hay publicaciones.</p> : batches.map((batch) => <div key={batch.batchId} className="flex flex-wrap items-center gap-4 border-b border-slate-100 p-5 last:border-b-0"><div className="min-w-0 flex-1"><p className="font-bold text-slate-900">{batch.mode === "IMMEDIATE" ? "Publicación inmediata" : "Publicación programada"}</p><p className="mt-1 text-xs text-slate-500">{batch.itemCount} resultados · {batch.sentCount} correos enviados · {batch.failedCount} fallidos</p></div><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${batch.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-800" : batch.status === "PARTIAL" || batch.status === "FAILED" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>{batch.status}</span>{batch.status === "SCHEDULED" && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.cancelPublicationBatch(batch.batchId, batch.version), "Lote cancelado.")}>Cancelar</button>}{batch.failedCount > 0 && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.retryPublicationBatch(batch.batchId), "Reintento solicitado.")}>Reintentar fallidos</button>}</div>)}
       </section>
       <section className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {sortedApplications.map((app) => (

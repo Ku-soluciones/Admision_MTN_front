@@ -245,10 +245,9 @@ export default function PrekinderApp() {
           }
         />
 
-        <Route
-          path="/prekinder/dev/mock-evaluations"
-          element={<MockDevLauncher />}
-        />
+        {import.meta.env.DEV && (
+          <Route path="/prekinder/dev/mock-evaluations" element={<MockDevLauncher />} />
+        )}
         <Route
           path="/prekinder/postular"
           element={<Navigate to="/postulacion?proceso=prekinder" replace />}

@@ -60,7 +60,6 @@ export async function apiRequest<T>(
     }
   }
   const body = await response.json().catch(() => null);
-  console.debug("[DEBUG apiRequest] path:", path, "status:", response.status, "body:", JSON.stringify(body, null, 2)?.slice(0, 500));
   if (!response.ok) {
     throw new ApiError(
       response.status,
@@ -423,6 +422,132 @@ export type PublishedResult = {
   decisionVersion: number;
 };
 
+export type ProcessConfiguration = {
+  processId: string;
+  paymentEnabled: boolean;
+  paymentAmount: number | null;
+  paymentCurrency: string;
+  paymentGlosa: string;
+  paymentDueDays: number;
+  inclusionEnabled: boolean;
+  inclusionDocumentsRequired: boolean;
+  minimumAgeMonths: number;
+  maximumAgeMonths: number;
+  applicantWeight: number;
+  familyWeight: number;
+  version: number;
+};
+
+export type ReadinessItem = {
+  phase: string;
+  code: string;
+  label: string;
+  complete: boolean;
+  blocking: boolean;
+  detail: string;
+};
+export type ProcessReadiness = {
+  processId: string;
+  processStatus: AdmissionProcess["status"];
+  phases: Record<string, { ready: boolean; items: ReadinessItem[] }>;
+};
+
+export type RubricSummary = {
+  rubricId: string;
+  ownerProcessId: string | null;
+  instrumentCode: string;
+  name: string;
+  status: "ACTIVE" | "ARCHIVED";
+  version: number;
+  versionCount: number;
+  latestVersion: number;
+  hasPublishedVersion: boolean;
+};
+export type RubricDetail = {
+  rubric: RubricSummary;
+  versions: Array<{ versionId: string; version: number; status: "DRAFT" | "PUBLISHED" | "SUPERSEDED"; maximumScore: number | null; publishedAt: string | null; criteriaCount: number }>;
+};
+export type RubricVersion = {
+  versionId: string;
+  rubricId: string;
+  name: string;
+  instrumentCode: string;
+  version: number;
+  status: "DRAFT" | "PUBLISHED" | "SUPERSEDED";
+  maximumScore: number | null;
+  publishedAt: string | null;
+  criteria: Array<{
+    criterionId: string;
+    code: string;
+    name: string;
+    descriptor: string;
+    position: number;
+    required: boolean;
+    options: Array<{
+      optionId: string;
+      value: number;
+      label: string;
+      descriptor: string;
+      professionallyValidated: boolean;
+      position: number;
+    }>;
+  }>;
+};
+export type RubricAssignment = {
+  assignmentId: string;
+  processId: string;
+  instrumentCode: string;
+  rubricId: string;
+  versionId: string;
+  rubricName: string;
+  rubricVersion: number;
+  maximumScore: number;
+  version: number;
+};
+
+export type PublicationPreview = {
+  previewId: string;
+  processId: string;
+  fingerprint: string;
+  expiresAt: string;
+  eligible: Array<{ applicationId: string; decisionId: string; decision: string; decisionVersion: number; rectification: boolean }>;
+  blocked: Array<{ applicationId: string; reasonCode: string }>;
+  skipped: Array<{ applicationId: string; reasonCode: string }>;
+  summary: Record<string, number>;
+};
+export type PublicationBatch = {
+  batchId: string;
+  processId: string;
+  scheduledAt: string;
+  status: "SCHEDULED" | "PROCESSING" | "PUBLISHED" | "PARTIAL" | "FAILED" | "CANCELLED";
+  mode: "IMMEDIATE" | "SCHEDULED";
+  version: number;
+  itemCount: number;
+  sentCount: number;
+  failedCount: number;
+  createdAt: string;
+  publishedAt: string | null;
+  lastErrorCode: string | null;
+};
+
+export type CommunicationTemplate = {
+  templateId: string;
+  processId: string;
+  eventCode: string;
+  name: string;
+  status: "ACTIVE" | "ARCHIVED";
+  version: number;
+  contentVersionId: string;
+  contentVersion: number;
+  contentStatus: "DRAFT" | "PUBLISHED" | "SUPERSEDED";
+  subject: string;
+  bodyHtml: string;
+  allowedVariables: string[];
+  publishedAt: string | null;
+};
+export type ApplicationDraft = { draftId: string; processId: string; currentSection: number; data: Record<string, unknown>; version: number };
+export type AdmissionOffer = { offerId: string; applicationId: string; status: "OFFERED" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "CANCELLED"; expiresAt: string; version: number; processName: string; academicYear: number };
+
 export type Comment = {
   commentId: string;
   evaluationId: string;
@@ -442,11 +567,28 @@ export const prekinderApi = {
     apiRequest<PrekinderApplicationOption[]>(
       "/v1/prekinder/application-options",
     ),
+  applicationDraft: (processId: string) => apiRequest<ApplicationDraft | null>(`/v1/prekinder/processes/${processId}/application-draft`),
+  saveApplicationDraft: (processId: string, currentSection: number, data: Record<string, unknown>, expectedVersion?: number) =>
+    apiRequest<ApplicationDraft>(`/v1/prekinder/processes/${processId}/application-draft`, { method: "PUT", body: JSON.stringify({ currentSection, data, expectedVersion }) }),
+  deleteApplicationDraft: (processId: string) => apiRequest(`/v1/prekinder/processes/${processId}/application-draft`, { method: "DELETE" }),
   createProcess: (academicYear: number, name: string) =>
     apiRequest<AdmissionProcess>("/v1/prekinder/processes", {
       method: "POST",
       body: JSON.stringify({ academicYear, name }),
     }),
+  processConfiguration: (processId: string) =>
+    apiRequest<ProcessConfiguration>(`/v1/prekinder/processes/${processId}/configuration`),
+  saveProcessConfiguration: (processId: string, input: Omit<ProcessConfiguration, "processId">) =>
+    apiRequest<ProcessConfiguration>(`/v1/prekinder/processes/${processId}/configuration`, {
+      method: "PUT",
+      body: JSON.stringify({ ...input, expectedVersion: input.version }),
+    }),
+  readiness: (processId: string) =>
+    apiRequest<ProcessReadiness>(`/v1/prekinder/processes/${processId}/readiness`),
+  closeProcess: (processId: string, expectedVersion: number) =>
+    apiRequest<AdmissionProcess>(`/v1/prekinder/processes/${processId}/close?expectedVersion=${expectedVersion}`, { method: "POST" }),
+  archiveProcess: (processId: string, expectedVersion: number) =>
+    apiRequest<AdmissionProcess>(`/v1/prekinder/processes/${processId}/archive?expectedVersion=${expectedVersion}`, { method: "POST" }),
   publishProcess: (processId: string, startsAt: string, endsAt: string) =>
     apiRequest<AdmissionProcess>(
       `/v1/prekinder/processes/${processId}/publication`,
@@ -574,7 +716,6 @@ export const prekinderApi = {
       processId: string;
       displayName: string;
       email: string;
-      password?: string;
       roleCode: ProfessionalRoleCode;
       expectedVersion: number;
       password?: string;
@@ -742,7 +883,6 @@ export const prekinderApi = {
     const params = new URLSearchParams({ date, instrument });
     if (processId) params.set("processId", processId);
     const url = `/v1/prekinder/me/evaluator-agenda?${params.toString()}`;
-    console.debug("[DEBUG api.evaluatorAgenda] fetching:", url);
     return apiRequest<EvaluatorAgenda>(url);
   },
   evaluatorWorkspace: (date: string, processId?: string) => {
@@ -844,16 +984,45 @@ export const prekinderApi = {
       method: "PUT",
       body: JSON.stringify({ decision, note }),
     }),
-  schedulePublication: (processId: string, scheduledAt: string) =>
-    apiRequest(`/v1/prekinder/processes/${processId}/publication-batches`, {
+  publicationPreview: (processId: string) =>
+    apiRequest<PublicationPreview>(`/v1/prekinder/processes/${processId}/publication-previews`, { method: "POST" }),
+  publicationBatches: (processId: string) =>
+    apiRequest<PublicationBatch[]>(`/v1/prekinder/processes/${processId}/publication-batches`),
+  createPublicationBatch: (processId: string, input: {
+    previewId: string; idempotencyKey: string; mode: "IMMEDIATE" | "SCHEDULED"; scheduledAt: string | null;
+  }) => apiRequest<PublicationBatch>(`/v1/prekinder/processes/${processId}/publication-batches`, {
       method: "POST",
-      body: JSON.stringify({ scheduledAt }),
+      body: JSON.stringify(input),
     }),
+  cancelPublicationBatch: (batchId: string, expectedVersion: number) =>
+    apiRequest<PublicationBatch>(`/v1/prekinder/publication-batches/${batchId}/cancellation?expectedVersion=${expectedVersion}`, { method: "POST" }),
+  retryPublicationBatch: (batchId: string) =>
+    apiRequest<PublicationBatch>(`/v1/prekinder/publication-batches/${batchId}/retry`, { method: "POST" }),
+  rubrics: () => apiRequest<RubricSummary[]>("/v1/prekinder/rubrics"),
+  rubricDetail: (rubricId: string) => apiRequest<RubricDetail>(`/v1/prekinder/rubrics/${rubricId}`),
+  createRubric: (name: string, instrumentCode: string) =>
+    apiRequest<RubricVersion>("/v1/prekinder/rubrics", { method: "POST", body: JSON.stringify({ name, instrumentCode }) }),
+  rubricVersion: (versionId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}`),
+  duplicateRubric: (rubricId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubrics/${rubricId}/versions`, { method: "POST" }),
+  saveRubricVersion: (versionId: string, input: { name: string; expectedRubricVersion: number; criteria: RubricVersion["criteria"] }) =>
+    apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}`, { method: "PUT", body: JSON.stringify(input) }),
+  publishRubricVersion: (versionId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}/publication`, { method: "POST" }),
+  deleteRubricVersion: (versionId: string) => apiRequest(`/v1/prekinder/rubric-versions/${versionId}`, { method: "DELETE" }),
+  rubricAssignments: (processId: string) => apiRequest<RubricAssignment[]>(`/v1/prekinder/processes/${processId}/rubric-assignments`),
+  assignRubric: (processId: string, instrumentCode: string, versionId: string, expectedVersion?: number) =>
+    apiRequest<RubricAssignment[]>(`/v1/prekinder/processes/${processId}/rubric-assignments/${instrumentCode}`, { method: "PUT", body: JSON.stringify({ versionId, expectedVersion }) }),
+  communicationTemplates: (processId: string) => apiRequest<CommunicationTemplate[]>(`/v1/prekinder/processes/${processId}/communication-templates`),
+  duplicateCommunication: (templateId: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-templates/${templateId}/versions`, { method: "POST" }),
+  saveCommunication: (versionId: string, subject: string, bodyHtml: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-template-versions/${versionId}`, { method: "PUT", body: JSON.stringify({ subject, bodyHtml }) }),
+  publishCommunication: (versionId: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-template-versions/${versionId}/publication`, { method: "POST" }),
   dashboard: (processId: string) =>
     apiRequest<DashboardMetrics>(
       `/v1/prekinder/processes/${processId}/dashboard`,
     ),
   myResults: () => apiRequest<PublishedResult[]>("/v1/prekinder/me/results"),
+  myOffers: () => apiRequest<AdmissionOffer[]>("/v1/prekinder/me/offers"),
+  respondOffer: (offerId: string, response: "ACCEPTED" | "DECLINED", expectedVersion: number) =>
+    apiRequest<AdmissionOffer>(`/v1/prekinder/offers/${offerId}/response`, { method: "POST", body: JSON.stringify({ response, expectedVersion }) }),
   uploadDocument: (applicationId: string, category: string, file: File) => {
     const body = new FormData();
     body.append("file", file);
