@@ -465,7 +465,7 @@ export type RubricSummary = {
 };
 export type RubricDetail = {
   rubric: RubricSummary;
-  versions: Array<{ versionId: string; version: number; status: "DRAFT" | "PUBLISHED" | "SUPERSEDED"; maximumScore: number | null; publishedAt: string | null; criteriaCount: number }>;
+  versions: Array<{ versionId: string; version: number; status: "DRAFT" | "PUBLISHED" | "SUPERSEDED"; name: string; instrumentCode: string; maximumScore: number | null; publishedAt: string | null; criteriaCount: number }>;
 };
 export type RubricVersion = {
   versionId: string;
@@ -476,6 +476,7 @@ export type RubricVersion = {
   status: "DRAFT" | "PUBLISHED" | "SUPERSEDED";
   maximumScore: number | null;
   publishedAt: string | null;
+  rubricRevision: number;
   criteria: Array<{
     criterionId: string;
     code: string;
@@ -490,6 +491,23 @@ export type RubricVersion = {
       descriptor: string;
       professionallyValidated: boolean;
       position: number;
+    }>;
+  }>;
+};
+export type RubricDraftInput = {
+  name: string;
+  instrumentCode: string;
+  expectedRubricVersion: number;
+  criteria: Array<{
+    code: string;
+    name: string;
+    descriptor: string;
+    required: boolean;
+    options: Array<{
+      value: number;
+      label: string;
+      descriptor: string;
+      professionallyValidated: boolean;
     }>;
   }>;
 };
@@ -1004,7 +1022,7 @@ export const prekinderApi = {
     apiRequest<RubricVersion>("/v1/prekinder/rubrics", { method: "POST", body: JSON.stringify({ name, instrumentCode }) }),
   rubricVersion: (versionId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}`),
   duplicateRubric: (rubricId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubrics/${rubricId}/versions`, { method: "POST" }),
-  saveRubricVersion: (versionId: string, input: { name: string; expectedRubricVersion: number; criteria: RubricVersion["criteria"] }) =>
+  saveRubricVersion: (versionId: string, input: RubricDraftInput) =>
     apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}`, { method: "PUT", body: JSON.stringify(input) }),
   publishRubricVersion: (versionId: string) => apiRequest<RubricVersion>(`/v1/prekinder/rubric-versions/${versionId}/publication`, { method: "POST" }),
   deleteRubricVersion: (versionId: string) => apiRequest(`/v1/prekinder/rubric-versions/${versionId}`, { method: "DELETE" }),

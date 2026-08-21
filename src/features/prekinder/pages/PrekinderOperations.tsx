@@ -42,7 +42,9 @@ import {
   type PublicationBatch,
   type PublicationPreview,
   type RubricAssignment,
+  type RubricDraftInput,
   type RubricSummary,
+  type RubricVersion,
   type CommunicationTemplate,
   type Room,
   type Wave,
@@ -52,6 +54,7 @@ import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
+import { RubricEditor } from "../components/admin/RubricEditor";
 
 const sections = [
   ["Resumen", LayoutDashboard],
@@ -2985,11 +2988,12 @@ const instrumentLabels: Record<string, string> = {
 function Rubrics({ processId, busy, onChanged }: { processId: string; busy: boolean; onChanged: () => Promise<void> }) {
   const [catalog, setCatalog] = useState<RubricSummary[]>([]);
   const [assignments, setAssignments] = useState<RubricAssignment[]>([]);
-  const [versions, setVersions] = useState<Record<string, Array<{ versionId: string; version: number; status: string; criteriaCount: number }>>>({});
+  const [versions, setVersions] = useState<Record<string, Array<{ versionId: string; version: number; status: string; instrumentCode: string; criteriaCount: number }>>>({});
   const [name, setName] = useState("");
   const [instrument, setInstrument] = useState("ENTRY_INDICATORS");
   const [localBusy, setLocalBusy] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [editorVersion, setEditorVersion] = useState<RubricVersion | null>(null);
   async function load() {
     const [nextCatalog, nextAssignments] = await Promise.all([prekinderApi.rubrics(), prekinderApi.rubricAssignments(processId)]);
     const details = await Promise.all(nextCatalog.map((rubric) => prekinderApi.rubricDetail(rubric.rubricId)));
@@ -3004,14 +3008,60 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
     finally { setLocalBusy(false); }
   }
   async function createRubric() {
-    const created = await prekinderApi.createRubric(name.trim(), instrument);
-    await prekinderApi.saveRubricVersion(created.versionId, {
-      name: name.trim(), expectedRubricVersion: 0,
-      criteria: [{ criterionId: "", code: "OBSERVACION_GENERAL", name: "Observación general", descriptor: "Registra el nivel observado durante la actividad.", position: 0, required: true,
-        options: [0, 1, 2, 3].map((value) => ({ optionId: "", value, label: `Nivel ${value}`, descriptor: value === 0 ? "No observado" : `Nivel de logro ${value}`, professionallyValidated: false, position: value })) }],
-    });
-    setName("");
+    setLocalBusy(true); setLocalError("");
+    try {
+      const created = await prekinderApi.createRubric(name.trim(), instrument);
+      setName("");
+      setEditorVersion(created);
+      await load(); await onChanged();
+    } catch (reason) {
+      setLocalError(reason instanceof Error ? reason.message : "No pudimos crear la pauta.");
+    } finally { setLocalBusy(false); }
   }
+  async function openVersion(versionId: string) {
+    setLocalBusy(true); setLocalError("");
+    try { setEditorVersion(await prekinderApi.rubricVersion(versionId)); }
+    catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos abrir la pauta."); }
+    finally { setLocalBusy(false); }
+  }
+  async function duplicateAndEdit(rubricId: string) {
+    setLocalBusy(true); setLocalError("");
+    try {
+      const created = await prekinderApi.duplicateRubric(rubricId);
+      setEditorVersion(created);
+      await load(); await onChanged();
+    } catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos crear la nueva versión."); }
+    finally { setLocalBusy(false); }
+  }
+  async function saveEditor(input: RubricDraftInput) {
+    if (!editorVersion) throw new Error("No hay una pauta abierta.");
+    setLocalBusy(true);
+    try {
+      const updated = await prekinderApi.saveRubricVersion(editorVersion.versionId, input);
+      setEditorVersion(updated);
+      await load(); await onChanged();
+      return updated;
+    } finally { setLocalBusy(false); }
+  }
+  async function publishEditor() {
+    if (!editorVersion) return;
+    setLocalBusy(true);
+    try {
+      const published = await prekinderApi.publishRubricVersion(editorVersion.versionId);
+      setEditorVersion(published);
+      await load(); await onChanged();
+    } finally { setLocalBusy(false); }
+  }
+  async function deleteEditor() {
+    if (!editorVersion) return;
+    setLocalBusy(true);
+    try {
+      await prekinderApi.deleteRubricVersion(editorVersion.versionId);
+      setEditorVersion(null);
+      await load(); await onChanged();
+    } finally { setLocalBusy(false); }
+  }
+  if (editorVersion) return <RubricEditor key={editorVersion.versionId} version={editorVersion} instrumentLabels={instrumentLabels} busy={busy || localBusy} onSave={saveEditor} onPublish={publishEditor} onDelete={deleteEditor} onClose={() => setEditorVersion(null)} />;
   return (
     <div className="space-y-5">
       {localError && <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{localError}</p>}
@@ -3034,9 +3084,10 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
                 <p className="mt-1 text-sm text-slate-500">{rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios {assigned ? "· asociada a este proceso" : ""}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, rubric.instrumentCode, published.versionId))}>Asociar</button>}
-                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void run(() => prekinderApi.duplicateRubric(rubric.rubricId))}>Nueva versión</button>}
-                {draft && <button className="primary" disabled={busy || localBusy || draft.criteriaCount === 0} onClick={() => void run(() => prekinderApi.publishRubricVersion(draft.versionId))}>Publicar borrador</button>}
+                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
+                {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openVersion(published.versionId)}>Ver publicada</button>}
+                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
+                {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
               </div>
             </div>
           </article>;
