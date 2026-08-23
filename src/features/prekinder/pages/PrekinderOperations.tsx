@@ -17,6 +17,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Settings2,
   Mail,
   Trash2,
@@ -1619,6 +1620,7 @@ function WaveEditor({
 }
 
 const APP_PAGE_SIZE = 10;
+const PROFESSIONALS_PAGE_SIZE = 10;
 
 function Applications({
   applications,
@@ -1687,36 +1689,33 @@ function Applications({
   );
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-start gap-4 border-b border-slate-200 p-5">
-        <div>
-          <h2 className="font-black">
-            Listado de postulaciones{" "}
-            <span className="text-sm font-normal text-slate-400">
-              {filtered.length} de {applications.length}
-            </span>
-          </h2>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <span className="text-sm font-normal text-slate-400">
+          {filtered.length} de {applications.length}
+        </span>
+        <select
+          className="control"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="ALL">Todos los estados</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="VERIFIED">Verificada</option>
+          <option value="REJECTED">Rechazada</option>
+        </select>
+        <label className="relative block w-full max-w-xs">
+          <Search className="absolute left-3 top-3 text-slate-400" size={18} />
           <input
-            className="control"
-            placeholder="Nombre o RUT"
+            className="control w-full pl-10"
+            placeholder="Buscar por nombre o RUT…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <select
-            className="control"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">Todos los estados</option>
-            <option value="PENDING">Pendiente</option>
-            <option value="VERIFIED">Verificada</option>
-            <option value="REJECTED">Rechazada</option>
-          </select>
-        </div>
+        </label>
       </div>
 
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
@@ -1797,7 +1796,8 @@ function Applications({
           Siguiente →
         </button>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -2720,12 +2720,22 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
     key: "name",
     dir: "asc",
   });
+  const [page, setPage] = useState(0);
   const needsAccess = !editing || !editing.legacyUserId;
   const availableRoles = roles.filter((role) => role.groupCode === group);
+  const sortedProfessionals = sortPeople(professionals);
+  const totalPages = Math.max(1, Math.ceil(sortedProfessionals.length / PROFESSIONALS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paginatedProfessionals = sortedProfessionals.slice(
+    currentPage * PROFESSIONALS_PAGE_SIZE,
+    (currentPage + 1) * PROFESSIONALS_PAGE_SIZE,
+  );
   const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
     groupCode,
-    people: professionals.filter((person) => person.roleGroup === groupCode),
+    people: paginatedProfessionals.filter((person) => person.roleGroup === groupCode),
   })).filter((section) => section.people.length > 0);
+
+  useEffect(() => setPage(0), [sort, professionals.length]);
 
   function toggleSort(key: "name" | "cargo" | "estado") {
     setSort((current) =>
@@ -2952,7 +2962,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
                       <span className="whitespace-nowrap">Acción</span>
                     </div>
                     <div className="divide-y divide-slate-100">
-                      {sortPeople(people).map((person) => (
+                      {people.map((person) => (
                         <div key={person.professionalId} className="grid grid-cols-[minmax(160px,1.1fr)_minmax(160px,1fr)_minmax(160px,1fr)_100px_170px] items-center gap-4 px-5 py-4">
                           <span className="min-w-0">
                             <span className="block truncate font-bold">{person.displayName}</span>
@@ -2985,6 +2995,27 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {professionals.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← Anterior
+            </button>
+            <span className="text-sm text-slate-500">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Siguiente →
+            </button>
           </div>
         )}
       </section>
