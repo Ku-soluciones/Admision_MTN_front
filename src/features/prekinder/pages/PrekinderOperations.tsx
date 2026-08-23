@@ -15,6 +15,7 @@ import {
   Menu,
   KeyRound,
   Pencil,
+  Plus,
   RefreshCw,
   Settings2,
   Mail,
@@ -161,6 +162,7 @@ export function PrekinderOperations({
   const [configuration, setConfiguration] = useState<ProcessConfiguration | null>(null);
   const [readiness, setReadiness] = useState<ProcessReadiness | null>(null);
   const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
+  const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
   const [publicationBatches, setPublicationBatches] = useState<PublicationBatch[]>([]);
   const [date, setDate] = useState(initialDate);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -596,6 +598,11 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
                     <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
                   </>
+                ) : section === "Configuración" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración</p>
+                    <p className="mt-1 text-sm text-gray-600">Ajusta las políticas de pago, inclusión, edad y ponderación del proceso.</p>
+                  </>
                 ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
@@ -610,6 +617,11 @@ export function PrekinderOperations({
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
                     <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
+                  </>
+                ) : section === "Comunicaciones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Comunicaciones</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa las plantillas y versiones que recibirán las familias.</p>
                   </>
                 ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
@@ -838,7 +850,20 @@ export function PrekinderOperations({
           )}
           {section === "Pautas" && <Rubrics processId={processId} busy={busy} onChanged={() => loadProcess(processId)} />}
           {section === "Comunicaciones" && (
-            <Communications templates={communicationTemplates} busy={busy} onAction={action} />
+            <Communications
+              templates={communicationTemplates}
+              busy={busy}
+              onAction={action}
+              expandedDrafts={expandedDrafts}
+              onToggleDraftExpanded={(contentVersionId) =>
+                setExpandedDrafts((current) => {
+                  const next = new Set(current);
+                  if (next.has(contentVersionId)) next.delete(contentVersionId);
+                  else next.add(contentVersionId);
+                  return next;
+                })
+              }
+            />
           )}
           {section === "Decisiones" && (
             <Decisions
@@ -1011,6 +1036,7 @@ function ProcessSetup({
   onPublish: (startsAt: string, endsAt: string) => Promise<void>;
 }) {
   const openPhase = readiness?.phases.OPEN_APPLICATIONS;
+  const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
   return (
     <div className="space-y-7">
       <section className="overflow-hidden rounded-2xl bg-azul-monte-tabor text-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
@@ -1052,9 +1078,22 @@ function ProcessSetup({
       <section>
         <h2 className="text-xl font-black text-slate-950">Comunicaciones</h2>
         <p className="mt-2 text-sm text-slate-600">Revisa las versiones que recibirán las familias durante el ciclo.</p>
-        <div className="mt-5"><Communications templates={communications} busy={busy} onAction={async (work) => {
-          try { await work(); await onChanged(); return true; } catch { return false; }
-        }} /></div>
+        <div className="mt-5"><Communications
+          templates={communications}
+          busy={busy}
+          onAction={async (work) => {
+            try { await work(); await onChanged(); return true; } catch { return false; }
+          }}
+          expandedDrafts={expandedDrafts}
+          onToggleDraftExpanded={(contentVersionId) =>
+            setExpandedDrafts((current) => {
+              const next = new Set(current);
+              if (next.has(contentVersionId)) next.delete(contentVersionId);
+              else next.add(contentVersionId);
+              return next;
+            })
+          }
+        /></div>
       </section>
       <ProcessActivation process={process} busy={busy} ready={Boolean(openPhase?.ready)} onPublish={onPublish} />
     </div>
@@ -1122,7 +1161,7 @@ function ConfigurationEditor({ configuration, busy, onSave }: {
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
         <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label>
-        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount)}>{busy ? "Guardando…" : "Guardar políticas"}</button>
+        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount)}>{busy ? "Guardando…" : "Guardar cambios"}</button>
       </div>
     </form>
   );
@@ -1523,16 +1562,14 @@ function WaveEditor({
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 font-black text-blue-900">
-          {wave.position}
-        </span>
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Etapa {wave.position}</p>
         <span
           className={`rounded-full px-3 py-1 text-xs font-extrabold ${wave.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}
         >
           {wave.active ? "Vigente" : statusLabel[wave.status] || wave.status}
         </span>
       </div>
-      <h2 className="mt-5 text-lg font-black">{waveNames[wave.waveType]}</h2>
+      <h2 className="mt-2 text-lg font-black">{waveNames[wave.waveType]}</h2>
       <div className="mt-5 space-y-4">
         <Field label="Apertura">
           <input
@@ -2671,6 +2708,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   onDelete: (person: Professional) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Professional | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2712,6 +2750,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
 
   function clearForm() {
     setEditing(null);
+    setFormOpen(false);
     setName("");
     setEmail("");
     setPassword("");
@@ -2722,6 +2761,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
 
   function edit(person: Professional) {
     setEditing(person);
+    setFormOpen(true);
     setName(person.displayName);
     setEmail(person.email);
     setPassword("");
@@ -2732,122 +2772,141 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-      <form
-        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          if (!roleCode || !processId) return;
-          const saved = await onSave({
-            processId,
-            professionalId: editing?.professionalId,
-            legacyUserId: editing?.legacyUserId,
-            displayName: name.trim(),
-            email: email.trim(),
-            password: editing ? undefined : password || undefined,
-            specialty: specialty.trim(),
-            roleCode,
-            active: editing?.active ?? true,
-            expectedVersion: editing?.version ?? 0,
-          });
-          if (saved) clearForm();
-        }}
-      >
-        <h2 className="text-lg font-black">{editing
-          ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
-          : "Nuevo profesional"}</h2>
-        <p className="mt-1 text-sm leading-5 text-slate-600">
-          El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
-        </p>
-        <div className="mt-5 space-y-4">
-          <Field label="Nombre completo">
-            <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
-          </Field>
-          <Field label="Correo institucional">
-            <input
-              required
-              type="email"
-              autoComplete="off"
-              placeholder="ejemplo@mtn.cl"
-              disabled={Boolean(editing && !needsAccess)}
-              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-          {!editing && (
-            <Field label="Contraseña (opcional)">
-              <input type="password" autoComplete="new-password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-            </Field>
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black">{editing
+              ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
+              : "Nuevo profesional"}</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              {formOpen
+                ? "El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso."
+                : "Registra un nuevo profesional para el proceso."}
+            </p>
+          </div>
+          {!formOpen && (
+            <button type="button" className="primary shrink-0 self-start" onClick={() => setFormOpen(true)}>
+              <Plus className="mr-2" size={16} /> Agregar profesional
+            </button>
           )}
-          {editing?.legacyUserId && (
-            <Field label="Nueva contraseña (opcional)">
-              <div className="flex gap-2">
+        </div>
+        {formOpen && (
+          <form
+            className="mt-6"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!roleCode || !processId) return;
+              const saved = await onSave({
+                processId,
+                professionalId: editing?.professionalId,
+                legacyUserId: editing?.legacyUserId,
+                displayName: name.trim(),
+                email: email.trim(),
+                password: editing ? undefined : password || undefined,
+                specialty: specialty.trim(),
+                roleCode,
+                active: editing?.active ?? true,
+                expectedVersion: editing?.version ?? 0,
+              });
+              if (saved) clearForm();
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Field label="Nombre completo">
+                <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
+              </Field>
+              <Field label="Correo institucional">
                 <input
-                  type="password"
-                  autoComplete="new-password"
-                  className="control min-w-0 flex-1"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  minLength={6}
+                  required
+                  type="email"
+                  autoComplete="off"
+                  placeholder="ejemplo@mtn.cl"
+                  disabled={Boolean(editing && !needsAccess)}
+                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                 />
-                <button
-                  type="button"
-                  className="secondary inline-flex items-center gap-2 px-3"
-                  disabled={busy || password.length < 6}
-                  onClick={async () => {
-                    if (await onPasswordUpdate(editing.professionalId, password)) {
-                      setPassword("");
-                    }
+              </Field>
+              {!editing && (
+                <Field label="Contraseña (opcional)">
+                  <input type="password" autoComplete="new-password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+                </Field>
+              )}
+              {editing?.legacyUserId && (
+                <div className="sm:col-span-2">
+                  <Field label="Nueva contraseña (opcional)">
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        className="control min-w-0 flex-1"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        className="secondary inline-flex items-center gap-2 px-3"
+                        disabled={busy || password.length < 6}
+                        onClick={async () => {
+                          if (await onPasswordUpdate(editing.professionalId, password)) {
+                            setPassword("");
+                          }
+                        }}
+                      >
+                        <KeyRound size={16} />
+                        Cambiar
+                      </button>
+                    </div>
+                  </Field>
+                </div>
+              )}
+              <Field label="Área dentro del flujo">
+                <select
+                  required
+                  className="control w-full"
+                  value={group}
+                  onChange={(event) => {
+                    setGroup(event.target.value as ProfessionalRoleGroup);
+                    setRoleCode("");
                   }}
                 >
-                  <KeyRound size={16} />
-                  Cambiar
-                </button>
-              </div>
-            </Field>
-          )}
-          <Field label="Área dentro del flujo">
-            <select
-              required
-              className="control w-full"
-              value={group}
-              onChange={(event) => {
-                setGroup(event.target.value as ProfessionalRoleGroup);
-                setRoleCode("");
-              }}
-            >
-              <option value="">Seleccionar área</option>
-              {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
-            </select>
-          </Field>
-          <Field label="Rol u ocupación">
-            <select
-              required
-              disabled={!group}
-              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-              value={roleCode}
-              onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
-            >
-              <option value="">Seleccionar rol</option>
-              {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
-            </select>
-          </Field>
-          {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
-            <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
-              Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
-            </p>
-          )}
-          <Field label="Título o profesión (opcional)">
-            <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
-          </Field>
-          <button disabled={busy || !processId || !roleCode} className="primary w-full">
-            {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
-          </button>
-          {editing && <button type="button" className="secondary w-full" onClick={clearForm}>Cancelar edición</button>}
-        </div>
-      </form>
+                  <option value="">Seleccionar área</option>
+                  {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
+                </select>
+              </Field>
+              <Field label="Rol u ocupación">
+                <select
+                  required
+                  disabled={!group}
+                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+                  value={roleCode}
+                  onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
+                >
+                  <option value="">Seleccionar rol</option>
+                  {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Título o profesión (opcional)">
+                <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
+              </Field>
+            </div>
+            {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
+              <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
+                Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
+              </p>
+            )}
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button disabled={busy || !processId || !roleCode} className="primary">
+                {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
+              </button>
+              <button type="button" className="secondary" onClick={clearForm}>Cancelar</button>
+            </div>
+          </form>
+        )}
+      </section>
 
       <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-black">Equipo Prekínder</h2>
@@ -3097,10 +3156,12 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
   );
 }
 
-function Communications({ templates, busy, onAction }: {
+function Communications({ templates, busy, onAction, expandedDrafts, onToggleDraftExpanded }: {
   templates: CommunicationTemplate[];
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expandedDrafts: Set<string>;
+  onToggleDraftExpanded: (contentVersionId: string) => void;
 }) {
   const latest = Object.values(templates.reduce<Record<string, CommunicationTemplate>>((result, template) => {
     const current = result[template.eventCode];
@@ -3109,32 +3170,58 @@ function Communications({ templates, busy, onAction }: {
   }, {}));
   return (
     <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
-      {!latest.length ? <p className="p-8 text-center text-sm text-slate-500">No hay plantillas configuradas.</p> : latest.map((template) => <CommunicationRow key={template.contentVersionId} template={template} busy={busy} onAction={onAction} />)}
+      {!latest.length ? <p className="p-8 text-center text-sm text-slate-500">No hay plantillas configuradas.</p> : latest.map((template) => (
+        <CommunicationRow
+          key={template.contentVersionId}
+          template={template}
+          busy={busy}
+          onAction={onAction}
+          expanded={expandedDrafts.has(template.contentVersionId)}
+          onToggleExpanded={() => onToggleDraftExpanded(template.contentVersionId)}
+        />
+      ))}
     </section>
   );
 }
 
-function CommunicationRow({ template, busy, onAction }: {
+function CommunicationRow({ template, busy, onAction, expanded: expandedProp, onToggleExpanded }: {
   template: CommunicationTemplate;
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expanded: boolean;
+  onToggleExpanded: () => void;
 }) {
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.bodyHtml);
   useEffect(() => { setSubject(template.subject); setBody(template.bodyHtml); }, [template.contentVersionId]);
   const draft = template.contentStatus === "DRAFT";
+  const expanded = draft && expandedProp;
   return (
     <article className="border-b border-slate-100 p-6 last:border-b-0">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1"><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${draft ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"}`}>{draft ? "Borrador" : "Publicada"} · v{template.contentVersion}</span><h3 className="mt-3 font-black text-slate-950">{template.name}</h3></div>
-        {!draft && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.duplicateCommunication(template.templateId), "Versión borrador creada.")}>Crear nueva versión</button>}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          {draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador</span>}
+          <h3 className={`font-black text-slate-950 ${draft ? "mt-3" : ""}`}>{template.name}</h3>
+          {!expanded && (
+            <>
+              <p className="mt-1 text-sm text-slate-600">{template.subject}</p>
+              <p className="mt-1 text-xs text-slate-500">Variables: {template.allowedVariables.join(", ") || "sin variables"}</p>
+            </>
+          )}
+        </div>
+        {!draft && <button className="secondary shrink-0" disabled={busy} onClick={() => void onAction(() => prekinderApi.duplicateCommunication(template.templateId), "Versión borrador creada.")}>Crear nueva versión</button>}
+        {draft && !expanded && <button className="secondary shrink-0" onClick={onToggleExpanded}>Editar borrador</button>}
       </div>
-      {draft ? <div className="mt-5 grid gap-4">
+      {expanded && <div className="mt-5 grid gap-4">
         <Field label="Asunto"><input className="control w-full" maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
         <Field label="Cuerpo HTML"><textarea className="control min-h-32 w-full" maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
         <p className="text-xs text-slate-500">Variables permitidas: applicantName, processName, portalUrl, deadline.</p>
-        <div className="flex flex-wrap justify-end gap-2"><button className="secondary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(() => prekinderApi.saveCommunication(template.contentVersionId, subject, body), "Borrador guardado.")}>Guardar borrador</button><button className="primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(async () => { await prekinderApi.saveCommunication(template.contentVersionId, subject, body); return prekinderApi.publishCommunication(template.contentVersionId); }, "Plantilla publicada.")}>Guardar y publicar</button></div>
-      </div> : <><p className="mt-2 text-sm text-slate-600">{template.subject}</p><p className="mt-2 text-xs text-slate-500">Variables: {template.allowedVariables.join(", ") || "sin variables"}</p></>}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="secondary" onClick={() => { setSubject(template.subject); setBody(template.bodyHtml); onToggleExpanded(); }}>Cancelar</button>
+          <button className="secondary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(() => prekinderApi.saveCommunication(template.contentVersionId, subject, body), "Borrador guardado.")}>Guardar borrador</button>
+          <button className="primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(async () => { await prekinderApi.saveCommunication(template.contentVersionId, subject, body); return prekinderApi.publishCommunication(template.contentVersionId); }, "Plantilla publicada.")}>Guardar y publicar</button>
+        </div>
+      </div>}
     </article>
   );
 }
