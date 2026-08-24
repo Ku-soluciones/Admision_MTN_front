@@ -50,6 +50,7 @@ import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
 import PrekinderEvaluationWorkspace from './PrekinderEvaluationWorkspace';
+import PrekinderRubricsView from './PrekinderRubricsView';
 import {
     prekinderApi,
     type EvaluationInstrument,
@@ -186,10 +187,12 @@ const ProfessorDashboard: React.FC = () => {
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
         if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
             const instrument = searchParams.get('instrument');
             return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
         }
         if (searchParams.get('section') === 'prekinder') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
             const instrument = searchParams.get('instrument');
             return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
         }
@@ -205,14 +208,20 @@ const ProfessorDashboard: React.FC = () => {
     const handleSectionChange = useCallback((key: string) => {
         setActiveSection(key);
         const next = new URLSearchParams(searchParams);
-        if (key === 'prekinder' || key.startsWith('prekinder:')) {
+        if (key === 'prekinder-pautas') {
             next.set('section', 'prekinder');
+            next.set('view', 'rubrics');
+            next.delete('instrument');
+        } else if (key === 'prekinder' || key.startsWith('prekinder:')) {
+            next.set('section', 'prekinder');
+            next.delete('view');
             const instrument = key.split(':')[1];
             if (instrument) next.set('instrument', instrument);
             else next.delete('instrument');
         } else {
             next.delete('section');
             next.delete('instrument');
+            next.delete('view');
         }
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
@@ -235,6 +244,7 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
     const [prekinderInstruments, setPrekinderInstruments] = useState<EvaluationInstrument[]>([]);
+    const [prekinderActorId, setPrekinderActorId] = useState<string>();
     const [prekinderAccessResolved, setPrekinderAccessResolved] = useState(false);
 
     useEffect(() => {
@@ -243,6 +253,7 @@ const ProfessorDashboard: React.FC = () => {
             .then((workspace) => {
                 if (!active) return;
                 setPrekinderInstruments(workspace.instruments.map(({ instrument }) => instrument));
+                setPrekinderActorId(workspace.actorId);
             })
             .catch(() => {
                 if (active) setPrekinderInstruments([]);
@@ -256,7 +267,7 @@ const ProfessorDashboard: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder')) return;
+        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder') || activeSection === 'prekinder-pautas') return;
         const requestedCode = activeSection.startsWith('prekinder:')
             ? activeSection.slice('prekinder:'.length)
             : '';
@@ -584,11 +595,14 @@ const ProfessorDashboard: React.FC = () => {
         label: prekinderSectionLabels[instrument.instrumentCode] ?? instrument.displayName,
         icon: prekinderSectionIcons[instrument.instrumentCode] ?? CheckCircleIcon,
     }));
+    const prekinderRubricsSection = prekinderInstruments.length > 0
+        ? [{ key: 'prekinder-pautas', label: 'Pautas', icon: BookOpenIcon }]
+        : [];
     const professorSections = filteredSections.flatMap((section) =>
-        section.key === 'reportes' ? [...prekinderSections, section] : [section],
+        section.key === 'reportes' ? [...prekinderRubricsSection, ...prekinderSections, section] : [section],
     );
     const prekinderOnlySections = prekinderSections.length > 0
-        ? prekinderSections
+        ? [...prekinderRubricsSection, ...prekinderSections]
         : [{ key: 'prekinder', label: 'Evaluación Prekínder', icon: CheckCircleIcon }];
     const sections = currentProfessor?.role === 'PREKINDER_PROFESSIONAL'
         ? prekinderOnlySections
@@ -2247,6 +2261,8 @@ const ProfessorDashboard: React.FC = () => {
                 return renderReportesEstadisticas();
             case 'prekinder':
                 return <PrekinderEvaluationWorkspace />;
+            case 'prekinder-pautas':
+                return <PrekinderRubricsView actorId={prekinderActorId} />;
             case 'configuracion':
                 return (
                     <div className="space-y-6">

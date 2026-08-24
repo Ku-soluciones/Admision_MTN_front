@@ -335,6 +335,40 @@ export type EvaluatorWorkspace = {
   }>;
 };
 
+export type EvaluatorRubricOption = {
+  optionId: string;
+  value: number;
+  label: string;
+  descriptor: string;
+  professionallyValidated: boolean;
+  position: number;
+};
+
+export type EvaluatorRubricCriterion = {
+  criterionId: string;
+  code: string;
+  name: string;
+  descriptor: string;
+  position: number;
+  required: boolean;
+  options: EvaluatorRubricOption[];
+};
+
+export type EvaluatorRubric = {
+  assignmentId: string;
+  processId: string;
+  processName: string;
+  academicYear: number;
+  instrument: EvaluationInstrument;
+  rubricId: string;
+  versionId: string;
+  name: string;
+  rubricVersion: number;
+  maximumScore: number;
+  publishedAt: string;
+  criteria: EvaluatorRubricCriterion[];
+};
+
 export type ControlTowerDay = {
   processId: string;
   date: string;
@@ -909,6 +943,12 @@ export const prekinderApi = {
     return apiRequest<EvaluatorWorkspace>(
       `/v1/prekinder/me/evaluator-workspace?${params.toString()}`,
     );
+  },
+  evaluatorRubrics: (processId?: string) => {
+    const params = new URLSearchParams();
+    if (processId) params.set("processId", processId);
+    const query = processId ? `?${params.toString()}` : "";
+    return apiRequest<EvaluatorRubric[]>(`/v1/prekinder/me/rubrics${query}`);
   },
   confirmEvaluatorAssignment: (assignmentId: string, expectedVersion: number) =>
     apiRequest<EvaluatorAssignment>(
