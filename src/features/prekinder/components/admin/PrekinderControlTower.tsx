@@ -1,7 +1,10 @@
 import { Children, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
+  ArrowDown,
   ArrowRightLeft,
+  ArrowUp,
+  ArrowUpDown,
   BarChart3,
   CalendarClock,
   CalendarDays,
@@ -12,7 +15,6 @@ import {
   Clock3,
   DoorOpen,
   FileCheck2,
-  History,
   LayoutDashboard,
   LogIn,
   ListChecks,
@@ -57,6 +59,17 @@ function formatTime(iso: string) {
     hour12: false,
     timeZone: "America/Santiago",
   }).format(new Date(iso));
+}
+
+function formatDay(date: string) {
+  if (!date) return "la jornada seleccionada";
+  return new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Santiago",
+  }).format(new Date(`${date}T12:00:00`));
 }
 
 function fullName(app: FlowApplication) {
@@ -125,6 +138,76 @@ const instrumentStatusMeta: Record<string, { label: string; className: string }>
   VALIDATED: { label: "Validada", className: "bg-emerald-50 text-emerald-800" },
 };
 
+function translateConfirmError(err: unknown): { title: string; detail: string } | null {
+  if (!err) return null;
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("duplicate key") || msg.includes("llave duplicada")) {
+    return { title: "Duplicado", detail: "El evaluador ya está asignado a este grupo." };
+  }
+  if (msg.includes("foreign key") || msg.includes("llave foránea")) {
+    return { title: "Dato inválido", detail: "El evaluador o el grupo no existen. Verifica que estén activos." };
+  }
+  if (msg.includes(" Check\"")) {
+    return { title: "Validación rechazada", detail: "El servidor rechazó la operación. Verifica que el grupo y sus datos sean correctos." };
+  }
+  if (msg.includes("connection") || msg.includes("timeout") || msg.includes("network")) {
+    return { title: "Sin conexión", detail: "No se pudo contactar al servidor. Intenta nuevamente en unos segundos." };
+  }
+  return null;
+}
+
+function ConfirmGroupSection({ group, canConfirm, busy, onAction }: { group: EvaluationGroup; canConfirm: boolean; busy: boolean; onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>; }) {
+  const [error, setError] = useState<{ title: string; detail: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  function handleConfirm() {
+    if (!canConfirm || confirming) return;
+    setError(null);
+    setConfirming(true);
+    onAction(
+      async () => {
+        try {
+          await prekinderApi.confirmGroup(group.groupId, group.version);
+        } catch (err) {
+          const translated = translateConfirmError(err);
+          if (translated) {
+            setError(translated);
+          }
+          throw err;
+        }
+      },
+      "Grupo listo para evaluación.",
+    ).then((ok) => {
+      if (!ok) setConfirming(false);
+    });
+  }
+
+  return (
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm font-black text-slate-900">Preparación para evaluación</p>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        {canConfirm
+          ? "El grupo cumple las condiciones y puede quedar listo."
+          : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}
+      </p>
+      {error && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
+          <p className="text-sm font-black text-red-800">{error.title}</p>
+          <p className="mt-0.5 text-xs text-red-700">{error.detail}</p>
+        </div>
+      )}
+      <button
+        className="primary mt-3 w-full"
+        disabled={busy || !canConfirm || confirming}
+        onClick={handleConfirm}
+      >
+        <CheckCircle2 className="mr-2 inline" size={17} />
+        {confirming ? "Confirmando…" : "Marcar listo para evaluación"}
+      </button>
+    </div>
+  );
+}
+
 function groupAlerts(group: EvaluationGroup, towerGroup: TowerGroup | undefined, now: number): GroupAlert[] {
   const alerts: GroupAlert[] = [];
   const base = { groupId: group.groupId, code: group.code, roomName: group.roomName };
@@ -154,7 +237,7 @@ function groupAlerts(group: EvaluationGroup, towerGroup: TowerGroup | undefined,
   return alerts;
 }
 
-type ControlView = "tower" | "reception" | "evaluations" | "monitor" | "review" | "results" | "audit";
+type ControlView = "tower" | "reception" | "evaluations" | "monitor" | "review" | "results";
 
 const controlViews: Array<{ id: ControlView; label: string; icon: typeof Users }> = [
   { id: "tower", label: "Torre de control", icon: LayoutDashboard },
@@ -163,7 +246,6 @@ const controlViews: Array<{ id: ControlView; label: string; icon: typeof Users }
   { id: "monitor", label: "Monitor de avance", icon: Activity },
   { id: "review", label: "Revisión", icon: FileCheck2 },
   { id: "results", label: "Resultados", icon: BarChart3 },
-  { id: "audit", label: "Auditoría", icon: History },
 ];
 
 export function PrekinderControlTower(props: Props) {
@@ -172,22 +254,9 @@ export function PrekinderControlTower(props: Props) {
   return (
     <div className="space-y-5">
       <aside>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Operación de jornada</p>
-            <p className="mt-1 text-sm text-slate-600">Centro de coordinación</p>
-          </div>
-          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3">
-            <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-            <label htmlFor="pk-tower-date" className="shrink-0 text-sm text-gray-600">Fecha</label>
-            <input
-              id="pk-tower-date"
-              className="border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
-              type="date"
-              value={props.date}
-              onChange={(e) => props.onDateChange(e.target.value)}
-            />
-          </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Operación de jornada</p>
+          <p className="mt-1 text-sm text-slate-600">Centro de coordinación</p>
         </div>
         <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de la torre de control">
           {controlViews.map(({ id, label, icon: Icon }) => (
@@ -198,21 +267,21 @@ export function PrekinderControlTower(props: Props) {
         </nav>
       </aside>
       <div className="min-w-0">
-        {view === "tower" && <TowerHome {...props} onOpenMonitor={() => setView("monitor")} />}
+        {view === "tower" && <TowerHome {...props} />}
         {view === "reception" && <ReceptionView {...props} attendance={attendance} onAttendance={(id, value) => setAttendance((current) => ({ ...current, [id]: value }))} />}
         {view === "evaluations" && <EvaluationsView {...props} />}
         {view === "monitor" && <MonitorView {...props} onOpenGroup={(id) => { props.onSelect(id); setView("tower"); }} />}
         {view === "review" && <ReviewView {...props} />}
         {view === "results" && <ResultsView {...props} />}
-        {view === "audit" && <AuditView {...props} attendance={attendance} />}
       </div>
     </div>
   );
 }
 
-function TowerHome(props: Props & { onOpenMonitor: () => void }) {
+function TowerHome(props: Props) {
   const { groups, rooms, applications, selected, controlTower } = props;
   const [creating, setCreating] = useState<{ roomId: string; time: string } | null>(null);
+  const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
 
   const towerGroupsById = useMemo(() => new Map(
     (controlTower?.rooms ?? []).flatMap((room) => room.groups).map((group) => [group.groupId, group]),
@@ -246,8 +315,28 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Operación en vivo</p><h2 className="mt-1 text-2xl font-black text-slate-950">Torre de control</h2><p className="mt-1 text-sm text-slate-600">{groups.length} grupos en {rooms.length} salas, organizados en bloques de 30 minutos.</p></div>
-        <button className="primary" onClick={props.onOpenMonitor}>Ver monitor</button>
+        <div>
+          <h2 className="text-2xl font-black text-slate-950">Torre de control</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Coordina en tiempo real la recepción, asignación de salas y avance de la jornada de evaluación.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="block text-xs font-black text-slate-600">
+            Día de la jornada
+            <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-100">
+              <CalendarDays size={17} className="shrink-0 text-blue-700" aria-hidden="true" />
+              <input
+                className="min-w-0 bg-transparent text-sm font-black text-slate-950 outline-none"
+                type="date"
+                value={props.date}
+                onChange={(event) => {
+                  if (event.target.value) props.onDateChange(event.target.value);
+                }}
+              />
+            </span>
+          </label>
+        </div>
       </div>
       <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={CalendarClock} label="Bloques del día" value={groups.length} detail={`${rooms.length} salas activas`} />
@@ -259,13 +348,14 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
       <JourneyOverview groups={groups} towerGroupsById={towerGroupsById} />
       <OperationalAlerts alerts={alerts} incidentCount={incidentCount} onSelect={props.onSelect} />
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="space-y-5">
         <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 p-5">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">Torre de control</p>
-              <h2 className="mt-1 text-xl font-black text-slate-950">Salas y bloques de la jornada</h2>
-              <p className="mt-1 text-sm text-slate-600">Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.</p>
+              <h2 className="text-xl font-black text-slate-950">Salas y bloques de la jornada</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Distribución del <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>. Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Ocupado
@@ -273,7 +363,7 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
             </div>
           </div>
 
-          {!rooms.length ? (
+          {!activeRooms.length ? (
             <div className="p-12 text-center">
               <DoorOpen className="mx-auto text-slate-300" size={38} />
               <h3 className="mt-4 font-black text-slate-900">No hay salas disponibles para esta jornada</h3>
@@ -286,7 +376,7 @@ function TowerHome(props: Props & { onOpenMonitor: () => void }) {
                 {times.map((time) => (
                   <div key={time} className="border-b border-slate-200 p-3 text-center text-sm font-black text-slate-800">{time}</div>
                 ))}
-                {rooms.map((room) => (
+                {activeRooms.map((room) => (
                   <RoomRow key={room.roomId} room={room} times={times} groups={groups} towerGroupsById={towerGroupsById} alertsByGroup={alertsByGroup} selectedId={selected?.groupId} onSelect={props.onSelect} onCreate={(time) => setCreating({ roomId: room.roomId, time })} />
                 ))}
               </div>
@@ -352,17 +442,97 @@ function OperationalAlerts({ alerts, incidentCount, onSelect }: { alerts: GroupA
   </section>;
 }
 
-function PageTitle({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <div className="mb-5"><p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">{eyebrow}</p><h2 className="mt-1 text-2xl font-black text-slate-950">{title}</h2><p className="mt-1 text-sm text-slate-600">{description}</p></div>;
+function PageTitle({ eyebrow, title, description }: { eyebrow?: string; title: string; description: string }) {
+  return <div className="mb-5">{eyebrow && <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">{eyebrow}</p>}<h2 className={`${eyebrow ? "mt-1" : ""} text-2xl font-black text-slate-950`}>{title}</h2><p className="mt-1 text-sm text-slate-600">{description}</p></div>;
 }
+
+const RECEPTION_PAGE_SIZE = 10;
 
 function ReceptionView({ applications, groups, attendance, onAttendance, onSelect }: Props & { attendance: Record<string, string>; onAttendance: (id: string, value: string) => void }) {
   const [query, setQuery] = useState("");
-  const visible = applications.filter((app) => fullName(app).toLowerCase().includes(query.toLowerCase()) || app.identity.rut.includes(query)).slice(0, 30);
-  return <div><PageTitle eyebrow="Ingreso a la jornada" title="Recepción de postulantes" description="Busca al postulante, confirma su llegada y consulta inmediatamente su sala y bloque." />
+  const [page, setPage] = useState(0);
+  const filtered = useMemo(
+    () => applications
+      .filter((app) => fullName(app).toLowerCase().includes(query.toLowerCase()) || app.identity.rut.includes(query))
+      .sort((a, b) => fullName(a).localeCompare(fullName(b), "es")),
+    [applications, query],
+  );
+  useEffect(() => setPage(0), [query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / RECEPTION_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const visible = filtered.slice(currentPage * RECEPTION_PAGE_SIZE, (currentPage + 1) * RECEPTION_PAGE_SIZE);
+  return <div><PageTitle title="Recepción de postulantes" description="Busca al postulante, confirma su llegada y consulta inmediatamente su sala y bloque." />
+    <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      <span className="text-sm font-normal text-slate-400">{filtered.length} de {applications.length}</span>
+      <label className="relative block w-full max-w-xs">
+        <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+        <input className="control w-full pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o identificador…" />
+      </label>
+    </div>
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 p-5"><label className="relative block max-w-xl"><Search className="absolute left-3 top-3 text-slate-400" size={18} /><input className="control w-full pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o identificador…" /></label></div>
-      <div className="divide-y divide-slate-100">{visible.map((app) => { const group = groups.find((item) => item.memberIds.includes(app.applicationId)); return <div key={app.applicationId} className="grid items-center gap-3 p-4 md:grid-cols-[minmax(220px,1fr)_180px_160px_90px]"><div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-800">{initials(app)}</span><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{fullName(app)}</p><p className="text-xs text-slate-500">{app.identity.rut}</p></div></div><p className="text-sm font-bold text-slate-700">{group ? `${formatTime(group.startsAt)} · ${group.roomName}` : "Sin asignación"}</p><select className="control" value={attendance[app.applicationId] ?? "PENDING"} onChange={(event) => onAttendance(app.applicationId, event.target.value)}><option value="PENDING">Pendiente</option><option value="PRESENT">Presente</option><option value="LATE">Atrasado</option><option value="ABSENT">Ausente</option></select><button className="secondary" disabled={!group} onClick={() => group && onSelect(group.groupId)}>Ver grupo</button></div>; })}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                <span className="flex items-center gap-1.5">Postulante<ArrowUp size={13} className="text-slate-400" /></span>
+              </th>
+              <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Asignación</th>
+              <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Asistencia</th>
+              <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Acción</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {visible.map((app) => {
+              const group = groups.find((item) => item.memberIds.includes(app.applicationId));
+              return (
+                <tr key={app.applicationId} className="align-middle">
+                  <td className="px-5 py-4">
+                    <p className="font-extrabold uppercase">{fullName(app)}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">RUT {app.identity.rut}</p>
+                  </td>
+                  <td className="px-5 py-4 text-center text-sm font-bold text-slate-700">
+                    {group ? `${formatTime(group.startsAt)} · ${group.roomName}` : "Sin asignación"}
+                  </td>
+                  <td className="px-5 py-4 text-center">
+                    <select className="control mx-auto" value={attendance[app.applicationId] ?? "PENDING"} onChange={(event) => onAttendance(app.applicationId, event.target.value)}>
+                      <option value="PENDING">Pendiente</option>
+                      <option value="PRESENT">Presente</option>
+                      <option value="LATE">Atrasado</option>
+                      <option value="ABSENT">Ausente</option>
+                    </select>
+                  </td>
+                  <td className="px-5 py-4 text-center">
+                    <button className="secondary" disabled={!group} onClick={() => group && onSelect(group.groupId)}>Ver grupo</button>
+                  </td>
+                </tr>
+              );
+            })}
+            {!filtered.length && (
+              <tr>
+                <td colSpan={4} className="p-10 text-center text-sm text-slate-500">No hay postulantes que coincidan.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <button
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={currentPage === 0}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Anterior
+        </button>
+        <span className="text-sm text-slate-500">Página {currentPage + 1} de {totalPages}</span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={currentPage >= totalPages - 1}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Siguiente →
+        </button>
+      </div>
     </section>
   </div>;
 }
@@ -370,7 +540,7 @@ function ReceptionView({ applications, groups, attendance, onAttendance, onSelec
 function EvaluationsView({ controlTower }: Props) {
   const groups = (controlTower?.rooms ?? []).flatMap((room) => room.groups.map((group) => ({ ...group, roomName: room.name })));
   const instruments = [...new Set(groups.flatMap((group) => Object.keys(group.instrumentProgress)))];
-  return <div><PageTitle eyebrow="Seguimiento administrativo" title="Estado de evaluaciones" description="Coordinación visualiza el avance real de las pautas, sin acceder a su contenido." />
+  return <div><PageTitle title="Estado de evaluaciones" description="Coordinación visualiza el avance real de las pautas, sin acceder a su contenido." />
     {!groups.length || !instruments.length ? <section className="rounded-2xl border border-slate-200 bg-white p-10 text-center"><ListChecks className="mx-auto text-slate-300" size={34} /><h3 className="mt-3 font-black text-slate-900">Sin pautas en seguimiento</h3><p className="mt-1 text-sm text-slate-500">El avance aparecerá cuando los grupos tengan instrumentos asociados.</p></section> : <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-5"><div className="min-w-[760px]"><div className="grid gap-2 border-b border-slate-200 pb-3 text-xs font-black uppercase tracking-wide text-slate-500" style={{ gridTemplateColumns: `150px repeat(${instruments.length}, minmax(140px, 1fr))` }}><span>Grupo</span>{instruments.map((instrument) => <span key={instrument}>{instrumentNames[instrument] ?? instrument}</span>)}</div>{groups.map((group) => <div key={group.groupId} className="grid items-center gap-2 border-b border-slate-100 py-3" style={{ gridTemplateColumns: `150px repeat(${instruments.length}, minmax(140px, 1fr))` }}><div><p className="font-black text-slate-900">{group.code}</p><p className="text-xs text-slate-500">{formatTime(group.startsAt)} · {group.roomName}</p></div>{instruments.map((instrument) => { const status = group.instrumentProgress[instrument] ?? "PENDING"; const meta = instrumentStatusMeta[status] ?? instrumentStatusMeta.PENDING; return <span key={instrument} className={`w-fit rounded-full px-2.5 py-1 text-xs font-black ${meta.className}`}>{meta.label}</span>; })}</div>)}</div></section>}
   </div>;
 }
@@ -379,9 +549,9 @@ function MonitorView({ rooms, groups, controlTower, onOpenGroup }: Props & { onO
   const statusById = new Map((controlTower?.rooms ?? []).flatMap((room) => room.groups).map((group) => [group.groupId, group.status]));
   const statusOf = (group: EvaluationGroup) => statusById.get(group.groupId) ?? group.status;
   const completed = groups.filter((group) => statusOf(group) === "COMPLETED").length;
-  return <div><PageTitle eyebrow="Seguimiento operacional" title="Monitor de avance" description="Detecta atrasos, pendientes y carga de trabajo por sala durante la jornada." />
+  return <div><PageTitle title="Monitor de avance" description="Detecta atrasos, pendientes y carga de trabajo por sala durante la jornada." />
     <section className="mb-5 grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-3"><Metric icon={Activity} label="Avance jornada" value={groups.length ? Math.round(completed / groups.length * 100) : 0} detail="Porcentaje de grupos finalizados" /><Metric icon={ClipboardCheck} label="En ejecución" value={groups.filter((group) => statusOf(group) === "IN_PROGRESS").length} detail="Grupos activos" /><Metric icon={CircleAlert} label="Incidencias abiertas" value={controlTower?.summary.openIncidents ?? 0} detail="Registradas en esta jornada" /></section>
-    <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-black">Avance por sala</h3><div className="mt-4 divide-y divide-slate-100">{rooms.map((room) => { const roomGroups = groups.filter((group) => group.roomId === room.roomId); const done = roomGroups.filter((group) => statusOf(group) === "COMPLETED").length; const next = roomGroups.find((group) => statusOf(group) !== "COMPLETED") ?? roomGroups[0]; return <button key={room.roomId} className="grid min-h-16 w-full items-center gap-4 text-left md:grid-cols-[170px_1fr_70px]" disabled={!next} onClick={() => next && onOpenGroup(next.groupId)}><span className="font-black text-slate-900">{room.name}</span><span className="h-2 overflow-hidden rounded-full bg-slate-100"><i className="block h-full rounded-full bg-blue-600" style={{ width: `${roomGroups.length ? done / roomGroups.length * 100 : 0}%` }} /></span><strong className="text-right text-sm text-blue-800">{done}/{roomGroups.length}</strong></button>; })}</div></section>
+    <section className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="text-lg font-black">Avance por sala</h3><p className="mt-1 text-sm text-slate-600">Grupos finalizados sobre el total asignado a cada sala.</p><div className="mt-4 divide-y divide-slate-100">{rooms.filter((room) => room.active).map((room) => { const roomGroups = groups.filter((group) => group.roomId === room.roomId); const done = roomGroups.filter((group) => statusOf(group) === "COMPLETED").length; const next = roomGroups.find((group) => statusOf(group) !== "COMPLETED") ?? roomGroups[0]; return <button key={room.roomId} className="grid min-h-16 w-full items-center gap-4 text-left md:grid-cols-[170px_1fr_70px]" disabled={!next} onClick={() => next && onOpenGroup(next.groupId)}><span className="font-black text-slate-900">{room.name}</span><span className="h-2 overflow-hidden rounded-full bg-slate-100"><i className="block h-full rounded-full bg-blue-600" style={{ width: `${roomGroups.length ? done / roomGroups.length * 100 : 0}%` }} /></span><strong className="text-right text-sm text-blue-800">{done}/{roomGroups.length}</strong></button>; })}</div></section>
   </div>;
 }
 
@@ -389,21 +559,122 @@ function ReviewView({ controlTower }: Props) {
   const queue = (controlTower?.rooms ?? []).flatMap((room) => room.groups.flatMap((group) => Object.entries(group.instrumentProgress)
     .filter(([, status]) => status === "SUBMITTED")
     .map(([instrument]) => ({ group, instrument, roomName: room.name }))));
-  return <div><PageTitle eyebrow="Control de calidad" title="Bandeja de revisión" description="Instrumentos enviados, observados o devueltos para corrección." />
+  return <div><PageTitle title="Bandeja de revisión" description="Instrumentos enviados, observados o devueltos para corrección." />
     {!queue.length ? <section className="rounded-2xl border border-slate-200 bg-white p-10 text-center"><FileCheck2 className="mx-auto text-slate-300" size={34} /><h3 className="mt-3 font-black text-slate-900">Sin pautas esperando revisión</h3><p className="mt-1 text-sm text-slate-500">Las pautas enviadas por los evaluadores aparecerán aquí.</p></section> : <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="grid grid-cols-[1fr_180px_150px] border-b border-slate-200 bg-slate-50 p-4 text-xs font-black uppercase text-slate-500"><span>Grupo</span><span>Instrumento</span><span>Estado</span></div>{queue.map(({ group, instrument, roomName }) => <div key={`${group.groupId}-${instrument}`} className="grid min-h-16 grid-cols-[1fr_180px_150px] items-center border-b border-slate-100 p-4 text-sm"><span><b className="block text-slate-900">{group.code} · {roomName}</b><small className="text-slate-500">{formatTime(group.startsAt)}</small></span><span className="font-semibold text-slate-700">{instrumentNames[instrument] ?? instrument}</span><span className="w-fit rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-800">Pendiente de revisión</span></div>)}</section>}
   </div>;
 }
 
-function ResultsView({ applications }: Props) {
-  return <div><PageTitle eyebrow="Consolidación preliminar" title="Resultados" description="Vista administrativa de avance. Los resultados definitivos solo se publican después de validar todas las pautas." />
-    <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-4">Postulante</th><th>Académico</th><th>Psicología</th><th>Psicomotricidad</th><th>Resultado</th><th>Estado</th></tr></thead><tbody>{applications.slice(0, 30).map((app, index) => { const academic = 62 + index % 28; const psychology = 65 + index % 24; const psychomotor = 68 + index % 22; const total = Math.round(academic * .34 + psychology * .33 + psychomotor * .33); const ready = index % 4 !== 0; return <tr key={app.applicationId} className="border-t border-slate-100"><td className="p-4"><b className="block text-slate-900">{fullName(app)}</b><small className="text-slate-500">{app.identity.rut}</small></td><td>{ready ? `${academic}%` : "—"}</td><td>{ready ? `${psychology}%` : "—"}</td><td>{ready ? `${psychomotor}%` : "—"}</td><td className="font-black text-slate-900">{ready ? `${total}%` : "Pendiente"}</td><td><span className={`rounded-full px-3 py-1 text-xs font-black ${ready ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{ready ? "Listo para comité" : "Incompleto"}</span></td></tr>; })}</tbody></table></section>
-  </div>;
-}
+type ResultsSortKey = "name" | "academic" | "psychology" | "psychomotor" | "total" | "estado";
 
-function AuditView({ groups, attendance }: Props & { attendance: Record<string, string> }) {
-  const attendanceEvents = Object.entries(attendance).filter(([, value]) => value !== "PENDING");
-  return <div><PageTitle eyebrow="Trazabilidad" title="Auditoría del proceso" description="Registro cronológico de movimientos y cambios operativos de la jornada." />
-    <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="space-y-1">{attendanceEvents.map(([id, value], index) => <div key={id} className="flex gap-4 border-b border-slate-100 py-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-700"><History size={17} /></span><div><p className="text-sm font-black text-slate-900">Asistencia actualizada a {value}</p><p className="text-sm text-slate-600">Postulante {id}</p><p className="mt-1 text-xs text-slate-400">Recepción · evento local {index + 1}</p></div></div>)}{groups.slice(0, 8).map((group, index) => <div key={group.groupId} className="flex gap-4 border-b border-slate-100 py-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600"><History size={17} /></span><div><p className="text-sm font-black text-slate-900">Grupo {statusMeta[group.status]?.label ?? group.status}</p><p className="text-sm text-slate-600">{group.code} · {group.roomName} · {formatTime(group.startsAt)}</p><p className="mt-1 text-xs text-slate-400">Coordinación · registro demostrativo {index + 1}</p></div></div>)}</div></section>
+const RESULTS_PAGE_SIZE = 10;
+
+function ResultsView({ applications }: Props) {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ key: ResultsSortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  function toggleSort(key: ResultsSortKey) {
+    setSort((current) => (current.key === key ? { key, dir: current.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
+  const enriched = useMemo(
+    () => applications.slice(0, 30).map((app, index) => {
+      const academic = 62 + index % 28;
+      const psychology = 65 + index % 24;
+      const psychomotor = 68 + index % 22;
+      const total = Math.round(academic * .34 + psychology * .33 + psychomotor * .33);
+      const ready = index % 4 !== 0;
+      return { app, academic, psychology, psychomotor, total, ready };
+    }),
+    [applications],
+  );
+  const sorted = useMemo(() => {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    const numericKey = sort.key as "academic" | "psychology" | "psychomotor" | "total";
+    return [...enriched].sort((a, b) => {
+      const value =
+        sort.key === "name"
+          ? fullName(a.app).localeCompare(fullName(b.app), "es")
+          : sort.key === "estado"
+            ? (a.ready ? "Listo para comité" : "Incompleto").localeCompare(b.ready ? "Listo para comité" : "Incompleto", "es")
+            : (a.ready ? a[numericKey] : -1) - (b.ready ? b[numericKey] : -1);
+      return value * factor;
+    });
+  }, [enriched, sort]);
+  const filtered = useMemo(
+    () => sorted.filter(({ app }) => fullName(app).toLowerCase().includes(query.toLowerCase()) || app.identity.rut.includes(query)),
+    [sorted, query],
+  );
+  useEffect(() => setPage(0), [query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / RESULTS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const visible = filtered.slice(currentPage * RESULTS_PAGE_SIZE, (currentPage + 1) * RESULTS_PAGE_SIZE);
+  const columns: [string, ResultsSortKey][] = [
+    ["Postulante", "name"],
+    ["Académico", "academic"],
+    ["Psicología", "psychology"],
+    ["Psicomotricidad", "psychomotor"],
+    ["Resultado", "total"],
+    ["Estado", "estado"],
+  ];
+  return <div><PageTitle title="Resultados" description="Vista administrativa de avance. Los resultados definitivos solo se publican después de validar todas las pautas." />
+    <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      <span className="text-sm font-normal text-slate-400">{filtered.length} de {enriched.length}</span>
+      <label className="relative block w-full max-w-xs">
+        <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+        <input className="control w-full pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre o identificador…" />
+      </label>
+    </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              {columns.map(([label, key]) => (
+                <th key={key} className={`p-4 ${key === "name" ? "text-left" : "text-center"}`}>
+                  <button type="button" className={`flex items-center gap-1.5 uppercase hover:text-slate-700 ${key === "name" ? "" : "mx-auto"}`} onClick={() => toggleSort(key)}>
+                    {label}
+                    {sort.key === key ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(({ app, academic, psychology, psychomotor, total, ready }) => (
+              <tr key={app.applicationId} className="border-t border-slate-100">
+                <td className="p-4"><b className="block text-slate-900">{fullName(app)}</b><small className="text-slate-500">{app.identity.rut}</small></td>
+                <td className="text-center">{ready ? `${academic}%` : "—"}</td>
+                <td className="text-center">{ready ? `${psychology}%` : "—"}</td>
+                <td className="text-center">{ready ? `${psychomotor}%` : "—"}</td>
+                <td className="text-center font-black text-slate-900">{ready ? `${total}%` : "Pendiente"}</td>
+                <td className="text-center"><span className={`rounded-full px-3 py-1 text-xs font-black ${ready ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{ready ? "Listo para comité" : "Incompleto"}</span></td>
+              </tr>
+            ))}
+            {!filtered.length && (
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-sm text-slate-500">No hay postulantes que coincidan.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <button
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={currentPage === 0}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Anterior
+        </button>
+        <span className="text-sm text-slate-500">Página {currentPage + 1} de {totalPages}</span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={currentPage >= totalPages - 1}
+          className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Siguiente →
+        </button>
+      </div>
+    </section>
   </div>;
 }
 
@@ -495,7 +766,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
   const meta = statusMeta[effectiveStatus] ?? statusMeta.DRAFT;
 
   return (
-    <aside id="selected-group-panel" className="scroll-mt-5 rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)] 2xl:sticky 2xl:top-24 2xl:self-start">
+    <aside id="selected-group-panel" className="scroll-mt-5 rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
       <div className="border-b border-slate-200 p-5">
         <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-wide text-blue-700">Bloque seleccionado</p><h2 className="mt-1 text-2xl font-black text-slate-950">{group.code}</h2></div><span className={`rounded-full px-3 py-1 text-xs font-black ${meta.className}`}>{meta.label}</span></div>
         <p className="mt-2 text-sm text-slate-600">{group.roomName} · {formatTime(group.startsAt)}–{formatTime(group.endsAt)}</p>
@@ -523,12 +794,12 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
         <div className="border-t border-slate-200 pt-5">
           <h3 className="font-black text-slate-900">Cambio operativo</h3>
           <p className="mt-1 text-xs leading-5 text-slate-500">El backend valida cruces de sala y horario antes de guardar.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2"><select className="control" value={nextRoom} onChange={(event) => setNextRoom(event.target.value)}>{rooms.map((room) => <option key={room.roomId} value={room.roomId}>{room.name}</option>)}</select><input className="control" type="time" value={nextTime} onChange={(event) => setNextTime(event.target.value)} /></div>
+          <div className="mt-3 grid grid-cols-2 gap-2"><select className="control" value={nextRoom} onChange={(event) => setNextRoom(event.target.value)}>{rooms.filter((room) => room.active || room.roomId === group.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.name}</option>)}</select><input className="control" type="time" value={nextTime} onChange={(event) => setNextTime(event.target.value)} /></div>
           <input className="control mt-2 w-full" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Motivo del cambio" />
           <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
 
-        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Preparación para evaluación</p><p className="mt-1 text-xs leading-5 text-slate-600">{canConfirm ? "El grupo cumple las condiciones y puede quedar listo." : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}</p><button className="primary mt-3 w-full" disabled={busy || !canConfirm} onClick={() => onAction(() => prekinderApi.confirmGroup(group.groupId, group.version), "Grupo listo para evaluación.")}><CheckCircle2 className="mr-2 inline" size={17} />Marcar listo para evaluación</button></div>
+        <ConfirmGroupSection group={group} canConfirm={canConfirm} busy={busy} onAction={onAction} />
       </div>
     </aside>
   );
@@ -586,6 +857,7 @@ function CreateGroupDialog({
   initialTime,
   busy,
   onAction,
+  onDateChange,
   onClose,
 }: Props & { roomId: string; initialTime: string; onClose: () => void }) {
   const [code, setCode] = useState("");
@@ -595,7 +867,8 @@ function CreateGroupDialog({
   const [evaluatorIds, setEvaluatorIds] = useState<string[]>([]);
   const [childQuery, setChildQuery] = useState("");
   const [evaluatorQuery, setEvaluatorQuery] = useState("");
-  const room = rooms.find((item) => item.roomId === roomId);
+  const [selectedRoomId, setSelectedRoomId] = useState(roomId);
+  const room = rooms.find((item) => item.roomId === selectedRoomId);
   const requiredEvaluators = stage === "GROUP_3" ? 3 : 6;
   const startsAt = new Date(`${date}T${initialTime}:00`).toISOString();
   const endsAt = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
@@ -634,7 +907,8 @@ function CreateGroupDialog({
 
   const capacityIsValid = capacity >= memberIds.length && capacity <= Math.min(30, room?.capacity ?? 0);
   const canCreate = Boolean(
-    room
+    date
+    && room
     && code.trim()
     && capacityIsValid
     && memberIds.length > 0
@@ -658,7 +932,7 @@ function CreateGroupDialog({
     const saved = await onAction(
       () => prekinderApi.createAssignedGroup({
         processId,
-        roomId,
+        roomId: selectedRoomId,
         stage,
         code: code.trim(),
         startsAt,
@@ -679,13 +953,42 @@ function CreateGroupDialog({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 id="create-group-title" className="text-xl font-black tracking-[-0.02em] text-slate-950 sm:text-2xl">Generar grupo de evaluación</h2>
-            <p className="mt-1 text-sm text-slate-600">Compón el grupo de niños y su equipo evaluador para {room?.name ?? "la sala seleccionada"}, a las {initialTime}.</p>
+            <p className="mt-1 text-sm text-slate-600">Selecciona la sala y la fecha de rendición de la entrevista antes de componer el grupo.</p>
           </div>
           <button className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700" onClick={onClose} disabled={busy} aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-3 sm:px-6">
+          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-5">
+            <label className="block text-sm font-bold text-slate-700">Fecha de rendición de entrevista
+              <input
+                className="control mt-1 w-full"
+                type="date"
+                required
+                value={date}
+                onChange={(event) => {
+                  if (event.target.value) onDateChange(event.target.value);
+                }}
+              />
+            </label>
+            <label className="block text-sm font-bold text-slate-700">Sala
+              <select
+                className="control mt-1 w-full"
+                required
+                value={selectedRoomId}
+                onChange={(event) => {
+                  const nextRoomId = event.target.value;
+                  const nextRoom = rooms.find((item) => item.roomId === nextRoomId);
+                  setSelectedRoomId(nextRoomId);
+                  setCapacity((current) => Math.min(current, nextRoom?.capacity ?? current));
+                }}
+              >
+                <option value="">Seleccionar sala</option>
+                {rooms.filter((item) => item.active).map((item) => (
+                  <option key={item.roomId} value={item.roomId}>{item.name} · cap. {item.capacity}</option>
+                ))}
+              </select>
+            </label>
             <label className="block text-sm font-bold text-slate-700">Código del grupo
               <input className="control mt-1 w-full" value={code} maxLength={64} onChange={(event) => setCode(event.target.value)} placeholder="Ej. PK-A-0900" autoFocus />
             </label>
@@ -746,9 +1049,9 @@ function CreateGroupDialog({
 
         <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0 text-sm">
-            <p className="font-black text-slate-900">{room?.name} · {initialTime}–{formatTime(endsAt)}</p>
+            <p className="font-black text-slate-900">{date} · {room?.name ?? "Sala pendiente"} · {initialTime}–{formatTime(endsAt)}</p>
             <p className={`mt-0.5 ${canCreate ? "text-emerald-700" : "text-slate-500"}`} aria-live="polite">
-              {canCreate ? "Composición completa y lista para guardar." : memberIds.length === 0 ? "Selecciona al menos un niño." : evaluatorIds.length !== requiredEvaluators ? `Selecciona ${requiredEvaluators - evaluatorIds.length} evaluador${requiredEvaluators - evaluatorIds.length === 1 ? "" : "es"} más.` : !capacityIsValid ? "Revisa la capacidad del grupo y de la sala." : "Ingresa un código para el grupo."}
+              {canCreate ? "Sala, fecha y composición completas; el grupo está listo para guardar." : !date ? "Selecciona la fecha de rendición de la entrevista." : !room ? "Selecciona la sala donde se rendirá la entrevista." : memberIds.length === 0 ? "Selecciona al menos un niño." : evaluatorIds.length !== requiredEvaluators ? `Selecciona ${requiredEvaluators - evaluatorIds.length} evaluador${requiredEvaluators - evaluatorIds.length === 1 ? "" : "es"} más.` : !capacityIsValid ? "Revisa la capacidad del grupo y de la sala." : "Ingresa un código para el grupo."}
             </p>
           </div>
           <div className="flex shrink-0 justify-end gap-2">

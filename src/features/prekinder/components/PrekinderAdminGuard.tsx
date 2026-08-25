@@ -5,14 +5,53 @@ import {
   authStore,
   useAuthStore,
 } from "../../../packages/backend-sdk/src/auth/store";
+import {
+  BASE_STORAGE_KEYS,
+  getStorageKey,
+} from "../../../packages/backend-sdk/src/index";
 import { refreshAccessToken } from "../services/api";
 
-type GuardProps = PropsWithChildren<{ roles?: string[]; loginPath?: string }>;
+type GuardProps = PropsWithChildren<{
+  roles?: string[];
+  loginPath?: string;
+  allowAnyAuthenticated?: boolean;
+}>;
+
+function normalizeRole(value: unknown): string {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function readRoleFromStorage(): string {
+  if (typeof window === "undefined") return "";
+  const roleKeys = [
+    getStorageKey(BASE_STORAGE_KEYS.PROFESSOR_USER),
+    BASE_STORAGE_KEYS.PROFESSOR_USER,
+    getStorageKey(BASE_STORAGE_KEYS.AUTHENTICATED_USER),
+    BASE_STORAGE_KEYS.AUTHENTICATED_USER,
+  ];
+
+  for (const key of roleKeys) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as {
+        role?: unknown;
+        roleCode?: unknown;
+      };
+      const role = normalizeRole(parsed.role ?? parsed.roleCode);
+      if (role) return role;
+    } catch {
+      continue;
+    }
+  }
+  return "";
+}
 
 export function PrekinderAdminGuard({
   children,
-  roles = ["ADMIN", "COORDINATOR", "CYCLE_DIRECTOR"],
+  roles = ["ADMIN", "COORDINATOR", "CYCLE_DIRECTOR", "PREKINDER_PROFESSIONAL"],
   loginPath = "/login",
+  allowAnyAuthenticated = false,
 }: GuardProps) {
   const session = useAuthStore((state) => state);
   const location = useLocation();
@@ -53,7 +92,19 @@ export function PrekinderAdminGuard({
     return <Navigate to={`${loginPath}?redirect=${redirect}`} replace />;
   }
 
-  if (!roles.includes(String(session.user.role))) {
+  if (allowAnyAuthenticated) {
+    return <>{children}</>;
+  }
+
+  const allowedRoles = roles.map((role) => normalizeRole(role));
+  const sessionRole = normalizeRole(
+    (session.user as { role?: unknown; roleCode?: unknown } | null)?.role ??
+      (session.user as { role?: unknown; roleCode?: unknown } | null)
+        ?.roleCode ??
+      readRoleFromStorage(),
+  );
+
+  if (!allowedRoles.includes(sessionRole)) {
     return (
       <main className="pk-page flex items-center justify-center px-6">
         <div

@@ -2,19 +2,80 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
 import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
-import type { SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { isMockMode, buildMockAgenda } from "../dev/mockApi";
 
 type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
 
 type Screen = "loading" | "agenda" | "confirm" | "evaluate";
 
 const criteria = [
-  { title: "Integración al grupo", description: "Cómo se integra el postulante con sus pares." },
-  { title: "Interacción con pares", description: "Calidad y frecuencia de la interacción con otros niños." },
-  { title: "Respeto de turnos", description: "Respeta turnos y reglas durante actividades grupales." },
-  { title: "Respuesta a la mediación", description: "Responde adecuadamente a la mediación del adulto." },
-  { title: "Participación en la actividad", description: "Nivel de participación activa en las actividades propuestas." },
-  { title: "Resolución de conflictos", description: "Cómo aborda y resuelve situaciones de conflicto." },
+  {
+    title: "Integración al grupo",
+    options: [
+      { value: 0 as Score, title: "0", label: "No se integra al grupo." },
+      { value: 1 as Score, title: "1", label: "Se integra parcialmente, necesita apoyo del adulto." },
+      { value: 2 as Score, title: "2", label: "Se integra con dificultad,prefiere estar solo." },
+      { value: 3 as Score, title: "3", label: "Se integra adecuadamente al grupo." },
+      { value: 4 as Score, title: "4", label: "Se integra de forma activa y colaborativa." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
+  {
+    title: "Interacción con pares",
+    options: [
+      { value: 0 as Score, title: "0", label: "No interactúa con sus pares." },
+      { value: 1 as Score, title: "1", label: "Interactúa solo con mediación del adulto." },
+      { value: 2 as Score, title: "2", label: "Interactúa de forma limitada." },
+      { value: 3 as Score, title: "3", label: "Interactúa adecuadamente con sus pares." },
+      { value: 4 as Score, title: "4", label: "Busca activamente la interacción con sus pares." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
+  {
+    title: "Respeto de turnos",
+    options: [
+      { value: 0 as Score, title: "0", label: "No respeta turnos ni reglas." },
+      { value: 1 as Score, title: "1", label: "Respeta con mediación constante del adulto." },
+      { value: 2 as Score, title: "2", label: "Respeta turnos de forma irregular." },
+      { value: 3 as Score, title: "3", label: "Respeta turnos y reglas de forma adecuada." },
+      { value: 4 as Score, title: "4", label: "Respeta turnos y Modela el comportamiento en otros." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
+  {
+    title: "Respuesta a la mediación",
+    options: [
+      { value: 0 as Score, title: "0", label: "No responde a la mediación del adulto." },
+      { value: 1 as Score, title: "1", label: "Responde negativamente a la mediación." },
+      { value: 2 as Score, title: "2", label: "Responde de forma inconsistente." },
+      { value: 3 as Score, title: "3", label: "Responde adecuadamente a la mediación." },
+      { value: 4 as Score, title: "4", label: "Se autorregula tras la mediación." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
+  {
+    title: "Participación en la actividad",
+    options: [
+      { value: 0 as Score, title: "0", label: "No participa en la actividad." },
+      { value: 1 as Score, title: "1", label: "Participa de forma pasiva." },
+      { value: 2 as Score, title: "2", label: "Participa parcialmente." },
+      { value: 3 as Score, title: "3", label: "Participa activamente en la actividad." },
+      { value: 4 as Score, title: "4", label: "Participa de forma entusiasta y creativa." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
+  {
+    title: "Resolución de conflictos",
+    options: [
+      { value: 0 as Score, title: "0", label: "No intenta resolver conflictos." },
+      { value: 1 as Score, title: "1", label: "Requiere mediación constante para resolver conflictos." },
+      { value: 2 as Score, title: "2", label: "Intenta resolver conflictos sin éxito." },
+      { value: 3 as Score, title: "3", label: "Resuelve conflictos de forma adecuada." },
+      { value: 4 as Score, title: "4", label: "Media conflictos entre sus pares." },
+      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observable" },
+    ],
+  },
 ] as const;
 
 function today() {
@@ -37,8 +98,8 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
   const [screen, setScreen] = useState<Screen>("loading");
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
-  const [criterionIndex, setCriterionIndex] = useState(0);
-  const [responses, setResponses] = useState<{ [assignId: string]: { [criterion: number]: { [appId: string]: Score } } }>({});
+  const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
+  const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
@@ -47,14 +108,27 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
 
   async function loadAgenda() {
     setScreen("loading");
+    if (isMockMode()) {
+      const data = buildMockAgenda(profile);
+      setAssignments(data.assignments);
+      if (assignmentId) {
+        const found = data.assignments.find((a) => a.assignmentId === assignmentId);
+        if (found) { setSelectedAssignment(found); setActiveApplicantId(found.reports[0]?.applicationId ?? null); setScreen("confirm"); }
+        else setScreen("agenda");
+      } else {
+        setScreen("agenda");
+      }
+      return;
+    }
     try {
-      const data = await prekinderApi.evaluatorAgenda(today(), profile);
+      const data = await prekinderApi.evaluatorAgenda(today(), PROFILE_TO_SHORT_INSTRUMENT[profile]);
       setAssignments(data.assignments);
 
       if (assignmentId) {
         const found = data.assignments.find((a) => a.assignmentId === assignmentId);
         if (found) {
           setSelectedAssignment(found);
+          setActiveApplicantId(found.reports[0]?.applicationId ?? null);
           setScreen("confirm");
         } else {
           setScreen("agenda");
@@ -70,36 +144,39 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
 
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
-    setCriterionIndex(0);
+    setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
     setScreen("confirm");
   }, []);
 
   const backToAgenda = useCallback(() => {
     setSelectedAssignment(null);
-    setCriterionIndex(0);
+    setActiveApplicantId(null);
     setScreen("agenda");
   }, []);
 
-  const setScore = useCallback((applicationId: string, value: Score) => {
+  const setScore = useCallback((applicationId: string, criterionIdx: number, value: Score) => {
     if (!selectedAssignment) return;
-    setResponses((current) => ({
-      ...current,
-      [selectedAssignment.assignmentId]: {
-        ...(current[selectedAssignment.assignmentId] ?? {} as { [criterion: number]: { [appId: string]: Score } }),
-        [criterionIndex]: {
-          ...(current[selectedAssignment.assignmentId]?.[criterionIndex] ?? {} as { [appId: string]: Score }),
-          [applicationId]: value,
+    setResponses((current) => {
+      const assignId = selectedAssignment.assignmentId;
+      const existing = current[assignId]?.[applicationId] ?? Array(criteria.length).fill(undefined);
+      const updated = [...existing];
+      updated[criterionIdx] = value;
+      return {
+        ...current,
+        [assignId]: {
+          ...(current[assignId] ?? {}),
+          [applicationId]: updated,
         },
-      },
-    }));
-  }, [selectedAssignment, criterionIndex]);
+      };
+    });
+  }, [selectedAssignment]);
 
   const setGroupComment = useCallback((applicationId: string, comment: string) => {
     if (!selectedAssignment) return;
     setComments((current) => ({
       ...current,
       [selectedAssignment.assignmentId]: {
-        ...(current[selectedAssignment.assignmentId] ?? {} as { [appId: string]: string }),
+        ...(current[selectedAssignment.assignmentId] ?? {}),
         [applicationId]: comment,
       },
     }));
@@ -130,14 +207,18 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
     }
   }, [selectedAssignment, assignmentId, backToAgenda, navigate]);
 
-  const currentResponses = selectedAssignment
-    ? (responses[selectedAssignment.assignmentId]?.[criterionIndex] ?? {})
-    : {};
   const members = selectedAssignment?.reports ?? [];
-  const completed = members.filter((m) => currentResponses[m.applicationId] !== undefined).length;
-  const groupComments = selectedAssignment
-    ? (comments[selectedAssignment.assignmentId] ?? {})
-    : {};
+  const activeApplicant = activeApplicantId ? members.find((m) => m.applicationId === activeApplicantId) ?? members[0] : members[0];
+  const activeScores = selectedAssignment && activeApplicant
+    ? (responses[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? Array(criteria.length).fill(undefined))
+    : Array(criteria.length).fill(undefined);
+  const activeComment = selectedAssignment && activeApplicant
+    ? (comments[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
+    : "";
+  const allMembersComplete = members.every((m) => {
+    const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[m.applicationId];
+    return scores && scores.length === criteria.length && scores.every((s) => s !== undefined);
+  });
 
   if (screen === "loading") {
     return (
@@ -149,17 +230,17 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-900 p-4 text-white">
         <div className="flex items-center gap-3">
           <UserCheck size={20} />
           <div>
             <p className="text-sm font-black">Espacio exclusivo: Evaluador de Observación Grupal</p>
-            <p className="text-xs text-amber-800">{assignments.length} asignaciones para hoy</p>
+            <p className="text-xs text-amber-300">{assignments.length} asignaciones para hoy</p>
           </div>
         </div>
         <button
           onClick={() => void loadAgenda()}
-          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-100"
+          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100"
         >
           Actualizar
         </button>
@@ -227,20 +308,20 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
           <section className="rounded-2xl border border-slate-200 bg-white">
             <div className="grid gap-4 p-5 md:grid-cols-3">
               {selectedAssignment.reports.map((report, index) => (
-                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 p-5 text-center">
-                  <span className="absolute left-3 top-3 grid h-6 w-6 place-items-center rounded bg-slate-100 text-xs font-black">{index + 1}</span>
-                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-amber-50 font-black text-amber-900">
+                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 bg-slate-50/40 p-6 text-center">
+                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-amber-900 text-xs font-black text-white">{index + 1}</span>
+                  <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-xl font-black uppercase text-amber-900">
                     {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
-                  <h3 className="mt-3 text-sm font-black text-slate-900">{report.applicantName}</h3>
-                  <p className="mt-3 text-xs font-bold text-emerald-700"><Check className="mr-1 inline" size={14} />Identidad confirmada</p>
+                  <h3 className="mt-3 text-base font-black leading-tight text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{report.applicantName}</h3>
+                  <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600"><Check size={13} />Identidad confirmada</p>
                 </article>
               ))}
             </div>
             <div className="flex justify-end gap-2 border-t border-slate-200 p-5">
               <button className="secondary" onClick={backToAgenda}>Volver</button>
               <button className="primary" disabled={saving} onClick={() => void handleStart()}>
-                {saving ? "Iniciando..." : <>Comenzar evaluación simultánea <ChevronRight className="ml-1 inline" size={17} /></>}
+                {saving ? "Iniciando..." : <>Comenzar evaluación individual <ChevronRight className="ml-1 inline" size={17} /></>}
               </button>
             </div>
           </section>
@@ -248,104 +329,129 @@ export function ConnectedGroupObservationConsole({ profile }: Props) {
       )}
 
       {/* Evaluate */}
-      {screen === "evaluate" && selectedAssignment && (
+      {screen === "evaluate" && selectedAssignment && activeApplicant && (
         <div>
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">
-                {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName} - {selectedAssignment.group.code}
+              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-amber-700">
+                {formatTime(selectedAssignment.group.startsAt)} · {selectedAssignment.group.roomName} · {selectedAssignment.group.code}
               </p>
-              <h2 className="mt-1 text-3xl font-black text-slate-950">Evaluación de Observación Grupal</h2>
-              <p className="mt-1 text-sm text-slate-600">Un criterio a la vez, con los tres postulantes visibles en paralelo.</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>Evaluación de Observación Grupal</h2>
+              <p className="mt-1 text-sm text-slate-500">Completa todos los criterios antes de enviar la evaluación.</p>
             </div>
-            <span className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-900">
-              Criterio {criterionIndex + 1} de {criteria.length}
-            </span>
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-            <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 p-5">
-              <span className="grid h-14 w-14 place-items-center rounded-xl bg-amber-900 text-xl font-black text-white">{criterionIndex + 1}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-500">Pauta observable</p>
-                <h3 className="text-xl font-black text-slate-950">{criteria[criterionIndex].title}</h3>
-                <p className="mt-1 text-sm text-slate-600">{criteria[criterionIndex].description}</p>
-              </div>
-              <strong className={completed === members.length ? "text-emerald-700" : "text-slate-600"}>
-                {completed}/{members.length} completos
-              </strong>
-            </div>
-
-            <div className="grid gap-4 p-5 xl:grid-cols-3">
-              {members.map((report) => {
-                const options = [
-                  { value: 0 as Score, title: "0", label: "No observado" },
-                  { value: 1 as Score, title: "1", label: "Necesita apoyo" },
-                  { value: 2 as Score, title: "2", label: "En desarrollo" },
-                  { value: 3 as Score, title: "3", label: "Adecuado" },
-                  { value: 4 as Score, title: "4", label: "Sobresaliente" },
-                  { value: "NOT_OBSERVED" as Score, title: "-", label: "No observable" },
-                ];
+          <div className="grid gap-5 xl:grid-cols-[270px_1fr]">
+            {/* Applicant selector sidebar */}
+            <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3">
+              <h3 className="px-3 py-2 text-xs font-black uppercase tracking-widest text-amber-700">Postulantes</h3>
+              {members.map((person) => {
+                const personScores = responses[selectedAssignment.assignmentId]?.[person.applicationId];
+                const personComplete = personScores && personScores.length === criteria.length && personScores.every((s) => s !== undefined);
                 return (
-                  <article key={report.applicationId} className="rounded-xl border border-slate-200 p-4">
-                    <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
-                      <span className="grid h-11 w-11 place-items-center rounded-full bg-amber-50 text-sm font-black text-amber-900">
-                        {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
-                      </span>
-                      <div>
-                        <h4 className="font-black text-slate-900">{report.applicantName}</h4>
-                      </div>
+                  <button
+                    key={person.applicationId}
+                    onClick={() => setActiveApplicantId(person.applicationId)}
+                    className={`mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${person.applicationId === activeApplicant.applicationId ? "bg-amber-100 text-amber-900 shadow-sm ring-2 ring-amber-300" : "hover:bg-amber-50 hover:shadow-sm"}`}
+                  >
+                    <span className={`grid h-10 w-10 place-items-center rounded-full text-sm font-black uppercase ${person.applicationId === activeApplicant.applicationId ? "bg-amber-900 text-white" : "bg-amber-100 text-amber-800"}`}>
+                      {person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-sm font-bold leading-tight" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{person.applicantName}</b>
+                      {personComplete ? (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-600">
+                          <Check size={11} />Completo
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 block text-xs text-slate-400">Sin evaluar</span>
+                      )}
+                    </span>
+                    {personComplete ? (
+                      <Check size={16} className="text-emerald-600 flex-shrink-0" />
+                    ) : (
+                      <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </aside>
+
+            {/* Full evaluation for selected applicant */}
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-lg">
+              {/* Prominent student header */}
+              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-amber-800 to-amber-900 p-6">
+                <div className="flex items-center gap-5">
+                  <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-amber-900" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                    {activeApplicant.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-widest text-amber-200">Postulante en evaluación</p>
+                    <h3 className="text-3xl font-black leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>
+                      {activeApplicant.applicantName}
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-amber-200">Observación Grupal · Evaluación Individual</p>
+                  </div>
+                  <div className="hidden sm:flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-amber-400 px-4 py-2 text-sm font-black text-amber-900">
+                      {members.findIndex((m) => m.applicationId === activeApplicant.applicationId) + 1} / {members.length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {criteria.map((criterion, cIdx) => (
+                  <div key={cIdx} className="p-5">
+                    <div className="mb-4 flex items-start gap-3">
+                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-amber-900 text-sm font-black text-white">{cIdx + 1}</span>
+                      <p className="pt-1 text-base font-bold leading-snug text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{criterion.title}</p>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      {options.map((opt) => (
+                    <div className="grid grid-cols-3 gap-2 xl:grid-cols-6">
+                      {criterion.options.map((opt) => (
                         <button
                           key={String(opt.value)}
-                          className={`min-h-14 rounded-lg border p-2 transition ${currentResponses[report.applicationId] === opt.value ? "border-2 border-amber-700 bg-amber-50 text-amber-950" : "border-slate-200 bg-white hover:border-amber-300"}`}
-                          onClick={() => setScore(report.applicationId, opt.value)}
+                          className={`min-h-14 rounded-xl border-2 p-3 text-center transition-all ${activeScores[cIdx] === opt.value ? "border-amber-700 bg-amber-700 text-white shadow-md" : "border-slate-200 bg-white hover:border-amber-400 hover:shadow-sm"}`}
+                          onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
                         >
-                          <b className="block text-lg">{opt.title}</b>
-                          <small className="text-slate-600">{opt.label}</small>
+                          <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
+                          <small className="mt-1 block text-xs leading-tight text-slate-500">{opt.label}</small>
                         </button>
                       ))}
                     </div>
-                    <div className="mt-4">
-                      <label className="mb-1 block text-xs font-bold text-slate-600">Observaciones cualitativas</label>
-                      <textarea
-                        className="min-h-20 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm"
-                        value={groupComments[report.applicationId] ?? ""}
-                        onChange={(e) => setGroupComment(report.applicationId, e.target.value)}
-                        placeholder="Observaciones cualitativas sobre este postulante..."
-                      />
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                  </div>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
-              <button className="secondary" disabled={criterionIndex === 0} onClick={() => setCriterionIndex((c) => c - 1)}>Anterior</button>
-              <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                <Check size={16} className="text-emerald-600" />Guardado en servidor
-              </span>
-              {criterionIndex < criteria.length - 1 ? (
+              {/* Observaciones */}
+              <div className="border-t border-slate-200 bg-slate-50/50 p-5">
+                <label className="mb-2 block text-sm font-bold text-slate-700">
+                  Observaciones cualitativas del postulante
+                </label>
+                <textarea
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-amber-700 focus:ring-2 focus:ring-amber-100"
+                  rows={4}
+                  value={activeComment}
+                  onChange={(e) => setGroupComment(activeApplicant.applicationId, e.target.value)}
+                  placeholder="Evidencia observable, contexto y comportamientos relevantes de este postulante..."
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
+                <button className="secondary" onClick={backToAgenda}>Volver al grupo</button>
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                  <Check size={16} className="text-emerald-600" />Guardado automático
+                </span>
                 <button
                   className="primary"
-                  disabled={completed !== members.length}
-                  onClick={() => setCriterionIndex((c) => c + 1)}
-                >
-                  Siguiente criterio <ChevronRight className="ml-1 inline" size={17} />
-                </button>
-              ) : (
-                <button
-                  className="primary"
-                  disabled={completed !== members.length || saving}
+                  disabled={!allMembersComplete || saving}
                   onClick={() => void handleSubmit()}
                 >
                   {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
                 </button>
-              )}
-            </div>
-          </section>
+              </div>
+            </section>
+          </div>
         </div>
       )}
     </div>

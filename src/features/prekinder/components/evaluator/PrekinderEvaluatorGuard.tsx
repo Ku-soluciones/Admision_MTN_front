@@ -5,9 +5,9 @@ import {
   authStore,
   useAuthStore,
 } from "../../../../packages/backend-sdk/src/auth/store";
-import { refreshAccessToken } from "../../services/api";
+import { prekinderApi, refreshAccessToken } from "../../services/api";
 import type { SpecialtyProfile } from "./SpecialtyProfile";
-import { PROFILE_TO_INSTRUMENT, PROFILE_TO_SHORT_INSTRUMENT } from "./SpecialtyProfile";
+import { PROFILE_TO_SHORT_INSTRUMENT } from "./SpecialtyProfile";
 import type { EvaluatorWorkspace } from "../../services/api";
 
 type GuardProps = PropsWithChildren<{
@@ -21,6 +21,16 @@ function today() {
   }).format(new Date());
 }
 
+function cachedWorkspace(): EvaluatorWorkspace | null {
+  try {
+    const raw = sessionStorage.getItem("pk-workspace-cache");
+    return raw ? JSON.parse(raw) as EvaluatorWorkspace : null;
+  } catch {
+    sessionStorage.removeItem("pk-workspace-cache");
+    return null;
+  }
+}
+
 export function PrekinderEvaluatorGuard({
   children,
   profile,
@@ -28,53 +38,35 @@ export function PrekinderEvaluatorGuard({
 }: GuardProps) {
   const session = useAuthStore((state) => state);
   const location = useLocation();
-  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(() => {
-    const raw = sessionStorage.getItem("pk-workspace-cache");
-    return raw ? JSON.parse(raw) : null;
-  });
-  const [loading, setLoading] = useState(false);
-
-  // DEBUG BYPASS
-  const isDebugMode = (typeof window !== 'undefined' && window.localStorage.getItem('prekinder-debug') === '1') || new URLSearchParams(location.search).get("debug") === "1";
-
-  if (isDebugMode) {
-    return <>{children}</>;
-  }
+  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(cachedWorkspace);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (workspace) return;
-    if (!authStore.getValidAccessToken()) return;
-
     let cancelled = false;
-    setLoading(true);
-
-    // Try sessionStorage first
-    const cached = sessionStorage.getItem("pk-workspace-cache");
-    if (cached && !cancelled) {
-      setWorkspace(JSON.parse(cached));
-      setLoading(false);
-      return;
+    async function verifyAccess() {
+      setChecking(true);
+      try {
+        if (!authStore.getValidAccessToken()) {
+          await refreshAccessToken();
+        }
+        if (!authStore.getValidAccessToken() || workspace) return;
+        const nextWorkspace = await prekinderApi.evaluatorWorkspace(today());
+        if (cancelled) return;
+        setWorkspace(nextWorkspace);
+        sessionStorage.setItem("pk-workspace-cache", JSON.stringify(nextWorkspace));
+      } catch {
+        // La vista de acceso denegado maneja la recuperación sin exponer datos de sesión.
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
     }
+    void verifyAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace]);
 
-    // Fetch workspace
-    import("../../services/api").then(({ prekinderApi }) => {
-      if (cancelled) return;
-      prekinderApi.evaluatorWorkspace(today())
-        .then((ws) => {
-          if (cancelled) return;
-          setWorkspace(ws);
-          sessionStorage.setItem("pk-workspace-cache", JSON.stringify(ws));
-        })
-        .catch(() => null)
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    });
-
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading || !authStore.getValidAccessToken()) {
+  if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <p className="flex items-center gap-3 text-sm font-semibold" role="status">
@@ -85,7 +77,7 @@ export function PrekinderEvaluatorGuard({
     );
   }
 
-  if (!session.user) {
+  if (!authStore.getValidAccessToken() || !session.user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`${loginPath}?redirect=${redirect}`} replace />;
   }

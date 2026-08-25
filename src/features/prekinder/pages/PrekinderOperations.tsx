@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarDays,
   Check,
   ChevronRight,
@@ -11,10 +14,15 @@ import {
   LayoutDashboard,
   Menu,
   KeyRound,
+  Pencil,
+  Plus,
   RefreshCw,
-  ShieldCheck,
+  Search,
+  Settings2,
+  Mail,
   Trash2,
   TriangleAlert,
+  UserCog,
   Users,
   UsersRound,
   X,
@@ -31,23 +39,37 @@ import {
   type ProfessionalRoleCode,
   type ProfessionalRoleDefinition,
   type ProfessionalRoleGroup,
+  type ProcessConfiguration,
+  type ProcessReadiness,
+  type PublicationBatch,
+  type PublicationPreview,
+  type RubricAssignment,
+  type RubricDraftInput,
+  type RubricSummary,
+  type RubricVersion,
+  type CommunicationTemplate,
   type Room,
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
-import { LogoIcon } from "../../admin/components/icons/Icons";
+import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
+import { PrekinderGroups } from "../components/admin/PrekinderGroups";
+import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
 
 const sections = [
   ["Resumen", LayoutDashboard],
+  ["Configuración", Settings2],
   ["Etapas", Activity],
   ["Postulaciones", Users],
+  ["Grupos", UsersRound],
   ["Torre de control", CalendarDays],
-  ["Profesionales", UsersRound],
+  ["Salas", DoorOpen],
+  ["Profesionales", UserCog],
   ["Pautas", ClipboardCheck],
+  ["Comunicaciones", Mail],
   ["Decisiones", FileCheck2],
-  ["Auditoría", ShieldCheck],
 ] as const;
 
 const waveNames: Record<string, string> = {
@@ -121,6 +143,7 @@ export function PrekinderOperations({
   const [section, setSection] = useState(() => {
     const requestedView = new URLSearchParams(window.location.search).get("prekinderView");
     if (requestedView === "control-tower") return "Torre de control";
+    if (requestedView === "groups") return "Grupos";
     if (requestedView === "professionals") return "Profesionales";
     return "Resumen";
   });
@@ -137,12 +160,28 @@ export function PrekinderOperations({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [groups, setGroups] = useState<EvaluationGroup[]>([]);
   const [controlTower, setControlTower] = useState<ControlTowerDay | null>(null);
+  const [configuration, setConfiguration] = useState<ProcessConfiguration | null>(null);
+  const [readiness, setReadiness] = useState<ProcessReadiness | null>(null);
+  const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
+  const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
+  const [publicationBatches, setPublicationBatches] = useState<PublicationBatch[]>([]);
   const [date, setDate] = useState(initialDate);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setMessage("");
+    setError("");
+  }, [section]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timeout = setTimeout(() => setMessage(""), 3000);
+    return () => clearTimeout(timeout);
+  }, [message]);
 
   const selected =
     groups.find((group) => group.groupId === selectedGroup) ?? null;
@@ -187,7 +226,8 @@ export function PrekinderOperations({
     if (!silent) setBusy(true);
     setError("");
     try {
-      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower] =
+      const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower,
+        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextBatches] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
@@ -195,6 +235,11 @@ export function PrekinderOperations({
           prekinderApi.rooms(id),
           prekinderApi.groups(id, day),
           prekinderApi.controlTower(id, day),
+          prekinderApi.professionals(id),
+          prekinderApi.processConfiguration(id),
+          prekinderApi.readiness(id),
+          prekinderApi.communicationTemplates(id),
+          prekinderApi.publicationBatches(id),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
@@ -202,6 +247,11 @@ export function PrekinderOperations({
       setRooms(nextRooms);
       setGroups(nextGroups);
       setControlTower(nextControlTower);
+      setProcessProfessionals(nextProcessProfessionals);
+      setConfiguration(nextConfiguration);
+      setReadiness(nextReadiness);
+      setCommunicationTemplates(nextCommunications);
+      setPublicationBatches(nextBatches);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
@@ -217,7 +267,7 @@ export function PrekinderOperations({
     }
   }
 
-  const realtimeState = usePrekinderRealtimeSync(processId, () => {
+  usePrekinderRealtimeSync(processId, () => {
     void loadProcess(processId, date, true);
   }, "process");
 
@@ -227,11 +277,6 @@ export function PrekinderOperations({
   useEffect(() => {
     if (processId) void loadProcess(processId, date);
   }, [processId, date]);
-  useEffect(() => {
-    if (!processId) return;
-    setProcessProfessionals([]);
-    prekinderApi.professionals(processId).then(setProcessProfessionals).catch(() => {});
-  }, [processId]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -257,6 +302,46 @@ export function PrekinderOperations({
           : "No pudimos guardar el cambio.",
       );
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function actionSilent(work: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await work();
+      setMessage(success);
+      await loadProcess();
+      return { ok: true as const };
+    } catch (reason) {
+      return {
+        ok: false as const,
+        error:
+          reason instanceof ApiError
+            ? reason.message
+            : "No pudimos guardar el cambio.",
+      };
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function actionQuiet(work: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    try {
+      await work();
+      await loadProcess();
+      return { ok: true as const };
+    } catch (reason) {
+      return {
+        ok: false as const,
+        error:
+          reason instanceof ApiError
+            ? reason.message
+            : "No pudimos guardar el cambio.",
+      };
     } finally {
       setBusy(false);
     }
@@ -434,9 +519,13 @@ export function PrekinderOperations({
           <div className="mt-auto px-4 pb-6">
             <a
               href="/admin"
-              className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
             >
-              ← Volver al Admin
+              <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">Volver a:</span>
+                <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+              </span>
             </a>
           </div>
         </aside>}
@@ -478,9 +567,13 @@ export function PrekinderOperations({
               <div className="mt-auto px-4 pb-6">
                 <a
                   href="/admin"
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-left text-azul-monte-tabor transition-colors hover:border-azul-monte-tabor"
                 >
-                  ← Volver al Admin
+                  <ArrowLeftIcon className="h-5 w-5 flex-shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold">Volver a:</span>
+                    <span className="block text-xs leading-4 text-blue-800">Panel general de admisión</span>
+                  </span>
                 </a>
               </div>
             </aside>
@@ -501,6 +594,41 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
                     <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
                   </>
+                ) : section === "Grupos" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
+                    <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
+                  </>
+                ) : section === "Configuración" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración</p>
+                    <p className="mt-1 text-sm text-gray-600">Ajusta las políticas de pago, inclusión, edad y ponderación del proceso.</p>
+                  </>
+                ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
+                    <p className="mt-1 text-sm text-gray-600">Crea y administra las salas disponibles para la jornada de evaluación.</p>
+                  </>
+                ) : section === "Profesionales" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Profesionales</p>
+                    <p className="mt-1 text-sm text-gray-600">Registra y organiza al equipo que participa en el proceso de admisión.</p>
+                  </>
+                ) : section === "Pautas" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
+                  </>
+                ) : section === "Comunicaciones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Comunicaciones</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa las plantillas y versiones que recibirán las familias.</p>
+                  </>
+                ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Decisiones</p>
+                    <p className="mt-1 text-sm text-gray-600">Revisa los resultados y define la decisión final de cada postulación.</p>
+                  </>
                 ) : section === "Torre de control" && processId && currentProcess?.status !== "DRAFT" ? (
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Torre de control</p>
                 ) : (
@@ -515,11 +643,6 @@ export function PrekinderOperations({
                   </SectionHeading>
                 )}
               </div>
-              {processId && (
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                  {realtimeState === "live" ? "Avance en vivo" : "Reconectando jornada"}
-                </span>
-              )}
             </div>
           )}
           {error && (
@@ -554,9 +677,19 @@ export function PrekinderOperations({
               onCreate={createAdmissionProcess}
             />
           ) : currentProcess?.status === "DRAFT" ? (
-            <ProcessActivation
+            <ProcessSetup
               process={currentProcess}
+              configuration={configuration}
+              readiness={readiness}
+              waves={waves}
+              communications={communicationTemplates}
               busy={busy}
+              onSaveConfiguration={(input) => action(
+                () => prekinderApi.saveProcessConfiguration(processId, input),
+                "Configuración guardada.",
+              )}
+              onSaveWave={saveStage}
+              onChanged={() => loadProcess(processId)}
               onPublish={publishAdmissionProcess}
             />
           ) : (
@@ -566,16 +699,25 @@ export function PrekinderOperations({
               metrics={metrics}
               waves={waves}
               groups={groups}
-              controlTower={controlTower}
               applications={applications}
               onGo={setSection}
               processes={processes}
+              currentProcess={currentProcess}
               processId={processId}
               busy={busy || baseLoading}
               onProcessChange={setProcessId}
               onRefresh={() => void refreshAll()}
+              onLifecycle={async (operation) => {
+                if (!currentProcess) return;
+                const succeeded = await action(
+                  () => operation === "close"
+                    ? prekinderApi.closeProcess(currentProcess.processId, currentProcess.version)
+                    : prekinderApi.archiveProcess(currentProcess.processId, currentProcess.version),
+                  operation === "close" ? "Proceso cerrado." : "Proceso archivado.",
+                );
+                if (succeeded) await loadBase();
+              }}
               lastLoaded={lastLoaded}
-              realtimeState={realtimeState}
             />
           )}
           {section === "Etapas" && (
@@ -583,6 +725,13 @@ export function PrekinderOperations({
               waves={waves}
               busy={busy}
               onSave={saveStage}
+            />
+          )}
+          {section === "Configuración" && configuration && (
+            <ConfigurationEditor
+              configuration={configuration}
+              busy={busy}
+              onSave={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
             />
           )}
           {section === "Postulaciones" && (
@@ -605,6 +754,23 @@ export function PrekinderOperations({
               }
             />
           )}
+          {section === "Grupos" && (
+            <PrekinderGroups
+              processId={processId}
+              date={date}
+              rooms={rooms}
+              groups={groups}
+              applications={applications}
+              professionals={processProfessionals}
+              busy={busy}
+              onDateChange={setDate}
+              onAction={action}
+              onOpenGroup={(groupId) => {
+                setSelectedGroup(groupId);
+                setSection("Torre de control");
+              }}
+            />
+          )}
           {section === "Torre de control" && (
             <PrekinderControlTower
               processId={processId}
@@ -614,10 +780,19 @@ export function PrekinderOperations({
               applications={eligible}
               professionals={processProfessionals}
               selected={selected}
+              controlTower={controlTower}
               busy={busy}
               onSelect={setSelectedGroup}
               onAction={action}
               onDateChange={setDate}
+            />
+          )}
+          {section === "Salas" && (
+            <Rooms
+              processId={processId}
+              rooms={rooms}
+              busy={busy}
+              onAction={actionQuiet}
             />
           )}
           {section === "Profesionales" && (
@@ -642,10 +817,6 @@ export function PrekinderOperations({
                 }
               }}
               onPasswordUpdate={async (professionalId, password) => {
-                if (demoMode) {
-                  setMessage("Contraseña del profesional actualizada.");
-                  return true;
-                }
                 setBusy(true);
                 setError("");
                 try {
@@ -660,11 +831,6 @@ export function PrekinderOperations({
                 }
               }}
               onDelete={async (person) => {
-                if (demoMode) {
-                  setProfessionals((current) => current.filter((item) => item.professionalId !== person.professionalId));
-                  setMessage("Profesional eliminado.");
-                  return true;
-                }
                 setBusy(true);
                 setError("");
                 try {
@@ -683,16 +849,32 @@ export function PrekinderOperations({
               }}
             />
           )}
-          {section === "Pautas" && <Rubrics />}
+          {section === "Pautas" && <Rubrics processId={processId} busy={busy} onChanged={() => loadProcess(processId)} />}
+          {section === "Comunicaciones" && (
+            <Communications
+              templates={communicationTemplates}
+              busy={busy}
+              onAction={action}
+              expandedDrafts={expandedDrafts}
+              onToggleDraftExpanded={(contentVersionId) =>
+                setExpandedDrafts((current) => {
+                  const next = new Set(current);
+                  if (next.has(contentVersionId)) next.delete(contentVersionId);
+                  else next.add(contentVersionId);
+                  return next;
+                })
+              }
+            />
+          )}
           {section === "Decisiones" && (
             <Decisions
               processId={processId}
               applications={applications}
+              batches={publicationBatches}
               busy={busy}
               onAction={action}
             />
           )}
-          {section === "Auditoría" && <AuditNotice />}
             </>
           )}
         </Content>
@@ -831,13 +1013,170 @@ function EmptyProcessState({
   );
 }
 
+function ProcessSetup({
+  process,
+  configuration,
+  readiness,
+  waves,
+  communications,
+  busy,
+  onSaveConfiguration,
+  onSaveWave,
+  onChanged,
+  onPublish,
+}: {
+  process: AdmissionProcess;
+  configuration: ProcessConfiguration | null;
+  readiness: ProcessReadiness | null;
+  waves: Wave[];
+  communications: CommunicationTemplate[];
+  busy: boolean;
+  onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+  onSaveWave: (wave: Wave, opensAt: string, closesAt: string, status: Wave["status"]) => Promise<void>;
+  onChanged: () => Promise<void>;
+  onPublish: (startsAt: string, endsAt: string) => Promise<void>;
+}) {
+  const openPhase = readiness?.phases.OPEN_APPLICATIONS;
+  const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
+  return (
+    <div className="space-y-7">
+      <section className="overflow-hidden rounded-2xl bg-azul-monte-tabor text-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+        <div className="grid gap-6 p-7 lg:grid-cols-[1fr_360px] lg:p-9">
+          <div>
+            <h2 className="max-w-2xl text-2xl font-black tracking-[-0.02em] sm:text-3xl">
+              Prepara {process.name} antes de abrirlo
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">
+              El sistema valida calendario, pago y comunicaciones. Puedes guardar cada bloque y retomar sin perder la configuración.
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/10 p-5" role="status" aria-live="polite">
+            <p className="text-sm font-bold text-blue-100">Preparación para apertura</p>
+            <p className="mt-2 text-3xl font-black">
+              {openPhase?.items.filter((item) => item.complete).length ?? 0}/{openPhase?.items.length ?? 0}
+            </p>
+            <p className="mt-1 text-sm text-blue-100">
+              {openPhase?.ready ? "Lista para habilitar" : "Aún hay requisitos pendientes"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {openPhase && <ReadinessChecklist readiness={readiness} />}
+      {configuration && (
+        <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
+      )}
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Calendario de postulación</h2>
+        <p className="mt-2 text-sm text-slate-600">Las tres ventanas deben tener inicio y cierre antes de abrir el proceso.</p>
+        <div className="mt-5"><Waves waves={waves} busy={busy} onSave={onSaveWave} /></div>
+      </section>
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2>
+        <p className="mt-2 text-sm text-slate-600">Asocia una versión publicada para cada instrumento. Las evaluaciones conservarán esta versión.</p>
+        <div className="mt-5"><Rubrics processId={process.processId} busy={busy} onChanged={onChanged} /></div>
+      </section>
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Comunicaciones</h2>
+        <p className="mt-2 text-sm text-slate-600">Revisa las versiones que recibirán las familias durante el ciclo.</p>
+        <div className="mt-5"><Communications
+          templates={communications}
+          busy={busy}
+          onAction={async (work) => {
+            try { await work(); await onChanged(); return true; } catch { return false; }
+          }}
+          expandedDrafts={expandedDrafts}
+          onToggleDraftExpanded={(contentVersionId) =>
+            setExpandedDrafts((current) => {
+              const next = new Set(current);
+              if (next.has(contentVersionId)) next.delete(contentVersionId);
+              else next.add(contentVersionId);
+              return next;
+            })
+          }
+        /></div>
+      </section>
+      <ProcessActivation process={process} busy={busy} ready={Boolean(openPhase?.ready)} onPublish={onPublish} />
+    </div>
+  );
+}
+
+function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null }) {
+  const phases = readiness ? Object.values(readiness.phases) : [];
+  return (
+    <section className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+      <h2 className="text-lg font-black text-slate-950">Checklist del ciclo</h2>
+      <div className="mt-5 grid gap-6 lg:grid-cols-3">
+        {phases.map((phase) => (
+          <div key={phase.items[0]?.phase}>
+            <p className="text-sm font-extrabold text-slate-800">
+              {phase.items[0]?.phase === "OPEN_APPLICATIONS" ? "Abrir postulaciones" : phase.items[0]?.phase === "RUN_EVALUATIONS" ? "Operar evaluaciones" : "Publicar resultados"}
+            </p>
+            <ul className="mt-3 space-y-3">
+              {phase.items.map((item) => (
+                <li key={item.code} className="flex gap-3 text-sm">
+                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${item.complete ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                    {item.complete ? <Check size={13} /> : <Clock3 size={12} />}
+                  </span>
+                  <span><strong className="block text-slate-800">{item.label}</strong><span className="text-xs leading-5 text-slate-500">{item.detail}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ConfigurationEditor({ configuration, busy, onSave }: {
+  configuration: ProcessConfiguration;
+  busy: boolean;
+  onSave: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+}) {
+  const [form, setForm] = useState(configuration);
+  useEffect(() => setForm(configuration), [configuration]);
+  const update = <K extends keyof ProcessConfiguration>(key: K, value: ProcessConfiguration[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <form className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]" onSubmit={(event) => {
+      event.preventDefault();
+      const { processId: _processId, ...payload } = form;
+      void onSave(payload);
+    }}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><h2 className="text-lg font-black text-slate-950">Políticas del proceso</h2><p className="mt-1 text-sm text-slate-600">Pago, inclusión, edad y ponderación quedan versionados.</p></div>
+        <label className="flex min-h-11 items-center gap-3 rounded-lg bg-slate-50 px-4 text-sm font-bold text-slate-700">
+          <input type="checkbox" checked={form.paymentEnabled} onChange={(event) => update("paymentEnabled", event.target.checked)} /> Cobro obligatorio
+        </label>
+      </div>
+      <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Monto"><input className="control w-full" type="number" min="1" disabled={!form.paymentEnabled} value={form.paymentAmount ?? ""} onChange={(e) => update("paymentAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
+        <Field label="Moneda"><select className="control w-full" value={form.paymentCurrency} onChange={(e) => update("paymentCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
+        <Field label="Vencimiento (días)"><input className="control w-full" type="number" min="1" max="30" value={form.paymentDueDays} onChange={(e) => update("paymentDueDays", Number(e.target.value))} /></Field>
+        <Field label="Glosa"><input className="control w-full" maxLength={180} value={form.paymentGlosa} onChange={(e) => update("paymentGlosa", e.target.value)} /></Field>
+        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="84" value={form.minimumAgeMonths} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Ponderación postulante"><input className="control w-full" type="number" min="0" max="1" step="0.05" value={form.applicantWeight} onChange={(e) => { const value = Number(e.target.value); update("applicantWeight", value); update("familyWeight", Number((1 - value).toFixed(2))); }} /></Field>
+        <Field label="Ponderación familia"><input className="control w-full" readOnly value={form.familyWeight} /></Field>
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
+        <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label>
+        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount)}>{busy ? "Guardando…" : "Guardar cambios"}</button>
+      </div>
+    </form>
+  );
+}
+
 function ProcessActivation({
   process,
   busy,
+  ready,
   onPublish,
 }: {
   process: AdmissionProcess;
   busy: boolean;
+  ready: boolean;
   onPublish: (startsAt: string, endsAt: string) => Promise<void>;
 }) {
   const [startsAt, setStartsAt] = useState(
@@ -906,7 +1245,7 @@ function ProcessActivation({
         <button
           className="primary w-full lg:w-auto"
           type="submit"
-          disabled={!hasValidWindow || busy}
+          disabled={!hasValidWindow || !ready || busy}
         >
           {busy ? (
             <RefreshCw
@@ -919,6 +1258,7 @@ function ProcessActivation({
           )}
           {busy ? "Habilitando" : "Habilitar proceso"}
         </button>
+        {!ready && <p className="text-sm font-semibold text-amber-800 lg:col-span-3" role="status">Completa los requisitos de apertura indicados en la checklist.</p>}
         {!hasValidWindow && (
           <p className="text-sm font-semibold text-red-700 sm:col-span-2 lg:col-span-3" role="alert">
             La fecha de cierre debe ser posterior a la fecha de inicio.
@@ -1024,12 +1364,13 @@ function Overview({
   applications,
   onGo,
   processes,
+  currentProcess,
   processId,
   busy,
   onProcessChange,
   onRefresh,
+  onLifecycle,
   lastLoaded,
-  realtimeState,
 }: {
   metrics: DashboardMetrics | null;
   waves: Wave[];
@@ -1037,12 +1378,13 @@ function Overview({
   applications: FlowApplication[];
   onGo: (value: string) => void;
   processes: AdmissionProcess[];
+  currentProcess: AdmissionProcess | null;
   processId: string;
   busy: boolean;
   onProcessChange: (id: string) => void;
   onRefresh: () => void;
+  onLifecycle: (operation: "close" | "archive") => Promise<void>;
   lastLoaded: Date | null;
-  realtimeState: string | null;
 }) {
   const lastUpdated = lastLoaded
     ? new Intl.DateTimeFormat("es-CL", {
@@ -1070,7 +1412,7 @@ function Overview({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Resumen</p>
-            {lastUpdated && <p className="mt-1 text-sm text-gray-400">actualizado {lastUpdated}</p>}
+            <p className="mt-1 text-sm text-gray-600">Visualiza el estado general del proceso y accede rápido a cada sección.</p>
             <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
               <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
               <label htmlFor="pk-process-select" className="shrink-0 text-sm text-gray-600">Proceso</label>
@@ -1089,11 +1431,7 @@ function Overview({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start">
-            {realtimeState && (
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${realtimeState === "live" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">
-                {realtimeState === "live" ? "En vivo" : "Reconectando"}
-              </span>
-            )}
+            {lastUpdated && <p className="text-sm text-gray-400">actualizado {lastUpdated}</p>}
             <button
               onClick={onRefresh}
               disabled={busy}
@@ -1103,6 +1441,8 @@ function Overview({
               <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
               {busy ? "Actualizando" : "Actualizar"}
             </button>
+            {currentProcess?.status === "PUBLISHED" && <button className="secondary" disabled={busy} onClick={() => void onLifecycle("close")}>Cerrar proceso</button>}
+            {currentProcess?.status === "CLOSED" && <button className="secondary" disabled={busy} onClick={() => void onLifecycle("archive")}>Archivar proceso</button>}
           </div>
         </div>
       </section>
@@ -1223,16 +1563,14 @@ function WaveEditor({
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 font-black text-blue-900">
-          {wave.position}
-        </span>
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-blue-700">Etapa {wave.position}</p>
         <span
           className={`rounded-full px-3 py-1 text-xs font-extrabold ${wave.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}
         >
           {wave.active ? "Vigente" : statusLabel[wave.status] || wave.status}
         </span>
       </div>
-      <h2 className="mt-5 text-lg font-black">{waveNames[wave.waveType]}</h2>
+      <h2 className="mt-2 text-lg font-black">{waveNames[wave.waveType]}</h2>
       <div className="mt-5 space-y-4">
         <Field label="Apertura">
           <input
@@ -1282,6 +1620,7 @@ function WaveEditor({
 }
 
 const APP_PAGE_SIZE = 10;
+const PROFESSIONALS_PAGE_SIZE = 10;
 
 function Applications({
   applications,
@@ -1299,19 +1638,46 @@ function Applications({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{ key: "name" | "via" | "estado"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
 
-  const filtered = useMemo(
-    () =>
-      applications.filter((app) => {
+  function toggleSort(key: "name" | "via" | "estado") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  const filtered = useMemo(() => {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return applications
+      .filter((app) => {
         const matchesQuery =
           fullName(app).toLowerCase().includes(query.toLowerCase()) ||
           app.identity.rut.includes(query);
         const matchesStatus =
           statusFilter === "ALL" || app.eligibilityStatus === statusFilter;
         return matchesQuery && matchesStatus;
-      }),
-    [applications, query, statusFilter],
-  );
+      })
+      .sort((a, b) => {
+        const value =
+          sort.key === "name"
+            ? fullName(a).localeCompare(fullName(b), "es")
+            : sort.key === "via"
+              ? (waveNames[a.eligibilityCategory] ?? a.eligibilityCategory).localeCompare(
+                  waveNames[b.eligibilityCategory] ?? b.eligibilityCategory,
+                  "es",
+                )
+              : (statusLabel[a.eligibilityStatus] ?? a.eligibilityStatus).localeCompare(
+                  statusLabel[b.eligibilityStatus] ?? b.eligibilityStatus,
+                  "es",
+                );
+        return value * factor;
+      });
+  }, [applications, query, statusFilter, sort]);
 
   useEffect(() => setPage(0), [query, statusFilter]);
 
@@ -1323,36 +1689,33 @@ function Applications({
   );
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-start gap-4 border-b border-slate-200 p-5">
-        <div>
-          <h2 className="font-black">
-            Listado de postulaciones{" "}
-            <span className="text-sm font-normal text-slate-400">
-              {filtered.length} de {applications.length}
-            </span>
-          </h2>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <span className="text-sm font-normal text-slate-400">
+          {filtered.length} de {applications.length}
+        </span>
+        <select
+          className="control"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="ALL">Todos los estados</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="VERIFIED">Verificada</option>
+          <option value="REJECTED">Rechazada</option>
+        </select>
+        <label className="relative block w-full max-w-xs">
+          <Search className="absolute left-3 top-3 text-slate-400" size={18} />
           <input
-            className="control"
-            placeholder="Nombre o RUT"
+            className="control w-full pl-10"
+            placeholder="Buscar por nombre o RUT…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <select
-            className="control"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">Todos los estados</option>
-            <option value="PENDING">Pendiente</option>
-            <option value="VERIFIED">Verificada</option>
-            <option value="REJECTED">Rechazada</option>
-          </select>
-        </div>
+        </label>
       </div>
 
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
@@ -1364,11 +1727,31 @@ function Applications({
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {(["Postulante", "Vía", "Estado", "Antecedentes"] as const).map((col) => (
-                <th key={col} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                  {col}
+              {(
+                [
+                  ["Postulante", "name"],
+                  ["Vía", "via"],
+                  ["Estado", "estado"],
+                ] as const
+              ).map(([label, key]) => (
+                <th key={key} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 uppercase hover:text-slate-700"
+                    onClick={() => toggleSort(key)}
+                  >
+                    {label}
+                    {sort.key === key ? (
+                      sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                    ) : (
+                      <ArrowUpDown size={13} className="text-slate-300" />
+                    )}
+                  </button>
                 </th>
               ))}
+              <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                Antecedentes
+              </th>
               <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 Acción
               </th>
@@ -1413,7 +1796,8 @@ function Applications({
           Siguiente →
         </button>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -1519,6 +1903,7 @@ function DayCenter({
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [roomId, setRoomId] = useState("");
+  const [interviewDate, setInterviewDate] = useState(date);
   const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
   const [time, setTime] = useState("09:00");
   const [code, setCode] = useState("");
@@ -1536,6 +1921,15 @@ function DayCenter({
     <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_350px]">
       <section className="pk-panel min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-5">
+          <Field label="Fecha de rendición de entrevista">
+            <input
+              className="control"
+              type="date"
+              required
+              value={interviewDate}
+              onChange={(event) => setInterviewDate(event.target.value)}
+            />
+          </Field>
           <Field label="Sala">
             <select
               className="control"
@@ -1605,7 +1999,7 @@ function DayCenter({
           </Field>
           <button
             disabled={
-              busy || !roomId || !code || capacity < 1 || requiredEvaluators < 1
+              busy || !interviewDate || !roomId || !code || capacity < 1 || requiredEvaluators < 1
             }
             className="primary"
             onClick={() =>
@@ -1616,7 +2010,7 @@ function DayCenter({
                     roomId,
                     stage,
                     code,
-                    startsAt: new Date(`${date}T${time}:00`).toISOString(),
+                    startsAt: new Date(`${interviewDate}T${time}:00`).toISOString(),
                     durationMinutes: 30,
                     capacity,
                     requiredEvaluators,
@@ -1989,6 +2383,314 @@ const professionalInstrumentLabels: Record<string, string> = {
   DAP: "DAP",
 };
 
+function generateRoomCode(name: string) {
+  const base = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 20);
+  const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+  return base ? `${base}-${suffix}` : `SALA-${suffix}`;
+}
+
+function Rooms({
+  processId,
+  rooms,
+  busy,
+  onAction,
+}: {
+  processId: string;
+  rooms: Room[];
+  busy: boolean;
+  onAction: (
+    work: () => Promise<unknown>,
+    success: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+}) {
+  const [editing, setEditing] = useState<Room | null>(null);
+  const [name, setName] = useState("");
+  const [capacity, setCapacity] = useState(3);
+  const [formError, setFormError] = useState("");
+  const [sort, setSort] = useState<{ key: "name" | "capacity"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timeout = setTimeout(() => setSuccessMessage(""), 3000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
+
+  const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
+
+  const sortedRooms = useMemo(() => {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...activeRooms].sort((a, b) =>
+      sort.key === "name"
+        ? a.name.localeCompare(b.name) * factor
+        : (a.capacity - b.capacity) * factor,
+    );
+  }, [activeRooms, sort]);
+
+  function toggleSort(key: "name" | "capacity") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  function editRoom(room: Room) {
+    setEditing(room);
+    setName(room.name);
+    setCapacity(room.capacity);
+    setFormError("");
+  }
+
+  function clearForm() {
+    setEditing(null);
+    setName("");
+    setCapacity(3);
+    setFormError("");
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="space-y-3">
+      <form
+        className="h-fit rounded-2xl border border-slate-200 bg-white p-6"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const trimmedName = name.trim();
+          if (!trimmedName || capacity < 0 || !processId) return;
+          setFormError("");
+          const successText = editing
+            ? `Sala ${trimmedName} actualizada.`
+            : "Sala creada.";
+          const result = editing
+            ? await onAction(
+                () =>
+                  prekinderApi.updateRoom(editing.roomId, {
+                    code: editing.code,
+                    name: trimmedName,
+                    capacity,
+                    expectedVersion: editing.version,
+                  }),
+                successText,
+              )
+            : await onAction(
+                () =>
+                  prekinderApi.createRoom(processId, {
+                    code: generateRoomCode(trimmedName),
+                    name: trimmedName,
+                    capacity,
+                  }),
+                successText,
+              );
+          if (result.ok) {
+            clearForm();
+            setSuccessMessage(successText);
+          } else {
+            setFormError("error" in result ? result.error : "No pudimos guardar la sala.");
+          }
+        }}
+      >
+        <h2 className="text-lg font-black">{editing ? `Editar ${editing.name}` : "Nueva sala"}</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          Define el nombre y la cantidad de alumnos que recibe.
+        </p>
+        <div className="mt-5 space-y-4">
+          <Field label="Nombre de la sala">
+            <input
+              required
+              className="control w-full"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ej. Sala 107"
+            />
+          </Field>
+          <Field label="Capacidad de alumnos">
+            <input
+              required
+              type="number"
+              min={0}
+              max={40}
+              className="control w-full"
+              value={capacity}
+              onChange={(event) => {
+                setCapacity(Number(event.target.value));
+                setFormError("");
+              }}
+            />
+          </Field>
+          {formError && (
+            <p className="text-sm font-semibold text-red-700" role="alert">
+              {formError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button disabled={busy || !name.trim() || capacity < 0} className="primary w-full">
+              {editing ? "Guardar cambios" : "Crear sala"}
+            </button>
+            {editing && (
+              <button type="button" className="secondary" disabled={busy} onClick={clearForm}>
+                Cancelar
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+      {successMessage && (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"
+          role="status"
+        >
+          <Check size={16} />
+          {successMessage}
+        </div>
+      )}
+      </div>
+
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Salas del proceso</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {activeRooms.length} salas creadas para este proceso.
+        </p>
+        {!activeRooms.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
+            Aún no hay salas creadas. Usa el formulario para agregar la primera.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 uppercase hover:text-slate-700"
+                      onClick={() => toggleSort("name")}
+                    >
+                      Nombre
+                      {sort?.key === "name" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <button
+                      type="button"
+                      className="mx-auto flex items-center gap-1.5 uppercase hover:text-slate-700"
+                      onClick={() => toggleSort("capacity")}
+                    >
+                      Capacidad de alumnos
+                      {sort?.key === "capacity" ? (
+                        sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-slate-300" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedRooms.map((room) => (
+                  <tr key={room.roomId}>
+                    <td className="px-5 py-4">
+                      <span className="font-black">{room.name}</span>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-800">
+                        <Users size={14} /> {room.capacity}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      {deletingId === room.roomId ? (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              type="button"
+                              className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={busy}
+                              onClick={async () => {
+                                setDeleteError("");
+                                const successText = `Sala ${room.name} eliminada.`;
+                                const result = await onAction(
+                                  () => prekinderApi.deleteRoom(room.roomId, room.version),
+                                  successText,
+                                );
+                                if (result.ok) {
+                                  setDeletingId(null);
+                                  if (editing?.roomId === room.roomId) clearForm();
+                                  setSuccessMessage(successText);
+                                } else {
+                                  setDeleteError("error" in result ? result.error : "No pudimos eliminar la sala.");
+                                }
+                              }}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary px-3 py-2 text-xs"
+                              disabled={busy}
+                              onClick={() => {
+                                setDeletingId(null);
+                                setDeleteError("");
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                          {deleteError && (
+                            <p className="max-w-[220px] text-center text-xs font-semibold text-red-700" role="alert">
+                              {deleteError}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center gap-2">
+                          <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => editRoom(room)}>
+                            <Pencil className="mr-1 inline" size={14} />Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={busy}
+                            onClick={() => {
+                              setDeletingId(room.roomId);
+                              setDeleteError("");
+                            }}
+                            aria-label={`Eliminar ${room.name}`}
+                            title="Eliminar sala"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function Professionals({ processId, professionals, roles, busy, onSave, onPasswordUpdate, onDelete }: {
   processId: string;
   professionals: Professional[];
@@ -1998,6 +2700,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
     processId: string;
     displayName: string;
     email: string;
+    password?: string;
     roleCode: ProfessionalRoleCode;
     expectedVersion: number;
   }) => Promise<boolean>;
@@ -2005,6 +2708,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   onDelete: (person: Professional) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<Professional | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2012,15 +2716,51 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   const [group, setGroup] = useState<ProfessionalRoleGroup | "">("");
   const [roleCode, setRoleCode] = useState<ProfessionalRoleCode | "">("");
   const [pendingDelete, setPendingDelete] = useState<Professional | null>(null);
+  const [sort, setSort] = useState<{ key: "name" | "cargo" | "estado"; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
+  const [page, setPage] = useState(0);
   const needsAccess = !editing || !editing.legacyUserId;
   const availableRoles = roles.filter((role) => role.groupCode === group);
+  const sortedProfessionals = sortPeople(professionals);
+  const totalPages = Math.max(1, Math.ceil(sortedProfessionals.length / PROFESSIONALS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paginatedProfessionals = sortedProfessionals.slice(
+    currentPage * PROFESSIONALS_PAGE_SIZE,
+    (currentPage + 1) * PROFESSIONALS_PAGE_SIZE,
+  );
   const groupedPeople = [...professionalGroupOrder, "PENDING" as const].map((groupCode) => ({
     groupCode,
-    people: professionals.filter((person) => person.roleGroup === groupCode),
+    people: paginatedProfessionals.filter((person) => person.roleGroup === groupCode),
   })).filter((section) => section.people.length > 0);
+
+  useEffect(() => setPage(0), [sort, professionals.length]);
+
+  function toggleSort(key: "name" | "cargo" | "estado") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
+
+  function sortPeople(people: Professional[]) {
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...people].sort((a, b) => {
+      const value =
+        sort.key === "name"
+          ? a.displayName.localeCompare(b.displayName, "es")
+          : sort.key === "cargo"
+            ? a.roleLabel.localeCompare(b.roleLabel, "es")
+            : (a.active ? "Activo" : "Inactivo").localeCompare(b.active ? "Activo" : "Inactivo", "es");
+      return value * factor;
+    });
+  }
 
   function clearForm() {
     setEditing(null);
+    setFormOpen(false);
     setName("");
     setEmail("");
     setPassword("");
@@ -2031,6 +2771,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
 
   function edit(person: Professional) {
     setEditing(person);
+    setFormOpen(true);
     setName(person.displayName);
     setEmail(person.email);
     setPassword("");
@@ -2041,143 +2782,242 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-      <form
-        className="h-fit rounded-2xl border border-slate-200 bg-white p-6 xl:sticky xl:top-24"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          if (!roleCode || !processId) return;
-          const saved = await onSave({
-            processId,
-            professionalId: editing?.professionalId,
-            legacyUserId: editing?.legacyUserId,
-            displayName: name.trim(),
-            email: email.trim(),
-            password: password || undefined,
-            specialty: specialty.trim(),
-            roleCode,
-            active: editing?.active ?? true,
-            expectedVersion: editing?.version ?? 0,
-          });
-          if (saved) clearForm();
-        }}
-      >
-        <h2 className="text-lg font-black">{editing
-          ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
-          : "Nuevo profesional"}</h2>
-        <p className="mt-1 text-sm leading-5 text-slate-600">
-          El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
-        </p>
-        <div className="mt-5 space-y-4">
-          <Field label="Nombre completo">
-            <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
-          </Field>
-          <Field label="Correo institucional">
-            <input
-              required
-              type="email"
-              disabled={Boolean(editing && !needsAccess)}
-              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-          {!editing && (
-            <Field label="Contraseña (opcional)">
-              <input type="password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-            </Field>
-          )}
-          <Field label="Área dentro del flujo">
-            <select
-              required
-              className="control w-full"
-              value={group}
-              onChange={(event) => {
-                setGroup(event.target.value as ProfessionalRoleGroup);
-                setRoleCode("");
-              }}
-            >
-              <option value="">Seleccionar área</option>
-              {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
-            </select>
-          </Field>
-          <Field label="Rol u ocupación">
-            <select
-              required
-              disabled={!group}
-              className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-              value={roleCode}
-              onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
-            >
-              <option value="">Seleccionar rol</option>
-              {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
-            </select>
-          </Field>
-          {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
-            <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
-              Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black">{editing
+              ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
+              : "Nuevo profesional"}</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              {formOpen
+                ? "El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso."
+                : "Registra un nuevo profesional para el proceso."}
             </p>
+          </div>
+          {!formOpen && (
+            <button type="button" className="primary shrink-0 self-start" onClick={() => setFormOpen(true)}>
+              <Plus className="mr-2" size={16} /> Agregar profesional
+            </button>
           )}
-          <Field label="Título o profesión (opcional)">
-            <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
-          </Field>
-          <button disabled={busy || !processId || !roleCode} className="primary w-full">
-            {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
-          </button>
-          {editing && <button type="button" className="secondary w-full" onClick={clearForm}>Cancelar edición</button>}
         </div>
-      </form>
+        {formOpen && (
+          <form
+            className="mt-6"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!roleCode || !processId) return;
+              const saved = await onSave({
+                processId,
+                professionalId: editing?.professionalId,
+                legacyUserId: editing?.legacyUserId,
+                displayName: name.trim(),
+                email: email.trim(),
+                password: editing ? undefined : password || undefined,
+                specialty: specialty.trim(),
+                roleCode,
+                active: editing?.active ?? true,
+                expectedVersion: editing?.version ?? 0,
+              });
+              if (saved) clearForm();
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Field label="Nombre completo">
+                <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
+              </Field>
+              <Field label="Correo institucional">
+                <input
+                  required
+                  type="email"
+                  autoComplete="off"
+                  placeholder="ejemplo@mtn.cl"
+                  disabled={Boolean(editing && !needsAccess)}
+                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </Field>
+              {!editing && (
+                <Field label="Contraseña (opcional)">
+                  <input type="password" autoComplete="new-password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+                </Field>
+              )}
+              {editing?.legacyUserId && (
+                <div className="sm:col-span-2">
+                  <Field label="Nueva contraseña (opcional)">
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        className="control min-w-0 flex-1"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        className="secondary inline-flex items-center gap-2 px-3"
+                        disabled={busy || password.length < 6}
+                        onClick={async () => {
+                          if (await onPasswordUpdate(editing.professionalId, password)) {
+                            setPassword("");
+                          }
+                        }}
+                      >
+                        <KeyRound size={16} />
+                        Cambiar
+                      </button>
+                    </div>
+                  </Field>
+                </div>
+              )}
+              <Field label="Área dentro del flujo">
+                <select
+                  required
+                  className="control w-full"
+                  value={group}
+                  onChange={(event) => {
+                    setGroup(event.target.value as ProfessionalRoleGroup);
+                    setRoleCode("");
+                  }}
+                >
+                  <option value="">Seleccionar área</option>
+                  {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
+                </select>
+              </Field>
+              <Field label="Rol u ocupación">
+                <select
+                  required
+                  disabled={!group}
+                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+                  value={roleCode}
+                  onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
+                >
+                  <option value="">Seleccionar rol</option>
+                  {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Título o profesión (opcional)">
+                <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
+              </Field>
+            </div>
+            {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
+              <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
+                Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
+              </p>
+            )}
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button disabled={busy || !processId || !roleCode} className="primary">
+                {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
+              </button>
+              <button type="button" className="secondary" onClick={clearForm}>Cancelar</button>
+            </div>
+          </form>
+        )}
+      </section>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-950">Equipo Prekínder</h2>
-          <p className="mt-1 text-sm text-slate-600">{professionals.length} profesionales organizados por función dentro del flujo.</p>
-        </div>
-        {!professionals.length && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Equipo Prekínder</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {professionals.length} profesionales organizados por función dentro del flujo.
+        </p>
+        {!professionals.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
             Aún no hay profesionales registrados para organizar.
           </div>
-        )}
-        {groupedPeople.map(({ groupCode, people }) => (
-          <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h3 className="font-black">{professionalGroupLabels[groupCode]}</h3>
-              <span className="text-xs font-bold text-slate-500">{people.length}</span>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {people.map((person) => (
-                <div key={person.professionalId} className="flex min-h-24 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 font-black text-blue-900">
-                    {person.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold">{person.displayName}</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-blue-800">{person.roleLabel}</span>
-                    <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"} · {person.email}</span>
-                  </span>
-                  <div className="ml-14 flex items-center gap-2 sm:ml-0">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                      {person.active ? "Activo" : "Inactivo"}
-                    </span>
-                    <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
-                      {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
-                    </button>
-                    <button
-                      type="button"
-                      className="grid h-10 w-10 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => setPendingDelete(person)}
-                      disabled={busy}
-                      aria-label={`Eliminar a ${person.displayName}`}
-                      title="Eliminar profesional"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {groupedPeople.map(({ groupCode, people }) => (
+              <div key={groupCode} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="overflow-x-auto">
+                  <div className="min-w-[900px]">
+                    <div className="grid grid-cols-[minmax(160px,1.1fr)_minmax(160px,1fr)_minmax(160px,1fr)_100px_170px] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("name")}>
+                        Profesional
+                        {sort?.key === "name" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
+                      <span className="whitespace-nowrap">Correo</span>
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("cargo")}>
+                        Cargo
+                        {sort?.key === "cargo" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
+                      <button type="button" className="flex items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("estado")}>
+                        Estado
+                        {sort?.key === "estado" ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
+                      <span className="whitespace-nowrap">Acción</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {people.map((person) => (
+                        <div key={person.professionalId} className="grid grid-cols-[minmax(160px,1.1fr)_minmax(160px,1fr)_minmax(160px,1fr)_100px_170px] items-center gap-4 px-5 py-4">
+                          <span className="min-w-0">
+                            <span className="block truncate font-bold">{person.displayName}</span>
+                            <span className="mt-1 block truncate text-xs text-slate-500">{person.specialty || "Sin título informado"}</span>
+                          </span>
+                          <span className="min-w-0 truncate text-xs text-slate-600">{person.email}</span>
+                          <span className="min-w-0 truncate text-xs font-semibold text-blue-800">{person.roleLabel}</span>
+                          <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                            {person.active ? "Activo" : "Inactivo"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button type="button" className="secondary px-3 py-2 text-xs" onClick={() => edit(person)}>
+                              {person.roleGroup === "PENDING" ? "Homologar" : "Editar"}
+                            </button>
+                            <button
+                              type="button"
+                              className="grid h-10 w-10 place-items-center rounded-lg border border-red-200 text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => setPendingDelete(person)}
+                              disabled={busy}
+                              aria-label={`Eliminar a ${person.displayName}`}
+                              title="Eliminar profesional"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
+        {professionals.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← Anterior
+            </button>
+            <span className="text-sm text-slate-500">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
       </section>
       {pendingDelete && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-professional-title">
@@ -2229,104 +3069,261 @@ const professionalGroupOrder: ProfessionalRoleGroup[] = [
   "DECISION_CONTROL",
 ];
 
-function Rubrics() {
-  const data = [
-    {
-      name: "Observación focal",
-      base: "Base sugerida: 3 postulantes · 3 profesionales",
-      count: 6,
-      items:
-        "Comunicación · Lenguaje · Adaptación/regulación · Psicomotricidad · Seguimiento de instrucciones · Autonomía",
-    },
-    {
-      name: "Interacción grupal",
-      base: "Base sugerida: 9 postulantes · 6 profesionales",
-      count: 6,
-      items:
-        "Interacción con pares · Participación · Cooperación · Regulación · Transiciones · Comunicación grupal",
-    },
-  ];
+const instrumentLabels: Record<string, string> = {
+  ENTRY_INDICATORS: "Indicadores de ingreso", ACADEMIC: "Académica", PSYCHOMOTOR: "Psicomotricidad",
+  PSYCHOLOGY: "Psicología", GROUP_OBSERVATION: "Observación grupal", FAMILY_INTERVIEW: "Entrevista familiar",
+  LEARNING_SUPPORT: "Apoyo", DAP: "DAP",
+};
+
+function Rubrics({ processId, busy, onChanged }: { processId: string; busy: boolean; onChanged: () => Promise<void> }) {
+  const [catalog, setCatalog] = useState<RubricSummary[]>([]);
+  const [assignments, setAssignments] = useState<RubricAssignment[]>([]);
+  const [versions, setVersions] = useState<Record<string, Array<{ versionId: string; version: number; status: string; instrumentCode: string; criteriaCount: number }>>>({});
+  const [name, setName] = useState("");
+  const [instrument, setInstrument] = useState("ENTRY_INDICATORS");
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const [editorVersion, setEditorVersion] = useState<RubricVersion | null>(null);
+  const [previewVersion, setPreviewVersion] = useState<RubricVersion | null>(null);
+  async function load() {
+    const [nextCatalog, nextAssignments] = await Promise.all([prekinderApi.rubrics(), prekinderApi.rubricAssignments(processId)]);
+    const details = await Promise.all(nextCatalog.map((rubric) => prekinderApi.rubricDetail(rubric.rubricId)));
+    setCatalog(nextCatalog); setAssignments(nextAssignments);
+    setVersions(Object.fromEntries(details.map((detail) => [detail.rubric.rubricId, detail.versions])));
+  }
+  useEffect(() => { void load().catch((reason) => setLocalError(reason instanceof Error ? reason.message : "No pudimos cargar las pautas.")); }, [processId]);
+  async function run(work: () => Promise<unknown>) {
+    setLocalBusy(true); setLocalError("");
+    try { await work(); await load(); await onChanged(); }
+    catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos actualizar la pauta."); }
+    finally { setLocalBusy(false); }
+  }
+  async function createRubric() {
+    setLocalBusy(true); setLocalError("");
+    try {
+      const created = await prekinderApi.createRubric(name.trim(), instrument);
+      setName("");
+      setEditorVersion(created);
+      await load(); await onChanged();
+    } catch (reason) {
+      setLocalError(reason instanceof Error ? reason.message : "No pudimos crear la pauta.");
+    } finally { setLocalBusy(false); }
+  }
+  async function openVersion(versionId: string) {
+    setLocalBusy(true); setLocalError("");
+    try { setEditorVersion(await prekinderApi.rubricVersion(versionId)); }
+    catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos abrir la pauta."); }
+    finally { setLocalBusy(false); }
+  }
+  async function openPreview(versionId: string) {
+    setLocalBusy(true); setLocalError("");
+    try {
+      const version = await prekinderApi.rubricVersion(versionId);
+      setPreviewVersion(version);
+    }
+    catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos abrir la vista previa."); }
+    finally { setLocalBusy(false); }
+  }
+  async function duplicateAndEdit(rubricId: string) {
+    setLocalBusy(true); setLocalError("");
+    try {
+      const created = await prekinderApi.duplicateRubric(rubricId);
+      setEditorVersion(created);
+      await load(); await onChanged();
+    } catch (reason) { setLocalError(reason instanceof Error ? reason.message : "No pudimos crear la nueva versión."); }
+    finally { setLocalBusy(false); }
+  }
+  async function saveEditor(input: RubricDraftInput) {
+    if (!editorVersion) throw new Error("No hay una pauta abierta.");
+    setLocalBusy(true);
+    try {
+      const updated = await prekinderApi.saveRubricVersion(editorVersion.versionId, input);
+      setEditorVersion(updated);
+      await load(); await onChanged();
+      return updated;
+    } finally { setLocalBusy(false); }
+  }
+  async function publishEditor() {
+    if (!editorVersion) return;
+    setLocalBusy(true);
+    try {
+      const published = await prekinderApi.publishRubricVersion(editorVersion.versionId);
+      setEditorVersion(published);
+      await load(); await onChanged();
+    } finally { setLocalBusy(false); }
+  }
+  async function deleteEditor() {
+    if (!editorVersion) return;
+    setLocalBusy(true);
+    try {
+      await prekinderApi.deleteRubricVersion(editorVersion.versionId);
+      setEditorVersion(null);
+      await load(); await onChanged();
+    } finally { setLocalBusy(false); }
+  }
+  if (editorVersion) return <RubricEditor key={editorVersion.versionId} version={editorVersion} instrumentLabels={instrumentLabels} busy={busy || localBusy} onSave={saveEditor} onPublish={publishEditor} onDelete={deleteEditor} onClose={() => setEditorVersion(null)} />;
+  if (previewVersion) return <RubricPreviewModal version={previewVersion} instrumentLabels={instrumentLabels} onClose={() => setPreviewVersion(null)} />;
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      {data.map((rubric) => (
-        <article
-          key={rubric.name}
-          className="rounded-2xl border border-slate-200 bg-white p-7"
-        >
-          <div className="flex justify-between">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">
-              Publicada · v1
-            </span>
-            <span className="text-xs font-bold text-slate-400">Inmutable</span>
-          </div>
-          <h2 className="mt-5 text-2xl font-black">{rubric.name}</h2>
-          <p className="mt-1 text-xs font-bold text-blue-800">{rubric.base}</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            {rubric.items}
-          </p>
-          <div className="mt-6 border-t border-slate-100 pt-5 text-sm">
-            <strong>{rubric.count} criterios</strong>
-            <span className="ml-2 text-slate-500">
-              Escala observable 0–3 + No observado
-            </span>
-          </div>
-        </article>
-      ))}
+    <div className="space-y-5">
+      {localError && <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{localError}</p>}
+      <form className="grid gap-4 rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:grid-cols-[1fr_240px_auto] md:items-end" onSubmit={(event) => { event.preventDefault(); if (name.trim()) void run(createRubric); }}>
+        <Field label="Nombre de la nueva pauta"><input className="control w-full" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} placeholder="Pauta de observación 2027" /></Field>
+        <Field label="Instrumento"><select className="control w-full" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
+        <button className="primary" disabled={busy || localBusy || !name.trim()}>Crear borrador</button>
+      </form>
+      <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+        {!catalog.length ? <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p> : catalog.map((rubric) => {
+          const rubricVersions = versions[rubric.rubricId] ?? [];
+          const draft = rubricVersions.find((version) => version.status === "DRAFT");
+          const published = rubricVersions.find((version) => version.status === "PUBLISHED");
+          const assigned = assignments.find((item) => item.instrumentCode === rubric.instrumentCode && item.rubricId === rubric.rubricId);
+          return <article key={rubric.rubricId} className="border-b border-slate-100 p-6 last:border-b-0">
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap gap-2"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-900">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>{published && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">Publicada · v{published.version}</span>}{draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador · v{draft.version}</span>}</div>
+                <h3 className="mt-3 text-lg font-black text-slate-950">{rubric.name}</h3>
+                <p className="mt-1 text-sm text-slate-500">{rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios {assigned ? "· asociada a este proceso" : ""}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
+                {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openPreview(published.versionId)}>Ver publicada</button>}
+                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
+                {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
+              </div>
+            </div>
+          </article>;
+        })}
+      </section>
     </div>
+  );
+}
+
+function Communications({ templates, busy, onAction, expandedDrafts, onToggleDraftExpanded }: {
+  templates: CommunicationTemplate[];
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expandedDrafts: Set<string>;
+  onToggleDraftExpanded: (contentVersionId: string) => void;
+}) {
+  const latest = Object.values(templates.reduce<Record<string, CommunicationTemplate>>((result, template) => {
+    const current = result[template.eventCode];
+    if (!current || template.contentVersion > current.contentVersion) result[template.eventCode] = template;
+    return result;
+  }, {}));
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+      {!latest.length ? <p className="p-8 text-center text-sm text-slate-500">No hay plantillas configuradas.</p> : latest.map((template) => (
+        <CommunicationRow
+          key={template.contentVersionId}
+          template={template}
+          busy={busy}
+          onAction={onAction}
+          expanded={expandedDrafts.has(template.contentVersionId)}
+          onToggleExpanded={() => onToggleDraftExpanded(template.contentVersionId)}
+        />
+      ))}
+    </section>
+  );
+}
+
+function CommunicationRow({ template, busy, onAction, expanded: expandedProp, onToggleExpanded }: {
+  template: CommunicationTemplate;
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+}) {
+  const [subject, setSubject] = useState(template.subject);
+  const [body, setBody] = useState(template.bodyHtml);
+  useEffect(() => { setSubject(template.subject); setBody(template.bodyHtml); }, [template.contentVersionId]);
+  const draft = template.contentStatus === "DRAFT";
+  const expanded = draft && expandedProp;
+  return (
+    <article className="border-b border-slate-100 p-6 last:border-b-0">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          {draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador</span>}
+          <h3 className={`font-black text-slate-950 ${draft ? "mt-3" : ""}`}>{template.name}</h3>
+          {!expanded && (
+            <>
+              <p className="mt-1 text-sm text-slate-600">{template.subject}</p>
+              <p className="mt-1 text-xs text-slate-500">Variables: {template.allowedVariables.join(", ") || "sin variables"}</p>
+            </>
+          )}
+        </div>
+        {!draft && <button className="secondary shrink-0" disabled={busy} onClick={() => void onAction(() => prekinderApi.duplicateCommunication(template.templateId), "Versión borrador creada.")}>Crear nueva versión</button>}
+        {draft && !expanded && <button className="secondary shrink-0" onClick={onToggleExpanded}>Editar borrador</button>}
+      </div>
+      {expanded && <div className="mt-5 grid gap-4">
+        <Field label="Asunto"><input className="control w-full" maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
+        <Field label="Cuerpo HTML"><textarea className="control min-h-32 w-full" maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
+        <p className="text-xs text-slate-500">Variables permitidas: applicantName, processName, portalUrl, deadline.</p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="secondary" onClick={() => { setSubject(template.subject); setBody(template.bodyHtml); onToggleExpanded(); }}>Cancelar</button>
+          <button className="secondary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(() => prekinderApi.saveCommunication(template.contentVersionId, subject, body), "Borrador guardado.")}>Guardar borrador</button>
+          <button className="primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(async () => { await prekinderApi.saveCommunication(template.contentVersionId, subject, body); return prekinderApi.publishCommunication(template.contentVersionId); }, "Plantilla publicada.")}>Guardar y publicar</button>
+        </div>
+      </div>}
+    </article>
   );
 }
 
 function Decisions({
   processId,
   applications,
+  batches,
   busy,
   onAction,
 }: {
   processId: string;
   applications: FlowApplication[];
+  batches: PublicationBatch[];
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
+  const [mode, setMode] = useState<"IMMEDIATE" | "SCHEDULED">("IMMEDIATE");
+  const [preview, setPreview] = useState<PublicationPreview | null>(null);
+  const sortedApplications = useMemo(
+    () => [...applications].sort((a, b) => fullName(a).localeCompare(fullName(b), "es")),
+    [applications],
+  );
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="mr-auto">
-            <h2 className="font-black">Publicación programada</h2>
+            <h2 className="font-black">Liberación masiva de resultados</h2>
             <p className="mt-1 text-xs text-slate-500">
-              El lote captura sólo decisiones completas. El portal será la
-              fuente oficial.
+              Previsualiza el lote antes de confirmar. El portal se publica primero y el correo se entrega mediante la cola segura.
             </p>
           </div>
-          <Field label="Fecha y hora">
+          <Field label="Modalidad"><select className="control" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}><option value="IMMEDIATE">Inmediata</option><option value="SCHEDULED">Programada</option></select></Field>
+          {mode === "SCHEDULED" && <Field label="Fecha y hora">
             <input
               className="control"
               type="datetime-local"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
             />
-          </Field>
+          </Field>}
           <button
-            className="primary"
-            disabled={busy || !scheduledAt}
-            onClick={() =>
-              onAction(
-                () =>
-                  prekinderApi.schedulePublication(
-                    processId,
-                    new Date(scheduledAt).toISOString(),
-                  ),
-                "Lote de publicación programado.",
-              )
-            }
+            className="secondary"
+            disabled={busy}
+            onClick={() => void onAction(async () => { const result = await prekinderApi.publicationPreview(processId); setPreview(result); return result; }, "Previsualización actualizada.")}
           >
-            Programar lote
+            Previsualizar
           </button>
+          <button className="primary" disabled={busy || !preview || preview.blocked.length > 0 || preview.eligible.length === 0 || (mode === "SCHEDULED" && !scheduledAt)} onClick={() => void onAction(() => prekinderApi.createPublicationBatch(processId, { previewId: preview!.previewId, idempotencyKey: crypto.randomUUID(), mode, scheduledAt: mode === "SCHEDULED" ? new Date(scheduledAt).toISOString() : null }), mode === "IMMEDIATE" ? "Publicación inmediata confirmada." : "Publicación programada.")}>Confirmar lote</button>
         </div>
+        {preview && <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3" aria-live="polite"><div><p className="text-2xl font-black text-emerald-700">{preview.eligible.length}</p><p className="text-xs text-slate-500">elegibles</p></div><div><p className="text-2xl font-black text-red-700">{preview.blocked.length}</p><p className="text-xs text-slate-500">bloqueadas</p></div><div><p className="text-2xl font-black text-slate-500">{preview.skipped.length}</p><p className="text-xs text-slate-500">ya publicadas o programadas</p></div>{preview.blocked.length > 0 && <p className="sm:col-span-3 text-sm font-semibold text-red-800" role="alert">Resuelve las decisiones o destinatarios faltantes y vuelve a previsualizar.</p>}</div>}
+      </section>
+      <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+        <div className="border-b border-slate-100 p-5"><h2 className="font-black text-slate-950">Historial de lotes</h2></div>
+        {!batches.length ? <p className="p-7 text-center text-sm text-slate-500">Todavía no hay publicaciones.</p> : batches.map((batch) => <div key={batch.batchId} className="flex flex-wrap items-center gap-4 border-b border-slate-100 p-5 last:border-b-0"><div className="min-w-0 flex-1"><p className="font-bold text-slate-900">{batch.mode === "IMMEDIATE" ? "Publicación inmediata" : "Publicación programada"}</p><p className="mt-1 text-xs text-slate-500">{batch.itemCount} resultados · {batch.sentCount} correos enviados · {batch.failedCount} fallidos</p></div><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${batch.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-800" : batch.status === "PARTIAL" || batch.status === "FAILED" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>{batch.status}</span>{batch.status === "SCHEDULED" && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.cancelPublicationBatch(batch.batchId, batch.version), "Lote cancelado.")}>Cancelar</button>}{batch.failedCount > 0 && <button className="secondary" disabled={busy} onClick={() => void onAction(() => prekinderApi.retryPublicationBatch(batch.batchId), "Reintento solicitado.")}>Reintentar fallidos</button>}</div>)}
       </section>
       <section className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        {applications.map((app) => (
+        {sortedApplications.map((app) => (
           <DecisionRow
             key={app.applicationId}
             app={app}
@@ -2387,20 +3384,6 @@ function DecisionRow({
         Guardar
       </button>
     </div>
-  );
-}
-
-function AuditNotice() {
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8">
-      <ShieldCheck size={36} className="text-azul-monte-tabor" />
-      <h2 className="mt-5 text-xl font-black">Historial protegido y activo</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-        Cada cambio de configuración, revisión, asignación, informe, extensión,
-        decisión y publicación conserva responsable, fecha y motivo. Los datos
-        personales y documentos no se incluyen en los registros técnicos.
-      </p>
-    </section>
   );
 }
 

@@ -403,8 +403,26 @@ const ApplicationForm: React.FC = () => {
     // Estado del formulario simplificado
     const [data, setData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
+    const [serverDraftVersion, setServerDraftVersion] = useState<number | undefined>();
+    const serverDraftRestoredRef = useRef(false);
 
     const activePrekinderOption = prekinderOptions[0] ?? null;
+
+    useEffect(() => {
+        if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || location.state?.editMode) return;
+        serverDraftRestoredRef.current = true;
+        prekinderApi.applicationDraft(activePrekinderOption.processId).then((draft) => {
+            if (!draft) return;
+            setData(draft.data);
+            setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
+            setServerDraftVersion(draft.version);
+            setDraftRestored(true);
+            window.setTimeout(() => setDraftRestored(false), 6000);
+        }).catch(() => {
+            // El formulario sigue disponible aunque la recuperación temporal falle.
+            serverDraftRestoredRef.current = false;
+        });
+    }, [isPrekinder, activePrekinderOption?.processId, location.state?.editMode]);
 
     useEffect(() => {
         if (!isPrekinder) return;
@@ -545,7 +563,16 @@ const ApplicationForm: React.FC = () => {
         if (!rut || !isValidRut(rut)) return; // solo consultar si el formato es válido
         // Prekínder vive en una base aislada y valida duplicados de forma atómica
         // al enviar. Consultar aquí la base legacy produciría falsos positivos.
-        if (isPrekinder) return;
+        if (isPrekinder) {
+            if (!activePrekinderOption || !data || Object.keys(data).length === 0) return;
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = setTimeout(() => {
+                prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
+                    .then((draft) => setServerDraftVersion(draft.version))
+                    .catch(() => { /* se reintentará con el siguiente cambio */ });
+            }, 650);
+            return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+        }
 
         setIsCheckingRut(true);
         try {
@@ -1060,6 +1087,13 @@ const ApplicationForm: React.FC = () => {
     // ni hay datos ya cargados desde el perfil del apoderado).
     useEffect(() => {
         if (didRestoreDraftRef.current) return;
+        if (isPrekinder) {
+            // Prekínder contiene PII y antecedentes sensibles: elimina cualquier
+            // borrador legado y nunca lo restaura desde almacenamiento del navegador.
+            try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+            didRestoreDraftRef.current = true;
+            return;
+        }
         if (location.state?.editMode) {
             didRestoreDraftRef.current = true;
             return;
@@ -1087,11 +1121,12 @@ const ApplicationForm: React.FC = () => {
         } finally {
             didRestoreDraftRef.current = true;
         }
-    }, [draftKey, location.state?.editMode]);
+    }, [draftKey, location.state?.editMode, isPrekinder]);
 
     // Guardado debounced (400ms) ante cualquier cambio en data/currentStep.
     useEffect(() => {
         if (!didRestoreDraftRef.current) return;
+        if (isPrekinder) return;
         if (location.state?.editMode) return;
         if (skipNextSaveRef.current) {
             skipNextSaveRef.current = false;
@@ -1118,7 +1153,8 @@ const ApplicationForm: React.FC = () => {
         return () => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         };
-    }, [data, currentStep, draftKey, location.state?.editMode]);
+    }, [data, currentStep, draftKey, location.state?.editMode, isPrekinder,
+        activePrekinderOption?.processId]);
 
     const clearDraft = useCallback(() => {
         try {
@@ -1353,7 +1389,7 @@ const ApplicationForm: React.FC = () => {
             let nextStepIndex = currentStep + 1;
 
             // Guardar borrador inmediatamente al avanzar de paso (sin debounce)
-            if (!location.state?.editMode && data && Object.keys(data).length > 0) {
+            if (!isPrekinder && !location.state?.editMode && data && Object.keys(data).length > 0) {
                 try {
                     localStorage.setItem(
                         draftKey,
@@ -1577,11 +1613,16 @@ const ApplicationForm: React.FC = () => {
                     }
 
                     // Guardar el ID de la aplicación para subir documentos
-                    const applicationId = isEditMode ? location.state.applicationId : response.id;
+                    const applicationId = isEditMode
+                        ? location.state.applicationId
+                        : isPrekinder ? response.applicationId : response.id;
                     setSubmittedApplicationId(applicationId);
 
                     // El envío fue exitoso: descartar el borrador local.
                     clearDraft();
+                    if (isPrekinder && activePrekinderOption) {
+                        void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+                    }
 
                     // Subir documentos si hay alguno seleccionado
                     let documentsUploaded = 0;
@@ -1702,7 +1743,7 @@ const ApplicationForm: React.FC = () => {
     const prevStep = () => {
         const prevStepIndex = Math.max(currentStep - 1, 0);
         // Guardar borrador inmediatamente al retroceder
-        if (!location.state?.editMode && data && Object.keys(data).length > 0) {
+        if (!isPrekinder && !location.state?.editMode && data && Object.keys(data).length > 0) {
             try {
                 localStorage.setItem(
                     draftKey,
@@ -3206,6 +3247,9 @@ const ApplicationForm: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                     clearDraft();
+                                    if (isPrekinder && activePrekinderOption) {
+                                        void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+                                    }
                                     setData({});
                                     setCurrentStep(0);
                                     setDraftRestored(false);

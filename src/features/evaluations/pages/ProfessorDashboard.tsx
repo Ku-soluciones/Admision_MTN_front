@@ -12,8 +12,15 @@ import {
     CheckCircleIcon,
     ClockIcon,
     BarChartIcon,
-    LogoIcon
+    LogoIcon,
+    EyeIcon,
+    XMarkIcon,
+    ArrowLeftIcon,
+    CheckCircleIcon as CheckCircleIconFull,
+    XCircleIcon,
+    DownloadIcon
 } from '../../admin/components/icons/Icons';
+import { documentService } from '../../../packages/shared-ui/src/services/documentService';
 import { 
     mockProfessors, 
     getPendingExamsByProfessor, 
@@ -43,6 +50,7 @@ import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
 import PrekinderEvaluationWorkspace from './PrekinderEvaluationWorkspace';
+import PrekinderRubricsView from './PrekinderRubricsView';
 import {
     prekinderApi,
     type EvaluationInstrument,
@@ -83,13 +91,14 @@ function currentPrekinderDate(): string {
 }
 
 interface SidebarNavProps {
-    sections: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
+    sections: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }>; route?: string }>;
     activeSection: string;
     onSectionChange: (key: string) => void;
     onShowLogout: () => void;
     interviews: Interview[];
     badgeCount?: number;
     onNavigate?: () => void;
+    navigate?: (path: string) => void;
 }
 
 const SidebarNav = React.memo(function SidebarNav({
@@ -100,7 +109,17 @@ const SidebarNav = React.memo(function SidebarNav({
     interviews,
     badgeCount,
     onNavigate,
+    navigate,
 }: SidebarNavProps) {
+    const handleClick = (section: { key: string; route?: string }) => {
+        if (section.route && navigate) {
+            navigate(section.route);
+        } else {
+            onSectionChange(section.key);
+            onNavigate?.();
+        }
+    };
+
     return (
         <>
             <div className="mb-8 text-center">
@@ -112,10 +131,11 @@ const SidebarNav = React.memo(function SidebarNav({
                 {sections.map((section) => {
                     const IconComponent = section.icon;
                     const showBadge = section.key === 'entrevistas' && (badgeCount ?? interviews.length) > 0;
+                    const isRoute = !!section.route;
                     return (
                         <button
                             key={section.key}
-                            onClick={() => { onSectionChange(section.key); onNavigate?.(); }}
+                            onClick={() => handleClick(section)}
                             className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-3 ${
                                 activeSection === section.key
                                     ? 'bg-azul-monte-tabor text-white'
@@ -167,10 +187,12 @@ const ProfessorDashboard: React.FC = () => {
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
         if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
             const instrument = searchParams.get('instrument');
             return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
         }
         if (searchParams.get('section') === 'prekinder') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
             const instrument = searchParams.get('instrument');
             return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
         }
@@ -186,14 +208,20 @@ const ProfessorDashboard: React.FC = () => {
     const handleSectionChange = useCallback((key: string) => {
         setActiveSection(key);
         const next = new URLSearchParams(searchParams);
-        if (key === 'prekinder' || key.startsWith('prekinder:')) {
+        if (key === 'prekinder-pautas') {
             next.set('section', 'prekinder');
+            next.set('view', 'rubrics');
+            next.delete('instrument');
+        } else if (key === 'prekinder' || key.startsWith('prekinder:')) {
+            next.set('section', 'prekinder');
+            next.delete('view');
             const instrument = key.split(':')[1];
             if (instrument) next.set('instrument', instrument);
             else next.delete('instrument');
         } else {
             next.delete('section');
             next.delete('instrument');
+            next.delete('view');
         }
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
@@ -216,6 +244,7 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
     const [prekinderInstruments, setPrekinderInstruments] = useState<EvaluationInstrument[]>([]);
+    const [prekinderActorId, setPrekinderActorId] = useState<string>();
     const [prekinderAccessResolved, setPrekinderAccessResolved] = useState(false);
 
     useEffect(() => {
@@ -224,6 +253,7 @@ const ProfessorDashboard: React.FC = () => {
             .then((workspace) => {
                 if (!active) return;
                 setPrekinderInstruments(workspace.instruments.map(({ instrument }) => instrument));
+                setPrekinderActorId(workspace.actorId);
             })
             .catch(() => {
                 if (active) setPrekinderInstruments([]);
@@ -237,7 +267,7 @@ const ProfessorDashboard: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder')) return;
+        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder') || activeSection === 'prekinder-pautas') return;
         const requestedCode = activeSection.startsWith('prekinder:')
             ? activeSection.slice('prekinder:'.length)
             : '';
@@ -256,6 +286,15 @@ const ProfessorDashboard: React.FC = () => {
             handleSectionChange('prekinder');
         }
     }, [activeSection, currentProfessor?.role, handleSectionChange]);
+
+    // Estado para documentos de estudiantes (mapa por applicationId)
+    const [documentsByApplication, setDocumentsByApplication] = useState<Record<number, any[]>>({});
+
+    // Estado para saber qué applicationId está mostrando documentos inline
+    const [viewingDocumentsFor, setViewingDocumentsFor] = useState<number | null>(null);
+
+    // Estado para el documento que se está viendo en el visor inline
+    const [viewingDocument, setViewingDocument] = useState<{id: number, url: string, name: string, contentType?: string} | null>(null);
 
     // Estado para forzar recarga de datos (cache busting)
     const [refreshKey, setRefreshKey] = useState(0);
@@ -445,6 +484,19 @@ const ProfessorDashboard: React.FC = () => {
                     setEvaluations(evaluationsData);
                     setEvaluationStats(statsData);
                     setInterviews(interviewsData);
+
+                    // Cargar documentos para cada aplicación de las entrevistas
+                    const appIds = [...new Set(interviewsData.map((i: Interview) => i.applicationId).filter(Boolean))];
+                    const docsMap: Record<number, any[]> = {};
+                    await Promise.all(appIds.map(async (appId: number) => {
+                        try {
+                            const docs = await interviewService.getDocumentsByApplication(appId);
+                            docsMap[appId] = docs;
+                        } catch {
+                            docsMap[appId] = [];
+                        }
+                    }));
+                    setDocumentsByApplication(docsMap);
                 }
 
             } catch (error: any) {
@@ -493,6 +545,29 @@ const ProfessorDashboard: React.FC = () => {
         window.location.href = appUrls.home;
     };
 
+    // Manejar vista de documento
+    const handleViewDocument = async (doc: any) => {
+        try {
+            const blob = await documentService.viewDocument(doc.id);
+            const objectUrl = URL.createObjectURL(blob);
+            setViewingDocument({
+                id: doc.id,
+                url: objectUrl,
+                name: doc.originalName || doc.fileName || 'Documento',
+                contentType: doc.contentType
+            });
+        } catch (err) {
+            notify('error', 'Error', 'No se pudo visualizar el documento');
+        }
+    };
+
+    const handleCloseDocument = () => {
+        if (viewingDocument) {
+            window.URL.revokeObjectURL(viewingDocument.url);
+        }
+        setViewingDocument(null);
+    };
+
     // Filtrar secciones según el rol
     const filteredSections = baseSections.filter(section => {
         // TEACHER no ve "Mis Entrevistas" ni "Mis Horarios"
@@ -520,11 +595,14 @@ const ProfessorDashboard: React.FC = () => {
         label: prekinderSectionLabels[instrument.instrumentCode] ?? instrument.displayName,
         icon: prekinderSectionIcons[instrument.instrumentCode] ?? CheckCircleIcon,
     }));
+    const prekinderRubricsSection = prekinderInstruments.length > 0
+        ? [{ key: 'prekinder-pautas', label: 'Pautas', icon: BookOpenIcon }]
+        : [];
     const professorSections = filteredSections.flatMap((section) =>
-        section.key === 'reportes' ? [...prekinderSections, section] : [section],
+        section.key === 'reportes' ? [...prekinderRubricsSection, ...prekinderSections, section] : [section],
     );
     const prekinderOnlySections = prekinderSections.length > 0
-        ? prekinderSections
+        ? [...prekinderRubricsSection, ...prekinderSections]
         : [{ key: 'prekinder', label: 'Evaluación Prekínder', icon: CheckCircleIcon }];
     const sections = currentProfessor?.role === 'PREKINDER_PROFESSIONAL'
         ? prekinderOnlySections
@@ -1274,6 +1352,60 @@ const ProfessorDashboard: React.FC = () => {
                                      status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                                 </span>
                             </div>
+
+                            {/* Sección de Documentos (solo para entrevistas de Director de Ciclo) */}
+                            {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                    {(() => {
+                                        const docs = documentsByApplication[applicationId] || [];
+                                        const totalCount = docs.length;
+                                        if (totalCount === 0) {
+                                            return (
+                                                <div className="text-xs p-2 rounded bg-gray-100 text-gray-500 text-center">
+                                                    No hay documentos aún
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div className="space-y-2">
+                                                <div className="text-xs font-medium text-gray-600 mb-1">
+                                                    Documentos ({totalCount})
+                                                </div>
+                                                {docs.slice(0, 3).map((doc: any) => {
+                                                    const status = doc.approvalStatus || doc.approval_status;
+                                                    const statusColor = status === 'APPROVED' ? 'bg-green-50 border-green-200 text-green-700' :
+                                                                       status === 'REJECTED' ? 'bg-red-50 border-red-200 text-red-700' :
+                                                                       'bg-blue-50 border-blue-200 text-blue-700';
+                                                    const iconColor = status === 'APPROVED' ? 'text-green-600' :
+                                                                   status === 'REJECTED' ? 'text-red-600' :
+                                                                   'text-blue-600';
+                                                    return (
+                                                        <div key={doc.id} className={`text-xs p-2 rounded border flex items-center justify-between gap-2 ${statusColor}`}>
+                                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                                <FileTextIcon className={`w-4 h-4 flex-shrink-0 ${iconColor}`} />
+                                                                <span className="truncate">{documentService.getDocumentTypeLabel(doc.documentType)}</span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleViewDocument(doc)}
+                                                                className="inline-flex items-center gap-1 px-2 py-1 bg-azul-monte-tabor text-white text-xs font-semibold rounded hover:bg-blue-800 transition-colors flex-shrink-0"
+                                                            >
+                                                                <EyeIcon className="w-3 h-3" />
+                                                                Ver
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {totalCount > 3 && (
+                                                    <div className="text-xs text-gray-500 text-center">
+                                                        + {totalCount - 3} más
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                             <Badge variant={isCompleted ? 'success' : 'info'} size="sm">
@@ -1311,6 +1443,37 @@ const ProfessorDashboard: React.FC = () => {
 
         return (
             <div className="space-y-6">
+                {/* Visor de documento */}
+                {viewingDocument && (
+                    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-start justify-center p-4 overflow-y-auto">
+                        <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[95vh] flex flex-col my-8">
+                            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <FileTextIcon className="w-5 h-5 text-azul-monte-tabor flex-shrink-0" />
+                                    <span className="font-medium text-gray-700 truncate max-w-md">{viewingDocument.name}</span>
+                                </div>
+                                <button
+                                    onClick={handleCloseDocument}
+                                    className="p-1 hover:bg-gray-100 rounded flex-shrink-0"
+                                >
+                                    <XMarkIcon className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="w-full h-[80vh] overflow-auto bg-gray-100 p-4">
+                                <div className="bg-white rounded-lg shadow-lg border border-gray-200 h-full min-h-[70vh]">
+                                    <object
+                                        data={viewingDocument.url}
+                                        type={viewingDocument.contentType || 'application/pdf'}
+                                        className="w-full h-full border-0"
+                                        title={viewingDocument.name}
+                                        style={{ height: '70vh', width: '100%' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                     <div className="flex flex-col gap-4">
@@ -2098,6 +2261,8 @@ const ProfessorDashboard: React.FC = () => {
                 return renderReportesEstadisticas();
             case 'prekinder':
                 return <PrekinderEvaluationWorkspace />;
+            case 'prekinder-pautas':
+                return <PrekinderRubricsView actorId={prekinderActorId} />;
             case 'configuracion':
                 return (
                     <div className="space-y-6">
@@ -2212,7 +2377,7 @@ const ProfessorDashboard: React.FC = () => {
             <div
                 id="mobile-sidebar-profesor"
                 aria-hidden={!isSidebarOpen}
-                {...(!isSidebarOpen ? { inert: '' } : {})}
+                inert={!isSidebarOpen ? true : undefined}
                 className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 p-6 flex flex-col overflow-y-auto transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <SidebarNav
@@ -2223,6 +2388,7 @@ const ProfessorDashboard: React.FC = () => {
                     interviews={interviews}
                     badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
                     onNavigate={() => setIsSidebarOpen(false)}
+                    navigate={navigate}
                 />
             </div>
 
@@ -2236,6 +2402,7 @@ const ProfessorDashboard: React.FC = () => {
                         onShowLogout={() => setShowLogoutConfirm(true)}
                         interviews={interviews}
                         badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
+                        navigate={navigate}
                     />
                 </aside>
 

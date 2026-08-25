@@ -16,12 +16,25 @@ import { ConnectedIndicatorsConsole } from "./pages/evaluator/ConnectedIndicator
 import { ConnectedGroupObservationConsole } from "./pages/evaluator/ConnectedGroupObservationConsole";
 import { ConnectedLearningSupportConsole } from "./pages/evaluator/ConnectedLearningSupportConsole";
 import { ConnectedDapConsole } from "./pages/evaluator/ConnectedDapConsole";
+import { MockDevLauncher } from "./pages/dev/MockDevLauncher";
 
 const LoadingFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
     <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
   </div>
 );
+
+const LEGACY_EVALUATOR_ROLES = [
+  "TEACHER",
+  "TEACHER_EARLY_CYCLE",
+  "PSYCHOLOGIST",
+  "INTERVIEWER",
+  "PREKINDER_PROFESSIONAL",
+  "EVALUATOR",
+  "CYCLE_DIRECTOR",
+  "COORDINATOR",
+  "ADMIN",
+];
 
 export default function PrekinderApp() {
   return (
@@ -40,16 +53,7 @@ export default function PrekinderApp() {
         <Route
           path="/prekinder/evaluador"
           element={
-            <PrekinderAdminGuard
-              roles={[
-                "TEACHER",
-                "PSYCHOLOGIST",
-                "INTERVIEWER",
-                "CYCLE_DIRECTOR",
-                "ADMIN",
-                "COORDINATOR",
-              ]}
-            >
+            <PrekinderAdminGuard roles={LEGACY_EVALUATOR_ROLES}>
               <EvaluatorDesk />
             </PrekinderAdminGuard>
           }
@@ -57,16 +61,7 @@ export default function PrekinderApp() {
         <Route
           path="/prekinder/evaluador/informe/:reportId"
           element={
-            <PrekinderAdminGuard
-              roles={[
-                "TEACHER",
-                "PSYCHOLOGIST",
-                "INTERVIEWER",
-                "CYCLE_DIRECTOR",
-                "ADMIN",
-                "COORDINATOR",
-              ]}
-            >
+            <PrekinderAdminGuard allowAnyAuthenticated loginPath="/prekinder/evaluador/login">
               <EvaluatorReport />
             </PrekinderAdminGuard>
           }
@@ -250,6 +245,9 @@ export default function PrekinderApp() {
           }
         />
 
+        {import.meta.env.DEV && (
+          <Route path="/prekinder/dev/mock-evaluations" element={<MockDevLauncher />} />
+        )}
         <Route
           path="/prekinder/postular"
           element={<Navigate to="/postulacion?proceso=prekinder" replace />}
