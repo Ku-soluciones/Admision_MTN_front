@@ -72,25 +72,33 @@ function editorState(version: RubricVersion): EditorState {
     name: version.name,
     instrumentCode: version.instrumentCode,
     criteria: version.criteria.length
-      ? version.criteria.map((criterion) => ({
-          clientId: criterion.criterionId || crypto.randomUUID(),
-          code: criterion.code,
-          name: criterion.name,
-          descriptor: criterion.descriptor,
-          required: criterion.required,
-          options: criterion.options.map((option) => ({
-            clientId: option.optionId || crypto.randomUUID(),
-            value: String(option.value),
-            label: option.label,
-            descriptor: option.descriptor,
-            professionallyValidated: option.professionallyValidated,
-          })),
-        }))
+      ? version.criteria.map((criterion) => {
+          // Sort options by value ascending to match validation requirement
+          const sortedOptions = [...criterion.options].sort(
+            (a, b) => Number(a.value) - Number(b.value),
+          );
+          return {
+            clientId: criterion.criterionId || crypto.randomUUID(),
+            code: criterion.code,
+            name: criterion.name,
+            descriptor: criterion.descriptor,
+            required: criterion.required,
+            options: sortedOptions.map((option) => ({
+              clientId: option.optionId || crypto.randomUUID(),
+              value: String(option.value),
+              label: option.label,
+              descriptor: option.descriptor,
+              professionallyValidated: option.professionallyValidated,
+            })),
+          };
+        })
       : [blankCriterion(0)],
   };
 }
 
 function validationError(state: EditorState): string | null {
+  console.log("[DEBUG validationError] criteria count:", state.criteria.length);
+  console.log("[DEBUG validationError] criteria:", JSON.stringify(state.criteria.map(c => ({ name: c.name, options: c.options.map(o => ({ value: o.value, label: o.label })) })), null, 2));
   if (!state.name.trim()) return "Escribe el nombre de la pauta.";
   if (!state.instrumentCode) return "Selecciona el instrumento de la pauta.";
   if (!state.criteria.length) return "Agrega al menos un criterio.";
@@ -175,6 +183,7 @@ export function RubricEditor({
 
   function updateCriterion(index: number, change: Partial<EditableCriterion>) {
     setSaved(false);
+    setError("");
     setState((current) => ({
       ...current,
       criteria: current.criteria.map((criterion, criterionIndex) =>
@@ -196,6 +205,7 @@ export function RubricEditor({
     const criteria = [...state.criteria];
     [criteria[index], criteria[target]] = [criteria[target], criteria[index]];
     setSaved(false);
+    setError("");
     setState((current) => ({ ...current, criteria }));
   }
 
@@ -207,13 +217,16 @@ export function RubricEditor({
     }
     setError("");
     try {
-      const updated = await onSave(toInput(state, revision));
+      const payload = toInput(state, revision);
+      console.log("[DEBUG SAVE] payload criteria:", JSON.stringify(payload.criteria, null, 2));
+      const updated = await onSave(payload);
       const normalized = editorState(updated);
       setState(normalized);
       setBaseline(JSON.stringify(normalized));
       setRevision(updated.rubricRevision);
       setSaved(true);
     } catch (reason) {
+      console.log("[DEBUG save ERROR] reason:", reason);
       setError(reason instanceof Error ? reason.message : "No pudimos guardar la pauta. Reintenta.");
     }
   }
@@ -299,7 +312,7 @@ export function RubricEditor({
               {!readOnly && <div className="flex gap-1">
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, -1)} disabled={busy || criterionIndex === 0} aria-label={`Subir criterio ${criterionIndex + 1}`}><ArrowUp size={18} /></button>
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, 1)} disabled={busy || criterionIndex === state.criteria.length - 1} aria-label={`Bajar criterio ${criterionIndex + 1}`}><ArrowDown size={18} /></button>
-                <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-35" onClick={() => { setSaved(false); setState((current) => ({ ...current, criteria: current.criteria.filter((_, index) => index !== criterionIndex) })); }} disabled={busy || state.criteria.length === 1} aria-label={`Eliminar criterio ${criterionIndex + 1}`}><Trash2 size={18} /></button>
+                <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-35" onClick={() => { setSaved(false); setError(""); setState((current) => ({ ...current, criteria: current.criteria.filter((_, index) => index !== criterionIndex) })); }} disabled={busy || state.criteria.length === 1} aria-label={`Eliminar criterio ${criterionIndex + 1}`}><Trash2 size={18} /></button>
               </div>}
             </div>
 
