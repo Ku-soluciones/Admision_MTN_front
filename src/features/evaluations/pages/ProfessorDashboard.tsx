@@ -231,9 +231,9 @@ const ProfessorDashboard: React.FC = () => {
             tabs.push({ key: 'director_ciclo', label: 'Entrevistas Director de Ciclo', count: directorCount });
         }
 
-        // Entrevistas Psicológicas (para psicólogos)
-        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL').length;
-        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW')) {
+        // Entrevistas Psicológicas (para psicólogos ven las mismas que DC)
+        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL' || i.type === 'CYCLE_DIRECTOR').length;
+        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW' || e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
             tabs.push({ key: 'psicologicas', label: 'Entrevistas Psicológicas', count: psychoCount });
         }
 
@@ -1112,13 +1112,16 @@ const ProfessorDashboard: React.FC = () => {
         // Get data for the current tab
         const getTabData = () => {
             const evalType = getEvaluationTypeForTab(activeInterviewTab);
-            const intType = getInterviewTypeForTab(activeInterviewTab);
 
             if (activeInterviewTab === 'informes') {
                 // For informes, use evaluations directly
                 return evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
+            } else if (activeInterviewTab === 'psicologicas') {
+                // Psicólogos ven las mismas entrevistas que el director de ciclo (CYCLE_DIRECTOR)
+                return interviews.filter(i => i.type === 'CYCLE_DIRECTOR' || i.type === 'PSYCHOLOGICAL');
             } else {
-                // For interviews, filter interviews by type
+                // For other interviews, filter by type
+                const intType = getInterviewTypeForTab(activeInterviewTab);
                 return interviews.filter(i => i.type === intType);
             }
         };
