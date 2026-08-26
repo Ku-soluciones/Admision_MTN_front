@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
@@ -60,16 +61,14 @@ import { RubricEditor } from "../components/admin/RubricEditor";
 
 const sections = [
   ["Resumen", LayoutDashboard],
-  ["Configuración", Settings2],
   ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Grupos", UsersRound],
   ["Torre de control", CalendarDays],
   ["Salas", DoorOpen],
   ["Profesionales", UserCog],
-  ["Pautas", ClipboardCheck],
-  ["Comunicaciones", Mail],
   ["Decisiones", FileCheck2],
+  ["Configuración", Settings2],
 ] as const;
 
 const waveNames: Record<string, string> = {
@@ -581,7 +580,7 @@ export function PrekinderOperations({
         )}
 
         <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 overflow-y-auto p-4 lg:p-7"}>
-          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && (
+          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && !(section === "Configuración" && processId && currentProcess?.status !== "DRAFT") && (
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 {section === "Postulaciones" && processId && currentProcess?.status !== "DRAFT" ? (
@@ -599,11 +598,6 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
                     <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
                   </>
-                ) : section === "Configuración" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración</p>
-                    <p className="mt-1 text-sm text-gray-600">Ajusta las políticas de pago, inclusión, edad y ponderación del proceso.</p>
-                  </>
                 ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
@@ -613,16 +607,6 @@ export function PrekinderOperations({
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Profesionales</p>
                     <p className="mt-1 text-sm text-gray-600">Registra y organiza al equipo que participa en el proceso de admisión.</p>
-                  </>
-                ) : section === "Pautas" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
-                    <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
-                  </>
-                ) : section === "Comunicaciones" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Comunicaciones</p>
-                    <p className="mt-1 text-sm text-gray-600">Revisa las plantillas y versiones que recibirán las familias.</p>
                   </>
                 ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
@@ -727,11 +711,24 @@ export function PrekinderOperations({
               onSave={saveStage}
             />
           )}
-          {section === "Configuración" && configuration && (
-            <ConfigurationEditor
+          {section === "Configuración" && (
+            <ConfigurationHub
+              processId={processId}
               configuration={configuration}
               busy={busy}
-              onSave={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
+              onSaveConfiguration={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
+              onChangedRubrics={() => loadProcess(processId)}
+              communicationTemplates={communicationTemplates}
+              onCommunicationAction={action}
+              expandedDrafts={expandedDrafts}
+              onToggleDraftExpanded={(contentVersionId) =>
+                setExpandedDrafts((current) => {
+                  const next = new Set(current);
+                  if (next.has(contentVersionId)) next.delete(contentVersionId);
+                  else next.add(contentVersionId);
+                  return next;
+                })
+              }
             />
           )}
           {section === "Postulaciones" && (
@@ -847,23 +844,6 @@ export function PrekinderOperations({
                   setBusy(false);
                 }
               }}
-            />
-          )}
-          {section === "Pautas" && <Rubrics processId={processId} busy={busy} onChanged={() => loadProcess(processId)} />}
-          {section === "Comunicaciones" && (
-            <Communications
-              templates={communicationTemplates}
-              busy={busy}
-              onAction={action}
-              expandedDrafts={expandedDrafts}
-              onToggleDraftExpanded={(contentVersionId) =>
-                setExpandedDrafts((current) => {
-                  const next = new Set(current);
-                  if (next.has(contentVersionId)) next.delete(contentVersionId);
-                  else next.add(contentVersionId);
-                  return next;
-                })
-              }
             />
           )}
           {section === "Decisiones" && (
@@ -1126,6 +1106,75 @@ function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null 
         ))}
       </div>
     </section>
+  );
+}
+
+type ConfigurationView = "policies" | "rubrics" | "communications";
+
+const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
+  { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
+  { id: "policies", label: "Políticas del proceso", icon: Settings2 },
+  { id: "communications", label: "Comunicaciones", icon: Mail },
+];
+
+function ConfigurationHub({
+  processId,
+  configuration,
+  busy,
+  onSaveConfiguration,
+  onChangedRubrics,
+  communicationTemplates,
+  onCommunicationAction,
+  expandedDrafts,
+  onToggleDraftExpanded,
+}: {
+  processId: string;
+  configuration: ProcessConfiguration | null;
+  busy: boolean;
+  onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+  onChangedRubrics: () => Promise<void>;
+  communicationTemplates: CommunicationTemplate[];
+  onCommunicationAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expandedDrafts: Set<string>;
+  onToggleDraftExpanded: (contentVersionId: string) => void;
+}) {
+  const [view, setView] = useState<ConfigurationView>("rubrics");
+  return (
+    <div className="space-y-5">
+      <aside>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración del proceso</p>
+          <p className="mt-1 text-sm text-slate-600">Centro de configuración</p>
+        </div>
+        <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de configuración">
+          {configurationViews.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${view === id ? "border border-slate-300 bg-white font-bold text-slate-900" : "font-semibold text-slate-600 hover:text-slate-900"}`}
+              aria-current={view === id ? "page" : undefined}
+            >
+              <Icon size={16} />{label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <div className="min-w-0">
+        {view === "policies" && configuration && (
+          <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
+        )}
+        {view === "rubrics" && <Rubrics processId={processId} busy={busy} onChanged={onChangedRubrics} />}
+        {view === "communications" && (
+          <Communications
+            templates={communicationTemplates}
+            busy={busy}
+            onAction={onCommunicationAction}
+            expandedDrafts={expandedDrafts}
+            onToggleDraftExpanded={onToggleDraftExpanded}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -3084,6 +3133,10 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
   const [localBusy, setLocalBusy] = useState(false);
   const [localError, setLocalError] = useState("");
   const [editorVersion, setEditorVersion] = useState<RubricVersion | null>(null);
+  const [sort, setSort] = useState<{ key: "name" | "instrument"; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  function toggleSort(key: "name" | "instrument") {
+    setSort((current) => (current.key === key ? { key, dir: current.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
   async function load() {
     const [nextCatalog, nextAssignments] = await Promise.all([prekinderApi.rubrics(), prekinderApi.rubricAssignments(processId)]);
     const details = await Promise.all(nextCatalog.map((rubric) => prekinderApi.rubricDetail(rubric.rubricId)));
@@ -3157,31 +3210,109 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
       {localError && <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{localError}</p>}
       <form className="grid gap-4 rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:grid-cols-[1fr_240px_auto] md:items-end" onSubmit={(event) => { event.preventDefault(); if (name.trim()) void run(createRubric); }}>
         <Field label="Nombre de la nueva pauta"><input className="control w-full" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} placeholder="Pauta de observación 2027" /></Field>
-        <Field label="Instrumento"><select className="control w-full" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
+        <Field label="Instrumento">
+          <div className="relative">
+            <select className="control w-full appearance-none pr-9" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
+        </Field>
         <button className="primary" disabled={busy || localBusy || !name.trim()}>Crear borrador</button>
       </form>
       <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
-        {!catalog.length ? <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p> : catalog.map((rubric) => {
-          const rubricVersions = versions[rubric.rubricId] ?? [];
-          const draft = rubricVersions.find((version) => version.status === "DRAFT");
-          const published = rubricVersions.find((version) => version.status === "PUBLISHED");
-          const assigned = assignments.find((item) => item.instrumentCode === rubric.instrumentCode && item.rubricId === rubric.rubricId);
-          return <article key={rubric.rubricId} className="border-b border-slate-100 p-6 last:border-b-0">
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap gap-2"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-900">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>{published && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">Publicada · v{published.version}</span>}{draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador · v{draft.version}</span>}</div>
-                <h3 className="mt-3 text-lg font-black text-slate-950">{rubric.name}</h3>
-                <p className="mt-1 text-sm text-slate-500">{rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios {assigned ? "· asociada a este proceso" : ""}</p>
+        {!catalog.length ? (
+          <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[1040px]">
+              <div className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("name")}>
+                  Pauta
+                  {sort.key === "name" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
+                </button>
+                <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("instrument")}>
+                  Instrumento
+                  {sort.key === "instrument" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
+                </button>
+                <span className="text-center leading-tight">Versión publicada</span>
+                <span className="text-center whitespace-nowrap">Borrador</span>
+                <span className="text-center whitespace-nowrap">Acción</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
-                {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openVersion(published.versionId)}>Ver publicada</button>}
-                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
-                {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
+              <div className="divide-y divide-slate-100">
+                {[...catalog]
+                  .sort((a, b) => {
+                    const factor = sort.dir === "asc" ? 1 : -1;
+                    const value =
+                      sort.key === "name"
+                        ? a.name.localeCompare(b.name, "es")
+                        : (instrumentLabels[a.instrumentCode] ?? a.instrumentCode).localeCompare(instrumentLabels[b.instrumentCode] ?? b.instrumentCode, "es");
+                    return value * factor;
+                  })
+                  .map((rubric) => {
+                    const rubricVersions = versions[rubric.rubricId] ?? [];
+                    const draft = rubricVersions.find((version) => version.status === "DRAFT");
+                    const published = rubricVersions.find((version) => version.status === "PUBLISHED");
+                    const assigned = assignments.find((item) => item.instrumentCode === rubric.instrumentCode && item.rubricId === rubric.rubricId);
+                    return (
+                      <div key={rubric.rubricId} className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 px-5 py-4">
+                        <span className="min-w-0">
+                          <span className="block truncate font-black text-slate-950">{rubric.name}</span>
+                          <span className="mt-1 block truncate text-xs text-slate-500">
+                            {rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios{assigned ? " · asociada a este proceso" : ""}
+                          </span>
+                        </span>
+                        <span className="min-w-0 truncate text-xs font-semibold text-blue-800">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>
+                        <span className="flex justify-center">
+                          {published ? (
+                            <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-800">v{published.version}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </span>
+                        <span className="flex justify-center">
+                          {draft ? (
+                            <span className="w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-900">v{draft.version}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </span>
+                        <div className="grid grid-cols-[minmax(80px,1fr)_minmax(100px,1.2fr)_minmax(100px,1.2fr)_44px] items-center gap-2">
+                          <span>
+                            {published && !assigned && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>
+                            )}
+                          </span>
+                          <span>
+                            {published && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy} onClick={() => void openVersion(published.versionId)}>Ver publicada</button>
+                            )}
+                          </span>
+                          <span>
+                            {published && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>
+                            )}
+                          </span>
+                          <span>
+                            {draft && (
+                              <button
+                                type="button"
+                                className="grid h-10 w-10 place-items-center rounded-lg bg-azul-monte-tabor text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={busy || localBusy}
+                                onClick={() => void openVersion(draft.versionId)}
+                                aria-label="Editar borrador"
+                                title="Editar borrador"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
-          </article>;
-        })}
+          </div>
+        )}
       </section>
     </div>
   );
