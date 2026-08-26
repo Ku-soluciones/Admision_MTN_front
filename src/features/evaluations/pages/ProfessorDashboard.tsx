@@ -188,6 +188,9 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para saber qué applicationId está mostrando documentos inline
     const [viewingDocumentsFor, setViewingDocumentsFor] = useState<number | null>(null);
 
+    // Estado para saber qué applicationId tiene los documentos expandidos
+    const [expandedDocumentsFor, setExpandedDocumentsFor] = useState<Record<number, boolean>>({});
+
     // Estado para el documento que se está viendo en el visor inline
     const [viewingDocument, setViewingDocument] = useState<{id: number, url: string, name: string, contentType?: string} | null>(null);
 
@@ -1225,7 +1228,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 <div className="text-xs font-medium text-gray-600 mb-1">
                                                     Documentos ({totalCount})
                                                 </div>
-                                                {docs.slice(0, 3).map((doc: any) => {
+                                                {(expandedDocumentsFor[applicationId] ? docs : docs.slice(0, 3)).map((doc: any) => {
                                                     const status = doc.approvalStatus || doc.approval_status;
                                                     const statusColor = status === 'APPROVED' ? 'bg-green-50 border-green-200 text-green-700' :
                                                                        status === 'REJECTED' ? 'bg-red-50 border-red-200 text-red-700' :
@@ -1251,9 +1254,19 @@ const ProfessorDashboard: React.FC = () => {
                                                     );
                                                 })}
                                                 {totalCount > 3 && (
-                                                    <div className="text-xs text-gray-500 text-center">
-                                                        + {totalCount - 3} más
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpandedDocumentsFor(prev => ({
+                                                            ...prev,
+                                                            [applicationId]: !prev[applicationId]
+                                                        }))}
+                                                        className="text-xs text-azul-monte-tabor hover:text-blue-800 font-medium text-center w-full py-1 border-t border-gray-200 mt-2"
+                                                    >
+                                                        {expandedDocumentsFor[applicationId]
+                                                            ? '▲ Ver menos'
+                                                            : `+ ${totalCount - 3} más`
+                                                        }
+                                                    </button>
                                                 )}
                                             </div>
                                         );
