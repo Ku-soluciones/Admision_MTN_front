@@ -354,8 +354,7 @@ export function RubricEditor({
         {state.criteria.map((criterion, criterionIndex) => {
           const isExpanded = expandedIds.has(criterion.clientId);
           return (
-          <fieldset key={criterion.clientId} className="min-w-0 rounded-xl border border-slate-200" disabled={readOnly || busy}>
-            <legend className="sr-only">Criterio {criterionIndex + 1}</legend>
+          <div key={criterion.clientId} className="min-w-0 rounded-xl border border-slate-200">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <button
                 type="button"
@@ -382,7 +381,8 @@ export function RubricEditor({
               </div>}
             </div>
 
-            {isExpanded && <div className="border-t border-slate-200 px-4 pb-5 pt-4 sm:px-5">
+            {isExpanded && <fieldset className="border-t border-slate-200 px-4 pb-5 pt-4 sm:px-5" disabled={readOnly || busy}>
+            <legend className="sr-only">Criterio {criterionIndex + 1}</legend>
             <div className="grid gap-3">
               <Field label="Nombre del criterio">
                 <input className="control w-full" value={criterion.name} maxLength={160} placeholder="Ej. Sigue instrucciones simples" onChange={(event) => updateCriterionName(criterionIndex, event.target.value)} />
@@ -416,8 +416,8 @@ export function RubricEditor({
                 {!readOnly && <button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-black text-blue-800 hover:bg-blue-50" onClick={() => updateCriterion(criterionIndex, { options: [...criterion.options, blankOption(criterion.options.length)] })}><Plus size={17} />Agregar opción</button>}
               </div>
             </div>
-            </div>}
-          </fieldset>
+            </fieldset>}
+          </div>
           );
         })}
 
