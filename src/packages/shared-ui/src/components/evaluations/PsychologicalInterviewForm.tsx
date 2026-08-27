@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Evaluation, EvaluationType } from '../../types/evaluation';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface PsychologicalInterviewFormProps {
   evaluation: Evaluation;
@@ -30,6 +32,45 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
 
   const [errors, setErrors] = useState<string[]>([]);
 
+  // Auto-guardado cada 30 segundos
+  const autoSave = useAutoSave({
+    key: `psychological-interview-${evaluation.id}`,
+    data: formData,
+    interval: 30000,
+    enabled: !isSubmitting
+  });
+
+  // Dialog para restaurar borrador
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Effect para detectar y ofrecer restaurar borrador
+  useEffect(() => {
+    if (evaluation?.id && autoSave.hasDraft && !draftRestored) {
+      setShowDraftDialog(true);
+    }
+  }, [evaluation?.id, autoSave.hasDraft, draftRestored]);
+
+  // Restaurar borrador
+  const handleRestoreDraft = () => {
+    const savedData = autoSave.restoreDraft();
+    if (savedData) {
+      setFormData(prev => ({
+        ...prev,
+        ...savedData
+      }));
+      setDraftRestored(true);
+    }
+    setShowDraftDialog(false);
+  };
+
+  // Descartar borrador
+  const handleDiscardDraft = () => {
+    autoSave.clearDraft();
+    setDraftRestored(true);
+    setShowDraftDialog(false);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
 
@@ -56,11 +97,15 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
   };
 
   const handleSave = () => {
+    // Limpiar draft después de guardar exitosamente
+    autoSave.clearDraft();
     onSave(formData);
   };
 
   const handleComplete = () => {
     if (validateForm()) {
+      // Limpiar draft después de guardar exitosamente
+      autoSave.clearDraft();
       onComplete(formData);
     }
   };
@@ -69,16 +114,31 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <Card className="p-4 bg-purple-50 border-purple-200">
-        <h3 className="text-lg font-bold text-azul-monte-tabor mb-2">
-          Entrevista Psicológica
-        </h3>
-        {evaluation.application && evaluation.application.student && (
-          <div className="text-sm text-gris-piedra">
-            <p><strong>Estudiante:</strong> {evaluation.application.student.firstName} {evaluation.application.student.paternalLastName || evaluation.application.student.lastName || ''} {evaluation.application.student.maternalLastName || ''}</p>
-            <p><strong>RUT:</strong> {evaluation.application.student.rut}</p>
-            <p><strong>Curso al que postula:</strong> {evaluation.application.student.gradeApplied}</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-bold text-azul-monte-tabor mb-2">
+              Entrevista Psicológica
+            </h3>
+            {evaluation.application && evaluation.application.student && (
+              <div className="text-sm text-gris-piedra">
+                <p><strong>Estudiante:</strong> {evaluation.application.student.firstName} {evaluation.application.student.paternalLastName || evaluation.application.student.lastName || ''} {evaluation.application.student.maternalLastName || ''}</p>
+                <p><strong>RUT:</strong> {evaluation.application.student.rut}</p>
+                <p><strong>Curso al que postula:</strong> {evaluation.application.student.gradeApplied}</p>
+              </div>
+            )}
           </div>
-        )}
+          {/* Auto-save indicator */}
+          <div className="text-right">
+            {autoSave.lastSaved && !autoSave.isSaving && (
+              <p className="text-xs text-green-600">
+                ✓ Guardado hace {Math.round((Date.now() - autoSave.lastSaved.getTime()) / 1000)}s
+              </p>
+            )}
+            {autoSave.isSaving && (
+              <p className="text-xs text-dorado-nazaret">Guardando...</p>
+            )}
+          </div>
+        </div>
       </Card>
 
       {/* Errors */}
@@ -311,6 +371,18 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
           {isSubmitting ? 'Procesando...' : 'Completar Entrevista'}
         </Button>
       </div>
+
+      {/* Dialog para restaurar borrador */}
+      <ConfirmDialog
+        isOpen={showDraftDialog}
+        title="¿Restaurar borrador?"
+        message="Encontramos un borrador guardado previamente. ¿Deseas continuar donde lo dejaste?"
+        confirmText="Restaurar borrador"
+        cancelText="Descartar y comenzar de nuevo"
+        variant="warning"
+        onConfirm={handleRestoreDraft}
+        onClose={handleDiscardDraft}
+      />
     </div>
   );
 };
