@@ -21,6 +21,7 @@ import {
     DownloadIcon
 } from '../../admin/components/icons/Icons';
 import { documentService } from '../../../packages/shared-ui/src/services/documentService';
+import { applicationService } from '../../../packages/shared-ui/src/services/applicationService';
 import { 
     mockProfessors, 
     getPendingExamsByProfessor, 
@@ -188,6 +189,16 @@ const ProfessorDashboard: React.FC = () => {
     // Estado para saber qué applicationId está mostrando documentos inline
     const [viewingDocumentsFor, setViewingDocumentsFor] = useState<number | null>(null);
 
+    // Estado para saber qué applicationId tiene los documentos expandidos
+    const [expandedDocumentsFor, setExpandedDocumentsFor] = useState<Record<number, boolean>>({});
+
+    // Estado para información de contacto de padres (email y teléfono)
+    const [parentContactsByApplication, setParentContactsByApplication] = useState<Record<number, {
+        father?: { name: string; email: string; phone: string };
+        mother?: { name: string; email: string; phone: string };
+        guardian?: { name: string; email: string; phone: string };
+    }>>({});
+
     // Estado para el documento que se está viendo en el visor inline
     const [viewingDocument, setViewingDocument] = useState<{id: number, url: string, name: string, contentType?: string} | null>(null);
 
@@ -228,9 +239,9 @@ const ProfessorDashboard: React.FC = () => {
             tabs.push({ key: 'director_ciclo', label: 'Entrevistas Director de Ciclo', count: directorCount });
         }
 
-        // Entrevistas Psicológicas (para psicólogos)
-        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL').length;
-        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW')) {
+        // Entrevistas Psicológicas (para psicólogos ven las mismas que DC)
+        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL' || i.type === 'CYCLE_DIRECTOR').length;
+        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW' || e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
             tabs.push({ key: 'psicologicas', label: 'Entrevistas Psicológicas', count: psychoCount });
         }
 
@@ -367,6 +378,26 @@ const ProfessorDashboard: React.FC = () => {
                         }
                     }));
                     setDocumentsByApplication(docsMap);
+
+                    // Cargar información de contacto de padres para DC y Psicólogos
+                    const parentContactsMap: Record<number, any> = {};
+                    await Promise.all(appIds.map(async (appId: number) => {
+                        try {
+                            const appData = await applicationService.getApplicationById(appId);
+                            // Extraer datos de padre, madre y guardian
+                            const father = appData.father;
+                            const mother = appData.mother;
+                            const guardian = appData.guardian;
+                            parentContactsMap[appId] = {
+                                father: father?.fullName ? { name: father.fullName, email: father.email || '', phone: father.phone || '' } : undefined,
+                                mother: mother?.fullName ? { name: mother.fullName, email: mother.email || '', phone: mother.phone || '' } : undefined,
+                                guardian: guardian?.fullName ? { name: guardian.fullName, email: guardian.email || '', phone: guardian.phone || '' } : undefined
+                            };
+                        } catch {
+                            parentContactsMap[appId] = {};
+                        }
+                    }));
+                    setParentContactsByApplication(parentContactsMap);
                 }
 
             } catch (error: any) {
@@ -1109,13 +1140,16 @@ const ProfessorDashboard: React.FC = () => {
         // Get data for the current tab
         const getTabData = () => {
             const evalType = getEvaluationTypeForTab(activeInterviewTab);
-            const intType = getInterviewTypeForTab(activeInterviewTab);
 
             if (activeInterviewTab === 'informes') {
                 // For informes, use evaluations directly
                 return evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
+            } else if (activeInterviewTab === 'psicologicas') {
+                // Psicólogos ven las mismas entrevistas que el director de ciclo (CYCLE_DIRECTOR)
+                return interviews.filter(i => i.type === 'CYCLE_DIRECTOR' || i.type === 'PSYCHOLOGICAL');
             } else {
-                // For interviews, filter interviews by type
+                // For other interviews, filter by type
+                const intType = getInterviewTypeForTab(activeInterviewTab);
                 return interviews.filter(i => i.type === intType);
             }
         };
@@ -1191,6 +1225,30 @@ const ProfessorDashboard: React.FC = () => {
                                     ) : (
                                         <div>Entrevistador: {interview.interviewerName}</div>
                                     )}
+                                    {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && parentContactsByApplication[applicationId] && (
+                                        <div className="mt-1 pt-1 border-t border-gray-200 space-y-1">
+                                            {(() => {
+                                                const contacts = parentContactsByApplication[applicationId];
+                                                const contactInfo = [];
+                                                if (contacts.guardian) {
+                                                    contactInfo.push(`${contacts.guardian.name} (Tutor)`);
+                                                    if (contacts.guardian.email) contactInfo.push(contacts.guardian.email);
+                                                    if (contacts.guardian.phone) contactInfo.push(contacts.guardian.phone);
+                                                }
+                                                if (contacts.father) {
+                                                    contactInfo.push(`Padre: ${contacts.father.name}`);
+                                                    if (contacts.father.email) contactInfo.push(contacts.father.email);
+                                                    if (contacts.father.phone) contactInfo.push(contacts.father.phone);
+                                                }
+                                                if (contacts.mother) {
+                                                    contactInfo.push(`Madre: ${contacts.mother.name}`);
+                                                    if (contacts.mother.email) contactInfo.push(contacts.mother.email);
+                                                    if (contacts.mother.phone) contactInfo.push(contacts.mother.phone);
+                                                }
+                                                return contactInfo.length > 0 ? contactInfo.join(' · ') : interview.parentNames;
+                                            })()}
+                                        </div>
+                                    )}
                                     {activeInterviewTab === 'familiares' && interview.parentNames && (
                                         <div className="font-medium mt-1">Padres: {interview.parentNames}</div>
                                     )}
@@ -1225,7 +1283,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 <div className="text-xs font-medium text-gray-600 mb-1">
                                                     Documentos ({totalCount})
                                                 </div>
-                                                {docs.slice(0, 3).map((doc: any) => {
+                                                {(expandedDocumentsFor[applicationId] ? docs : docs.slice(0, 3)).map((doc: any) => {
                                                     const status = doc.approvalStatus || doc.approval_status;
                                                     const statusColor = status === 'APPROVED' ? 'bg-green-50 border-green-200 text-green-700' :
                                                                        status === 'REJECTED' ? 'bg-red-50 border-red-200 text-red-700' :
@@ -1251,9 +1309,19 @@ const ProfessorDashboard: React.FC = () => {
                                                     );
                                                 })}
                                                 {totalCount > 3 && (
-                                                    <div className="text-xs text-gray-500 text-center">
-                                                        + {totalCount - 3} más
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpandedDocumentsFor(prev => ({
+                                                            ...prev,
+                                                            [applicationId]: !prev[applicationId]
+                                                        }))}
+                                                        className="text-xs text-azul-monte-tabor hover:text-blue-800 font-medium text-center w-full py-1 border-t border-gray-200 mt-2"
+                                                    >
+                                                        {expandedDocumentsFor[applicationId]
+                                                            ? '▲ Ver menos'
+                                                            : `+ ${totalCount - 3} más`
+                                                        }
+                                                    </button>
                                                 )}
                                             </div>
                                         );
