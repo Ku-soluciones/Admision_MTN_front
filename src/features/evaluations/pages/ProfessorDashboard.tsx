@@ -21,6 +21,7 @@ import {
     DownloadIcon
 } from '../../admin/components/icons/Icons';
 import { documentService } from '../../../packages/shared-ui/src/services/documentService';
+import { applicationService } from '../../../packages/shared-ui/src/services/applicationService';
 import { 
     mockProfessors, 
     getPendingExamsByProfessor, 
@@ -190,6 +191,13 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para saber qué applicationId tiene los documentos expandidos
     const [expandedDocumentsFor, setExpandedDocumentsFor] = useState<Record<number, boolean>>({});
+
+    // Estado para información de contacto de padres (email y teléfono)
+    const [parentContactsByApplication, setParentContactsByApplication] = useState<Record<number, {
+        father?: { name: string; email: string; phone: string };
+        mother?: { name: string; email: string; phone: string };
+        guardian?: { name: string; email: string; phone: string };
+    }>>({});
 
     // Estado para el documento que se está viendo en el visor inline
     const [viewingDocument, setViewingDocument] = useState<{id: number, url: string, name: string, contentType?: string} | null>(null);
@@ -370,6 +378,26 @@ const ProfessorDashboard: React.FC = () => {
                         }
                     }));
                     setDocumentsByApplication(docsMap);
+
+                    // Cargar información de contacto de padres para DC y Psicólogos
+                    const parentContactsMap: Record<number, any> = {};
+                    await Promise.all(appIds.map(async (appId: number) => {
+                        try {
+                            const appData = await applicationService.getApplicationById(appId);
+                            // Extraer datos de padre, madre y guardian
+                            const father = appData.father;
+                            const mother = appData.mother;
+                            const guardian = appData.guardian;
+                            parentContactsMap[appId] = {
+                                father: father?.fullName ? { name: father.fullName, email: father.email || '', phone: father.phone || '' } : undefined,
+                                mother: mother?.fullName ? { name: mother.fullName, email: mother.email || '', phone: mother.phone || '' } : undefined,
+                                guardian: guardian?.fullName ? { name: guardian.fullName, email: guardian.email || '', phone: guardian.phone || '' } : undefined
+                            };
+                        } catch {
+                            parentContactsMap[appId] = {};
+                        }
+                    }));
+                    setParentContactsByApplication(parentContactsMap);
                 }
 
             } catch (error: any) {
@@ -1196,6 +1224,30 @@ const ProfessorDashboard: React.FC = () => {
                                         <div>Entrevistadores: {interview.interviewerName} y {interview.secondInterviewerName}</div>
                                     ) : (
                                         <div>Entrevistador: {interview.interviewerName}</div>
+                                    )}
+                                    {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && parentContactsByApplication[applicationId] && (
+                                        <div className="mt-1 pt-1 border-t border-gray-200 space-y-1">
+                                            {(() => {
+                                                const contacts = parentContactsByApplication[applicationId];
+                                                const contactInfo = [];
+                                                if (contacts.guardian) {
+                                                    contactInfo.push(`${contacts.guardian.name} (Tutor)`);
+                                                    if (contacts.guardian.email) contactInfo.push(contacts.guardian.email);
+                                                    if (contacts.guardian.phone) contactInfo.push(contacts.guardian.phone);
+                                                }
+                                                if (contacts.father) {
+                                                    contactInfo.push(`Padre: ${contacts.father.name}`);
+                                                    if (contacts.father.email) contactInfo.push(contacts.father.email);
+                                                    if (contacts.father.phone) contactInfo.push(contacts.father.phone);
+                                                }
+                                                if (contacts.mother) {
+                                                    contactInfo.push(`Madre: ${contacts.mother.name}`);
+                                                    if (contacts.mother.email) contactInfo.push(contacts.mother.email);
+                                                    if (contacts.mother.phone) contactInfo.push(contacts.mother.phone);
+                                                }
+                                                return contactInfo.length > 0 ? contactInfo.join(' · ') : interview.parentNames;
+                                            })()}
+                                        </div>
                                     )}
                                     {activeInterviewTab === 'familiares' && interview.parentNames && (
                                         <div className="font-medium mt-1">Padres: {interview.parentNames}</div>
