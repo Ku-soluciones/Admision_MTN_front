@@ -1,0 +1,4 @@
+// Re-export desde paquete compartido (single source of truth)
+// Fuente: src/packages/shared-ui/src/components/ui/LoadingSpinner.tsx
+export * from '../../../../packages/shared-ui/src/components/ui/LoadingSpinner';
+export { default } from '../../../../packages/shared-ui/src/components/ui/LoadingSpinner';

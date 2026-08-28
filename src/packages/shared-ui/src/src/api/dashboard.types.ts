@@ -1,0 +1,346 @@
+/**
+ * Dashboard & Analytics API Types
+ * Sistema de Admisión MTN
+ */
+
+export interface DashboardStats {
+  totalApplications: number;
+  acceptanceRate: number;
+  availableSlots: number;
+  submittedCount: number;
+  underReviewCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  waitlistCount: number;
+  completedInterviews: number;
+  scheduledInterviews: number;
+  pendingEvaluations: number;
+  month: string;
+  timestamp?: string;
+}
+
+export interface AdminStats extends DashboardStats {
+  byGrade: GradeStats[];
+  bySchool: SchoolStats[];
+  recentApplications: ApplicationSummary[];
+  evaluationProgress: EvaluationProgress;
+}
+
+export interface GradeStats {
+  grade: string;
+  total: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  acceptanceRate: number;
+}
+
+export interface SchoolStats {
+  school: string;
+  total: number;
+  approved: number;
+  rejected: number;
+}
+
+export interface ApplicationSummary {
+  id: number;
+  studentName: string;
+  gradeApplied: string;
+  status: string;
+  submissionDate: string;
+  hasInterview: boolean;
+}
+
+export interface EvaluationProgress {
+  totalEvaluations: number;
+  completedEvaluations: number;
+  pendingEvaluations: number;
+  averageScore: number;
+}
+
+export interface AnalyticsMetrics {
+  totalApplications: number;
+  acceptanceRate: number;
+  interviewsCompleted: number;
+  evaluationsPending: number;
+}
+
+export interface StatusDistribution {
+  name: string;
+  value: number;
+  percentage: number;
+  color?: string;
+}
+
+export interface TemporalTrend {
+  month: string;
+  year: number;
+  totalApplications: number;
+  approvedApplications: number;
+  rejectedApplications: number;
+  growthRate: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  total: number;
+  submitted: number;
+  approved: number;
+  rejected: number;
+  underReview: number;
+}
+
+export interface GradeDistribution {
+  grade: string;
+  count: number;
+  percentage: number;
+}
+
+export interface Alert {
+  id: string;
+  type: 'capacity' | 'trend' | 'performance' | 'warning';
+  severity: 'info' | 'warning' | 'error';
+  title: string;
+  message: string;
+  actionable: boolean;
+  action?: string;
+  timestamp: string;
+}
+
+export interface DetailedAdminStats {
+  totalApplications: number;
+  statusBreakdown: {
+    submitted: number;
+    underReview: number;
+    approved: number;
+    rejected: number;
+    waitlist: number;
+  };
+  interviewMetrics: {
+    scheduled: number;
+    completed: number;
+    pending: number;
+    completionRate: number;
+  };
+  evaluationMetrics: {
+    total: number;
+    completed: number;
+    pending: number;
+    averageScore: number;
+  };
+  monthlyTrends: MonthlyTrend[];
+  gradeDistribution: GradeDistribution[];
+  availableYears: number[];
+}
+
+export interface DashboardFilters {
+  academicYear?: number;
+  startDate?: string;
+  endDate?: string;
+  gradeLevel?: string;
+  status?: string;
+}
+
+export interface ExamScore {
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  score: number | null;
+  maxScore: number | null;
+  percentage: string | null;
+}
+
+export interface FamilyInterview {
+  interviewerName: string;
+  score: number | null;
+  maxScore?: number; // Default 10 for interviews table
+  result: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' | null;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
+  overallOpinionScore?: number; // Overall opinion rating (1-5 scale)
+}
+
+export interface DocumentMetrics {
+  approved: number;
+  total: number;
+  completionRate: string;
+}
+
+export interface ApplicantMetric {
+  applicationId: number;
+  studentId: number;
+  studentName: string;
+  gradeApplied: string;
+  applicationStatus: string;
+  examScores: {
+    mathematics: ExamScore;
+    language: ExamScore;
+    english: ExamScore;
+    completionRate: string;
+  };
+  familyInterviews: FamilyInterview[];
+  documents: DocumentMetrics;
+}
+
+export interface ApplicantMetricsFilters {
+  academicYear?: number;
+  grade?: string;
+  status?: string;
+  sortBy?: 'studentName' | 'gradeApplied' | 'evaluationPassRate' | 'interviewAvg' | 'applicationStatus';
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+export interface ApplicantMetricsResponse {
+  success: boolean;
+  data: ApplicantMetric[];
+  meta: {
+    total: number;
+    timestamp: string;
+  };
+}
+
+export interface CourseApplicant {
+  applicationId: number;
+  studentId: number;
+  studentName: string;
+  gradeApplied: string;
+  gender?: 'MALE' | 'FEMALE' | string;
+  admissionPreference: string;
+  alumniChild: string;
+  siblingsInSchool: string;
+  examAverage: number | null;
+  cycleDirectorDecision: string;
+  status: string;
+  statusLabel: string;
+}
+
+export interface CourseApplicantsResponse {
+  success: boolean;
+  data: CourseApplicant[];
+  meta: {
+    academicYear: number;
+    total: number;
+  };
+}
+
+export interface ApplicantCardExam {
+  evaluationType: string;
+  subject: string;
+  responsible: string;
+  score?: number;
+  maxScore?: number;
+  percentage?: number;
+  status: string;
+  reportLink: string | null;
+}
+
+export interface ApplicantCardCycleDirector {
+  date: string | null;
+  done: boolean;
+  decision: string;
+  reportLink: string | null;
+  report: {
+    observations: string | null;
+    recommendations: string | null;
+    areasForImprovement: string | null;
+    evaluator: string | null;
+  } | null;
+}
+
+export interface ApplicantCardFamily {
+  fatherName?: string;
+  fatherEmail?: string;
+  fatherPhone?: string;
+  motherName?: string;
+  motherEmail?: string;
+  motherPhone?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+}
+
+export interface ApplicantCardQuestionnaireChild {
+  childName: string | null;
+  description: string | null;
+  dream: string | null;
+}
+
+export interface ApplicantCardQuestionnaireAnswers {
+  otherSchools: string | null;
+  fatherName: string | null;
+  fatherEducation: string | null;
+  fatherCurrentActivity: string | null;
+  motherName: string | null;
+  motherEducation: string | null;
+  motherCurrentActivity: string | null;
+  applicationReasons: string | null;
+  schoolChangeReason: string | null;
+  familyValues: string | null;
+  faithExperiences: string | null;
+  communityServiceExperiences: string | null;
+  childrenDescriptions: ApplicantCardQuestionnaireChild[];
+}
+
+export interface ApplicantCardFamilyQuestionnaire {
+  status: 'NOT_STARTED' | 'DRAFT' | 'SUBMITTED';
+  received: boolean;
+  submittedAt: string | null;
+  updatedAt: string | null;
+  reportLink: string | null;
+  answers?: ApplicantCardQuestionnaireAnswers;
+}
+
+export interface ApplicantCardPrekinderProcess {
+  evaluationDate: string | null;
+  evaluationTime: string | null;
+  location: string | null;
+  evaluator: string | null;
+  attended: boolean | null;
+  evaluationReportLink: string | null;
+  familyInterviewDate: string | null;
+  familyInterviewers: string | null;
+  familyInterviewDone: boolean | null;
+  familyInterviewReportLink: string | null;
+}
+
+export interface ApplicantCardDocument {
+  type?: string;
+  name: string;
+  url: string;
+}
+
+export interface ApplicantCardStudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  rut: string;
+  birthDate: string;
+  gender?: string;
+  gradeApplied: string;
+  currentSchool?: string;
+  admissionPreference: string;
+  isAlumniChild: boolean;
+  alumniParentName?: string;
+  alumniParentYear?: number;
+  hasSiblingsInSchool: boolean;
+  siblingsInSchoolDetails?: string;
+}
+
+export interface ApplicantCard {
+  applicationId: number;
+  status: string;
+  statusLabel: string;
+  submissionDate: string;
+  observations?: string;
+  processType?: string;
+  examAverage?: number | null;
+  student: ApplicantCardStudent;
+  family: ApplicantCardFamily;
+  familyQuestionnaire?: ApplicantCardFamilyQuestionnaire;
+  prekinderProcess?: ApplicantCardPrekinderProcess;
+  exams: ApplicantCardExam[];
+  cycleDirector: ApplicantCardCycleDirector;
+  documents?: ApplicantCardDocument[];
+}
+
+export interface ApplicantCardResponse {
+  success: boolean;
+  data: ApplicantCard;
+}

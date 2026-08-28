@@ -1,0 +1,770 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Card from '../../../admin/components/ui/Card';
+import Button from '../../../admin/components/ui/Button';
+import Input from '../../../admissions/components/ui/Input';
+import { TextArea } from '../../../../packages/shared-ui/src/components/ui/TextArea';
+import { ConfirmDialog } from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
+import { ArrowLeftIcon, SaveIcon, FileTextIcon, PrinterIcon } from '../../../admin/components/icons/Icons';
+import { useNotifications } from '../../../admin/context/AppContext';
+import { professorEvaluationService, ProfessorEvaluation } from '../../../admin/services/professorEvaluationService';
+import { EvaluationType } from '../../../admin/types/evaluation';
+import { getStorageKey, BASE_STORAGE_KEYS } from '../../../../packages/backend-sdk/src/index';
+import { useAutoSave } from '../../../../packages/shared-ui/src/hooks/useAutoSave';
+import { getTargetYear } from '../../../../packages/shared-ui/src/types/document';
+
+interface AdmissionReportData {
+    studentName: string;
+    birthDate: string;
+    age: string;
+    currentSchool: string;
+    gradeApplied: string;
+    evaluatorName: string;
+
+    // Actitud frente al examen
+    strengths: string;
+    difficulties: string;
+    examAdaptation: string;
+    observations: string;
+
+    // Resultados académicos
+    subject: string;
+    score: number;
+    maxScore: number;
+    percentage: number;
+    comments: string;
+    areasToWork: string;
+
+    // Recomendaciones finales (nueva sección)
+    finalRecommendations: string;
+    admissionDecision: string;
+    entranceGrade: string;
+}
+
+const AdmissionReportForm: React.FC = () => {
+    const { examId } = useParams<{ examId: string }>();
+    const navigate = useNavigate();
+    const { addNotification } = useNotifications();
+    
+    const [evaluation, setEvaluation] = useState<ProfessorEvaluation | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [reportData, setReportData] = useState<AdmissionReportData>({
+        studentName: '',
+        birthDate: '',
+        age: '',
+        currentSchool: '',
+        gradeApplied: '',
+        evaluatorName: '',
+        strengths: '',
+        difficulties: '',
+        examAdaptation: '',
+        observations: '',
+        subject: '',
+        score: 0,
+        maxScore: 30,
+        percentage: 0,
+        comments: '',
+        areasToWork: '',
+        finalRecommendations: '',
+        admissionDecision: '',
+        entranceGrade: ''
+    });
+
+    // Auto-guardado cada 30 segundos
+    const autoSave = useAutoSave({
+        key: `admission-report-${examId}`,
+        data: reportData,
+        interval: 30000,
+        enabled: !isLoading && !!examId
+    });
+
+    // Confirmation dialog state
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'save' | null>(null);
+
+    // Obtener profesor actual del localStorage (con namespace correcto)
+    const [currentProfessor] = useState(() => {
+        const key = getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR);
+        const storedProfessor = localStorage.getItem(key) || localStorage.getItem('currentProfessor');
+        return storedProfessor ? JSON.parse(storedProfessor) : null;
+    });
+
+    useEffect(() => {
+        const loadEvaluation = async () => {
+            if (!examId) return;
+
+            try {
+                setIsLoading(true);
+
+                // Cargar usando el servicio (que maneja la URL correctamente)
+                const evaluationData = await professorEvaluationService.getEvaluationById(parseInt(examId));
+
+                if (evaluationData) {
+                    setEvaluation(evaluationData);
+
+                    // Obtener puntaje máximo por defecto para el tipo de evaluación
+                    const defaultMaxScore = getMaxScore(evaluationData.evaluationType);
+
+                    // Calcular edad
+                    const birthDate = evaluationData.studentBirthDate;
+                    const age = birthDate ? calculateAge(birthDate) : '';
+
+                    // Intentar restaurar draft guardado
+                    const savedDraft = autoSave.restoreDraft();
+
+                    if (savedDraft) {
+                        // Usar datos del draft y enriquecer con datos del backend
+                        setReportData(prev => ({
+                            ...savedDraft,
+                            // Siempre actualizar datos del estudiante desde backend
+                            studentName: evaluationData.studentName || savedDraft.studentName || '',
+                            gradeApplied: evaluationData.studentGrade || savedDraft.gradeApplied || '',
+                            birthDate: birthDate || savedDraft.birthDate || '',
+                            age: age || savedDraft.age || '',
+                            currentSchool: evaluationData.currentSchool || savedDraft.currentSchool || '',
+                            // Siempre usar el profesor actual como evaluador
+                            evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || savedDraft.evaluatorName || ''),
+                        }));
+                    } else {
+                        // Mapear datos del backend al formato del informe
+                        setReportData(prev => ({
+                            ...prev,
+                            // Datos del estudiante desde el backend
+                            studentName: evaluationData.studentName || '',
+                            gradeApplied: evaluationData.studentGrade || '',
+                            birthDate: birthDate || '',
+                            age: age,
+                            currentSchool: evaluationData.currentSchool || '',
+
+                            // Datos del evaluador - usar profesor actual (quien completa el informe)
+                            evaluatorName: currentProfessor ? `${currentProfessor.firstName} ${currentProfessor.lastName}` : (evaluationData.evaluatorName || ''),
+
+                            // Datos académicos - usar subject del profesor si está disponible
+                            subject: evaluationData.evaluatorSubject ?
+                                getSubjectName(evaluationData.evaluatorSubject) :
+                                getSubjectName(evaluationData.evaluationType),
+                            score: evaluationData.score || 0,
+                            maxScore: evaluationData.maxScore || defaultMaxScore,
+                            percentage: evaluationData.score && (evaluationData.maxScore || defaultMaxScore) ?
+                                Math.round((evaluationData.score / (evaluationData.maxScore || defaultMaxScore)) * 100) : 0,
+
+                            // Campos específicos de evaluación - mapeo desde evaluación del profesor
+                            strengths: evaluationData.strengths || '',
+                            difficulties: '', // Campo que completa el director, no auto-poblar
+                            examAdaptation: '', // Campo que completa el director, no auto-poblar
+                            observations: '', // Campo que completa el director, no auto-poblar desde profesor
+                            comments: evaluationData.recommendations || '', // COMENTARIOS ← Recomendaciones del profesor (jorge gangale)
+                            areasToWork: evaluationData.areasForImprovement || '' // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
+                        }));
+                    }
+
+                } else {
+                    addNotification({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Evaluación no encontrada'
+                    });
+                }
+
+            } catch (error: any) {
+                addNotification({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'No se pudo cargar la evaluación'
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadEvaluation();
+    }, [examId]); // SOLO examId como dependencia
+
+    const getSubjectName = (evaluationType: string): string => {
+        const subjects: { [key: string]: string } = {
+            'MATHEMATICS_EXAM': 'Matemática',
+            'MATHEMATICS': 'Matemática',
+            'LANGUAGE_EXAM': 'Lenguaje y Comunicación',
+            'LANGUAGE': 'Lenguaje y Comunicación',
+            'ENGLISH_EXAM': 'Inglés',
+            'ENGLISH': 'Inglés',
+            'PSYCHOLOGICAL_INTERVIEW': 'Evaluación Psicológica',
+            'CYCLE_DIRECTOR_INTERVIEW': 'Entrevista Director de Ciclo'
+        };
+        return subjects[evaluationType] || evaluationType;
+    };
+
+    const getMaxScore = (evaluationType: string): number => {
+        const maxScores: { [key: string]: number } = {
+            'MATHEMATICS_EXAM': 30,
+            'LANGUAGE_EXAM': 35,
+            'ENGLISH_EXAM': 25,
+            'PSYCHOLOGICAL_INTERVIEW': 100,
+            'CYCLE_DIRECTOR_INTERVIEW': 100
+        };
+        return maxScores[evaluationType] || 30;
+    };
+
+    const calculateAge = (birthDate: string): string => {
+        if (!birthDate) return '';
+        const birth = new Date(birthDate);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age.toString();
+    };
+
+    const updateReportData = (field: keyof AdmissionReportData, value: string | number) => {
+        setReportData(prev => {
+            const newData = { ...prev, [field]: value };
+            
+            // Calcular porcentaje automáticamente si se cambia el score o maxScore
+            if (field === 'score' || field === 'maxScore') {
+                const currentScore = field === 'score' ? Number(value) : prev.score;
+                const currentMaxScore = field === 'maxScore' ? Number(value) : prev.maxScore;
+                newData.percentage = currentMaxScore > 0 ? Math.round((currentScore / currentMaxScore) * 100) : 0;
+            }
+            
+            // Calcular edad automáticamente si se cambia la fecha de nacimiento
+            if (field === 'birthDate') {
+                newData.age = calculateAge(String(value));
+            }
+            
+            return newData;
+        });
+    };
+
+    const handleSave = async () => {
+        if (!evaluation) return;
+
+        setIsSubmitting(true);
+
+        try {
+            // Actualizar la evaluación con los datos del informe y marcar como completada
+            const updatedEvaluation: Partial<ProfessorEvaluation> = {
+                score: reportData.score,
+                maxScore: reportData.maxScore, // Guardar el puntaje máximo personalizado
+                strengths: reportData.strengths,
+                areasForImprovement: reportData.areasToWork,  // SAVE: Director's ÁREAS A TRABAJAR → Backend areasForImprovement
+                observations: `${reportData.observations}\n\nAdecuación al examen: ${reportData.examAdaptation}\nDificultades: ${reportData.difficulties}\n\n=== RECOMENDACIONES FINALES ===\nDecisión: ${reportData.admissionDecision}\nCurso ingreso: ${reportData.entranceGrade}\nComentarios finales: ${reportData.finalRecommendations}`,
+                recommendations: reportData.comments,  // SAVE: Director's COMENTARIOS → Backend recommendations
+                status: 'COMPLETED' // Cambiar estado a COMPLETED
+            };
+
+            await professorEvaluationService.updateEvaluation(evaluation.id, updatedEvaluation);
+
+            // Limpiar draft después de guardar exitosamente
+            autoSave.clearDraft();
+
+            addNotification({
+                type: 'success',
+                title: 'Informe guardado',
+                message: 'El informe de admisión ha sido guardado y marcado como completado'
+            });
+
+            // Navegar de regreso al dashboard del profesor después de guardar exitosamente
+            setTimeout(() => {
+                navigate('/profesor');
+            }, 1500);
+
+        } catch (error) {
+            addNotification({
+                type: 'error',
+                title: 'Error al guardar',
+                message: 'No se pudo guardar el informe. Intenta nuevamente.'
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleSaveClick = () => {
+        // Validar campos requeridos antes de mostrar confirmación
+        if (!reportData.score && reportData.score !== 0) {
+            addNotification({
+                type: 'warning',
+                title: 'Campos requeridos',
+                message: 'Por favor complete el puntaje antes de guardar'
+            });
+            return;
+        }
+        setPendingAction('save');
+        setShowConfirmDialog(true);
+    };
+
+    const handleConfirmSave = async () => {
+        setShowConfirmDialog(false);
+        setPendingAction(null);
+        await handleSave();
+    };
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('admission-report');
+        if (printContent) {
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+                newWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Informe de Admisión {getTargetYear()} - ${reportData.subject}</title>
+                            <link rel="preconnect" href="https://fonts.googleapis.com">
+                            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                            <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+                            <style>
+                                :root {
+                                    --azul-monte-tabor: #1e3a8a;
+                                    --gris-piedra: #6b7280;
+                                }
+                                body { font-family: 'Montserrat', sans-serif; margin: 20px; color: #1f2937; }
+                                .header { text-align: center; margin-bottom: 30px; }
+                                .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 10px; margin-bottom: 20px; }
+                                .section { margin-bottom: 30px; }
+                                .section-title { font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid var(--azul-monte-tabor); color: var(--azul-monte-tabor); }
+                                .table { width: 100%; border-collapse: collapse; }
+                                .table th, .table td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+                                .field { margin-bottom: 10px; }
+                                .field-label { font-weight: 600; color: var(--gris-piedra); }
+                                textarea, input { border: none; outline: none; font-family: inherit; }
+                            </style>
+                        </head>
+                        <body>
+                            ${printContent.innerHTML}
+                        </body>
+                    </html>
+                `);
+                newWindow.document.close();
+                newWindow.print();
+            }
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="bg-gray-50 min-h-screen py-12">
+                <div className="container mx-auto px-6 text-center">
+                    <h1 className="text-2xl font-bold text-azul-monte-tabor mb-4">
+                        Cargando Informe...
+                    </h1>
+                    <p className="text-azul-monte-tabor">Por favor, espera mientras cargamos la información.</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-gray-50 min-h-screen py-8">
+            <div className="container mx-auto px-6 max-w-4xl">
+                {/* Header con navegación */}
+                <div className="mb-6">
+                    <button 
+                        onClick={() => navigate('/profesor')}
+                        className="inline-flex items-center text-azul-monte-tabor hover:text-blue-800 transition-colors mb-4"
+                    >
+                        <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                        Volver al Dashboard
+                    </button>
+                    
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold text-azul-monte-tabor">
+                                Informe de Admisión {getTargetYear()}
+                            </h1>
+                            {autoSave.hasDraft && (
+                                <span >
+
+                                </span>
+                            )}
+                            {autoSave.lastSaved && (
+                                <span className="text-xs text-gray-500">
+                                    Guardado {autoSave.lastSaved.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={handlePrint}
+                                leftIcon={<PrinterIcon className="w-4 h-4" />}
+                            >
+                                Imprimir
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleSaveClick}
+                                isLoading={isSubmitting}
+                                loadingText="Guardando..."
+                                leftIcon={<SaveIcon className="w-4 h-4" />}
+                            >
+                                Guardar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Informe imprimible */}
+                <Card className="p-8" id="admission-report">
+                    {/* Encabezado del informe */}
+                    <div className="text-center mb-8 pb-4 border-b-4 border-azul-monte-tabor">
+                        <h1 className="text-3xl font-bold text-azul-monte-tabor mb-2">
+                            INFORME ADMISIÓN {getTargetYear()}
+                        </h1>
+                        <h2 className="text-xl font-semibold text-gris-piedra">
+                            {reportData.subject}
+                        </h2>
+                    </div>
+
+                    {/* Información del estudiante - Vertical */}
+                    <div className="bg-blue-50 rounded-lg p-6 mb-8">
+                        <h3 className="text-lg font-bold text-azul-monte-tabor mb-4">Información del Estudiante</h3>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Nombre:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base font-medium text-gray-900">{reportData.studentName || 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Fecha de Nacimiento:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base text-gray-900">{reportData.birthDate ? new Date(reportData.birthDate).toLocaleDateString('es-CL') : 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Edad:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base font-medium text-azul-monte-tabor">{reportData.age ? `${reportData.age} años` : 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Colegio Actual:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base text-gray-900">{reportData.currentSchool || 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Curso al que postula:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base font-medium text-azul-monte-tabor">{reportData.gradeApplied || 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center border-t pt-3 mt-2">
+                                <label className="text-sm font-bold text-gray-700">Profesor evaluador:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base font-bold text-gray-900">{reportData.evaluatorName || 'No disponible'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="text-sm font-bold text-gray-700">Asignatura:</label>
+                                <div className="col-span-2">
+                                    <p className="text-base font-bold text-azul-monte-tabor">{reportData.subject || 'No disponible'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actitud frente al examen - Grid 2x2 */}
+                    <div className="mb-6">
+                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-3 border-b-2 border-azul-monte-tabor pb-2">
+                            ACTITUD FRENTE AL EXAMEN
+                        </h2>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextArea
+                                label="Fortalezas observadas"
+                                value={reportData.strengths}
+                                onChange={(e) => updateReportData('strengths', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Perseverancia, concentración, estrategias organizadas..."
+                            />
+
+                            <TextArea
+                                label="Dificultades observadas"
+                                value={reportData.difficulties}
+                                onChange={(e) => updateReportData('difficulties', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Frustración, ansiedad, dificultad para organizar..."
+                            />
+
+                            <TextArea
+                                label="Adecuación al examen"
+                                value={reportData.examAdaptation}
+                                onChange={(e) => updateReportData('examAdaptation', e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Comprensión de instrucciones, manejo de tiempos..."
+                            />
+
+                            <TextArea
+                                label="Observaciones"
+                                value={reportData.observations}
+                                onChange={(e) => updateReportData('observations', e.target.value)}
+                                rows={3}
+                                placeholder="Observaciones generales sobre el comportamiento y actitud del estudiante..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Resultados académicos del examen */}
+                    <div className="mb-8">
+                        <h2 className="text-lg font-bold text-azul-monte-tabor mb-6 border-b-2 border-azul-monte-tabor pb-2">
+                            Resultados Académicos del Examen
+                        </h2>
+
+                        {/* Cards de Puntajes */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            {/* Asignatura Card */}
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-lg">
+                                <div className="text-sm font-medium opacity-90 mb-1">Asignatura</div>
+                                <div className="text-2xl font-bold">{reportData.subject}</div>
+                            </div>
+
+                            {/* Puntaje */}
+                            <div className="bg-white rounded-lg p-4 border-2 border-azul-monte-tabor shadow-md">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Puntaje Obtenido <span className="text-red-500">*</span>
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex flex-col">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateReportData('score', Math.min(reportData.score + 1, reportData.maxScore))}
+                                            className="px-2 py-0.5 bg-azul-monte-tabor text-white rounded-t hover:bg-blue-700 text-xs"
+                                        >
+                                            ▲
+                                        </button>
+                                        <Input
+                                            type="number"
+                                            value={reportData.score}
+                                            onChange={(e) => updateReportData('score', parseInt(e.target.value) || 0)}
+                                            className="text-center font-bold text-2xl border-2 border-gray-300 focus:border-azul-monte-tabor w-20"
+                                            placeholder="0"
+                                            min="0"
+                                            max={reportData.maxScore}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => updateReportData('score', Math.max(reportData.score - 1, 0))}
+                                            className="px-2 py-0.5 bg-azul-monte-tabor text-white rounded-b hover:bg-blue-700 text-xs"
+                                        >
+                                            ▼
+                                        </button>
+                                    </div>
+                                    <span className="text-2xl font-bold text-gray-400">/</span>
+                                    <div className="flex flex-col">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateReportData('maxScore', Math.min(reportData.maxScore + 1, 200))}
+                                            className="px-2 py-0.5 bg-azul-monte-tabor text-white rounded-t hover:bg-blue-700 text-xs"
+                                        >
+                                            ▲
+                                        </button>
+                                        <Input
+                                            type="number"
+                                            value={reportData.maxScore}
+                                            onChange={(e) => updateReportData('maxScore', parseInt(e.target.value) || 1)}
+                                            className="text-center font-bold text-2xl border-2 border-gray-300 focus:border-azul-monte-tabor w-20"
+                                            placeholder="30"
+                                            min="1"
+                                            max="200"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => updateReportData('maxScore', Math.max(reportData.maxScore - 1, 1))}
+                                            className="px-2 py-0.5 bg-azul-monte-tabor text-white rounded-b hover:bg-blue-700 text-xs"
+                                        >
+                                            ▼
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Puntaje obtenido / Puntaje máximo</p>
+                            </div>
+
+                            {/* Porcentaje */}
+                            <div className={`rounded-lg p-4 shadow-lg ${
+                                reportData.percentage >= 80 ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                                reportData.percentage >= 60 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
+                                'bg-gradient-to-br from-red-500 to-red-600'
+                            }`}>
+                                <div className="text-sm font-medium text-white opacity-90 mb-1">Porcentaje de Logro</div>
+                                <div className="text-4xl font-bold text-white">{reportData.percentage}%</div>
+                                <div className="text-xs text-white opacity-90 mt-1">
+                                    {reportData.percentage >= 80 ? 'Excelente' :
+                                     reportData.percentage >= 60 ? 'Bueno' : 'Por mejorar'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Sección de Comentarios */}
+                        <div className="mb-6">
+                            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+                                <div className="mb-2">
+                                    <span className="font-bold text-azul-monte-tabor text-sm">COMENTARIOS</span>
+                                    <span className="text-xs text-gray-600 ml-2">(Se llena automáticamente con las recomendaciones del profesor)</span>
+                                </div>
+                                <TextArea
+                                    value={reportData.comments}
+                                    onChange={(e) => updateReportData('comments', e.target.value)}
+                                    rows={4}
+                                    placeholder="Comentarios sobre el desempeño del estudiante en el examen..."
+                                    showCharCount
+                                    maxLength={1000}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Sección de Áreas a Trabajar */}
+                        <div className="mb-6">
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                                <div className="mb-2">
+                                    <span className="font-bold text-azul-monte-tabor text-sm">ÁREAS A TRABAJAR / RECOMENDACIONES</span>
+                                    <span className="text-xs text-gray-600 ml-2">(Se llena automáticamente con las áreas de mejora del profesor)</span>
+                                </div>
+                                <TextArea
+                                    value={reportData.areasToWork}
+                                    onChange={(e) => updateReportData('areasToWork', e.target.value)}
+                                    rows={4}
+                                    placeholder="Áreas a trabajar y recomendaciones para el estudiante..."
+                                    showCharCount
+                                    maxLength={1000}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* III. RECOMENDACIONES - Solo para Director de Ciclo */}
+                    {evaluation?.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW' && (
+                        <div className="mb-8">
+                            <h2 className="text-lg font-bold text-azul-monte-tabor mb-6 border-b-2 border-azul-monte-tabor pb-2">
+                                III. RECOMENDACIONES
+                            </h2>
+
+                            {/* Decisión de Admisión */}
+                            <div className="mb-6">
+                                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-azul-monte-tabor rounded-lg p-5">
+                                    <label className="block text-sm font-bold text-azul-monte-tabor mb-3">
+                                        Decisión de Admisión <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
+                                            <input
+                                                type="radio"
+                                                name="admissionDecision"
+                                                value="ACEPTADO"
+                                                checked={reportData.admissionDecision === 'ACEPTADO'}
+                                                onChange={(e) => updateReportData('admissionDecision', e.target.value)}
+                                                className="w-5 h-5 text-green-600"
+                                            />
+                                            <span className="font-semibold text-green-700">Aceptación - Postulante cumple con los requisitos</span>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 cursor-pointer hover:border-yellow-500 hover:bg-yellow-50 transition-all">
+                                            <input
+                                                type="radio"
+                                                name="admissionDecision"
+                                                value="REPAROS"
+                                                checked={reportData.admissionDecision === 'REPAROS'}
+                                                onChange={(e) => updateReportData('admissionDecision', e.target.value)}
+                                                className="w-5 h-5 text-yellow-600"
+                                            />
+                                            <span className="font-semibold text-yellow-700"> Con Reparos - Requiere seguimiento o condiciones</span>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 cursor-pointer hover:border-red-500 hover:bg-red-50 transition-all">
+                                            <input
+                                                type="radio"
+                                                name="admissionDecision"
+                                                value="NO_ACEPTADO"
+                                                checked={reportData.admissionDecision === 'NO_ACEPTADO'}
+                                                onChange={(e) => updateReportData('admissionDecision', e.target.value)}
+                                                className="w-5 h-5 text-red-600"
+                                            />
+                                            <span className="font-semibold text-red-700">No Aceptación - Postulante no cumple requisitos</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Curso de Ingreso */}
+                            <div className="mb-6">
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                                    <label className="block text-sm font-bold text-azul-monte-tabor mb-2">
+                                        Curso de Ingreso Recomendado <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={reportData.entranceGrade}
+                                        onChange={(e) => updateReportData('entranceGrade', e.target.value)}
+                                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-azul-monte-tabor text-base font-medium"
+                                    >
+                                        <option value="">Seleccionar curso...</option>
+                                        <option value="Prekínder">Prekínder</option>
+                                        <option value="Kínder">Kínder</option>
+                                        <option value="1 Básico">1 Básico</option>
+                                        <option value="2 Básico">2 Básico</option>
+                                        <option value="3 Básico">3 Básico</option>
+                                        <option value="4 Básico">4 Básico</option>
+                                        <option value="5 Básico">5 Básico</option>
+                                        <option value="6 Básico">6 Básico</option>
+                                        <option value="7 Básico">7 Básico</option>
+                                        <option value="8 Básico">8 Básico</option>
+                                        <option value="1 Medio">1 Medio</option>
+                                        <option value="2 Medio">2 Medio</option>
+                                        <option value="3 Medio">3 Medio</option>
+                                        <option value="4 Medio">4 Medio</option>
+                                        <option value="NO_APLICA">No Aplica (No Aceptado)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-600 mt-2">
+                                        Indicar el curso al que debería ingresar el estudiante si es aceptado
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Comentarios Finales */}
+                            <div className="mb-6">
+                                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+                                    <label className="block text-sm font-bold text-azul-monte-tabor mb-2">
+                                        Comentarios y Observaciones Finales
+                                    </label>
+                                    <TextArea
+                                        value={reportData.finalRecommendations}
+                                        onChange={(e) => updateReportData('finalRecommendations', e.target.value)}
+                                        rows={4}
+                                        placeholder="Comentarios adicionales sobre la decisión de admisión, condiciones especiales, seguimiento requerido, etc..."
+                                        showCharCount
+                                        maxLength={500}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Información adicional para el pie */}
+                    <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
+                        <p>Fecha de evaluación: {new Date().toLocaleDateString('es-CL')}</p>
+                        <p>Evaluador: {reportData.evaluatorName}</p>
+                        <p>Colegio Monte Tabor y Nazaret - Sistema de Admisión {getTargetYear()}</p>
+                    </div>
+                </Card>
+
+                {/* Diálogo de confirmación para guardar */}
+                <ConfirmDialog
+                    isOpen={showConfirmDialog}
+                    title="Guardar Informe"
+                    message={`¿Está seguro que desea guardar el informe de ${reportData.studentName}? Esta acción marcará la evaluación como completada.`}
+                    confirmText="Sí, guardar"
+                    cancelText="Cancelar"
+                    variant="primary"
+                    onConfirm={handleConfirmSave}
+                    onClose={() => {
+                        setShowConfirmDialog(false);
+                        setPendingAction(null);
+                    }}
+                    isLoading={isSubmitting}
+                />
+            </div>
+        </div>
+    );
+};
+
+export default AdmissionReportForm;

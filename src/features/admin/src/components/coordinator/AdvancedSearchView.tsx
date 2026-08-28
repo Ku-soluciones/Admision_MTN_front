@@ -1,0 +1,4 @@
+// Re-export desde paquete compartido (single source of truth)
+// Fuente: src/packages/shared-ui/src/src/components/coordinator/AdvancedSearchView.tsx
+export * from '../../../../../packages/shared-ui/src/src/components/coordinator/AdvancedSearchView';
+export { default } from '../../../../../packages/shared-ui/src/src/components/coordinator/AdvancedSearchView';
