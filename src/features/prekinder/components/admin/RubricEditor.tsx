@@ -100,25 +100,33 @@ function editorState(version: RubricVersion): EditorState {
     name: version.name,
     instrumentCode: version.instrumentCode,
     criteria: version.criteria.length
-      ? version.criteria.map((criterion) => ({
-          clientId: criterion.criterionId || crypto.randomUUID(),
-          code: criterion.code,
-          name: criterion.name,
-          descriptor: criterion.descriptor,
-          required: criterion.required,
-          options: criterion.options.map((option) => ({
-            clientId: option.optionId || crypto.randomUUID(),
-            value: String(option.value),
-            label: option.label,
-            descriptor: option.descriptor,
-            professionallyValidated: option.professionallyValidated,
-          })),
-        }))
+      ? version.criteria.map((criterion) => {
+          // Sort options by value ascending to match validation requirement
+          const sortedOptions = [...criterion.options].sort(
+            (a, b) => Number(a.value) - Number(b.value),
+          );
+          return {
+            clientId: criterion.criterionId || crypto.randomUUID(),
+            code: criterion.code,
+            name: criterion.name,
+            descriptor: criterion.descriptor,
+            required: criterion.required,
+            options: sortedOptions.map((option) => ({
+              clientId: option.optionId || crypto.randomUUID(),
+              value: String(option.value),
+              label: option.label,
+              descriptor: option.descriptor,
+              professionallyValidated: option.professionallyValidated,
+            })),
+          };
+        })
       : [blankCriterion(0)],
   };
 }
 
 function validationError(state: EditorState): string | null {
+  console.log("[DEBUG validationError] criteria count:", state.criteria.length);
+  console.log("[DEBUG validationError] criteria:", JSON.stringify(state.criteria.map(c => ({ name: c.name, options: c.options.map(o => ({ value: o.value, label: o.label })) })), null, 2));
   if (!state.name.trim()) return "Escribe el nombre de la pauta.";
   if (!state.instrumentCode) return "Selecciona el instrumento de la pauta.";
   if (!state.criteria.length) return "Agrega al menos un criterio.";
@@ -204,6 +212,7 @@ export function RubricEditor({
 
   function updateCriterion(index: number, change: Partial<EditableCriterion>) {
     setSaved(false);
+    setError("");
     setState((current) => ({
       ...current,
       criteria: current.criteria.map((criterion, criterionIndex) =>
@@ -247,6 +256,7 @@ export function RubricEditor({
     const criteria = [...state.criteria];
     [criteria[index], criteria[target]] = [criteria[target], criteria[index]];
     setSaved(false);
+    setError("");
     setState((current) => ({ ...current, criteria }));
   }
 
@@ -258,13 +268,16 @@ export function RubricEditor({
     }
     setError("");
     try {
-      const updated = await onSave(toInput(state, revision));
+      const payload = toInput(state, revision);
+      console.log("[DEBUG SAVE] payload criteria:", JSON.stringify(payload.criteria, null, 2));
+      const updated = await onSave(payload);
       const normalized = editorState(updated);
       setState(normalized);
       setBaseline(JSON.stringify(normalized));
       setRevision(updated.rubricRevision);
       setSaved(true);
     } catch (reason) {
+      console.log("[DEBUG save ERROR] reason:", reason);
       setError(reason instanceof Error ? reason.message : "No pudimos guardar la pauta. Reintenta.");
     }
   }
@@ -377,7 +390,7 @@ export function RubricEditor({
               {!readOnly && <div className="flex shrink-0 gap-1">
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, -1)} disabled={busy || criterionIndex === 0} aria-label={`Subir criterio ${criterionIndex + 1}`}><ArrowUp size={18} /></button>
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, 1)} disabled={busy || criterionIndex === state.criteria.length - 1} aria-label={`Bajar criterio ${criterionIndex + 1}`}><ArrowDown size={18} /></button>
-                <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-35" onClick={() => { setSaved(false); setState((current) => ({ ...current, criteria: current.criteria.filter((_, index) => index !== criterionIndex) })); }} disabled={busy || state.criteria.length === 1} aria-label={`Eliminar criterio ${criterionIndex + 1}`}><Trash2 size={18} /></button>
+                <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-35" onClick={() => { setSaved(false); setError(""); setState((current) => ({ ...current, criteria: current.criteria.filter((_, index) => index !== criterionIndex) })); }} disabled={busy || state.criteria.length === 1} aria-label={`Eliminar criterio ${criterionIndex + 1}`}><Trash2 size={18} /></button>
               </div>}
             </div>
 
@@ -451,5 +464,111 @@ export function RubricEditor({
         </div>
       </footer>
     </section>
+  );
+}
+
+type RubricPreviewModalProps = {
+  version: RubricVersion;
+  instrumentLabels: Record<string, string>;
+  onClose: () => void;
+};
+
+export function RubricPreviewModal({ version, instrumentLabels, onClose }: RubricPreviewModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="preview-title"
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-5 sm:px-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-extrabold text-slate-500">
+                <span>Vista previa</span>
+                <span aria-hidden="true">·</span>
+                <span>{instrumentLabels[version.instrumentCode] ?? version.instrumentCode}</span>
+                <span aria-hidden="true">·</span>
+                <span>Versión {version.version}</span>
+              </div>
+              <h2 id="preview-title" className="mt-2 break-words text-xl font-black text-slate-950 sm:text-2xl">
+                {version.name}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Así verá el evaluador esta pauta durante la evaluación.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100"
+              onClick={onClose}
+              aria-label="Cerrar vista previa"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </header>
+
+        <div className="px-6 py-7 sm:px-8">
+          {version.criteria.map((criterion, criterionIndex) => (
+            <article key={criterion.criterionId} className="mb-8 border-b border-slate-200 pb-8 last:mb-0 last:border-b-0 last:pb-0">
+              <div className="mb-5">
+                <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                  Criterio {criterionIndex + 1}
+                </p>
+                <h3 className="mt-2 text-lg font-black text-slate-950">{criterion.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{criterion.descriptor}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {criterion.options.map((option) => (
+                  <div
+                    key={option.optionId}
+                    className="min-w-[140px] flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 p-3"
+                  >
+                    <div className="mb-3 flex flex-col items-center gap-1">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-azul-monte-tabor text-base font-black text-white">
+                        {option.value}
+                      </span>
+                      <span className="text-center text-sm font-bold text-slate-700">
+                        {option.label}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-slate-500">{option.descriptor}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-600">Comentarios (opcional)</span>
+                  <textarea
+                    className="control mt-1 w-full resize-y"
+                    rows={2}
+                    placeholder="Observaciones sobre este criterio..."
+                    readOnly
+                  />
+                </label>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <footer className="sticky bottom-0 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:px-8">
+          <button
+            type="button"
+            className="secondary min-h-11 w-full sm:w-auto"
+            onClick={onClose}
+          >
+            Cerrar
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }

@@ -175,8 +175,16 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
     if (!selectedAssignment) return;
     setSaving(true);
     try {
-      await prekinderApi.startEvaluatorAssignment(selectedAssignment.assignmentId, selectedAssignment.version);
-    } catch { /* continue anyway */ }
+      const next = await prekinderApi.startEvaluatorAssignment(
+        selectedAssignment.assignmentId,
+        selectedAssignment.version
+      );
+      setSelectedAssignment(next);
+    } catch (err) {
+      console.error("Error starting assignment:", err);
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setScreen("evaluate");
   }, [selectedAssignment]);

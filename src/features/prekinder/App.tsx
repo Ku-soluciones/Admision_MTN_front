@@ -16,6 +16,7 @@ import { ConnectedIndicatorsConsole } from "./pages/evaluator/ConnectedIndicator
 import { ConnectedGroupObservationConsole } from "./pages/evaluator/ConnectedGroupObservationConsole";
 import { ConnectedLearningSupportConsole } from "./pages/evaluator/ConnectedLearningSupportConsole";
 import { ConnectedDapConsole } from "./pages/evaluator/ConnectedDapConsole";
+import { PsychomotorEvaluationSheet } from "./pages/evaluator/PsychomotorEvaluationSheet";
 import { MockDevLauncher } from "./pages/dev/MockDevLauncher";
 
 const LoadingFallback = () => (
@@ -144,7 +145,7 @@ export default function PrekinderApp() {
           path="/prekinder/evaluador/psychomotor/evaluacion/:assignmentId"
           element={
             <PrekinderEvaluatorGuard profile="PSYCHOMOTOR">
-              <ConnectedPsychomotorConsole profile="PSYCHOMOTOR" />
+              <PsychomotorEvaluationSheet profile="PSYCHOMOTOR" />
             </PrekinderEvaluatorGuard>
           }
         />
