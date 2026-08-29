@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  ArrowRight,
   CalendarDays,
   ChevronDown,
   ChevronUp,
   Clock3,
-  DoorOpen,
   Pencil,
   Plus,
   Search,
@@ -20,6 +20,7 @@ import {
   type Professional,
   type Room,
 } from "../../services/api";
+import type { EvaluationJourney } from "../../data/evaluationJourneys";
 
 type Props = {
   processId: string;
@@ -28,10 +29,12 @@ type Props = {
   groups: EvaluationGroup[];
   applications: FlowApplication[];
   professionals: Professional[];
+  journeys: EvaluationJourney[];
   busy: boolean;
   onDateChange: (date: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onOpenGroup: (groupId: string) => void;
+  onGoToControlTower: () => void;
 };
 
 type EditorState =
@@ -66,6 +69,17 @@ function fullName(application: FlowApplication) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+function formatDay(date: string) {
+  if (!date) return "";
+  return new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Santiago",
+  }).format(new Date(`${date}T12:00:00`));
 }
 
 function overlaps(
@@ -115,23 +129,38 @@ export function PrekinderGroups(props: Props) {
   ).length;
   const ready = activeGroups.filter((group) => group.status === "CONFIRMED").length;
 
+  const sortedJourneys = [...props.journeys].sort((a, b) => a.date.localeCompare(b.date));
+
   return (
     <div className="space-y-5">
-      <label className="flex min-h-9 w-fit items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
-        <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-        <span className="shrink-0">Fecha de rendición de entrevista</span>
-        <input
-          className="min-w-0 bg-transparent text-sm font-semibold text-gray-950 outline-none"
-          type="date"
-          value={props.date}
-          onChange={(event) => {
-            if (event.target.value) {
-              setEditor(null);
-              props.onDateChange(event.target.value);
-            }
-          }}
-        />
-      </label>
+      {sortedJourneys.length ? (
+        <label className="flex min-h-9 w-fit items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
+          <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+          <span className="shrink-0">Jornada de evaluación</span>
+          <select
+            className="min-w-0 bg-transparent text-sm font-semibold text-gray-950 outline-none"
+            value={props.date}
+            onChange={(event) => {
+              if (event.target.value) {
+                setEditor(null);
+                props.onDateChange(event.target.value);
+              }
+            }}
+          >
+            {!sortedJourneys.some((journey) => journey.date === props.date) && (
+              <option value={props.date}>{formatDay(props.date)}</option>
+            )}
+            {sortedJourneys.map((journey) => (
+              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Aún no hay jornadas de evaluación.
+        </div>
+      )}
 
       <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-3">
         <Summary label="Grupos activos" value={activeGroups.length} detail={`${props.rooms.length} salas disponibles`} />
@@ -139,14 +168,46 @@ export function PrekinderGroups(props: Props) {
         <Summary label="Postulantes asignados" value={assignedChildren.size} detail={`${availableEligible} elegibles aún disponibles`} />
       </section>
 
-      {editor && (
-        <GroupEditor
-          key={editor.mode === "edit" ? `${editor.group.groupId}-${editor.group.version}` : "new"}
-          {...props}
-          editor={editor}
-          onClose={() => setEditor(null)}
-        />
-      )}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-6">
+          <div>
+            <h2 className="text-lg font-black">
+              {editor?.mode === "edit" ? `Editar ${editor.group.code}` : "Armar nuevo grupo de evaluación"}
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              {editor?.mode === "edit"
+                ? "Modifica sala, horario, límites e integrantes antes de que comience el bloque."
+                : "Asigna sala, horario, postulantes y equipo evaluador."}
+            </p>
+          </div>
+          {editor ? (
+            <button className="secondary shrink-0 !px-3" onClick={() => setEditor(null)} aria-label="Cerrar editor">
+              <X size={18} />
+            </button>
+          ) : (
+            <button
+              className="primary shrink-0"
+              disabled={props.busy || props.rooms.length === 0 || props.journeys.length === 0}
+              onClick={() => setEditor({ mode: "create" })}
+            >
+              <Plus className="mr-2 inline" size={17} />
+              Armar grupo
+            </button>
+          )}
+        </div>
+        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${editor ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <div className="overflow-hidden">
+            {editor && (
+              <GroupEditor
+                key={editor.mode === "edit" ? `${editor.group.groupId}-${editor.group.version}` : "new"}
+                {...props}
+                editor={editor}
+                onClose={() => setEditor(null)}
+              />
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -160,9 +221,9 @@ export function PrekinderGroups(props: Props) {
               aria-label="Buscar grupos"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="relative sm:w-52">
             <select
-              className="control sm:w-52"
+              className="control w-full appearance-none pr-9"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
               aria-label="Filtrar por estado"
@@ -174,14 +235,7 @@ export function PrekinderGroups(props: Props) {
               <option value="CANCELLED">Eliminados</option>
               <option value="ALL">Todos los estados</option>
             </select>
-            <button
-              className="primary min-h-11 shrink-0"
-              disabled={props.busy || props.rooms.length === 0}
-              onClick={() => setEditor({ mode: "create" })}
-            >
-              <Plus className="mr-2 inline" size={17} />
-              Armar grupo
-            </button>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           </div>
         </div>
 
@@ -197,13 +251,16 @@ export function PrekinderGroups(props: Props) {
             {!query && status === "ACTIVE" && (
               <button
                 className="primary mt-4"
-                disabled={props.busy || props.rooms.length === 0}
+                disabled={props.busy || props.rooms.length === 0 || props.journeys.length === 0}
                 onClick={() => setEditor({ mode: "create" })}
               >
                 <Plus className="mr-2 inline" size={17} />Armar primer grupo
               </button>
             )}
-            {!query && status === "ACTIVE" && props.rooms.length === 0 && (
+            {!query && status === "ACTIVE" && props.journeys.length === 0 && (
+              <p className="mt-3 text-sm font-bold text-amber-800">Primero crea una jornada de evaluación en Torre de control.</p>
+            )}
+            {!query && status === "ACTIVE" && props.journeys.length > 0 && props.rooms.length === 0 && (
               <p className="mt-3 text-sm font-bold text-amber-800">Primero crea o habilita una sala para esta jornada.</p>
             )}
           </div>
@@ -235,8 +292,8 @@ export function PrekinderGroups(props: Props) {
                           {meta.label}
                         </span>
                       </div>
-                      <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-                        <DoorOpen size={15} aria-hidden="true" />{group.roomName}
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        {group.roomName}
                       </p>
                     </div>
                     <div>
@@ -434,74 +491,76 @@ function GroupEditor({
   }
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-white shadow-[0_14px_38px_rgba(15,23,42,0.08)]" aria-labelledby="group-editor-title">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
-        <div>
-          <h2 id="group-editor-title" className="text-xl font-black text-slate-950">
-            {editing ? `Editar ${editing.code}` : "Armar un grupo completo"}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            {editing
-              ? "Modifica sala, horario, límites e integrantes antes de que comience el bloque."
-              : "Define el bloque y selecciona postulantes y equipo evaluador antes de guardar."}
-          </p>
-        </div>
-        <button className="secondary !px-3" onClick={onClose} aria-label="Cerrar editor">
-          <X size={18} />
-        </button>
-      </div>
-
+    <div className="border-t border-slate-200">
       <div className="grid gap-5 p-5 lg:grid-cols-2">
         <div className="grid content-start gap-4 sm:grid-cols-2">
-          <Field label="Código del grupo">
+          <Field label="Nombre del grupo">
             <input className="control w-full" value={code} disabled={Boolean(editing)} onChange={(event) => setCode(event.target.value)} placeholder="G3-01" />
           </Field>
           <Field label="Tipo de evaluación">
-            <select
-              className="control w-full"
-              value={stage}
-              disabled={Boolean(editing)}
-              onChange={(event) => {
-                const next = event.target.value as EvaluationGroup["stage"];
-                setStage(next);
-                setCapacity(next === "GROUP_3" ? 3 : 9);
-                setRequiredEvaluators(next === "GROUP_3" ? 3 : 6);
-                setMemberIds([]);
-                setEvaluatorIds([]);
-              }}
-            >
-              <option value="GROUP_3">Observación focal · base 3</option>
-              <option value="GROUP_9">Interacción grupal · base 9</option>
-            </select>
+            <div className="relative">
+              <select
+                className="control w-full appearance-none pr-9"
+                value={stage}
+                disabled={Boolean(editing)}
+                onChange={(event) => {
+                  const next = event.target.value as EvaluationGroup["stage"];
+                  setStage(next);
+                  setCapacity(next === "GROUP_3" ? 3 : 9);
+                  setRequiredEvaluators(next === "GROUP_3" ? 3 : 6);
+                  setMemberIds([]);
+                  setEvaluatorIds([]);
+                }}
+              >
+                <option value="GROUP_3">Observación focal · base 3</option>
+                <option value="GROUP_9">Interacción grupal · base 9</option>
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+            </div>
           </Field>
-          <Field label="Fecha de rendición de entrevista">
-            <input
-              className="control w-full"
-              type="date"
-              required
-              value={props.date}
-              onChange={(event) => {
-                if (event.target.value) props.onDateChange(event.target.value);
-              }}
-            />
+          <Field label="Jornada de evaluación">
+            <div className="relative">
+              <select
+                className={`control w-full appearance-none pr-9 ${props.date ? "text-gray-900" : "text-gray-400"}`}
+                required
+                value={props.date}
+                onChange={(event) => {
+                  if (event.target.value) props.onDateChange(event.target.value);
+                }}
+              >
+                {!props.journeys.length && <option value="">Sin jornadas de evaluación</option>}
+                {!props.journeys.some((journey) => journey.date === props.date) && props.date && (
+                  <option value={props.date}>{formatDay(props.date)}</option>
+                )}
+                {[...props.journeys].sort((a, b) => a.date.localeCompare(b.date)).map((journey) => (
+                  <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+            </div>
           </Field>
           <Field label="Sala">
-            <select className="control w-full" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
-              <option value="">Seleccionar sala</option>
-              {props.rooms.filter((item) => item.active).map((item) => (
-                <option key={item.roomId} value={item.roomId}>{item.name} · cap. {item.capacity}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select className={`control w-full appearance-none pr-9 ${roomId ? "text-gray-900" : "text-gray-400"}`} value={roomId} onChange={(event) => setRoomId(event.target.value)}>
+                <option value="">Seleccionar sala</option>
+                {props.rooms.filter((item) => item.active).map((item) => (
+                  <option key={item.roomId} value={item.roomId}>{item.name} · cap. {item.capacity}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+            </div>
           </Field>
           <Field label="Hora de inicio">
             <input className="control w-full" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
           </Field>
-          <Field label="Máximo de postulantes">
-            <input className="control w-full" type="number" min={1} max={room?.capacity ?? 30} value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} />
-          </Field>
-          <Field label="Evaluadores requeridos">
-            <input className="control w-full" type="number" min={1} max={12} value={requiredEvaluators} onChange={(event) => setRequiredEvaluators(Number(event.target.value))} />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Máximo de postulantes">
+              <input className="control w-full" type="number" min={1} max={room?.capacity ?? 30} value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} />
+            </Field>
+            <Field label="Evaluadores requeridos">
+              <input className="control w-full" type="number" min={1} max={12} value={requiredEvaluators} onChange={(event) => setRequiredEvaluators(Number(event.target.value))} />
+            </Field>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -535,26 +594,15 @@ function GroupEditor({
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-slate-600" role="status">
-          {!props.date
-            ? "Selecciona la fecha de rendición de la entrevista."
-            : !roomId
-              ? "Selecciona la sala donde se rendirá la entrevista."
-              : !time
-                ? "Completa la hora de inicio."
-            : memberIds.length === 0
-              ? "Selecciona al menos un postulante."
-              : memberIds.length > capacity
-                ? `Quita ${memberIds.length - capacity} postulantes para respetar el cupo.`
-                : capacity > (room?.capacity ?? 0)
-                  ? "La capacidad del grupo supera la capacidad de la sala."
-                  : evaluatorIds.length < requiredEvaluators
-                ? `Faltan ${requiredEvaluators - evaluatorIds.length} evaluadores para completar el equipo.`
-                    : evaluatorIds.length > requiredEvaluators
-                      ? `Quita ${evaluatorIds.length - requiredEvaluators} evaluadores para respetar el límite.`
-                      : editing
-                        ? "Código y tipo se mantienen; la planificación y composición están listas para guardar."
-                        : "La sala, fecha y composición están completas y listas para guardar."}
+        <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-red-700" role="status">
+          ¿No encuentras la jornada que buscas? Puedes crearla acá:
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 font-bold text-red-700 underline hover:text-red-800"
+            onClick={props.onGoToControlTower}
+          >
+            Ir a Torre de control <ArrowRight size={13} />
+          </button>
         </p>
         <div className="flex justify-end gap-2">
           <button className="secondary" onClick={onClose}>Cancelar</button>
@@ -567,7 +615,7 @@ function GroupEditor({
           </button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
