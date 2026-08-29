@@ -45,17 +45,16 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [currentProcessId, setCurrentProcessId] = useState<string | null>(null);
 
-  // Load rubric from backend when component mounts
+  // Load rubric when processId is available from assignment
   useEffect(() => {
-    void loadRubric();
-  }, []);
+    if (!currentProcessId) return;
+    void loadRubric(currentProcessId);
+  }, [currentProcessId]);
 
-  async function loadRubric() {
+  async function loadRubric(processId: string) {
     try {
-      // Get current process ID from localStorage or context
-      const processId = localStorage.getItem("currentProcessId") || "1";
-      // Get rubric assignments for psychomotor instrument
       const rubricAssignments = await prekinderApi.rubricAssignments(processId);
       const psychomotorAssignment = rubricAssignments.find(
         (a) => a.instrumentCode === "PSYCHOMOTOR",
@@ -64,15 +63,14 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
         const version = await prekinderApi.rubricVersion(
           psychomotorAssignment.versionId,
         );
-        // Sort options ascending by value to match validation requirement
         const sorted = version.criteria.map((c) => ({
           ...c,
           options: [...c.options].sort((a, b) => a.value - b.value),
         }));
         setRubricCriteria(sorted);
       }
-    } catch {
-      // Silently continue without rubric
+    } catch (err) {
+      console.error("Error loading rubric:", err);
     }
   }
 
@@ -93,6 +91,7 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
         if (found) {
           setSelectedAssignment(found);
           setActiveApplicantId(found.reports[0]?.applicationId ?? null);
+          setCurrentProcessId(found.group.processId);
           setScreen("confirm");
         } else {
           setScreen("agenda");
@@ -117,6 +116,7 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
     (assignment: EvaluatorAssignment) => {
       setSelectedAssignment(assignment);
       setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
+      setCurrentProcessId(assignment.group.processId);
       setScreen("confirm");
     },
     [],

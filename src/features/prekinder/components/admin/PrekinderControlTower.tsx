@@ -156,7 +156,7 @@ function translateConfirmError(err: unknown): { title: string; detail: string } 
   return null;
 }
 
-function ConfirmGroupSection({ group, canConfirm, busy, onAction }: { group: EvaluationGroup; canConfirm: boolean; busy: boolean; onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>; }) {
+function ConfirmGroupSection({ group, canConfirm, busy, onAction, rubricMissing }: { group: EvaluationGroup; canConfirm: boolean; busy: boolean; onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>; rubricMissing?: boolean; }) {
   const [error, setError] = useState<{ title: string; detail: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -182,13 +182,17 @@ function ConfirmGroupSection({ group, canConfirm, busy, onAction }: { group: Eva
     });
   }
 
+  const statusMessage = canConfirm
+    ? "El grupo cumple las condiciones y puede quedar listo."
+    : rubricMissing
+      ? "La pauta de evaluación no está asignada al proceso. Ve a 'Pautas' y asígnala."
+      : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`;
+
   return (
     <div className="rounded-xl bg-slate-50 p-4">
       <p className="text-sm font-black text-slate-900">Preparación para evaluación</p>
       <p className="mt-1 text-xs leading-5 text-slate-600">
-        {canConfirm
-          ? "El grupo cumple las condiciones y puede quedar listo."
-          : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`}
+        {statusMessage}
       </p>
       {error && (
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3" role="alert">
@@ -722,13 +726,14 @@ function RoomRow({ room, times, groups, towerGroupsById, alertsByGroup, selected
   );
 }
 
-function GroupPanel({ selected: group, date, rooms, applications, professionals, busy, onAction, controlTower, groups }: Props) {
+function GroupPanel({ selected: group, date, rooms, applications, professionals, busy, onAction, controlTower, groups, processId }: Props) {
   const [applicationId, setApplicationId] = useState("");
   const [evaluatorId, setEvaluatorId] = useState("");
   const [nextRoom, setNextRoom] = useState("");
   const [nextTime, setNextTime] = useState("");
   const [reason, setReason] = useState("");
   const [assignError, setAssignError] = useState("");
+  const [rubricAssignments, setRubricAssignments] = useState<{ instrumentCode: string }[]>([]);
 
   const towerGroupsById = useMemo(() => new Map(
     (controlTower?.rooms ?? []).flatMap((room) => room.groups).map((g) => [g.groupId, g]),
@@ -741,6 +746,11 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
     if (!group) return [];
     return groupAlerts(group, towerGroup, Date.now());
   }, [group, towerGroup]);
+
+  useEffect(() => {
+    if (!processId) return;
+    prekinderApi.rubricAssignments(processId).then(setRubricAssignments).catch(() => setRubricAssignments([]));
+  }, [processId]);
 
   useEffect(() => {
     setApplicationId("");
@@ -762,7 +772,8 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
   const members = group.memberIds.map((id) => applications.find((app) => app.applicationId === id)).filter(Boolean) as FlowApplication[];
   const available = applications.filter((app) => !group.memberIds.includes(app.applicationId));
   const availablePeople = professionals.filter((p) => p.active && p.roleGroup === "EVALUACION" && !group.evaluatorIds.includes(p.professionalId));
-  const canConfirm = group.status === "DRAFT" && group.memberIds.length > 0 && group.evaluatorIds.length === group.requiredEvaluators;
+  const rubricMissing = rubricAssignments.length === 0;
+  const canConfirm = group.status === "DRAFT" && group.memberIds.length > 0 && group.evaluatorIds.length === group.requiredEvaluators && !rubricMissing;
   const meta = statusMeta[effectiveStatus] ?? statusMeta.DRAFT;
 
   return (
@@ -799,7 +810,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
           <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
 
-        <ConfirmGroupSection group={group} canConfirm={canConfirm} busy={busy} onAction={onAction} />
+        <ConfirmGroupSection group={group} canConfirm={canConfirm} busy={busy} onAction={onAction} rubricMissing={rubricMissing} />
       </div>
     </aside>
   );
