@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
@@ -57,19 +58,22 @@ import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
+import {
+  loadJourneys,
+  saveJourneys,
+  type EvaluationJourney,
+} from "../data/evaluationJourneys";
 
 const sections = [
   ["Resumen", LayoutDashboard],
-  ["Configuración", Settings2],
   ["Etapas", Activity],
   ["Postulaciones", Users],
   ["Grupos", UsersRound],
   ["Torre de control", CalendarDays],
   ["Salas", DoorOpen],
   ["Profesionales", UserCog],
-  ["Pautas", ClipboardCheck],
-  ["Comunicaciones", Mail],
   ["Decisiones", FileCheck2],
+  ["Configuración", Settings2],
 ] as const;
 
 const waveNames: Record<string, string> = {
@@ -166,6 +170,8 @@ export function PrekinderOperations({
   const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
   const [publicationBatches, setPublicationBatches] = useState<PublicationBatch[]>([]);
   const [date, setDate] = useState(initialDate);
+  const [journeys, setJourneys] = useState<EvaluationJourney[]>([]);
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -271,12 +277,76 @@ export function PrekinderOperations({
     void loadProcess(processId, date, true);
   }, "process");
 
+  function selectJourney(id: string) {
+    setSelectedJourneyId(id);
+  }
+
+  function selectJourneyByDate(nextDate: string) {
+    const journey = journeys.find((item) => item.date === nextDate);
+    if (journey) selectJourney(journey.id);
+    else setDate(nextDate);
+  }
+
+  function createJourney(name: string, journeyDate: string) {
+    const created: EvaluationJourney = { id: crypto.randomUUID(), name, date: journeyDate };
+    setJourneys((current) => {
+      const updated = [...current, created];
+      saveJourneys(processId, updated);
+      return updated;
+    });
+    setSelectedJourneyId(created.id);
+    setMessage("Jornada creada.");
+  }
+
+  function renameJourney(id: string, name: string, journeyDate: string) {
+    setJourneys((current) => {
+      const updated = current.map((journey) =>
+        journey.id === id ? { ...journey, name, date: journeyDate } : journey,
+      );
+      saveJourneys(processId, updated);
+      return updated;
+    });
+    setMessage("Jornada actualizada.");
+  }
+
+  function deleteJourney(id: string) {
+    setJourneys((current) => {
+      const updated = current.filter((journey) => journey.id !== id);
+      saveJourneys(processId, updated);
+      if (updated.length) {
+        setSelectedJourneyId((currentSelected) =>
+          currentSelected === id ? updated[0].id : currentSelected,
+        );
+        return updated;
+      }
+      const seeded = loadJourneys(processId);
+      setSelectedJourneyId(seeded[0]?.id ?? null);
+      return seeded;
+    });
+    setMessage("Jornada eliminada.");
+  }
+
   useEffect(() => {
     void loadBase();
   }, []);
   useEffect(() => {
     if (processId) void loadProcess(processId, date);
   }, [processId, date]);
+  useEffect(() => {
+    if (!processId) return;
+    const next = loadJourneys(processId);
+    const sorted = [...next].sort((a, b) => a.date.localeCompare(b.date));
+    setJourneys(next);
+    setSelectedJourneyId((current) =>
+      current && next.some((journey) => journey.id === current)
+        ? current
+        : (sorted[0]?.id ?? null),
+    );
+  }, [processId]);
+  useEffect(() => {
+    const journey = journeys.find((item) => item.id === selectedJourneyId);
+    if (journey) setDate(journey.date);
+  }, [selectedJourneyId, journeys]);
   useEffect(() => {
     if (!mobileNav) return;
     const close = (event: KeyboardEvent) => {
@@ -581,7 +651,7 @@ export function PrekinderOperations({
         )}
 
         <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 overflow-y-auto p-4 lg:p-7"}>
-          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && (
+          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && !(section === "Configuración" && processId && currentProcess?.status !== "DRAFT") && (
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 {section === "Postulaciones" && processId && currentProcess?.status !== "DRAFT" ? (
@@ -599,11 +669,6 @@ export function PrekinderOperations({
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
                     <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
                   </>
-                ) : section === "Configuración" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración</p>
-                    <p className="mt-1 text-sm text-gray-600">Ajusta las políticas de pago, inclusión, edad y ponderación del proceso.</p>
-                  </>
                 ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Salas</p>
@@ -613,16 +678,6 @@ export function PrekinderOperations({
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Profesionales</p>
                     <p className="mt-1 text-sm text-gray-600">Registra y organiza al equipo que participa en el proceso de admisión.</p>
-                  </>
-                ) : section === "Pautas" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Pautas</p>
-                    <p className="mt-1 text-sm text-gray-600">Revisa las pautas de evaluación disponibles para cada instancia.</p>
-                  </>
-                ) : section === "Comunicaciones" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Comunicaciones</p>
-                    <p className="mt-1 text-sm text-gray-600">Revisa las plantillas y versiones que recibirán las familias.</p>
                   </>
                 ) : section === "Decisiones" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
@@ -727,11 +782,24 @@ export function PrekinderOperations({
               onSave={saveStage}
             />
           )}
-          {section === "Configuración" && configuration && (
-            <ConfigurationEditor
+          {section === "Configuración" && (
+            <ConfigurationHub
+              processId={processId}
               configuration={configuration}
               busy={busy}
-              onSave={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
+              onSaveConfiguration={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
+              onChangedRubrics={() => loadProcess(processId)}
+              communicationTemplates={communicationTemplates}
+              onCommunicationAction={action}
+              expandedDrafts={expandedDrafts}
+              onToggleDraftExpanded={(contentVersionId) =>
+                setExpandedDrafts((current) => {
+                  const next = new Set(current);
+                  if (next.has(contentVersionId)) next.delete(contentVersionId);
+                  else next.add(contentVersionId);
+                  return next;
+                })
+              }
             />
           )}
           {section === "Postulaciones" && (
@@ -762,13 +830,15 @@ export function PrekinderOperations({
               groups={groups}
               applications={applications}
               professionals={processProfessionals}
+              journeys={journeys}
               busy={busy}
-              onDateChange={setDate}
+              onDateChange={selectJourneyByDate}
               onAction={action}
               onOpenGroup={(groupId) => {
                 setSelectedGroup(groupId);
                 setSection("Torre de control");
               }}
+              onGoToControlTower={() => setSection("Torre de control")}
             />
           )}
           {section === "Torre de control" && (
@@ -785,6 +855,12 @@ export function PrekinderOperations({
               onSelect={setSelectedGroup}
               onAction={action}
               onDateChange={setDate}
+              journeys={journeys}
+              selectedJourneyId={selectedJourneyId}
+              onSelectJourney={selectJourney}
+              onCreateJourney={createJourney}
+              onRenameJourney={renameJourney}
+              onDeleteJourney={deleteJourney}
             />
           )}
           {section === "Salas" && (
@@ -847,23 +923,6 @@ export function PrekinderOperations({
                   setBusy(false);
                 }
               }}
-            />
-          )}
-          {section === "Pautas" && <Rubrics processId={processId} busy={busy} onChanged={() => loadProcess(processId)} />}
-          {section === "Comunicaciones" && (
-            <Communications
-              templates={communicationTemplates}
-              busy={busy}
-              onAction={action}
-              expandedDrafts={expandedDrafts}
-              onToggleDraftExpanded={(contentVersionId) =>
-                setExpandedDrafts((current) => {
-                  const next = new Set(current);
-                  if (next.has(contentVersionId)) next.delete(contentVersionId);
-                  else next.add(contentVersionId);
-                  return next;
-                })
-              }
             />
           )}
           {section === "Decisiones" && (
@@ -1126,6 +1185,75 @@ function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null 
         ))}
       </div>
     </section>
+  );
+}
+
+type ConfigurationView = "policies" | "rubrics" | "communications";
+
+const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
+  { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
+  { id: "policies", label: "Políticas del proceso", icon: Settings2 },
+  { id: "communications", label: "Comunicaciones", icon: Mail },
+];
+
+function ConfigurationHub({
+  processId,
+  configuration,
+  busy,
+  onSaveConfiguration,
+  onChangedRubrics,
+  communicationTemplates,
+  onCommunicationAction,
+  expandedDrafts,
+  onToggleDraftExpanded,
+}: {
+  processId: string;
+  configuration: ProcessConfiguration | null;
+  busy: boolean;
+  onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
+  onChangedRubrics: () => Promise<void>;
+  communicationTemplates: CommunicationTemplate[];
+  onCommunicationAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  expandedDrafts: Set<string>;
+  onToggleDraftExpanded: (contentVersionId: string) => void;
+}) {
+  const [view, setView] = useState<ConfigurationView>("rubrics");
+  return (
+    <div className="space-y-5">
+      <aside>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración del proceso</p>
+          <p className="mt-1 text-sm text-slate-600">Centro de configuración</p>
+        </div>
+        <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de configuración">
+          {configurationViews.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${view === id ? "border border-slate-300 bg-white font-bold text-slate-900" : "font-semibold text-slate-600 hover:text-slate-900"}`}
+              aria-current={view === id ? "page" : undefined}
+            >
+              <Icon size={16} />{label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <div className="min-w-0">
+        {view === "policies" && configuration && (
+          <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
+        )}
+        {view === "rubrics" && <Rubrics processId={processId} busy={busy} onChanged={onChangedRubrics} />}
+        {view === "communications" && (
+          <Communications
+            templates={communicationTemplates}
+            busy={busy}
+            onAction={onCommunicationAction}
+            expandedDrafts={expandedDrafts}
+            onToggleDraftExpanded={onToggleDraftExpanded}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1574,7 +1702,7 @@ function WaveEditor({
       <div className="mt-5 space-y-4">
         <Field label="Apertura">
           <input
-            className="control"
+            className="control w-64"
             type="datetime-local"
             value={opensAt}
             onChange={(e) => setOpensAt(e.target.value)}
@@ -1582,23 +1710,26 @@ function WaveEditor({
         </Field>
         <Field label="Cierre">
           <input
-            className="control"
+            className="control w-64"
             type="datetime-local"
             value={closesAt}
             onChange={(e) => setClosesAt(e.target.value)}
           />
         </Field>
         <Field label="Estado">
-          <select
-            className="control"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as Wave["status"])}
-          >
-            <option value="DRAFT">Borrador</option>
-            <option value="PUBLISHED">Publicada</option>
-            <option value="CLOSED">Cerrada</option>
-            <option value="CANCELLED">Cancelada</option>
-          </select>
+          <div className="relative w-64">
+            <select
+              className="control w-full appearance-none pr-9"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Wave["status"])}
+            >
+              <option value="DRAFT">Borrador</option>
+              <option value="PUBLISHED">Publicada</option>
+              <option value="CLOSED">Cerrada</option>
+              <option value="CANCELLED">Cancelada</option>
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
         </Field>
         <button
           disabled={busy || !opensAt || !closesAt}
@@ -1694,16 +1825,19 @@ function Applications({
         <span className="text-sm font-normal text-slate-400">
           {filtered.length} de {applications.length}
         </span>
-        <select
-          className="control"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="ALL">Todos los estados</option>
-          <option value="PENDING">Pendiente</option>
-          <option value="VERIFIED">Verificada</option>
-          <option value="REJECTED">Rechazada</option>
-        </select>
+        <div className="relative inline-block">
+          <select
+            className="control appearance-none pr-9"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Todos los estados</option>
+            <option value="PENDING">Pendiente</option>
+            <option value="VERIFIED">Verificada</option>
+            <option value="REJECTED">Rechazada</option>
+          </select>
+          <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        </div>
         <label className="relative block w-full max-w-xs">
           <Search className="absolute left-3 top-3 text-slate-400" size={18} />
           <input
@@ -2783,8 +2917,8 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-6">
           <div>
             <h2 className="text-lg font-black">{editing
               ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
@@ -2801,9 +2935,11 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
             </button>
           )}
         </div>
+        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${formOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
         {formOpen && (
           <form
-            className="mt-6"
+            className="px-6 pb-6"
             onSubmit={async (event) => {
               event.preventDefault();
               if (!roleCode || !processId) return;
@@ -2874,30 +3010,36 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
                 </div>
               )}
               <Field label="Área dentro del flujo">
-                <select
-                  required
-                  className="control w-full"
-                  value={group}
-                  onChange={(event) => {
-                    setGroup(event.target.value as ProfessionalRoleGroup);
-                    setRoleCode("");
-                  }}
-                >
-                  <option value="">Seleccionar área</option>
-                  {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
-                </select>
+                <div className="relative">
+                  <select
+                    required
+                    className="control w-full appearance-none pr-9"
+                    value={group}
+                    onChange={(event) => {
+                      setGroup(event.target.value as ProfessionalRoleGroup);
+                      setRoleCode("");
+                    }}
+                  >
+                    <option value="">Seleccionar área</option>
+                    {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
+                  </select>
+                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                </div>
               </Field>
               <Field label="Rol u ocupación">
-                <select
-                  required
-                  disabled={!group}
-                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-                  value={roleCode}
-                  onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
-                >
-                  <option value="">Seleccionar rol</option>
-                  {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
-                </select>
+                <div className="relative">
+                  <select
+                    required
+                    disabled={!group}
+                    className="control w-full appearance-none pr-9 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    value={roleCode}
+                    onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
+                  >
+                    <option value="">Seleccionar rol</option>
+                    {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
+                  </select>
+                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                </div>
               </Field>
               <Field label="Título o profesión (opcional)">
                 <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
@@ -2916,6 +3058,8 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
             </div>
           </form>
         )}
+        </div>
+        </div>
       </section>
 
       <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
@@ -3085,6 +3229,10 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
   const [localError, setLocalError] = useState("");
   const [editorVersion, setEditorVersion] = useState<RubricVersion | null>(null);
   const [previewVersion, setPreviewVersion] = useState<RubricVersion | null>(null);
+  const [sort, setSort] = useState<{ key: "name" | "instrument"; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  function toggleSort(key: "name" | "instrument") {
+    setSort((current) => (current.key === key ? { key, dir: current.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
   async function load() {
     const [nextCatalog, nextAssignments] = await Promise.all([prekinderApi.rubrics(), prekinderApi.rubricAssignments(processId)]);
     const details = await Promise.all(nextCatalog.map((rubric) => prekinderApi.rubricDetail(rubric.rubricId)));
@@ -3168,21 +3316,32 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
       {localError && <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{localError}</p>}
       <form className="grid gap-4 rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:grid-cols-[1fr_240px_auto] md:items-end" onSubmit={(event) => { event.preventDefault(); if (name.trim()) void run(createRubric); }}>
         <Field label="Nombre de la nueva pauta"><input className="control w-full" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} placeholder="Pauta de observación 2027" /></Field>
-        <Field label="Instrumento"><select className="control w-full" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
+        <Field label="Instrumento">
+          <div className="relative">
+            <select className="control w-full appearance-none pr-9" value={instrument} onChange={(e) => setInstrument(e.target.value)}>{Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
+        </Field>
         <button className="primary" disabled={busy || localBusy || !name.trim()}>Crear borrador</button>
       </form>
       <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
-        {!catalog.length ? <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p> : catalog.map((rubric) => {
-          const rubricVersions = versions[rubric.rubricId] ?? [];
-          const draft = rubricVersions.find((version) => version.status === "DRAFT");
-          const published = rubricVersions.find((version) => version.status === "PUBLISHED");
-          const assigned = assignments.find((item) => item.instrumentCode === rubric.instrumentCode && item.rubricId === rubric.rubricId);
-          return <article key={rubric.rubricId} className="border-b border-slate-100 p-6 last:border-b-0">
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap gap-2"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-900">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>{published && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-800">Publicada · v{published.version}</span>}{draft && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-900">Borrador · v{draft.version}</span>}</div>
-                <h3 className="mt-3 text-lg font-black text-slate-950">{rubric.name}</h3>
-                <p className="mt-1 text-sm text-slate-500">{rubric.versionCount} versiones · {published?.criteriaCount ?? draft?.criteriaCount ?? 0} criterios {assigned ? "· asociada a este proceso" : ""}</p>
+        {!catalog.length ? (
+          <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[1040px]">
+              <div className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("name")}>
+                  Pauta
+                  {sort.key === "name" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
+                </button>
+                <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("instrument")}>
+                  Instrumento
+                  {sort.key === "instrument" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
+                </button>
+                <span className="text-center leading-tight">Versión publicada</span>
+                <span className="text-center whitespace-nowrap">Borrador</span>
+                <span className="text-center whitespace-nowrap">Acción</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
@@ -3191,8 +3350,8 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
                 {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
               </div>
             </div>
-          </article>;
-        })}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -3290,31 +3449,41 @@ function Decisions({
   );
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-end gap-3">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start gap-4">
           <div className="mr-auto">
-            <h2 className="font-black">Liberación masiva de resultados</h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <h2 className="text-lg font-black">Liberación masiva de resultados</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
               Previsualiza el lote antes de confirmar. El portal se publica primero y el correo se entrega mediante la cola segura.
             </p>
           </div>
-          <Field label="Modalidad"><select className="control" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}><option value="IMMEDIATE">Inmediata</option><option value="SCHEDULED">Programada</option></select></Field>
-          {mode === "SCHEDULED" && <Field label="Fecha y hora">
-            <input
-              className="control"
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-            />
-          </Field>}
-          <button
-            className="secondary"
-            disabled={busy}
-            onClick={() => void onAction(async () => { const result = await prekinderApi.publicationPreview(processId); setPreview(result); return result; }, "Previsualización actualizada.")}
-          >
-            Previsualizar
-          </button>
-          <button className="primary" disabled={busy || !preview || preview.blocked.length > 0 || preview.eligible.length === 0 || (mode === "SCHEDULED" && !scheduledAt)} onClick={() => void onAction(() => prekinderApi.createPublicationBatch(processId, { previewId: preview!.previewId, idempotencyKey: crypto.randomUUID(), mode, scheduledAt: mode === "SCHEDULED" ? new Date(scheduledAt).toISOString() : null }), mode === "IMMEDIATE" ? "Publicación inmediata confirmada." : "Publicación programada.")}>Confirmar lote</button>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Modalidad">
+              <div className="relative inline-block">
+                <select className="control appearance-none pr-9" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>
+                  <option value="IMMEDIATE">Inmediata</option>
+                  <option value="SCHEDULED">Programada</option>
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              </div>
+            </Field>
+            {mode === "SCHEDULED" && <Field label="Fecha y hora">
+              <input
+                className="control"
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+            </Field>}
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() => void onAction(async () => { const result = await prekinderApi.publicationPreview(processId); setPreview(result); return result; }, "Previsualización actualizada.")}
+            >
+              Previsualizar
+            </button>
+            <button className="primary" disabled={busy || !preview || preview.blocked.length > 0 || preview.eligible.length === 0 || (mode === "SCHEDULED" && !scheduledAt)} onClick={() => void onAction(() => prekinderApi.createPublicationBatch(processId, { previewId: preview!.previewId, idempotencyKey: crypto.randomUUID(), mode, scheduledAt: mode === "SCHEDULED" ? new Date(scheduledAt).toISOString() : null }), mode === "IMMEDIATE" ? "Publicación inmediata confirmada." : "Publicación programada.")}>Confirmar lote</button>
+          </div>
         </div>
         {preview && <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3" aria-live="polite"><div><p className="text-2xl font-black text-emerald-700">{preview.eligible.length}</p><p className="text-xs text-slate-500">elegibles</p></div><div><p className="text-2xl font-black text-red-700">{preview.blocked.length}</p><p className="text-xs text-slate-500">bloqueadas</p></div><div><p className="text-2xl font-black text-slate-500">{preview.skipped.length}</p><p className="text-xs text-slate-500">ya publicadas o programadas</p></div>{preview.blocked.length > 0 && <p className="sm:col-span-3 text-sm font-semibold text-red-800" role="alert">Resuelve las decisiones o destinatarios faltantes y vuelve a previsualizar.</p>}</div>}
       </section>
@@ -3356,15 +3525,18 @@ function DecisionRow({
           {waveNames[app.eligibilityCategory]}
         </p>
       </div>
-      <select
-        className="control"
-        value={decision}
-        onChange={(e) => setDecision(e.target.value as typeof decision)}
-      >
-        <option value="ACCEPTED">Aceptado</option>
-        <option value="WAITLIST">Lista de espera</option>
-        <option value="REJECTED">Rechazado</option>
-      </select>
+      <div className="relative">
+        <select
+          className="control w-full appearance-none pr-9"
+          value={decision}
+          onChange={(e) => setDecision(e.target.value as typeof decision)}
+        >
+          <option value="ACCEPTED">Aceptado</option>
+          <option value="WAITLIST">Lista de espera</option>
+          <option value="REJECTED">Rechazado</option>
+        </select>
+        <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+      </div>
       <input
         className="control"
         value={note}

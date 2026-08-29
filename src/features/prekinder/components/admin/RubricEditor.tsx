@@ -3,6 +3,8 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  ChevronDown,
+  ChevronRight,
   Plus,
   Save,
   Trash2,
@@ -54,6 +56,32 @@ function blankOption(value: number): EditableOption {
     descriptor: "",
     professionallyValidated: false,
   };
+}
+
+function slugifyCode(name: string, fallback: string): string {
+  const base = name
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+  return base || fallback;
+}
+
+function uniqueCode(base: string, index: number, criteria: EditableCriterion[]): string {
+  const used = new Set(
+    criteria.filter((_, criterionIndex) => criterionIndex !== index).map((criterion) => criterion.code),
+  );
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  let candidate = `${base}_${suffix}`.slice(0, 64);
+  while (used.has(candidate)) {
+    suffix += 1;
+    candidate = `${base}_${suffix}`.slice(0, 64);
+  }
+  return candidate;
 }
 
 function blankCriterion(position: number): EditableCriterion {
@@ -174,6 +202,7 @@ export function RubricEditor({
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const readOnly = version.status !== "DRAFT";
   const dirty = JSON.stringify(state) !== baseline;
   const maximumScore = state.criteria.reduce((total, criterion) => {
@@ -191,11 +220,33 @@ export function RubricEditor({
     }));
   }
 
+  function updateCriterionName(index: number, name: string) {
+    setSaved(false);
+    setState((current) => {
+      const fallback = `CRITERIO_${index + 1}`;
+      const code = uniqueCode(slugifyCode(name, fallback), index, current.criteria);
+      return {
+        ...current,
+        criteria: current.criteria.map((criterion, criterionIndex) =>
+          criterionIndex === index ? { ...criterion, name, code } : criterion),
+      };
+    });
+  }
+
   function updateOption(criterionIndex: number, optionIndex: number, change: Partial<EditableOption>) {
     const criterion = state.criteria[criterionIndex];
     updateCriterion(criterionIndex, {
       options: criterion.options.map((option, currentIndex) =>
         currentIndex === optionIndex ? { ...option, ...change } : option),
+    });
+  }
+
+  function toggleExpanded(clientId: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(clientId)) next.delete(clientId);
+      else next.add(clientId);
+      return next;
     });
   }
 
@@ -264,23 +315,26 @@ export function RubricEditor({
 
   return (
     <section className="overflow-hidden rounded-2xl bg-white shadow-[0_14px_34px_rgba(15,23,42,0.07)]" aria-labelledby="rubric-editor-title">
-      <header className="relative border-b border-slate-200 bg-slate-950 py-5 pl-5 pr-16 text-white sm:pl-7 sm:pr-20">
+      <header className="relative border-b border-slate-200 bg-white py-5 pl-5 pr-16 sm:pl-7 sm:pr-20">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-extrabold text-amber-300">
-            <span>{readOnly ? "Vista protegida" : "Edición de borrador"}</span>
-            <span aria-hidden="true">·</span>
-            <span>Versión {version.version}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-red-600">
+              {readOnly ? "Vista protegida" : "Borrador"}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-extrabold text-slate-700">
+              Versión {version.version}
+            </span>
           </div>
-          <h2 id="rubric-editor-title" className="mt-2 break-words text-xl font-black sm:text-2xl">
+          <h2 id="rubric-editor-title" className="mt-2 break-words text-xl font-black text-slate-950 sm:text-2xl">
             {state.name || "Nueva pauta sin nombre"}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             {readOnly
               ? "Esta versión publicada es inmutable. Revísala aquí o crea una nueva versión para modificarla."
               : "Define exactamente qué observar, las respuestas disponibles y el puntaje de cada nivel."}
           </p>
         </div>
-        <button type="button" className="absolute right-3 top-3 grid min-h-11 min-w-11 place-items-center rounded-xl text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 sm:right-5 sm:top-4" onClick={close} aria-label="Cerrar editor">
+        <button type="button" className="absolute right-3 top-3 grid min-h-11 min-w-11 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 sm:right-5 sm:top-4" onClick={close} aria-label="Cerrar editor">
           <X size={20} />
         </button>
       </header>
@@ -290,60 +344,81 @@ export function RubricEditor({
           <input className="control w-full" value={state.name} disabled={readOnly || busy} maxLength={160} onChange={(event) => { setSaved(false); setState((current) => ({ ...current, name: event.target.value })); }} />
         </Field>
         <Field label="Instrumento">
-          <select className="control w-full" value={state.instrumentCode} disabled={readOnly || busy} onChange={(event) => { setSaved(false); setState((current) => ({ ...current, instrumentCode: event.target.value })); }}>
-            {Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-          </select>
+          <div className="relative">
+            <select className="control w-full appearance-none pr-9" value={state.instrumentCode} disabled={readOnly || busy} onChange={(event) => { setSaved(false); setState((current) => ({ ...current, instrumentCode: event.target.value })); }}>
+              {Object.entries(instrumentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
         </Field>
-        <div className="flex gap-6 pb-2 text-sm">
-          <span><b className="block text-lg text-slate-950">{state.criteria.length}</b><span className="text-slate-500">criterios</span></span>
-          <span><b className="block text-lg text-slate-950">{maximumScore}</b><span className="text-slate-500">puntaje máximo</span></span>
+        <div className="flex gap-6">
+          <span className="grid min-w-0 gap-1.5 text-center text-sm font-bold text-slate-800">
+            <span>Criterios</span>
+            <span className="text-lg font-black text-slate-950">{state.criteria.length}</span>
+          </span>
+          <span className="grid min-w-0 gap-1.5 text-center text-sm font-bold text-slate-800">
+            <span>Puntaje máximo</span>
+            <span className="text-lg font-black text-slate-950">{maximumScore}</span>
+          </span>
         </div>
       </div>
 
-      <div className="space-y-8 px-5 py-7 sm:px-7">
-        {state.criteria.map((criterion, criterionIndex) => (
-          <fieldset key={criterion.clientId} className="min-w-0 border-0 border-b border-slate-200 pb-8 last:border-b-0 last:pb-0" disabled={readOnly || busy}>
-            <legend className="sr-only">Criterio {criterionIndex + 1}</legend>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-black text-slate-950">Criterio {criterionIndex + 1}</h3>
-                <p className="text-sm text-slate-500">Se mostrará en este orden durante la evaluación.</p>
-              </div>
-              {!readOnly && <div className="flex gap-1">
+      <div className="space-y-3 px-5 py-7 sm:px-7">
+        {state.criteria.map((criterion, criterionIndex) => {
+          const isExpanded = expandedIds.has(criterion.clientId);
+          return (
+          <div key={criterion.clientId} className="min-w-0 rounded-xl border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                onClick={() => toggleExpanded(criterion.clientId)}
+                aria-expanded={isExpanded}
+              >
+                {isExpanded ? <ChevronDown size={18} className="shrink-0 text-slate-500" /> : <ChevronRight size={18} className="shrink-0 text-slate-500" />}
+                <span className="min-w-0">
+                  <span className="block leading-tight text-sm font-black text-slate-950">
+                    Criterio {criterionIndex + 1}{criterion.name ? ` · ${criterion.name}` : ""}
+                  </span>
+                  {!isExpanded && (
+                    <span className="mt-1 block truncate leading-tight text-xs text-slate-500">
+                      {criterion.options.length} opciones{criterion.required ? " · obligatorio" : ""}
+                    </span>
+                  )}
+                </span>
+              </button>
+              {!readOnly && <div className="flex shrink-0 gap-1">
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, -1)} disabled={busy || criterionIndex === 0} aria-label={`Subir criterio ${criterionIndex + 1}`}><ArrowUp size={18} /></button>
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-35" onClick={() => moveCriterion(criterionIndex, 1)} disabled={busy || criterionIndex === state.criteria.length - 1} aria-label={`Bajar criterio ${criterionIndex + 1}`}><ArrowDown size={18} /></button>
                 <button type="button" className="grid min-h-11 min-w-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-35" onClick={() => { setSaved(false); setError(""); setState((current) => ({ ...current, criteria: current.criteria.filter((_, index) => index !== criterionIndex) })); }} disabled={busy || state.criteria.length === 1} aria-label={`Eliminar criterio ${criterionIndex + 1}`}><Trash2 size={18} /></button>
               </div>}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-[minmax(150px,0.45fr)_minmax(240px,1fr)]">
-              <Field label="Código interno">
-                <input className="control w-full uppercase" value={criterion.code} maxLength={64} onChange={(event) => updateCriterion(criterionIndex, { code: event.target.value.replace(/[^A-Za-z0-9_]/g, "_").toUpperCase() })} />
-              </Field>
+            {isExpanded && <fieldset className="border-t border-slate-200 px-4 pb-5 pt-4 sm:px-5" disabled={readOnly || busy}>
+            <legend className="sr-only">Criterio {criterionIndex + 1}</legend>
+            <div className="grid gap-3">
               <Field label="Nombre del criterio">
-                <input className="control w-full" value={criterion.name} maxLength={160} placeholder="Ej. Sigue instrucciones simples" onChange={(event) => updateCriterion(criterionIndex, { name: event.target.value })} />
+                <input className="control w-full" value={criterion.name} maxLength={160} placeholder="Ej. Sigue instrucciones simples" onChange={(event) => updateCriterionName(criterionIndex, event.target.value)} />
               </Field>
-              <div className="sm:col-span-2">
-                <Field label="Qué debe observar el evaluador">
-                  <textarea className="control min-h-24 w-full resize-y" value={criterion.descriptor} maxLength={2000} placeholder="Describe la conducta o evidencia observable, sin ambigüedades." onChange={(event) => updateCriterion(criterionIndex, { descriptor: event.target.value })} />
-                </Field>
-              </div>
-              <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-800 sm:col-span-2">
+              <Field label="Qué debe observar el evaluador">
+                <textarea className="control min-h-11 w-full resize-y py-2" rows={2} value={criterion.descriptor} maxLength={2000} placeholder="Describe la conducta o evidencia observable, sin ambigüedades." onChange={(event) => updateCriterion(criterionIndex, { descriptor: event.target.value })} />
+              </Field>
+              <label className="flex min-h-9 items-center gap-3 text-sm font-bold text-slate-800">
                 <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-blue-700 focus:ring-blue-700" checked={criterion.required} onChange={(event) => updateCriterion(criterionIndex, { required: event.target.checked })} />
                 Respuesta obligatoria para completar la pauta
               </label>
             </div>
 
-            <div className="mt-6 overflow-x-auto">
-              <div className="min-w-[760px]">
-                <div className="grid grid-cols-[90px_180px_minmax(260px,1fr)_150px_48px] gap-3 border-b border-slate-200 pb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+            <div className="mt-4 overflow-x-auto">
+              <div className="min-w-[670px]">
+                <div className="grid grid-cols-[90px_90px_minmax(260px,1fr)_150px_48px] gap-3 border-b border-slate-200 pb-1.5 text-xs font-black uppercase tracking-wide text-slate-500">
                   <span>Puntaje</span><span>Etiqueta</span><span>Descriptor observable</span><span>Validación</span><span className="sr-only">Acción</span>
                 </div>
                 {criterion.options.map((option, optionIndex) => (
-                  <div key={option.clientId} className="grid grid-cols-[90px_180px_minmax(260px,1fr)_150px_48px] items-start gap-3 border-b border-slate-100 py-3 last:border-b-0">
+                  <div key={option.clientId} className="grid grid-cols-[90px_90px_minmax(260px,1fr)_150px_48px] items-start gap-3 border-b border-slate-100 py-2 last:border-b-0">
                     <input type="number" min="0" step="0.01" className="control w-full" value={option.value} aria-label={`Puntaje de opción ${optionIndex + 1}`} onChange={(event) => updateOption(criterionIndex, optionIndex, { value: event.target.value })} />
                     <input className="control w-full" value={option.label} maxLength={160} aria-label={`Etiqueta de opción ${optionIndex + 1}`} onChange={(event) => updateOption(criterionIndex, optionIndex, { label: event.target.value })} />
-                    <textarea className="control min-h-20 w-full resize-y" value={option.descriptor} maxLength={2000} aria-label={`Descriptor de opción ${optionIndex + 1}`} onChange={(event) => updateOption(criterionIndex, optionIndex, { descriptor: event.target.value })} />
+                    <textarea className="control min-h-11 w-full resize-y py-2" rows={1} value={option.descriptor} maxLength={2000} aria-label={`Descriptor de opción ${optionIndex + 1}`} onChange={(event) => updateOption(criterionIndex, optionIndex, { descriptor: event.target.value })} />
                     <label className="flex min-h-11 items-center gap-2 text-xs font-bold text-slate-700">
                       <input type="checkbox" className="h-5 w-5 rounded border-slate-300 text-blue-700 focus:ring-blue-700" checked={option.professionallyValidated} onChange={(event) => updateOption(criterionIndex, optionIndex, { professionallyValidated: event.target.checked })} />
                       Profesional
@@ -354,10 +429,12 @@ export function RubricEditor({
                 {!readOnly && <button type="button" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-black text-blue-800 hover:bg-blue-50" onClick={() => updateCriterion(criterionIndex, { options: [...criterion.options, blankOption(criterion.options.length)] })}><Plus size={17} />Agregar opción</button>}
               </div>
             </div>
-          </fieldset>
-        ))}
+            </fieldset>}
+          </div>
+          );
+        })}
 
-        {!readOnly && <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-blue-300 px-4 text-sm font-black text-blue-800 hover:border-blue-500 hover:bg-blue-50" disabled={busy} onClick={() => { setSaved(false); setState((current) => ({ ...current, criteria: [...current.criteria, blankCriterion(current.criteria.length)] })); }}><Plus size={18} />Agregar criterio</button>}
+        {!readOnly && <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-blue-300 px-4 text-sm font-black text-blue-800 hover:border-blue-500 hover:bg-blue-50" disabled={busy} onClick={() => { setSaved(false); const created = blankCriterion(state.criteria.length); setState((current) => ({ ...current, criteria: [...current.criteria, created] })); setExpandedIds((current) => new Set(current).add(created.clientId)); }}><Plus size={18} />Agregar criterio</button>}
       </div>
 
       {(error || saved) && <div className={`mx-5 mb-5 flex items-start gap-2 rounded-xl p-4 text-sm font-semibold sm:mx-7 ${error ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800"}`} role={error ? "alert" : "status"} aria-live="polite">

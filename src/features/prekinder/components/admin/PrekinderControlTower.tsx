@@ -7,9 +7,9 @@ import {
   ArrowUpDown,
   BarChart3,
   CalendarClock,
-  CalendarDays,
   Check,
   CheckCircle2,
+  ChevronRight,
   CircleAlert,
   ClipboardCheck,
   Clock3,
@@ -18,8 +18,10 @@ import {
   LayoutDashboard,
   LogIn,
   ListChecks,
+  Pencil,
   Plus,
   Search,
+  Trash2,
   Users,
   UsersRound,
   UserCheck,
@@ -33,6 +35,7 @@ import {
   type Professional,
   type Room,
 } from "../../services/api";
+import type { EvaluationJourney } from "../../data/evaluationJourneys";
 
 type Props = {
   processId: string;
@@ -47,6 +50,12 @@ type Props = {
   onSelect: (id: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onDateChange: (date: string) => void;
+  journeys: EvaluationJourney[];
+  selectedJourneyId: string | null;
+  onSelectJourney: (id: string) => void;
+  onCreateJourney: (name: string, date: string) => void;
+  onRenameJourney: (id: string, name: string, date: string) => void;
+  onDeleteJourney: (id: string) => void;
 };
 
 const fixedTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
@@ -283,9 +292,10 @@ export function PrekinderControlTower(props: Props) {
 }
 
 function TowerHome(props: Props) {
-  const { groups, rooms, applications, selected, controlTower } = props;
+  const { groups, rooms, applications, selected, controlTower, journeys, selectedJourneyId } = props;
   const [creating, setCreating] = useState<{ roomId: string; time: string } | null>(null);
   const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
+  const activeJourney = journeys.find((journey) => journey.id === selectedJourneyId) ?? null;
 
   const towerGroupsById = useMemo(() => new Map(
     (controlTower?.rooms ?? []).flatMap((room) => room.groups).map((group) => [group.groupId, group]),
@@ -316,32 +326,8 @@ function TowerHome(props: Props) {
   const alertedGroups = new Set(alerts.map((alert) => alert.groupId)).size;
   const incidentCount = controlTower?.summary.openIncidents ?? 0;
 
-  return (
+  const expandedContent = (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-950">Torre de control</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Coordina en tiempo real la recepción, asignación de salas y avance de la jornada de evaluación.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="block text-xs font-black text-slate-600">
-            Día de la jornada
-            <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-100">
-              <CalendarDays size={17} className="shrink-0 text-blue-700" aria-hidden="true" />
-              <input
-                className="min-w-0 bg-transparent text-sm font-black text-slate-950 outline-none"
-                type="date"
-                value={props.date}
-                onChange={(event) => {
-                  if (event.target.value) props.onDateChange(event.target.value);
-                }}
-              />
-            </span>
-          </label>
-        </div>
-      </div>
       <section className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={CalendarClock} label="Bloques del día" value={groups.length} detail={`${rooms.length} salas activas`} />
         <Metric icon={Users} label="Postulantes asignados" value={occupied} detail={`${controlTower?.summary.present ?? 0} presentes · ${capacity || 0} cupos`} />
@@ -358,7 +344,7 @@ function TowerHome(props: Props) {
             <div>
               <h2 className="text-xl font-black text-slate-950">Salas y bloques de la jornada</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Distribución del <strong className="font-black text-slate-900">{formatDay(props.date)}</strong>. Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.
+                Selecciona un bloque para revisar sus postulantes o un espacio libre para crear uno.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -390,11 +376,254 @@ function TowerHome(props: Props) {
 
         <GroupPanel {...props} />
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-950">Torre de control</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Coordina en tiempo real la recepción, asignación de salas y avance de la jornada de evaluación.
+          </p>
+        </div>
+      </div>
+
+      <JourneyManager
+        journeys={journeys}
+        selectedJourneyId={selectedJourneyId}
+        busy={props.busy}
+        onSelect={props.onSelectJourney}
+        onCreate={props.onCreateJourney}
+        onRename={props.onRenameJourney}
+        onDelete={props.onDeleteJourney}
+        expandedContent={activeJourney ? expandedContent : null}
+      />
 
       {creating && (
         <CreateGroupDialog {...props} roomId={creating.roomId} initialTime={creating.time} onClose={() => setCreating(null)} />
       )}
     </div>
+  );
+}
+
+function JourneyManager({
+  journeys,
+  selectedJourneyId,
+  busy,
+  onSelect,
+  onCreate,
+  onRename,
+  onDelete,
+  expandedContent,
+}: {
+  journeys: EvaluationJourney[];
+  selectedJourneyId: string | null;
+  busy: boolean;
+  onSelect: (id: string) => void;
+  onCreate: (name: string, date: string) => void;
+  onRename: (id: string, name: string, date: string) => void;
+  onDelete: (id: string) => void;
+  expandedContent: ReactNode;
+}) {
+  const [editing, setEditing] = useState<EvaluationJourney | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const sorted = [...journeys].sort((a, b) => a.date.localeCompare(b.date));
+
+  function clearForm() {
+    setEditing(null);
+    setFormOpen(false);
+    setName("");
+    setDate("");
+  }
+
+  function edit(journey: EvaluationJourney) {
+    setEditing(journey);
+    setFormOpen(true);
+    setName(journey.name);
+    setDate(journey.date);
+  }
+
+  function toggleRow(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      onSelect(id);
+    }
+  }
+
+  const canSave = Boolean(name.trim() && date);
+
+  return (
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-6">
+          <div>
+            <h2 className="text-lg font-black">{editing ? `Editar ${editing.name}` : "Nueva jornada de evaluación"}</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              {formOpen
+                ? "Asigna un nombre y una fecha para poder revisar sus salas y bloques."
+                : "Registra una nueva jornada de evaluación para el proceso."}
+            </p>
+          </div>
+          {!formOpen && (
+            <button type="button" className="primary shrink-0 self-start" onClick={() => setFormOpen(true)}>
+              <Plus className="mr-2" size={16} /> Agregar jornada de evaluación
+            </button>
+          )}
+        </div>
+        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${formOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <div className="overflow-hidden">
+            {formOpen && (
+              <form
+                className="px-6 pb-6"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!canSave) return;
+                  if (editing) onRename(editing.id, name.trim(), date);
+                  else onCreate(name.trim(), date);
+                  clearForm();
+                }}
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Nombre de la jornada">
+                    <input
+                      required
+                      className="control w-full"
+                      value={name}
+                      maxLength={80}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="Ej. Jornada para hermanos"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field label="Fecha de la jornada">
+                    <input
+                      required
+                      type="date"
+                      className="control w-full"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </Field>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button className="primary" disabled={busy || !canSave}>
+                    {editing ? "Guardar cambios" : "Crear jornada de evaluación"}
+                  </button>
+                  <button type="button" className="secondary" disabled={busy} onClick={clearForm}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-black">Jornadas de evaluación</h2>
+        <p className="mt-1 text-sm leading-5 text-slate-600">
+          {journeys.length} jornada{journeys.length === 1 ? "" : "s"} creada{journeys.length === 1 ? "" : "s"}. Selecciona una para revisar sus salas y bloques.
+        </p>
+        {!sorted.length ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
+            Aún no hay jornadas de evaluación. Usa el formulario para agregar la primera.
+          </div>
+        ) : (
+          <div className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200">
+            {sorted.map((journey) => {
+              const expanded = journey.id === expandedId;
+              return (
+                <div key={journey.id}>
+                  <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors ${expanded ? "bg-blue-50" : "hover:bg-slate-50"}`}>
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      onClick={() => toggleRow(journey.id)}
+                      aria-expanded={expanded}
+                    >
+                      <ChevronRight size={16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-90 text-blue-700" : ""}`} />
+                      <span className="min-w-0 truncate font-black text-slate-900">{journey.name}</span>
+                      <span className="shrink-0 text-sm font-semibold text-slate-500">{formatDay(journey.date)}</span>
+                    </button>
+                    <div className="flex shrink-0 gap-2">
+                      {deletingId === journey.id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={busy}
+                            onClick={() => {
+                              onDelete(journey.id);
+                              setDeletingId(null);
+                            }}
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            type="button"
+                            className="min-h-9 rounded-lg border border-slate-300 px-3 text-xs font-black text-slate-700 transition hover:bg-slate-100"
+                            onClick={() => setDeletingId(null)}
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                            onClick={() => edit(journey)}
+                            aria-label={`Editar ${journey.name}`}
+                            title="Editar jornada"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-700"
+                            onClick={() => setDeletingId(journey.id)}
+                            aria-label={`Eliminar ${journey.name}`}
+                            title="Eliminar jornada"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {expanded && (
+                    <div className="border-t border-slate-200 bg-slate-50 p-5">
+                      {journey.id === selectedJourneyId
+                        ? expandedContent
+                        : (
+                          <p className="py-6 text-center text-sm font-semibold text-slate-500">Cargando salas y bloques…</p>
+                        )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block text-sm font-bold text-slate-700">
+      {label}
+      <div className="mt-1">{children}</div>
+    </label>
   );
 }
 
@@ -1000,7 +1229,7 @@ function CreateGroupDialog({
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-bold text-slate-700">Código del grupo
+            <label className="block text-sm font-bold text-slate-700">Nombre del grupo
               <input className="control mt-1 w-full" value={code} maxLength={64} onChange={(event) => setCode(event.target.value)} placeholder="Ej. PK-A-0900" autoFocus />
             </label>
             <label className="block text-sm font-bold text-slate-700">Modalidad
