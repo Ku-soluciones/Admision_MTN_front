@@ -168,6 +168,9 @@ function translateConfirmError(err: unknown): { title: string; detail: string } 
 function ConfirmGroupSection({ group, canConfirm, busy, onAction, rubricMissing }: { group: EvaluationGroup; canConfirm: boolean; busy: boolean; onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>; rubricMissing?: boolean; }) {
   const [error, setError] = useState<{ title: string; detail: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const isConfirmed = group.status !== "DRAFT";
 
   function handleConfirm() {
     if (!canConfirm || confirming) return;
@@ -187,15 +190,24 @@ function ConfirmGroupSection({ group, canConfirm, busy, onAction, rubricMissing 
       },
       "Grupo listo para evaluación.",
     ).then((ok) => {
-      if (!ok) setConfirming(false);
+      if (!ok) {
+        setConfirming(false);
+      } else {
+        setConfirming(false);
+        setSuccess(true);
+      }
     });
   }
 
-  const statusMessage = canConfirm
-    ? "El grupo cumple las condiciones y puede quedar listo."
-    : rubricMissing
-      ? "La pauta de evaluación no está asignada al proceso. Ve a 'Pautas' y asígnala."
-      : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`;
+  const statusMessage = isConfirmed
+    ? "El grupo ya está confirmado. Los evaluadores tienen sus asignaciones."
+    : success
+      ? "La evaluación fue creada exitosamente."
+      : canConfirm
+        ? "El grupo cumple las condiciones y puede quedar listo."
+        : rubricMissing
+          ? "La pauta de evaluación no está asignada al proceso. Ve a 'Pautas' y asígnala."
+          : `Postulantes ${group.memberIds.length}/${group.capacity} · equipo asignado ${group.evaluatorIds.length}/${group.requiredEvaluators}.`;
 
   return (
     <div className="rounded-xl bg-slate-50 p-4">
@@ -209,13 +221,25 @@ function ConfirmGroupSection({ group, canConfirm, busy, onAction, rubricMissing 
           <p className="mt-0.5 text-xs text-red-700">{error.detail}</p>
         </div>
       )}
+      {isConfirmed && !success && (
+        <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3" role="alert">
+          <p className="text-sm font-black text-emerald-800">✓ Grupo confirmado</p>
+          <p className="mt-0.5 text-xs text-emerald-700">Los evaluadores pueden ver sus asignaciones en la agenda.</p>
+        </div>
+      )}
+      {success && (
+        <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3" role="alert">
+          <p className="text-sm font-black text-emerald-800">✓ Evaluación creada</p>
+          <p className="mt-0.5 text-xs text-emerald-700">Los evaluadores pueden ver sus asignaciones en la agenda.</p>
+        </div>
+      )}
       <button
-        className="primary mt-3 w-full"
-        disabled={busy || !canConfirm || confirming}
+        className={isConfirmed || success ? "mt-3 w-full cursor-default bg-emerald-100 text-emerald-800" : "primary mt-3 w-full"}
+        disabled={busy || !canConfirm || confirming || success || isConfirmed}
         onClick={handleConfirm}
       >
         <CheckCircle2 className="mr-2 inline" size={17} />
-        {confirming ? "Confirmando…" : "Marcar listo para evaluación"}
+        {confirming ? "Confirmando…" : success ? "Evaluación creada" : isConfirmed ? "Grupo confirmado" : "Marcar listo para evaluación"}
       </button>
     </div>
   );
