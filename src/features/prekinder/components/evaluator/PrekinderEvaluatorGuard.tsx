@@ -21,12 +21,12 @@ function today() {
   }).format(new Date());
 }
 
-function cachedWorkspace(): EvaluatorWorkspace | null {
+function cachedWorkspace(shortInstrument: string): EvaluatorWorkspace | null {
   try {
-    const raw = sessionStorage.getItem("pk-workspace-cache");
+    const raw = sessionStorage.getItem(`pk-workspace-cache-${shortInstrument}`);
     return raw ? JSON.parse(raw) as EvaluatorWorkspace : null;
   } catch {
-    sessionStorage.removeItem("pk-workspace-cache");
+    sessionStorage.removeItem(`pk-workspace-cache-${shortInstrument}`);
     return null;
   }
 }
@@ -38,7 +38,8 @@ export function PrekinderEvaluatorGuard({
 }: GuardProps) {
   const session = useAuthStore((state) => state);
   const location = useLocation();
-  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(cachedWorkspace);
+  const requiredShort = PROFILE_TO_SHORT_INSTRUMENT[profile];
+  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(() => cachedWorkspace(requiredShort));
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function PrekinderEvaluatorGuard({
         const nextWorkspace = await prekinderApi.evaluatorWorkspace(today());
         if (cancelled) return;
         setWorkspace(nextWorkspace);
-        sessionStorage.setItem("pk-workspace-cache", JSON.stringify(nextWorkspace));
+        sessionStorage.setItem(`pk-workspace-cache-${requiredShort}`, JSON.stringify(nextWorkspace));
       } catch {
         // La vista de acceso denegado maneja la recuperación sin exponer datos de sesión.
       } finally {
@@ -64,7 +65,7 @@ export function PrekinderEvaluatorGuard({
     return () => {
       cancelled = true;
     };
-  }, [workspace]);
+  }, [workspace, requiredShort]);
 
   if (checking) {
     return (
@@ -83,7 +84,6 @@ export function PrekinderEvaluatorGuard({
   }
 
   // Check if the evaluator has access to this instrument
-  const requiredShort = PROFILE_TO_SHORT_INSTRUMENT[profile];
   const hasAccess = workspace?.instruments.some(
     (w) => w.instrument.instrumentCode === requiredShort && w.instrument.active,
   );
