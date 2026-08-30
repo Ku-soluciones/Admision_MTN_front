@@ -63,7 +63,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
   const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
-  const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
+    const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
@@ -72,8 +72,23 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
   const [editableStatus, setEditableStatus] = useState<{ [appId: string]: boolean }>({});
   const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const countdownRef = useRef<number | null>(null);
+  const [explicitlySelected, setExplicitlySelected] = useState<Set<string>>(new Set());
 
   const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
+
+  async function loadRubric(reportId: string) {
+    try {
+      const report = await prekinderApi.report(reportId);
+      const sorted = report.criteria.map((c) => ({
+        ...c,
+        options: [...c.options].sort((a, b) => a.position - b.position),
+      }));
+      setRubricCriteria(sorted);
+      setReportsData((current) => ({ ...current, [report.header.applicationId]: report }));
+    } catch (err) {
+      console.error("Error loading rubric:", err);
+    }
+  }
 
   async function loadAllReports() {
     if (!selectedAssignment) return;
@@ -91,13 +106,15 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
       setEditableStatus(editableMap);
       const mins = getMinutesUntil(selectedAssignment.group.startsAt);
       setMinutesUntilStart(mins);
-      const firstReport = Object.values(reportsMap)[0];
-      if (firstReport && rubricCriteria.length === 0) {
-        const sorted = firstReport.criteria.map((c) => ({
-          ...c,
-          options: [...c.options].sort((a, b) => a.position - b.position),
-        }));
-        setRubricCriteria(sorted);
+      if (rubricCriteria.length === 0) {
+        const firstReport = Object.values(reportsMap)[0];
+        if (firstReport) {
+          const sorted = firstReport.criteria.map((c) => ({
+            ...c,
+            options: [...c.options].sort((a, b) => a.position - b.position),
+          }));
+          setRubricCriteria(sorted);
+        }
       }
     } catch (err) {
       console.error("Error loading reports:", err);
@@ -132,6 +149,15 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     void loadAgenda();
   }, []);
 
+  // Load rubric when assignmentId is available from URL params
+  useEffect(() => {
+    if (!assignmentId || !selectedAssignment) return;
+    const firstReportId = selectedAssignment.reports[0]?.reportId;
+    if (firstReportId) {
+      void loadRubric(firstReportId);
+    }
+  }, [assignmentId, selectedAssignment?.assignmentId]);
+
   // Countdown timer effect
   useEffect(() => {
     if (screen !== "evaluate" || !selectedAssignment) {
@@ -154,6 +180,13 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     };
   }, [screen, selectedAssignment?.assignmentId]);
 
+  // Load all reports when entering confirm screen
+  useEffect(() => {
+    if (screen === "confirm" && selectedAssignment) {
+      void loadAllReports();
+    }
+  }, [screen, selectedAssignment?.assignmentId]);
+
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
     setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
@@ -170,6 +203,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     (applicationId: string, criterionIdx: number, value: number) => {
       if (!selectedAssignment) return;
       if (!editableStatus[applicationId]) return;
+      setExplicitlySelected((prev) => new Set(prev).add(`${applicationId}-${criterionIdx}`));
       setResponses((current) => {
         const assignId = selectedAssignment.assignmentId;
         const existing =
@@ -480,9 +514,9 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   Evaluación bloqueada
                 </h3>
                 <p className="mt-2 text-sm text-white/80">
-                  La franja horaria aún no comienza
+                  {minutesUntilStart > 0 ? "La franja horaria aún no comienza" : "La franja ya pasó. Contacta a administración."}
                 </p>
-                {minutesUntilStart > 0 ? (
+                {minutesUntilStart > 0 && (
                   <>
                     <div className="mt-6">
                       <p className="text-5xl font-black tabular-nums">
@@ -510,12 +544,16 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                       </div>
                     )}
                   </>
-                ) : (
-                  <p className="mt-4 text-sm text-amber-300">La franja ya pasó. Contacta a administración.</p>
                 )}
                 <p className="mt-6 text-xs text-white/50">
                   {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
                 </p>
+                <button
+                  onClick={() => navigate("/prekinder/evaluador/indicators")}
+                  className="mt-6 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+                >
+                  Volver al dashboard
+                </button>
               </div>
             </div>
           )}
@@ -731,26 +769,14 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                             }`}
                           >
                             <span className="block text-lg font-black">{option.value}</span>
-                            <span className={`block text-xs font-semibold ${isSelected ? "text-white/90" : ""}`}>
-                              {option.label}
-                            </span>
+                            {option.descriptor && (
+                              <span className={`mt-1 block text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>
+                                {option.descriptor}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
-                      {/* NO OBSERVED */}
-                      <button
-                        disabled={!editableStatus[activeApplicant.applicationId] || saving}
-                        onClick={() => void setScore(activeApplicant.applicationId, cIdx, -1)}
-                        className={`min-h-16 rounded-xl border-2 p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 ${
-                          activeScores[cIdx] === -1
-                            ? "border-slate-400 bg-slate-400 text-white shadow-md"
-                            : "border-slate-200 bg-white hover:border-slate-400 disabled:bg-slate-50"
-                        }`}
-                      >
-                        NO
-                        <br />
-                        OBSERVADO
-                      </button>
                     </div>
                   </div>
                 ))}

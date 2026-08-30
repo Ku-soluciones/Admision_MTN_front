@@ -866,13 +866,6 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
                               >
                                 {isNotObserved ? "—" : option.value}
                               </b>
-                              <p
-                                className={`mt-1 text-xs font-bold leading-tight ${
-                                  isSelected ? "text-white/90" : "text-slate-600"
-                                }`}
-                              >
-                                {option.label}
-                              </p>
                               {option.descriptor && (
                                 <p
                                   className={`mt-1 text-xs leading-tight ${
