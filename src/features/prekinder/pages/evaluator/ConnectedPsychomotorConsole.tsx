@@ -208,16 +208,33 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
   const activeApplicant = activeApplicantId
     ? members.find((m) => m.applicationId === activeApplicantId) ?? members[0]
     : members[0];
+
+  // Get scores and comment for active applicant (from saved state)
   const activeScores = selectedAssignment && activeApplicant
     ? (responses[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? Array(criteria.length).fill(undefined))
     : Array(criteria.length).fill(undefined);
   const activeComment = selectedAssignment && activeApplicant
     ? (comments[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
     : "";
-  const allMembersComplete = members.every((m) => {
+
+  // Check if all members have completed their evaluations
+  const allMembersComplete = members.length > 0 && members.every((m) => {
     const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[m.applicationId];
     return scores && scores.length === criteria.length && scores.every((s) => s !== undefined);
   });
+
+  // Helper to check if a student has any responses saved
+  const studentHasResponses = (applicationId: string) => {
+    const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[applicationId];
+    return scores && scores.some((s) => s !== undefined);
+  };
+
+  // Get completion count for a student
+  const getStudentCompletion = (applicationId: string) => {
+    const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[applicationId];
+    if (!scores) return 0;
+    return scores.filter((s) => s !== undefined).length;
+  };
 
   if (screen === "loading") {
     return (
@@ -230,17 +247,17 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan-200 bg-cyan-900 p-4 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#2d5a87] bg-gradient-to-r from-[#1e3a5f] to-[#2d5a87] p-4 text-white">
         <div className="flex items-center gap-3">
           <UserCheck size={20} />
           <div>
             <p className="text-sm font-black">Espacio exclusivo: Evaluador de Psicomotricidad</p>
-            <p className="text-xs text-cyan-300">{assignments.length} asignaciones para hoy</p>
+            <p className="text-xs text-cyan-200">{assignments.length} asignaciones para hoy</p>
           </div>
         </div>
         <button
           onClick={() => void loadAgenda()}
-          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-cyan-900 hover:bg-cyan-50"
+          className="rounded-lg bg-[#ffd700] px-3 py-2 text-xs font-black text-[#1e3a5f] hover:bg-amber-400"
         >
           Actualizar
         </button>
@@ -299,7 +316,7 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
       {screen === "confirm" && selectedAssignment && (
         <div>
           <div className="mb-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#2d5a87]">
               {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName}
             </p>
             <h2 className="mt-1 text-3xl font-black text-slate-950">Confirmar grupo</h2>
@@ -309,8 +326,8 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
             <div className="grid gap-4 p-5 md:grid-cols-3">
               {selectedAssignment.reports.map((report, index) => (
                 <article key={report.applicationId} className="relative rounded-xl border border-slate-200 bg-slate-50/40 p-6 text-center">
-                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-cyan-900 text-xs font-black text-white">{index + 1}</span>
-                  <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-cyan-100 text-xl font-black uppercase text-cyan-900">
+                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-[#1e3a5f] text-xs font-black text-white">{index + 1}</span>
+                  <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#ffd700] text-xl font-black uppercase text-[#1e3a5f]">
                     {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
                   <h3 className="mt-3 text-base font-black leading-tight text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{report.applicantName}</h3>
@@ -342,58 +359,97 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[270px_1fr]">
-            {/* Applicant selector sidebar */}
-            <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3">
-              <h3 className="px-3 py-2 text-xs font-black uppercase tracking-widest text-cyan-700">Postulantes</h3>
-              {members.map((person) => {
-                const personScores = responses[selectedAssignment.assignmentId]?.[person.applicationId];
-                const personComplete = personScores && personScores.length === criteria.length && personScores.every((s) => s !== undefined);
-                return (
-                  <button
-                    key={person.applicationId}
-                    onClick={() => setActiveApplicantId(person.applicationId)}
-                    className={`mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${person.applicationId === activeApplicant.applicationId ? "bg-cyan-100 text-cyan-900 shadow-sm ring-2 ring-cyan-300" : "hover:bg-cyan-50 hover:shadow-sm"}`}
-                  >
-                    <span className={`grid h-10 w-10 place-items-center rounded-full text-sm font-black uppercase ${person.applicationId === activeApplicant.applicationId ? "bg-cyan-900 text-white" : "bg-cyan-100 text-cyan-800"}`}>
-                      {person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-sm font-bold leading-tight" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{person.applicantName}</b>
+            {/* Student Navigation Sidebar */}
+            <aside className="h-fit rounded-2xl bg-gradient-to-b from-[#1e3a5f] to-[#2d5a87] p-4">
+              <h3 className="mb-3 px-2 text-xs font-black uppercase tracking-widest text-cyan-200">Estudiantes</h3>
+              <div className="space-y-2">
+                {members.map((person) => {
+                  const personScores = responses[selectedAssignment.assignmentId]?.[person.applicationId];
+                  const personComplete = personScores && personScores.length === criteria.length && personScores.every((s) => s !== undefined);
+                  const completion = getStudentCompletion(person.applicationId);
+                  const isActive = person.applicationId === activeApplicant.applicationId;
+                  return (
+                    <button
+                      key={person.applicationId}
+                      onClick={() => setActiveApplicantId(person.applicationId)}
+                      className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                        isActive
+                          ? "bg-white shadow-lg ring-2 ring-white/30"
+                          : "bg-white/10 hover:bg-white/20"
+                      }`}
+                    >
+                      <span className={`grid h-10 w-10 place-items-center rounded-full text-sm font-black uppercase ${
+                        isActive ? "bg-[#ffd700] text-[#1e3a5f]" : "bg-white/20 text-white"
+                      }`}>
+                        {person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <b className={`block truncate text-sm font-bold leading-tight ${isActive ? "text-[#1e3a5f]" : "text-white"}`}>
+                          {person.applicantName}
+                        </b>
+                        {personComplete ? (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-300">
+                            <Check size={11} />Completo
+                          </span>
+                        ) : completion > 0 ? (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-amber-300">
+                            {completion}/{criteria.length} evaluados
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 block text-xs text-white/60">Sin evaluar</span>
+                        )}
+                      </span>
                       {personComplete ? (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-600">
-                          <Check size={11} />Completo
-                        </span>
+                        <Check size={16} className="text-emerald-300 flex-shrink-0" />
                       ) : (
-                        <span className="mt-0.5 block text-xs text-slate-400">Sin evaluar</span>
+                        <ChevronRight size={16} className={`flex-shrink-0 ${isActive ? "text-[#1e3a5f]" : "text-white/60"}`} />
                       )}
-                    </span>
-                    {personComplete ? (
-                      <Check size={16} className="text-emerald-600 flex-shrink-0" />
-                    ) : (
-                      <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="mt-4 border-t border-white/20 pt-4">
+                <p className="mb-2 px-2 text-xs font-black uppercase tracking-widest text-cyan-200">Opciones</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#22c55e]"></div>
+                    <span className="text-xs text-white/80">Logrado (3)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#f59e0b]"></div>
+                    <span className="text-xs text-white/80">Por lograr (2)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#ef4444]"></div>
+                    <span className="text-xs text-white/80">No logrado (0)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-slate-400"></div>
+                    <span className="text-xs text-white/80">No observado (—)</span>
+                  </div>
+                </div>
+              </div>
             </aside>
 
             {/* Full evaluation for selected applicant */}
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
               {/* Applicant header */}
-              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-cyan-800 to-cyan-900 p-6">
+              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-[#1e3a5f] to-[#2d5a87] p-6">
                 <div className="flex items-center gap-5">
-                  <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-cyan-900" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                  <span className="grid h-20 w-20 place-items-center rounded-full bg-[#ffd700] text-2xl font-black uppercase tracking-wide text-[#1e3a5f]" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}>
                     {activeApplicant.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-xs font-bold uppercase tracking-widest text-cyan-200">Postulante en evaluación</p>
+                    <p className="mb-1 text-xs font-bold uppercase tracking-widest text-cyan-200">Evaluando</p>
                     <h3 className="text-3xl font-black leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>
                       {activeApplicant.applicantName}
                     </h3>
-                    <p className="mt-1 text-sm font-medium text-cyan-200">Psicomotricidad · Evaluación Individual</p>
+                    <p className="mt-1 text-sm font-medium text-cyan-200">Psicomotricidad</p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end gap-1">
-                    <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-cyan-900">
+                    <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#1e3a5f]">
                       {members.findIndex((m) => m.applicationId === activeApplicant.applicationId) + 1} / {members.length}
                     </span>
                   </div>
@@ -405,26 +461,39 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                 {criteria.map((criterion, cIdx) => (
                   <div key={cIdx} className="p-5">
                     <div className="mb-3 flex items-start gap-3">
-                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-cyan-900 text-sm font-black text-white">{cIdx + 1}</span>
+                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-[#1e3a5f] text-sm font-black text-white">{cIdx + 1}</span>
                       <div>
                         <p className="pt-1 text-base font-bold leading-snug text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{criterion.title}</p>
                         <p className="mt-1 text-xs italic text-slate-500">{criterion.instructions}</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
-                      {criterion.options.map((opt) => (
-                        <button
-                          key={String(opt.value)}
-                          className={`min-h-16 rounded-xl border-2 p-3 text-left transition-all ${activeScores[cIdx] === opt.value ? "border-cyan-700 bg-cyan-900 text-white shadow-md" : "border-slate-200 bg-white hover:border-cyan-400 hover:shadow-sm"}`}
-                          onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
-                        >
-                          <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
-                          <p className={`mt-1 text-xs font-bold leading-tight ${activeScores[cIdx] === opt.value ? "text-cyan-200" : "text-slate-600"}`}>{opt.label}</p>
-                          {opt.description && (
-                            <p className={`mt-1 text-xs leading-tight ${activeScores[cIdx] === opt.value ? "text-cyan-300" : "text-slate-400"}`}>{opt.description}</p>
-                          )}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      {criterion.options.map((opt) => {
+                        const isSelected = activeScores[cIdx] === opt.value;
+                        const isLogrado = opt.value === 3;
+                        const isPorLograr = opt.value === 2;
+                        const isNoLogrado = opt.value === 0 || opt.value === 1;
+                        const isNotObserved = opt.value === "NOT_OBSERVED";
+                        return (
+                          <button
+                            key={String(opt.value)}
+                            className={`min-h-16 rounded-xl border-2 p-3 text-left transition-all ${
+                              isSelected && isLogrado ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md" :
+                              isSelected && isPorLograr ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md" :
+                              isSelected && isNoLogrado ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md" :
+                              isSelected && isNotObserved ? "border-slate-400 bg-slate-400 text-white shadow-md" :
+                              "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm"
+                            }`}
+                            onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
+                          >
+                            <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
+                            <p className={`mt-1 text-xs font-bold leading-tight ${isSelected ? "text-white/90" : "text-slate-600"}`}>{opt.label}</p>
+                            {opt.description && (
+                              <p className={`mt-1 text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>{opt.description}</p>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

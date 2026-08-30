@@ -169,7 +169,7 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
                   <button
                     key={report.reportId}
                     onClick={() =>
-                      navigate(`/prekinder/evaluador/informe/${report.reportId}`)
+                      navigate(`/prekinder/evaluador/psychomotor/evaluacion/${group.assignmentId}`)
                     }
                     className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-gray-50"
                   >
