@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   Clock3,
   RefreshCw,
@@ -39,6 +40,7 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   async function load() {
     setLoading(true);
@@ -58,6 +60,18 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
   }, [date, profile]);
 
   const myGroups = assignments;
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
 
   return (
     <PrekinderEvaluatorLayout profile={profile}>
@@ -169,56 +183,110 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
               {myGroups.map((assignment) => {
                 const group = assignment.group;
                 const members = assignment.reports;
+                const isExpanded = expandedGroups.has(group.groupId);
+                const profileSlug = profile === "PSYCHOMOTOR"
+                  ? "psychomotor"
+                  : profile.toLowerCase().replace("_", "-");
+                const evalUrl = `/prekinder/evaluador/${profileSlug}/evaluacion/${assignment.assignmentId}`;
+
                 return (
-                  <button
-                    key={assignment.assignmentId}
-                    onClick={() => navigate(`/prekinder/evaluador/${profile.toLowerCase().replace("_", "-")}/grupo/${group.groupId}?date=${date}`)}
-                    className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
-                  >
-                    <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-50">
-                      <span className="text-lg font-bold text-blue-900">
-                        {formatTime(group.startsAt)}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-gray-900">
-                        {group.code} · {group.roomName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {members.length} postulante{members.length !== 1 ? "s" : ""}
-                      </p>
-                      <div className="mt-2 flex -space-x-2">
-                        {members.slice(0, 5).map((m) => (
-                          <div
-                            key={m.applicationId}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 ring-2 ring-white"
-                            title={m.applicantName}
-                          >
-                            {m.applicantName.split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("")}
-                          </div>
-                        ))}
-                        {members.length > 5 && (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600 ring-2 ring-white">
-                            +{members.length - 5}
-                          </div>
+                  <div key={assignment.assignmentId}>
+                    {/* Group header - clickable row */}
+                    <button
+                      onClick={() => toggleGroup(group.groupId)}
+                      className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-gray-50"
+                    >
+                      <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-50">
+                        <span className="text-lg font-bold text-blue-900">
+                          {formatTime(group.startsAt)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">
+                          {group.code} · {group.roomName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {members.length} postulante{members.length !== 1 ? "s" : ""}
+                        </p>
+                        <div className="mt-2 flex -space-x-2">
+                          {members.slice(0, 5).map((m) => (
+                            <div
+                              key={m.applicationId}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 ring-2 ring-white"
+                              title={m.applicantName}
+                            >
+                              {m.applicantName.split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("")}
+                            </div>
+                          ))}
+                          {members.length > 5 && (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600 ring-2 ring-white">
+                              +{members.length - 5}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            group.status === "COMPLETED"
+                              ? "bg-green-100 text-green-800"
+                              : group.status === "IN_PROGRESS"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {group.status}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold ${
-                          group.status === "COMPLETED"
-                            ? "bg-green-100 text-green-800"
-                            : group.status === "IN_PROGRESS"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {group.status}
-                      </span>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
-                    </div>
-                  </button>
+                    </button>
+
+                    {/* Expanded students list + evaluate button */}
+                    {isExpanded && (
+                      <div className="bg-gray-50 px-5 py-4">
+                        <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {members.map((m, idx) => (
+                            <div
+                              key={m.applicationId}
+                              className="flex items-center gap-3 rounded-lg bg-white p-3 shadow-sm"
+                            >
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                                {m.applicantName.split(/\s+/).slice(0, 2).map((p) => p[0] ?? "").join("")}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-gray-900">
+                                  {m.applicantName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {m.status === "COMPLETED" ? "Completado" : "Pendiente"}
+                                </p>
+                              </div>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                  m.status === "COMPLETED"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-amber-100 text-amber-700"
+                                }`}
+                              >
+                                {m.rawScore !== null ? `${m.rawScore}/${m.maximumScore}` : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => navigate(evalUrl)}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffd700] px-6 py-3 text-sm font-black text-[#1e3a5f] shadow-sm transition-all hover:bg-amber-400 hover:shadow-md"
+                        >
+                          <Users className="h-5 w-5" />
+                          Comenzar evaluación grupal
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

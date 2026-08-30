@@ -3364,12 +3364,28 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
                 <span className="text-center whitespace-nowrap">Borrador</span>
                 <span className="text-center whitespace-nowrap">Acción</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
-                {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openPreview(published.versionId)}>Ver publicada</button>}
-                {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
-                {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
-              </div>
+              {catalog.map((rubric) => {
+                const rubricVersions = versions[rubric.rubricId] ?? [];
+                const published = rubricVersions.find((v) => v.status === "PUBLISHED");
+                const draft = rubricVersions.find((v) => v.status === "DRAFT");
+                const assigned = assignments.some((a) => a.instrumentCode === rubric.instrumentCode && a.processId === processId);
+                return (
+                  <div key={rubric.rubricId} className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-100 px-5 py-3">
+                    <div>
+                      <p className="font-bold text-slate-900">{rubric.name}</p>
+                      <p className="text-sm text-slate-500">{instrumentLabels[rubric.instrumentCode]}</p>
+                    </div>
+                    <p className="text-center text-sm text-slate-600">{published ? `v${published.version}` : "—"}</p>
+                    <p className="text-center text-sm text-slate-600">{draft ? `v${draft.version}` : "—"}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
+                      {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openPreview(published.versionId)}>Ver publicada</button>}
+                      {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
+                      {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

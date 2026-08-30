@@ -14,6 +14,20 @@ import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 type SaveState =
   "idle" | "saving" | "saved" | "offline" | "conflict" | "closed";
 
+function getMinutesUntil(iso: string): number {
+  const now = Date.now();
+  const target = new Date(iso).getTime();
+  return Math.round((target - now) / 60000);
+}
+
+function formatMinutesRemaining(minutes: number): string {
+  if (minutes <= 0) return "0:00";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export function EvaluatorReport() {
   const { reportId = "" } = useParams();
   const navigate = useNavigate();
@@ -22,7 +36,9 @@ export function EvaluatorReport() {
   const [state, setState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const noteTimer = useRef<number | null>(null);
+  const countdownRef = useRef<number | null>(null);
   const requestedReturn = searchParams.get("returnTo");
   const returnTo = requestedReturn?.startsWith("/profesor/prekinder")
     || requestedReturn?.startsWith("/prekinder/evaluador")
@@ -39,6 +55,10 @@ export function EvaluatorReport() {
       setReport(next);
       setNote(next.note.content);
       setState(next.editableNow ? "idle" : "closed");
+      if (!next.editableNow) {
+        const mins = getMinutesUntil(next.header.startsAt);
+        setMinutesUntilStart(mins);
+      }
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -53,6 +73,29 @@ export function EvaluatorReport() {
       if (noteTimer.current) window.clearTimeout(noteTimer.current);
     };
   }, [reportId]);
+  useEffect(() => {
+    if (!report || report.editableNow) return;
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = window.setInterval(() => {
+      if (report) {
+        const mins = getMinutesUntil(report.header.startsAt);
+        setMinutesUntilStart(mins);
+        if (mins <= 0) {
+          if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+          }
+          void load();
+        }
+      }
+    }, 30000);
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    };
+  }, [report]);
   useEffect(() => {
     const online = () => setState("idle");
     const offline = () => setState("offline");
@@ -187,20 +230,20 @@ export function EvaluatorReport() {
   ).length;
   return (
     <div className="pk-page">
-      <header className="pk-topbar sticky top-0 z-20">
+      <header className="pk-topbar sticky top-0 z-20 bg-gradient-to-r from-[#1e3a5f] to-[#2d5a87]">
         <div className="mx-auto flex min-h-16 max-w-4xl items-center gap-3 px-4">
           <button
-            className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-200"
+            className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-white/20 bg-white/10"
             onClick={() => navigate(returnTo)}
             aria-label="Volver"
           >
-            <ArrowLeft />
+            <ArrowLeft className="text-white" />
           </button>
           <div className="min-w-0">
-            <p className="truncate font-black text-azul-monte-tabor">
+            <p className="truncate font-black text-white">
               {report.header.groupCode} · {report.header.roomName}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-cyan-200">
               {report.header.stage === "GROUP_3"
                 ? "Observación focal"
                 : "Interacción grupal"}{" "}
@@ -227,11 +270,11 @@ export function EvaluatorReport() {
             </p>
           </div>
           {report.header.rawScore !== null && (
-            <div className="border-l border-slate-300 pl-5 text-right">
+            <div className="border-l-4 border-[#ffd700] pl-5 text-right">
               <p className="text-xs font-bold text-slate-600">
                 Puntaje observado
               </p>
-              <p className="text-2xl font-black text-azul-monte-tabor">
+              <p className="text-2xl font-black text-[#1e3a5f]">
                 {report.header.rawScore}/{report.header.maximumScore}
               </p>
             </div>
@@ -272,7 +315,7 @@ export function EvaluatorReport() {
               className="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6"
             >
               <div className="flex gap-3">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-sm font-black text-blue-900">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#1e3a5f] text-sm font-black text-white">
                   {index + 1}
                 </span>
                 <div>
@@ -282,36 +325,45 @@ export function EvaluatorReport() {
                   </p>
                 </div>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-5">
-                {criterion.options.map((option) => (
-                  <button
-                    key={option.optionId}
-                    disabled={
-                      !report.editableNow || completed || state === "saving"
-                    }
-                    onClick={() =>
-                      void saveCriterion(
-                        criterion.criterionId,
-                        option.optionId,
-                        false,
-                        criterion.responseVersion,
-                      )
-                    }
-                    aria-pressed={
-                      criterion.selectedOptionId === option.optionId &&
-                      !criterion.notObserved
-                    }
-                    aria-label={`${criterion.name}: ${option.value}, ${option.label}`}
-                    className={`min-h-16 rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-300 ${criterion.selectedOptionId === option.optionId && !criterion.notObserved ? "border-azul-monte-tabor bg-azul-monte-tabor text-blanco-pureza" : "border-slate-200 bg-white hover:border-blue-300 disabled:bg-slate-50 disabled:text-slate-400"}`}
-                  >
-                    <span className="block text-lg font-black">
-                      {option.value}
-                    </span>
-                    <span className="block text-xs font-semibold">
-                      {option.label}
-                    </span>
-                  </button>
-                ))}
+              <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-6">
+                {criterion.options.map((option) => {
+                  const isSelected = criterion.selectedOptionId === option.optionId && !criterion.notObserved;
+                  const isLogrado = option.value === 3;
+                  const isPorLograr = option.value === 2;
+                  const isNoLogrado = option.value === 0 || option.value === 1;
+                  return (
+                    <button
+                      key={option.optionId}
+                      disabled={
+                        !report.editableNow || completed || state === "saving"
+                      }
+                      onClick={() =>
+                        void saveCriterion(
+                          criterion.criterionId,
+                          option.optionId,
+                          false,
+                          criterion.responseVersion,
+                        )
+                      }
+                      aria-pressed={isSelected}
+                      aria-label={`${criterion.name}: ${option.value}, ${option.label}`}
+                      className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
+                        isSelected && isLogrado ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md" :
+                        isSelected && isPorLograr ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md" :
+                        isSelected && isNoLogrado ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md" :
+                        isSelected ? "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md" :
+                        "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
+                      }`}
+                    >
+                      <span className="block text-lg font-black">
+                        {option.value}
+                      </span>
+                      <span className={`block text-xs font-semibold ${isSelected ? "text-white/90" : ""}`}>
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
                 <button
                   disabled={
                     !report.editableNow || completed || state === "saving"
@@ -326,7 +378,9 @@ export function EvaluatorReport() {
                   }
                   aria-pressed={criterion.notObserved}
                   aria-label={`${criterion.name}: no observado`}
-                  className={`min-h-16 rounded-xl border p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-300 ${criterion.notObserved ? "border-amber-500 bg-amber-50 text-amber-900" : "border-slate-200 bg-white hover:border-amber-300 disabled:bg-slate-50"}`}
+                  className={`min-h-16 rounded-xl border-2 p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 ${
+                    criterion.notObserved ? "border-slate-400 bg-slate-400 text-white shadow-md" : "border-slate-200 bg-white hover:border-slate-400 disabled:bg-slate-50"
+                  }`}
                 >
                   NO
                   <br />
@@ -362,11 +416,27 @@ export function EvaluatorReport() {
           {completed ? "Informe finalizado" : "Finalizar y continuar"}
         </button>
         {!report.editableNow && !completed && (
-          <p className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-600">
-            <LockKeyhole size={17} />
-            El bloque está cerrado. Administración puede otorgar una extensión
-            auditada.
-          </p>
+          <div className="mt-3 flex flex-col items-center gap-1.5 text-center">
+            {minutesUntilStart !== null && minutesUntilStart > 0 ? (
+              <>
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+                  <LockKeyhole size={17} />
+                  <span>Bloqueado · Abre en {formatMinutesRemaining(minutesUntilStart)}</span>
+                </div>
+                <div className="h-1.5 w-48 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-amber-400 transition-all duration-1000"
+                    style={{ width: `${Math.max(0, Math.min(100, ((120 - minutesUntilStart) / 120) * 100))}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <LockKeyhole size={17} />
+                El bloque está cerrado. Administración puede otorgar una extensión auditada.
+              </p>
+            )}
+          </div>
         )}
       </main>
     </div>

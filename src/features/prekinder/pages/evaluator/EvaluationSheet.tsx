@@ -16,7 +16,7 @@ import {
   type RubricVersion,
   type Report,
 } from "../../services/api";
-import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_LABELS, PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 
 type Score = number | null;
 
@@ -51,19 +51,29 @@ function formatMinutesRemaining(minutes: number): string {
   return `${hours} horas ${mins > 0 ? `${mins} min` : ""}`;
 }
 
-interface Props {
+const PROFILE_COLORS: Record<SpecialtyProfile, { primary: string; light: string; bg: string; gradient: string }> = {
+  ACADEMIC: { primary: "emerald", light: "emerald-200", bg: "emerald-900", gradient: "from-emerald-800 to-emerald-900" },
+  PSYCHOMOTOR: { primary: "cyan", light: "cyan-200", bg: "cyan-900", gradient: "from-[#1e3a5f] to-[#2d5a87]" },
+  PSYCHOLOGY: { primary: "blue", light: "blue-200", bg: "blue-900", gradient: "from-blue-800 to-blue-900" },
+  INDICATORS: { primary: "violet", light: "violet-200", bg: "violet-900", gradient: "from-violet-800 to-violet-900" },
+  GROUP_OBSERVATION: { primary: "amber", light: "amber-200", bg: "amber-900", gradient: "from-amber-800 to-amber-900" },
+  LEARNING_SUPPORT: { primary: "indigo", light: "indigo-200", bg: "indigo-900", gradient: "from-indigo-800 to-indigo-900" },
+  DAP: { primary: "pink", light: "pink-200", bg: "pink-900", gradient: "from-pink-800 to-pink-900" },
+};
+
+interface EvaluationSheetProps {
   profile: SpecialtyProfile;
 }
 
-export function ConnectedIndicatorsConsole({ profile }: Props) {
-  const { assignmentId } = useParams();
+export function EvaluationSheet({ profile }: EvaluationSheetProps) {
+  const { assignmentId } = useParams<{ assignmentId: string }>();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("loading");
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
   const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
-    const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
+  const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
@@ -72,23 +82,10 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
   const [editableStatus, setEditableStatus] = useState<{ [appId: string]: boolean }>({});
   const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const countdownRef = useRef<number | null>(null);
-  const [explicitlySelected, setExplicitlySelected] = useState<Set<string>>(new Set());
 
+  const colors = PROFILE_COLORS[profile];
+  const profileLabel = PROFILE_LABELS[profile];
   const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
-
-  async function loadRubric(reportId: string) {
-    try {
-      const report = await prekinderApi.report(reportId);
-      const sorted = report.criteria.map((c) => ({
-        ...c,
-        options: [...c.options].sort((a, b) => a.position - b.position),
-      }));
-      setRubricCriteria(sorted);
-      setReportsData((current) => ({ ...current, [report.header.applicationId]: report }));
-    } catch (err) {
-      console.error("Error loading rubric:", err);
-    }
-  }
 
   async function loadAllReports() {
     if (!selectedAssignment) return;
@@ -106,15 +103,13 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
       setEditableStatus(editableMap);
       const mins = getMinutesUntil(selectedAssignment.group.startsAt);
       setMinutesUntilStart(mins);
-      if (rubricCriteria.length === 0) {
-        const firstReport = Object.values(reportsMap)[0];
-        if (firstReport) {
-          const sorted = firstReport.criteria.map((c) => ({
-            ...c,
-            options: [...c.options].sort((a, b) => a.position - b.position),
-          }));
-          setRubricCriteria(sorted);
-        }
+      const firstReport = Object.values(reportsMap)[0];
+      if (firstReport && rubricCriteria.length === 0) {
+        const sorted = firstReport.criteria.map((c) => ({
+          ...c,
+          options: [...c.options].sort((a, b) => a.position - b.position),
+        }));
+        setRubricCriteria(sorted);
       }
     } catch (err) {
       console.error("Error loading reports:", err);
@@ -139,8 +134,9 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
       } else {
         setScreen("agenda");
       }
-    } catch {
+    } catch (reason) {
       setAssignments([]);
+      setError(reason instanceof Error ? reason.message : "Error al cargar la agenda");
       setScreen("agenda");
     }
   }
@@ -148,15 +144,6 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
   useEffect(() => {
     void loadAgenda();
   }, []);
-
-  // Load rubric when assignmentId is available from URL params
-  useEffect(() => {
-    if (!assignmentId || !selectedAssignment) return;
-    const firstReportId = selectedAssignment.reports[0]?.reportId;
-    if (firstReportId) {
-      void loadRubric(firstReportId);
-    }
-  }, [assignmentId, selectedAssignment?.assignmentId]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -180,13 +167,6 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     };
   }, [screen, selectedAssignment?.assignmentId]);
 
-  // Load all reports when entering confirm screen
-  useEffect(() => {
-    if (screen === "confirm" && selectedAssignment) {
-      void loadAllReports();
-    }
-  }, [screen, selectedAssignment?.assignmentId]);
-
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
     setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
@@ -203,7 +183,6 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     (applicationId: string, criterionIdx: number, value: number) => {
       if (!selectedAssignment) return;
       if (!editableStatus[applicationId]) return;
-      setExplicitlySelected((prev) => new Set(prev).add(`${applicationId}-${criterionIdx}`));
       setResponses((current) => {
         const assignId = selectedAssignment.assignmentId;
         const existing =
@@ -269,7 +248,9 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
         selectedAssignment.version,
       );
       await loadAllReports();
-    } catch { /* continue anyway */ }
+    } catch (err) {
+      console.error("Error starting assignment:", err);
+    }
     setSaving(false);
     setScreen("evaluate");
   }, [selectedAssignment]);
@@ -295,7 +276,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
         [selectedAssignment.assignmentId]: true,
       }));
       if (assignmentId) {
-        navigate(`/prekinder/evaluador/indicators`);
+        navigate(`/prekinder/evaluador/${profile.toLowerCase()}`);
       } else {
         backToAgenda();
       }
@@ -306,7 +287,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     } finally {
       setSaving(false);
     }
-  }, [selectedAssignment, assignmentId, backToAgenda, navigate, reportsData]);
+  }, [selectedAssignment, assignmentId, backToAgenda, navigate, reportsData, profile]);
 
   const members = selectedAssignment?.reports ?? [];
   const activeApplicant = activeApplicantId
@@ -326,13 +307,14 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
     return scores && scores.length === rubricCriteria.length && scores.every((s) => s !== undefined);
   });
 
+  // Check if current applicant is blocked
   const isCurrentBlocked =
     activeApplicant && !(editableStatus[activeApplicant.applicationId] ?? false);
 
   if (screen === "loading") {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <div className={`h-8 w-8 animate-spin rounded-full border-b-2 border-${colors.primary}-600`} />
       </div>
     );
   }
@@ -340,12 +322,14 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-teal-200 bg-gradient-to-r from-teal-800 to-teal-900 p-4 text-white">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-4 rounded-xl border border-${colors.light} bg-gradient-to-r ${colors.gradient} p-4 text-white`}
+      >
         <div className="flex items-center gap-3">
           <UserCheck size={20} />
           <div>
-            <p className="text-sm font-black">Espacio exclusivo: Evaluador de Indicadores de Ingreso</p>
-            <p className="text-xs text-teal-200">
+            <p className="text-sm font-black">{profileLabel}</p>
+            <p className="text-xs text-white/70">
               {rubricCriteria.length > 0
                 ? `${rubricCriteria.length} criterios cargados desde pauta`
                 : "Cargando criterios..."}
@@ -354,7 +338,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
         </div>
         <button
           onClick={() => void loadAgenda()}
-          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-teal-900 hover:bg-teal-50"
+          className="rounded-lg bg-white px-3 py-2 text-xs font-black text-slate-900 hover:bg-white/90"
         >
           Actualizar
         </button>
@@ -371,7 +355,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
       {screen === "agenda" && (
         <div>
           <div className="mb-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">
+            <p className={`text-xs font-black uppercase tracking-[0.14em] text-${colors.primary}-700`}>
               Espacio del evaluador
             </p>
             <h2 className="mt-1 text-3xl font-black text-slate-950">Mi jornada</h2>
@@ -393,10 +377,10 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                 return (
                   <button
                     key={assignment.assignmentId}
-                    className="grid w-full min-h-20 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-teal-400 md:grid-cols-[110px_1fr_140px]"
+                    className={`grid w-full min-h-20 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-${colors.primary}-400 md:grid-cols-[110px_1fr_140px]`}
                     onClick={() => openAssignment(assignment)}
                   >
-                    <div className="border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r">
+                    <div className={`border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r`}>
                       {formatTime(assignment.group.startsAt)}
                       <small className="block text-xs font-bold text-slate-500">30 min</small>
                     </div>
@@ -415,7 +399,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                             ? "bg-green-100 text-green-800"
                             : isCompleted
                               ? "bg-green-100 text-green-800"
-                              : "bg-teal-50 text-teal-800"
+                              : `bg-${colors.light} text-${colors.bg}`
                         }`}
                       >
                         {isSubmitted ? "Enviado" : isCompleted ? "Completado" : assignment.status}
@@ -434,7 +418,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
       {screen === "confirm" && selectedAssignment && (
         <div>
           <div className="mb-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">
+            <p className={`text-xs font-black uppercase tracking-[0.14em] text-${colors.primary}-700`}>
               {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName}
             </p>
             <h2 className="mt-1 text-3xl font-black text-slate-950">Confirmar grupo</h2>
@@ -449,10 +433,14 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   key={report.applicationId}
                   className="relative rounded-xl border border-slate-200 bg-slate-50/40 p-6 text-center"
                 >
-                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-teal-900 text-xs font-black text-white">
+                  <span
+                    className={`absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-${colors.bg} text-xs font-black text-white`}
+                  >
                     {index + 1}
                   </span>
-                  <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-teal-100 text-xl font-black uppercase text-teal-900">
+                  <span
+                    className={`mx-auto grid h-16 w-16 place-items-center rounded-full bg-${colors.light} text-xl font-black uppercase text-${colors.bg}`}
+                  >
                     {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
                   <h3
@@ -461,7 +449,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   >
                     {report.applicantName}
                   </h3>
-                  <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600">
+                  <p className={`mt-2 flex items-center justify-center gap-1 text-xs font-bold text-${colors.primary}-600`}>
                     <Check size={13} />Identidad confirmada
                   </p>
                 </article>
@@ -474,7 +462,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                 disabled={saving}
                 onClick={() => void handleStart()}
               >
-                {saving ? "Iniciando..." : <>Comenzar evaluación individual <ChevronRight className="ml-1 inline" size={17} /></>}
+                {saving ? "Iniciando..." : <>Comenzar evaluación <ChevronRight className="ml-1 inline" size={17} /></>}
               </button>
             </div>
           </section>
@@ -486,14 +474,14 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
         <div>
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-teal-700">
+              <p className={`mb-1 text-xs font-bold uppercase tracking-widest text-${colors.primary}-700`}>
                 {formatTime(selectedAssignment.group.startsAt)} · {selectedAssignment.group.roomName} · {selectedAssignment.group.code}
               </p>
               <h2
                 className="text-3xl font-black tracking-tight text-slate-950"
                 style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
               >
-                Evaluación de Indicadores de Ingreso
+                Evaluación {profileLabel}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {rubricCriteria.length > 0
@@ -503,10 +491,10 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
             </div>
           </div>
 
-          {/* Blocked overlay */}
+          {/* Blocked overlay when evaluation hasn't started yet */}
           {isCurrentBlocked && minutesUntilStart !== null && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-              <div className="mx-4 max-w-sm rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-800 to-teal-900 p-8 text-center text-white shadow-2xl">
+              <div className={`mx-4 max-w-sm rounded-2xl border border-${colors.light} bg-gradient-to-br ${colors.gradient} p-8 text-center text-white shadow-2xl`}>
                 <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full bg-white/10">
                   <Lock size={36} className="text-white" />
                 </div>
@@ -514,9 +502,9 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   Evaluación bloqueada
                 </h3>
                 <p className="mt-2 text-sm text-white/80">
-                  {minutesUntilStart > 0 ? "La franja horaria aún no comienza" : "La franja ya pasó. Contacta a administración."}
+                  La franja horaria aún no comienza
                 </p>
-                {minutesUntilStart > 0 && (
+                {minutesUntilStart > 0 ? (
                   <>
                     <div className="mt-6">
                       <p className="text-5xl font-black tabular-nums">
@@ -544,24 +532,22 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                       </div>
                     )}
                   </>
+                ) : (
+                  <p className="mt-4 text-sm text-amber-300">La franja ya pasó. Contacta a administración.</p>
                 )}
                 <p className="mt-6 text-xs text-white/50">
                   {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
                 </p>
-                <button
-                  onClick={() => navigate("/prekinder/evaluador/indicators")}
-                  className="mt-6 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
-                >
-                  Volver al dashboard
-                </button>
               </div>
             </div>
           )}
 
           <div className="grid gap-5 xl:grid-cols-[270px_1fr]">
             {/* Applicant selector sidebar */}
-            <aside className="h-fit rounded-2xl border border-slate-200 bg-gradient-to-b from-teal-800 to-teal-900 p-4">
-              <h3 className="mb-3 px-2 text-xs font-black uppercase tracking-widest text-teal-200">
+            <aside
+              className={`h-fit rounded-2xl border border-slate-200 bg-gradient-to-b ${colors.gradient} p-4`}
+            >
+              <h3 className={`mb-3 px-2 text-xs font-black uppercase tracking-widest text-${colors.light}`}>
                 Postulantes
               </h3>
               <div className="space-y-2">
@@ -590,7 +576,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                           isActive && isEditable
                             ? "bg-[#ffd700] text-[#1e3a5f]"
                             : isEditable
-                              ? "bg-teal-400/30 text-white"
+                              ? `bg-${colors.primary}-400/30 text-white`
                               : "bg-white/20 text-white/60"
                         }`}
                       >
@@ -643,7 +629,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
               {/* Time Status */}
               <div className="mt-4 border-t border-white/20 pt-4">
                 <div className="rounded-xl bg-white/10 p-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-teal-200">
+                  <div className={`flex items-center gap-2 text-xs font-bold text-${colors.light}`}>
                     <Clock size={14} />
                     {minutesUntilStart !== null && minutesUntilStart > 0 ? (
                       <>Abre en {formatMinutesRemaining(minutesUntilStart)}</>
@@ -654,7 +640,8 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-white/70">
-                    {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
+                    {formatTime(selectedAssignment.group.startsAt)} —{" "}
+                    {formatTime(selectedAssignment.group.endsAt)}
                   </p>
                   {minutesUntilStart !== null && minutesUntilStart > 0 && minutesUntilStart <= 120 && (
                     <div className="mt-2">
@@ -675,16 +662,43 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   )}
                 </div>
               </div>
+
+              {/* Legend */}
+              <div className="mt-4 border-t border-white/20 pt-4">
+                <p className={`mb-2 px-2 text-xs font-black uppercase tracking-widest text-${colors.light}`}>
+                  Opciones
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#22c55e]"></div>
+                    <span className="text-xs text-white/80">Logrado (3)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#f59e0b]"></div>
+                    <span className="text-xs text-white/80">Por lograr (2)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-[#ef4444]"></div>
+                    <span className="text-xs text-white/80">No logrado (0-1)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-slate-400"></div>
+                    <span className="text-xs text-white/80">No observado (—)</span>
+                  </div>
+                </div>
+              </div>
             </aside>
 
             {/* Full evaluation for selected applicant */}
             <section className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
               {/* Applicant header */}
-              <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-teal-800 to-teal-900 p-6">
+              <div
+                className={`rounded-t-2xl border-b border-slate-200 bg-gradient-to-r ${colors.gradient} p-6`}
+              >
                 <div className="flex items-center gap-5">
                   <span
-                    className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-teal-900"
-                    style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+                    className={`grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-${colors.bg}`}
+                    style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}
                   >
                     {activeApplicant.applicantName
                       .split(" ")
@@ -693,7 +707,7 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                       .join("")}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-widest text-teal-200">
+                    <p className={`text-xs font-bold uppercase tracking-widest text-${colors.light}`}>
                       Postulante en evaluación
                     </p>
                     <h3
@@ -702,21 +716,24 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                     >
                       {activeApplicant.applicantName}
                     </h3>
-                    <p className="mt-1 text-sm font-medium text-teal-200">
-                      Indicadores de Ingreso · Evaluación Individual
+                    <p className="mt-1 text-sm font-medium text-white/80">
+                      {profileLabel} · Evaluación Individual
                     </p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end gap-1">
-                    <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-teal-900">
-                      {members.findIndex((m) => m.applicationId === activeApplicant.applicationId) + 1} / {members.length}
+                    <span
+                      className={`rounded-full bg-white px-4 py-2 text-sm font-black text-${colors.bg}`}
+                    >
+                      {members.findIndex((m) => m.applicationId === activeApplicant.applicationId) + 1} /{" "}
+                      {members.length}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Locked notice */}
+              {/* Locked notice when blocked */}
               {isCurrentBlocked && (
-                <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-center gap-3">
+                <div className={`bg-amber-50 border-b border-amber-200 p-4 flex items-center gap-3`}>
                   <Lock size={18} className="text-amber-600" />
                   <div>
                     <p className="text-sm font-bold text-amber-800">Evaluación bloqueada</p>
@@ -729,57 +746,82 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
 
               {/* Criteria */}
               <div className="divide-y divide-slate-100">
-                {rubricCriteria.map((criterion, cIdx) => (
-                  <div key={criterion.criterionId} className="p-5">
-                    <div className="mb-4 flex items-start gap-3">
-                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-teal-900 text-sm font-black text-white">
-                        {cIdx + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-base font-bold leading-snug text-slate-900"
-                          style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+                {rubricCriteria.map((criterion, cIdx) => {
+                  const selectedOption = criterion.options.find(
+                    (o) => activeScores[cIdx] !== undefined && o.value === activeScores[cIdx],
+                  );
+                  return (
+                    <div key={criterion.criterionId} className="p-5">
+                      <div className="mb-4 flex items-start gap-3">
+                        <span
+                          className={`grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-${colors.bg} text-sm font-black text-white`}
                         >
-                          {criterion.name}
-                        </p>
-                        <p className="mt-1 text-sm text-slate-500">{criterion.descriptor}</p>
+                          {cIdx + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="text-base font-bold leading-snug text-slate-900"
+                            style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+                          >
+                            {criterion.name}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">{criterion.descriptor}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+                        {criterion.options.map((option) => {
+                          const isSelected = activeScores[cIdx] === option.value;
+                          const isLogrado = option.value === 3;
+                          const isPorLograr = option.value === 2;
+                          const isNoLogrado = option.value === 0 || option.value === 1;
+                          return (
+                            <button
+                              key={option.optionId}
+                              disabled={!editableStatus[activeApplicant.applicationId] || saving}
+                              onClick={() =>
+                                void setScore(activeApplicant.applicationId, cIdx, option.value)
+                              }
+                              className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
+                                isSelected && isLogrado
+                                  ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md"
+                                  : isSelected && isPorLograr
+                                    ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md"
+                                    : isSelected && isNoLogrado
+                                      ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md"
+                                      : isSelected
+                                        ? `border-${colors.bg} bg-${colors.bg} text-white shadow-md`
+                                        : `border-slate-200 bg-white hover:border-${colors.primary}-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400`
+                              }`}
+                            >
+                              <span className="block text-lg font-black">{option.value}</span>
+                              <span
+                                className={`block text-xs font-semibold ${
+                                  isSelected ? "text-white/90" : ""
+                                }`}
+                              >
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {/* NO OBSERVED button */}
+                        <button
+                          disabled={!editableStatus[activeApplicant.applicationId] || saving}
+                          onClick={() => void setScore(activeApplicant.applicationId, cIdx, -1)}
+                          className={`min-h-16 rounded-xl border-2 p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 ${
+                            activeScores[cIdx] === -1
+                              ? "border-slate-400 bg-slate-400 text-white shadow-md"
+                              : `border-slate-200 bg-white hover:border-slate-400 disabled:bg-slate-50`
+                          }`}
+                        >
+                          NO
+                          <br />
+                          OBSERVADO
+                        </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
-                      {criterion.options.map((option) => {
-                        const isSelected = activeScores[cIdx] === option.value;
-                        const isLogrado = option.value === 3;
-                        const isPorLograr = option.value === 2;
-                        const isNoLogrado = option.value === 0 || option.value === 1;
-                        return (
-                          <button
-                            key={option.optionId}
-                            disabled={!editableStatus[activeApplicant.applicationId] || saving}
-                            onClick={() => void setScore(activeApplicant.applicationId, cIdx, option.value)}
-                            className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
-                              isSelected && isLogrado
-                                ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md"
-                                : isSelected && isPorLograr
-                                  ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md"
-                                  : isSelected && isNoLogrado
-                                    ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md"
-                                    : isSelected
-                                      ? "border-teal-700 bg-teal-900 text-white shadow-md"
-                                      : "border-slate-200 bg-white hover:border-teal-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
-                            }`}
-                          >
-                            <span className="block text-lg font-black">{option.value}</span>
-                            {option.descriptor && (
-                              <span className={`mt-1 block text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>
-                                {option.descriptor}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Observations */}
@@ -788,11 +830,13 @@ export function ConnectedIndicatorsConsole({ profile }: Props) {
                   Observaciones cualitativas del postulante
                 </label>
                 <textarea
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-100"
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
                   rows={4}
                   disabled={!editableStatus[activeApplicant.applicationId] || saving}
                   value={activeComment}
-                  onChange={(e) => void setGroupComment(activeApplicant.applicationId, e.target.value)}
+                  onChange={(e) =>
+                    void setGroupComment(activeApplicant.applicationId, e.target.value)
+                  }
                   placeholder={
                     editableStatus[activeApplicant.applicationId]
                       ? "Evidencia observable, contexto y comportamientos relevantes..."
