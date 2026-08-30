@@ -1,136 +1,27 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
-import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
+import {
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  UserCheck,
+  Clock,
+  Lock,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import {
+  prekinderApi,
+  type EvaluatorAssignment,
+  type RubricVersion,
+  type Report,
+} from "../../services/api";
 import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 import { isMockMode, buildMockAgenda } from "../dev/mockApi";
 
-type Score = 0 | 1 | 2 | 3 | 4 | "NOT_OBSERVED";
+type Score = number | null;
 
 type Screen = "loading" | "agenda" | "confirm" | "evaluate";
-
-const criteria = [
-  {
-    title: "Información",
-    description: "Reconoce, relaciona y clasifica información presentada.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No reconoce ni relaciona información." },
-      { value: 1 as Score, title: "1", label: "Reconoce información superficial." },
-      { value: 2 as Score, title: "2", label: "Relaciona información con apoyo." },
-      { value: 3 as Score, title: "3", label: "Clasifica con dificultad mínima." },
-      { value: 4 as Score, title: "4", label: "Clasifica correctamente de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Clasificación",
-    description: "Agrupa elementos según una característica observable.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No logra clasificar elementos." },
-      { value: 1 as Score, title: "1", label: "Clasifica con dificultad significativa." },
-      { value: 2 as Score, title: "2", label: "Clasifica elementos con mediación." },
-      { value: 3 as Score, title: "3", label: "Clasifica correctamente con apoyo menor." },
-      { value: 4 as Score, title: "4", label: "Clasifica correctamente de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Seriación",
-    description: "Ordena elementos utilizando una secuencia o magnitud.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No logra ordenar elementos." },
-      { value: 1 as Score, title: "1", label: "Ordena con dificultad significativa." },
-      { value: 2 as Score, title: "2", label: "Ordena elementos con mediación." },
-      { value: 3 as Score, title: "3", label: "Ordena correctamente con apoyo menor." },
-      { value: 4 as Score, title: "4", label: "Ordena correctamente de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Patrones",
-    description: "Identifica y continúa patrones simples.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No identifica patrones." },
-      { value: 1 as Score, title: "1", label: "Identifica patrones con dificultad." },
-      { value: 2 as Score, title: "2", label: "Identifica patrones con mediación." },
-      { value: 3 as Score, title: "3", label: "Identifica y continúa patrones con apoyo menor." },
-      { value: 4 as Score, title: "4", label: "Identifica y continúa patrones de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Lenguaje comprensivo",
-    description: "Comprende instrucciones y conceptos verbales.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No comprende instrucciones básicas." },
-      { value: 1 as Score, title: "1", label: "Comprende solo con gestos o demostración." },
-      { value: 2 as Score, title: "2", label: "Comprende instrucciones simples con mediación." },
-      { value: 3 as Score, title: "3", label: "Comprende instrucciones con apoyo menor." },
-      { value: 4 as Score, title: "4", label: "Comprende instrucciones complejas de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Lenguaje expresivo",
-    description: "Comunica ideas utilizando vocabulario pertinente.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No comunica ideas." },
-      { value: 1 as Score, title: "1", label: "Comunica ideas de forma muy limitada." },
-      { value: 2 as Score, title: "2", label: "Comunica ideas simples con vocabulario limitado." },
-      { value: 3 as Score, title: "3", label: "Comunica ideas con vocabulario apropiado." },
-      { value: 4 as Score, title: "4", label: "Expresa ideas con vocabulario rico y pertinente." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Atención verbal",
-    description: "Mantiene la atención durante una consigna oral.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No mantiene atención durante la consigna." },
-      { value: 1 as Score, title: "1", label: "Atención muy breve, se distrae fácilmente." },
-      { value: 2 as Score, title: "2", label: "Mantiene atención con mediación constante." },
-      { value: 3 as Score, title: "3", label: "Mantiene atención con mediación ocasional." },
-      { value: 4 as Score, title: "4", label: "Mantiene atención de forma autónoma durante toda la consigna." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Memoria de trabajo",
-    description: "Retiene información breve para completar una tarea.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No retiene información." },
-      { value: 1 as Score, title: "1", label: "Retiene 1 elemento, olvida rápidamente." },
-      { value: 2 as Score, title: "2", label: "Retiene información con mediación continua." },
-      { value: 3 as Score, title: "3", label: "Retiene información con mediación menor." },
-      { value: 4 as Score, title: "4", label: "Retiene y utiliza información de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Resolución de problemas",
-    description: "Explora alternativas frente a una tarea nueva.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No explora alternativas frente a problemas." },
-      { value: 1 as Score, title: "1", label: "Requiere demostración explícita para cada paso." },
-      { value: 2 as Score, title: "2", label: "Explora alternativas con mediación constante." },
-      { value: 3 as Score, title: "3", label: "Resuelve problemas con mediación menor." },
-      { value: 4 as Score, title: "4", label: "Resuelve problemas de forma autónoma y creativa." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-  {
-    title: "Autonomía en la tarea",
-    description: "Inicia y completa la actividad con mediación adecuada.",
-    options: [
-      { value: 0 as Score, title: "0", label: "No inicia ni completa la tarea." },
-      { value: 1 as Score, title: "1", label: "Inicia con dificultad, abandona rápidamente." },
-      { value: 2 as Score, title: "2", label: "Inicia y completa con mediación constante." },
-      { value: 3 as Score, title: "3", label: "Inicia y completa con mediación ocasional." },
-      { value: 4 as Score, title: "4", label: "Inicia y completa la tarea de forma autónoma." },
-      { value: "NOT_OBSERVED" as Score, title: "—", label: "No observado" },
-    ],
-  },
-] as const;
 
 function today() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date());
@@ -138,8 +29,27 @@ function today() {
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("es-CL", {
-    hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Santiago",
   }).format(new Date(iso));
+}
+
+function getMinutesUntil(iso: string): number {
+  const now = new Date();
+  const target = new Date(iso);
+  return Math.round((target.getTime() - now.getTime()) / 60000);
+}
+
+function formatMinutesRemaining(minutes: number): string {
+  if (minutes < 0) return "0 minutos";
+  if (minutes < 1) return "menos de 1 min";
+  if (minutes === 1) return "1 minuto";
+  if (minutes < 60) return `${minutes} minutos`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 1) return `1 hora ${mins > 0 ? `${mins} min` : ""}`;
+  return `${hours} horas ${mins > 0 ? `${mins} min` : ""}`;
 }
 
 interface Props {
@@ -153,31 +63,54 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
+  const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
   const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [reportsData, setReportsData] = useState<{ [appId: string]: Report }>({});
+  const [editableStatus, setEditableStatus] = useState<{ [appId: string]: boolean }>({});
+  const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
+  const countdownRef = useRef<number | null>(null);
 
-  useEffect(() => { void loadAgenda(); }, [profile]);
+  const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
+
+  async function loadAllReports() {
+    if (!selectedAssignment) return;
+    try {
+      const reportsMap: { [appId: string]: Report } = {};
+      const editableMap: { [appId: string]: boolean } = {};
+      await Promise.all(
+        selectedAssignment.reports.map(async (r) => {
+          const report = await prekinderApi.report(r.reportId);
+          reportsMap[r.applicationId] = report;
+          editableMap[r.applicationId] = report.editableNow;
+        })
+      );
+      setReportsData(reportsMap);
+      setEditableStatus(editableMap);
+      const mins = getMinutesUntil(selectedAssignment.group.startsAt);
+      setMinutesUntilStart(mins);
+      const firstReport = Object.values(reportsMap)[0];
+      if (firstReport && rubricCriteria.length === 0) {
+        const sorted = firstReport.criteria.map((c) => ({
+          ...c,
+          options: [...c.options].sort((a, b) => a.position - b.position),
+        }));
+        setRubricCriteria(sorted);
+      }
+    } catch (err) {
+      console.error("Error loading reports:", err);
+    }
+  }
 
   async function loadAgenda() {
     setScreen("loading");
-    if (isMockMode()) {
-      const data = buildMockAgenda(profile);
-      setAssignments(data.assignments);
-      if (assignmentId) {
-        const found = data.assignments.find((a) => a.assignmentId === assignmentId);
-        if (found) { setSelectedAssignment(found); setActiveApplicantId(found.reports[0]?.applicationId ?? null); setScreen("confirm"); }
-        else setScreen("agenda");
-      } else {
-        setScreen("agenda");
-      }
-      return;
-    }
+    setError("");
     try {
-      const data = await prekinderApi.evaluatorAgenda(today(), PROFILE_TO_SHORT_INSTRUMENT[profile]);
+      const data = await prekinderApi.evaluatorAgenda(today(), shortInstrument);
       setAssignments(data.assignments);
-
       if (assignmentId) {
         const found = data.assignments.find((a) => a.assignmentId === assignmentId);
         if (found) {
@@ -196,6 +129,32 @@ export function ConnectedAcademicConsole({ profile }: Props) {
     }
   }
 
+  useEffect(() => {
+    void loadAgenda();
+  }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (screen !== "evaluate" || !selectedAssignment) {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+      return;
+    }
+    countdownRef.current = window.setInterval(() => {
+      const mins = getMinutesUntil(selectedAssignment.group.startsAt);
+      setMinutesUntilStart(mins);
+      void loadAllReports();
+    }, 30000);
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    };
+  }, [screen, selectedAssignment?.assignmentId]);
+
   const openAssignment = useCallback((assignment: EvaluatorAssignment) => {
     setSelectedAssignment(assignment);
     setActiveApplicantId(assignment.reports[0]?.applicationId ?? null);
@@ -208,39 +167,75 @@ export function ConnectedAcademicConsole({ profile }: Props) {
     setScreen("agenda");
   }, []);
 
-  const setScore = useCallback((applicationId: string, criterionIdx: number, value: Score) => {
-    if (!selectedAssignment) return;
-    setResponses((current) => {
-      const assignId = selectedAssignment.assignmentId;
-      const existing = current[assignId]?.[applicationId] ?? Array(criteria.length).fill(undefined);
-      const updated = [...existing];
-      updated[criterionIdx] = value;
-      return {
-        ...current,
-        [assignId]: {
-          ...(current[assignId] ?? {}),
-          [applicationId]: updated,
-        },
-      };
-    });
-  }, [selectedAssignment]);
+  const setScore = useCallback(
+    (applicationId: string, criterionIdx: number, value: number) => {
+      if (!selectedAssignment) return;
+      if (!editableStatus[applicationId]) return;
+      setResponses((current) => {
+        const assignId = selectedAssignment.assignmentId;
+        const existing =
+          current[assignId]?.[applicationId] ??
+          Array(rubricCriteria.length).fill(undefined);
+        const updated = [...existing];
+        updated[criterionIdx] = value;
+        return {
+          ...current,
+          [assignId]: {
+            ...(current[assignId] ?? {}),
+            [applicationId]: updated,
+          },
+        };
+      });
+      const report = reportsData[applicationId];
+      if (!report) return;
+      const criterion = report.criteria[criterionIdx];
+      if (!criterion) return;
+      const option = criterion.options.find((o) => o.value === value);
+      const optionId = option?.optionId ?? null;
+      const notObserved = value < 0 || optionId === null;
+      void prekinderApi
+        .saveResponse(report.header.reportId, criterion.criterionId, {
+          optionId,
+          notObserved,
+          expectedVersion: criterion.responseVersion,
+          operationId: crypto.randomUUID(),
+        })
+        .then((updatedReport) => {
+          setReportsData((current) => ({
+            ...current,
+            [applicationId]: updatedReport,
+          }));
+        })
+        .catch((err) => {
+          console.error("Error saving response:", err);
+        });
+    },
+    [selectedAssignment, rubricCriteria.length, reportsData, editableStatus],
+  );
 
-  const setGroupComment = useCallback((applicationId: string, comment: string) => {
-    if (!selectedAssignment) return;
-    setComments((current) => ({
-      ...current,
-      [selectedAssignment.assignmentId]: {
-        ...(current[selectedAssignment.assignmentId] ?? {}),
-        [applicationId]: comment,
-      },
-    }));
-  }, [selectedAssignment]);
+  const setGroupComment = useCallback(
+    (applicationId: string, comment: string) => {
+      if (!selectedAssignment) return;
+      setComments((current) => ({
+        ...current,
+        [selectedAssignment.assignmentId]: {
+          ...(current[selectedAssignment.assignmentId] ?? {}),
+          [applicationId]: comment,
+        },
+      }));
+    },
+    [selectedAssignment],
+  );
 
   const handleStart = useCallback(async () => {
     if (!selectedAssignment) return;
     setSaving(true);
     try {
-      await prekinderApi.startEvaluatorAssignment(selectedAssignment.assignmentId, selectedAssignment.version);
+      await prekinderApi.startEvaluatorAssignment(
+        selectedAssignment.assignmentId,
+        selectedAssignment.version,
+      );
+      await loadAllReports();
     } catch { /* continue anyway */ }
     setSaving(false);
     setScreen("evaluate");
@@ -249,37 +244,62 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   const handleSubmit = useCallback(async () => {
     if (!selectedAssignment) return;
     setSaving(true);
+    setError("");
     try {
-      await prekinderApi.submitEvaluatorAssignment(selectedAssignment.assignmentId, selectedAssignment.version);
-    } catch { /* continue anyway */ }
-    setSaving(false);
-    setSubmitted((p) => ({ ...p, [selectedAssignment.assignmentId]: true }));
-    if (assignmentId) {
-      navigate(`/prekinder/evaluador/academic`);
-    } else {
-      backToAgenda();
+      const completedStatuses = ["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"];
+      const reportsToComplete = Object.values(reportsData).filter(
+        (r) => !completedStatuses.includes(r.header.status),
+      );
+      for (const report of reportsToComplete) {
+        await prekinderApi.completeReport(report.header.reportId, report.header.version);
+      }
+      await prekinderApi.submitEvaluatorAssignment(
+        selectedAssignment.assignmentId,
+        selectedAssignment.version,
+      );
+      setSubmitted((p) => ({
+        ...p,
+        [selectedAssignment.assignmentId]: true,
+      }));
+      if (assignmentId) {
+        navigate(`/prekinder/evaluador/academic`);
+      } else {
+        backToAgenda();
+      }
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "No pudimos enviar la evaluación. Reintenta.",
+      );
+    } finally {
+      setSaving(false);
     }
-  }, [selectedAssignment, assignmentId, backToAgenda, navigate]);
+  }, [selectedAssignment, assignmentId, backToAgenda, navigate, reportsData]);
 
   const members = selectedAssignment?.reports ?? [];
   const activeApplicant = activeApplicantId
     ? members.find((m) => m.applicationId === activeApplicantId) ?? members[0]
     : members[0];
-  const activeScores = selectedAssignment && activeApplicant
-    ? (responses[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? Array(criteria.length).fill(undefined))
-    : Array(criteria.length).fill(undefined);
-  const activeComment = selectedAssignment && activeApplicant
-    ? (comments[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? "")
-    : "";
+  const activeScores =
+    selectedAssignment && activeApplicant
+      ? responses[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ??
+        Array(rubricCriteria.length).fill(undefined)
+      : Array(rubricCriteria.length).fill(undefined);
+  const activeComment =
+    selectedAssignment && activeApplicant
+      ? comments[selectedAssignment.assignmentId]?.[activeApplicant.applicationId] ?? ""
+      : "";
   const allMembersComplete = members.every((m) => {
     const scores = responses[selectedAssignment?.assignmentId ?? ""]?.[m.applicationId];
-    return scores && scores.length === criteria.length && scores.every((s) => s !== undefined);
+    return scores && scores.length === rubricCriteria.length && scores.every((s) => s !== undefined);
   });
+
+  const isCurrentBlocked =
+    activeApplicant && !(editableStatus[activeApplicant.applicationId] ?? false);
 
   if (screen === "loading") {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -287,12 +307,16 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-900 p-4 text-white">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-800 to-emerald-900 p-4 text-white">
         <div className="flex items-center gap-3">
           <UserCheck size={20} />
           <div>
-            <p className="text-sm font-black">Espacio exclusivo: Evaluador Académico</p>
-            <p className="text-xs text-emerald-300">{assignments.length} asignaciones para hoy</p>
+            <p className="text-sm font-black">Evaluación Académica</p>
+            <p className="text-xs text-emerald-200">
+              {rubricCriteria.length > 0
+                ? `${rubricCriteria.length} criterios cargados desde pauta`
+                : "Cargando criterios..."}
+            </p>
           </div>
         </div>
         <button
@@ -303,13 +327,24 @@ export function ConnectedAcademicConsole({ profile }: Props) {
         </button>
       </div>
 
+      {error && (
+        <div className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800 flex items-center gap-2">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      )}
+
       {/* Agenda */}
       {screen === "agenda" && (
         <div>
           <div className="mb-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Espacio del evaluador</p>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">
+              Espacio del evaluador
+            </p>
             <h2 className="mt-1 text-3xl font-black text-slate-950">Mi jornada</h2>
-            <p className="mt-1 text-sm text-slate-600">Solo ves los bloques asignados. Cada grupo contiene hasta tres postulantes.</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Solo ves los bloques asignados. Cada grupo contiene hasta tres postulantes.
+            </p>
           </div>
           {assignments.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
@@ -333,13 +368,23 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                       <small className="block text-xs font-bold text-slate-500">30 min</small>
                     </div>
                     <div className="min-w-0 p-4">
-                      <b className="block text-sm text-slate-900">{assignment.group.code} - {assignment.group.roomName}</b>
+                      <b className="block text-sm text-slate-900">
+                        {assignment.group.code} - {assignment.group.roomName}
+                      </b>
                       <small className="mt-1 block truncate text-slate-500">
                         {assignment.reports.map((r) => r.applicantName).join(" - ")}
                       </small>
                     </div>
                     <div className="flex items-center justify-end gap-3 p-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${isSubmitted ? "bg-green-100 text-green-800" : isCompleted ? "bg-green-100 text-green-800" : "bg-emerald-50 text-emerald-800"}`}>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          isSubmitted
+                            ? "bg-green-100 text-green-800"
+                            : isCompleted
+                              ? "bg-green-100 text-green-800"
+                              : "bg-emerald-50 text-emerald-800"
+                        }`}
+                      >
                         {isSubmitted ? "Enviado" : isCompleted ? "Completado" : assignment.status}
                       </span>
                       <ChevronRight size={19} />
@@ -360,25 +405,43 @@ export function ConnectedAcademicConsole({ profile }: Props) {
               {formatTime(selectedAssignment.group.startsAt)} - {selectedAssignment.group.roomName}
             </p>
             <h2 className="mt-1 text-3xl font-black text-slate-950">Confirmar grupo</h2>
-            <p className="mt-1 text-sm text-slate-600">Antes de evaluar, verifica que los postulantes correspondan al bloque.</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Antes de evaluar, verifica que los postulantes correspondan al bloque.
+            </p>
           </div>
           <section className="rounded-2xl border border-slate-200 bg-white">
             <div className="grid gap-4 p-5 md:grid-cols-3">
               {selectedAssignment.reports.map((report, index) => (
-                <article key={report.applicationId} className="relative rounded-xl border border-slate-200 bg-slate-50/40 p-6 text-center">
-                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-emerald-900 text-xs font-black text-white">{index + 1}</span>
+                <article
+                  key={report.applicationId}
+                  className="relative rounded-xl border border-slate-200 bg-slate-50/40 p-6 text-center"
+                >
+                  <span className="absolute left-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-emerald-900 text-xs font-black text-white">
+                    {index + 1}
+                  </span>
                   <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-xl font-black uppercase text-emerald-900">
                     {report.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
                   </span>
-                  <h3 className="mt-3 text-base font-black leading-tight text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{report.applicantName}</h3>
-                  <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600"><Check size={13} />Identidad confirmada</p>
+                  <h3
+                    className="mt-3 text-base font-black leading-tight text-slate-900"
+                    style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+                  >
+                    {report.applicantName}
+                  </h3>
+                  <p className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600">
+                    <Check size={13} />Identidad confirmada
+                  </p>
                 </article>
               ))}
             </div>
             <div className="flex justify-end gap-2 border-t border-slate-200 p-5">
               <button className="secondary" onClick={backToAgenda}>Volver</button>
-              <button className="primary" disabled={saving} onClick={() => void handleStart()}>
-                {saving ? "Iniciando..." : <>Comenzar evaluación individual <ChevronRight className="ml-1 inline" size={17} /></>}
+              <button
+                className="primary"
+                disabled={saving}
+                onClick={() => void handleStart()}
+              >
+                {saving ? "Iniciando..." : <>Comenzar evaluación <ChevronRight className="ml-1 inline" size={17} /></>}
               </button>
             </div>
           </section>
@@ -393,61 +456,218 @@ export function ConnectedAcademicConsole({ profile }: Props) {
               <p className="mb-1 text-xs font-bold uppercase tracking-widest text-emerald-700">
                 {formatTime(selectedAssignment.group.startsAt)} · {selectedAssignment.group.roomName} · {selectedAssignment.group.code}
               </p>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>Evaluación Académica</h2>
-              <p className="mt-1 text-sm text-slate-500">Completa todos los criterios antes de enviar la evaluación.</p>
+              <h2
+                className="text-3xl font-black tracking-tight text-slate-950"
+                style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+              >
+                Evaluación Académica
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {rubricCriteria.length > 0
+                  ? `${rubricCriteria.length} criterios cargados desde la pauta`
+                  : "Completa todos los criterios antes de enviar."}
+              </p>
             </div>
           </div>
 
+          {/* Blocked overlay */}
+          {isCurrentBlocked && minutesUntilStart !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+              <div className="mx-4 max-w-sm rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-800 to-emerald-900 p-8 text-center text-white shadow-2xl">
+                <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full bg-white/10">
+                  <Lock size={36} className="text-white" />
+                </div>
+                <h3 className="text-2xl font-black" style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}>
+                  Evaluación bloqueada
+                </h3>
+                <p className="mt-2 text-sm text-white/80">
+                  La franja horaria aún no comienza
+                </p>
+                {minutesUntilStart > 0 ? (
+                  <>
+                    <div className="mt-6">
+                      <p className="text-5xl font-black tabular-nums">
+                        {formatMinutesRemaining(minutesUntilStart)}
+                      </p>
+                      <p className="mt-1 text-xs text-white/60 uppercase tracking-widest">
+                        Para que se habilite
+                      </p>
+                    </div>
+                    {minutesUntilStart <= 120 && (
+                      <div className="mt-4">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
+                          <div
+                            className="h-full rounded-full bg-[#ffd700] transition-all duration-1000"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, ((120 - minutesUntilStart) / 120) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-white/50">
+                          {minutesUntilStart > 60
+                            ? `~${Math.ceil(minutesUntilStart / 60)}h para abrir`
+                            : `${minutesUntilStart} min`}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-4 text-sm text-amber-300">La franja ya pasó. Contacta a administración.</p>
+                )}
+                <p className="mt-6 text-xs text-white/50">
+                  {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-5 xl:grid-cols-[270px_1fr]">
             {/* Applicant selector sidebar */}
-            <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3">
-              <h3 className="px-3 py-2 text-xs font-black uppercase tracking-widest text-emerald-700">Postulantes</h3>
-              {members.map((person) => {
-                const personScores = responses[selectedAssignment.assignmentId]?.[person.applicationId];
-                const personComplete = personScores && personScores.length === criteria.length && personScores.every((s) => s !== undefined);
-                return (
-                  <button
-                    key={person.applicationId}
-                    onClick={() => setActiveApplicantId(person.applicationId)}
-                    className={`mb-1 flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${person.applicationId === activeApplicant.applicationId ? "bg-emerald-100 text-emerald-900 shadow-sm ring-2 ring-emerald-300" : "hover:bg-emerald-50 hover:shadow-sm"}`}
-                  >
-                    <span className={`grid h-10 w-10 place-items-center rounded-full text-sm font-black uppercase ${person.applicationId === activeApplicant.applicationId ? "bg-emerald-900 text-white" : "bg-emerald-100 text-emerald-800"}`}>
-                      {person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-sm font-bold leading-tight" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{person.applicantName}</b>
-                      {personComplete ? (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-600">
-                          <Check size={11} />Completo
-                        </span>
-                      ) : (
-                        <span className="mt-0.5 block text-xs text-slate-400">Sin evaluar</span>
-                      )}
-                    </span>
-                    {personComplete ? (
-                      <Check size={16} className="text-emerald-600 flex-shrink-0" />
+            <aside className="h-fit rounded-2xl border border-slate-200 bg-gradient-to-b from-emerald-800 to-emerald-900 p-4">
+              <h3 className="mb-3 px-2 text-xs font-black uppercase tracking-widest text-emerald-200">
+                Postulantes
+              </h3>
+              <div className="space-y-2">
+                {members.map((person) => {
+                  const personScores = responses[selectedAssignment.assignmentId]?.[person.applicationId];
+                  const personComplete =
+                    personScores &&
+                    personScores.length === rubricCriteria.length &&
+                    personScores.every((s) => s !== undefined);
+                  const completion = personScores ? personScores.filter((s) => s !== undefined).length : 0;
+                  const isActive = person.applicationId === activeApplicant.applicationId;
+                  const isEditable = editableStatus[person.applicationId] ?? false;
+                  return (
+                    <button
+                      key={person.applicationId}
+                      onClick={() => isEditable && setActiveApplicantId(person.applicationId)}
+                      disabled={!isEditable}
+                      className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                        isActive && isEditable
+                          ? "bg-white shadow-lg ring-2 ring-white/30"
+                          : "bg-white/10 hover:bg-white/20"
+                      } ${!isEditable ? "cursor-not-allowed opacity-70" : ""}`}
+                    >
+                      <span
+                        className={`grid h-10 w-10 place-items-center rounded-full text-sm font-black uppercase ${
+                          isActive && isEditable
+                            ? "bg-[#ffd700] text-[#1e3a5f]"
+                            : isEditable
+                              ? "bg-emerald-400/30 text-white"
+                              : "bg-white/20 text-white/60"
+                        }`}
+                      >
+                        {isEditable ? (
+                          person.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")
+                        ) : (
+                          <Lock size={16} className="mx-auto" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <b
+                          className={`block truncate text-sm font-bold leading-tight ${
+                            isActive && isEditable ? "text-[#1e3a5f]" : "text-white"
+                          }`}
+                        >
+                          {person.applicantName}
+                        </b>
+                        {!isEditable ? (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-amber-300">
+                            <Clock size={10} />
+                            Bloqueado
+                          </span>
+                        ) : personComplete ? (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-300">
+                            <Check size={11} />
+                            Completo
+                          </span>
+                        ) : completion > 0 ? (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-amber-300">
+                            {completion}/{rubricCriteria.length} evaluados
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 block text-xs text-white/60">Sin evaluar</span>
+                        )}
+                      </span>
+                      {isEditable &&
+                        (personComplete ? (
+                          <Check size={16} className="text-emerald-300 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight
+                            size={16}
+                            className={`flex-shrink-0 ${isActive ? "text-[#1e3a5f]" : "text-white/60"}`}
+                          />
+                        ))}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Time Status */}
+              <div className="mt-4 border-t border-white/20 pt-4">
+                <div className="rounded-xl bg-white/10 p-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-200">
+                    <Clock size={14} />
+                    {minutesUntilStart !== null && minutesUntilStart > 0 ? (
+                      <>Abre en {formatMinutesRemaining(minutesUntilStart)}</>
+                    ) : minutesUntilStart !== null && minutesUntilStart <= 0 ? (
+                      <>Evaluación abierta</>
                     ) : (
-                      <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />
+                      <>Horario del bloque</>
                     )}
-                  </button>
-                );
-              })}
+                  </div>
+                  <p className="mt-1 text-xs text-white/70">
+                    {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
+                  </p>
+                  {minutesUntilStart !== null && minutesUntilStart > 0 && minutesUntilStart <= 120 && (
+                    <div className="mt-2">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-[#ffd700] transition-all duration-1000"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, ((120 - minutesUntilStart) / 120) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="mt-1 text-center text-[10px] text-white/50">
+                        {minutesUntilStart > 60
+                          ? `~${Math.ceil(minutesUntilStart / 60)}h para abrir`
+                          : `${minutesUntilStart} min`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </aside>
 
             {/* Full evaluation for selected applicant */}
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
               {/* Applicant header */}
               <div className="rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-emerald-800 to-emerald-900 p-6">
                 <div className="flex items-center gap-5">
-                  <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-emerald-900" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                    {activeApplicant.applicantName.split(" ").slice(0, 2).map((p) => p[0] ?? "").join("")}
+                  <span
+                    className="grid h-20 w-20 place-items-center rounded-full bg-white text-2xl font-black uppercase tracking-wide text-emerald-900"
+                    style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}
+                  >
+                    {activeApplicant.applicantName
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((p) => p[0] ?? "")
+                      .join("")}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-xs font-bold uppercase tracking-widest text-emerald-200">Postulante en evaluación</p>
-                    <h3 className="text-3xl font-black leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-200">
+                      Postulante en evaluación
+                    </p>
+                    <h3
+                      className="mt-1 text-3xl font-black leading-tight tracking-tight text-white"
+                      style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+                    >
                       {activeApplicant.applicantName}
                     </h3>
-                    <p className="mt-1 text-sm font-medium text-emerald-200">Académico · Evaluación Individual</p>
+                    <p className="mt-1 text-sm font-medium text-white/80">
+                      Académico · Evaluación Individual
+                    </p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end gap-1">
                     <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-900">
@@ -457,25 +677,81 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                 </div>
               </div>
 
+              {/* Locked notice */}
+              {isCurrentBlocked && (
+                <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-center gap-3">
+                  <Lock size={18} className="text-amber-600" />
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Evaluación bloqueada</p>
+                    <p className="text-xs text-amber-600">
+                      Esta evaluación se habilitará cuando comience la franja horaria.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Criteria */}
               <div className="divide-y divide-slate-100">
-                {criteria.map((criterion, cIdx) => (
-                  <div key={cIdx} className="p-5">
+                {rubricCriteria.map((criterion, cIdx) => (
+                  <div key={criterion.criterionId} className="p-5">
                     <div className="mb-4 flex items-start gap-3">
-                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-emerald-900 text-sm font-black text-white">{cIdx + 1}</span>
-                      <p className="pt-1 text-base font-bold leading-snug text-slate-900" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{criterion.title}</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 xl:grid-cols-6">
-                      {criterion.options.map((opt) => (
-                        <button
-                          key={String(opt.value)}
-                          className={`min-h-14 rounded-xl border-2 p-3 text-center transition-all ${activeScores[cIdx] === opt.value ? "border-emerald-700 bg-emerald-900 text-white shadow-md" : "border-slate-200 bg-white hover:border-emerald-400 hover:shadow-sm"}`}
-                          onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
+                      <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-emerald-900 text-sm font-black text-white">
+                        {cIdx + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-base font-bold leading-snug text-slate-900"
+                          style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
                         >
-                          <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
-                          <small className="mt-1 block text-xs leading-tight" style={activeScores[cIdx] === opt.value ? { color: '#a7f3d0' } : { color: '#64748b' }}>{opt.label}</small>
-                        </button>
-                      ))}
+                          {criterion.name}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">{criterion.descriptor}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+                      {criterion.options.map((option) => {
+                        const isSelected = activeScores[cIdx] === option.value;
+                        const isLogrado = option.value === 3;
+                        const isPorLograr = option.value === 2;
+                        const isNoLogrado = option.value === 0 || option.value === 1;
+                        return (
+                          <button
+                            key={option.optionId}
+                            disabled={!editableStatus[activeApplicant.applicationId] || saving}
+                            onClick={() => void setScore(activeApplicant.applicationId, cIdx, option.value)}
+                            className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
+                              isSelected && isLogrado
+                                ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md"
+                                : isSelected && isPorLograr
+                                  ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md"
+                                  : isSelected && isNoLogrado
+                                    ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md"
+                                    : isSelected
+                                      ? "border-emerald-700 bg-emerald-900 text-white shadow-md"
+                                      : "border-slate-200 bg-white hover:border-emerald-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
+                            }`}
+                          >
+                            <span className="block text-lg font-black">{option.value}</span>
+                            <span className={`block text-xs font-semibold ${isSelected ? "text-white/90" : ""}`}>
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {/* NO OBSERVED */}
+                      <button
+                        disabled={!editableStatus[activeApplicant.applicationId] || saving}
+                        onClick={() => void setScore(activeApplicant.applicationId, cIdx, -1)}
+                        className={`min-h-16 rounded-xl border-2 p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 ${
+                          activeScores[cIdx] === -1
+                            ? "border-slate-400 bg-slate-400 text-white shadow-md"
+                            : "border-slate-200 bg-white hover:border-slate-400 disabled:bg-slate-50"
+                        }`}
+                      >
+                        NO
+                        <br />
+                        OBSERVADO
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -489,23 +765,38 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                 <textarea
                   className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                   rows={4}
+                  disabled={!editableStatus[activeApplicant.applicationId] || saving}
                   value={activeComment}
-                  onChange={(e) => setGroupComment(activeApplicant.applicationId, e.target.value)}
-                  placeholder="Evidencia observable, contexto y comportamientos relevantes de este postulante..."
+                  onChange={(e) => void setGroupComment(activeApplicant.applicationId, e.target.value)}
+                  placeholder={
+                    editableStatus[activeApplicant.applicationId]
+                      ? "Evidencia observable, contexto y comportamientos relevantes..."
+                      : "Las observaciones no están disponibles mientras la evaluación está bloqueada."
+                  }
                 />
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-5">
-                <button className="secondary" onClick={backToAgenda}>Volver al grupo</button>
+                <button className="secondary" onClick={backToAgenda}>
+                  Volver al grupo
+                </button>
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                  <Check size={16} className="text-emerald-600" />Guardado automático
+                  <Check size={16} className="text-emerald-600" />
+                  Guardado automático
                 </span>
                 <button
                   className="primary"
-                  disabled={!allMembersComplete || saving}
+                  disabled={!allMembersComplete || saving || !editableStatus[activeApplicant.applicationId]}
                   onClick={() => void handleSubmit()}
                 >
-                  {saving ? "Guardando..." : <><CheckCircle2 className="mr-2 inline" size={17} />Enviar a revisión</>}
+                  {saving ? (
+                    "Guardando..."
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 inline" size={17} />
+                      Enviar a revisión
+                    </>
+                  )}
                 </button>
               </div>
             </section>

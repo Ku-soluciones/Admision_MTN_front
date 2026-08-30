@@ -14,6 +14,20 @@ import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 type SaveState =
   "idle" | "saving" | "saved" | "offline" | "conflict" | "closed";
 
+function getMinutesUntil(iso: string): number {
+  const now = Date.now();
+  const target = new Date(iso).getTime();
+  return Math.round((target - now) / 60000);
+}
+
+function formatMinutesRemaining(minutes: number): string {
+  if (minutes <= 0) return "0:00";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export function EvaluatorReport() {
   const { reportId = "" } = useParams();
   const navigate = useNavigate();
@@ -22,7 +36,9 @@ export function EvaluatorReport() {
   const [state, setState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const noteTimer = useRef<number | null>(null);
+  const countdownRef = useRef<number | null>(null);
   const requestedReturn = searchParams.get("returnTo");
   const returnTo = requestedReturn?.startsWith("/profesor/prekinder")
     || requestedReturn?.startsWith("/prekinder/evaluador")
@@ -39,6 +55,10 @@ export function EvaluatorReport() {
       setReport(next);
       setNote(next.note.content);
       setState(next.editableNow ? "idle" : "closed");
+      if (!next.editableNow) {
+        const mins = getMinutesUntil(next.header.startsAt);
+        setMinutesUntilStart(mins);
+      }
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -53,6 +73,29 @@ export function EvaluatorReport() {
       if (noteTimer.current) window.clearTimeout(noteTimer.current);
     };
   }, [reportId]);
+  useEffect(() => {
+    if (!report || report.editableNow) return;
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = window.setInterval(() => {
+      if (report) {
+        const mins = getMinutesUntil(report.header.startsAt);
+        setMinutesUntilStart(mins);
+        if (mins <= 0) {
+          if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+          }
+          void load();
+        }
+      }
+    }, 30000);
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    };
+  }, [report]);
   useEffect(() => {
     const online = () => setState("idle");
     const offline = () => setState("offline");
@@ -373,11 +416,27 @@ export function EvaluatorReport() {
           {completed ? "Informe finalizado" : "Finalizar y continuar"}
         </button>
         {!report.editableNow && !completed && (
-          <p className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-600">
-            <LockKeyhole size={17} />
-            El bloque está cerrado. Administración puede otorgar una extensión
-            auditada.
-          </p>
+          <div className="mt-3 flex flex-col items-center gap-1.5 text-center">
+            {minutesUntilStart !== null && minutesUntilStart > 0 ? (
+              <>
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+                  <LockKeyhole size={17} />
+                  <span>Bloqueado · Abre en {formatMinutesRemaining(minutesUntilStart)}</span>
+                </div>
+                <div className="h-1.5 w-48 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-amber-400 transition-all duration-1000"
+                    style={{ width: `${Math.max(0, Math.min(100, ((120 - minutesUntilStart) / 120) * 100))}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <LockKeyhole size={17} />
+                El bloque está cerrado. Administración puede otorgar una extensión auditada.
+              </p>
+            )}
+          </div>
         )}
       </main>
     </div>
