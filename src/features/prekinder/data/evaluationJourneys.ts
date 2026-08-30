@@ -1,46 +1,29 @@
+import type { EvaluationDay } from "../services/api";
+
 export type EvaluationJourney = {
   id: string;
   name: string;
   date: string;
+  version: number;
 };
 
-function storageKey(processId: string) {
-  return `prekinder.journeys.v1.${processId}`;
+export type JourneyActionResult = { ok: true } | { ok: false; error: string };
+
+export function journeyFromApi(day: EvaluationDay): EvaluationJourney {
+  return { id: day.dayId, name: day.name, date: day.date, version: day.version };
 }
 
-function today() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Santiago",
-  }).format(new Date());
-}
-
-function defaultJourneyName(date: string) {
-  return new Intl.DateTimeFormat("es-CL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Santiago",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-export function loadJourneys(processId: string): EvaluationJourney[] {
-  if (!processId) return [];
-  try {
-    const raw = window.localStorage.getItem(storageKey(processId));
-    const parsed = raw ? (JSON.parse(raw) as EvaluationJourney[]) : [];
-    if (Array.isArray(parsed) && parsed.length) return parsed;
-  } catch {
-    // fall through to seeding a default journey
+export function journeyErrorMessage(code: string | undefined, fallback: string): string {
+  switch (code) {
+    case "EVALUATION_DAY_DATE_TAKEN":
+      return "Ya existe una jornada con esa fecha para este proceso.";
+    case "EVALUATION_DAY_HAS_GROUPS":
+      return "No se puede eliminar: esta jornada ya tiene grupos asignados. Reasígnalos primero.";
+    case "VERSION_CONFLICT":
+      return "Otro coordinador modificó esta jornada. Actualiza la página e intenta de nuevo.";
+    case "VALIDATION_ERROR":
+      return "Revisa el nombre y la fecha ingresados.";
+    default:
+      return fallback;
   }
-  const date = today();
-  const seeded: EvaluationJourney[] = [
-    { id: crypto.randomUUID(), name: defaultJourneyName(date), date },
-  ];
-  saveJourneys(processId, seeded);
-  return seeded;
-}
-
-export function saveJourneys(processId: string, journeys: EvaluationJourney[]) {
-  if (!processId) return;
-  window.localStorage.setItem(storageKey(processId), JSON.stringify(journeys));
 }
