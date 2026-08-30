@@ -170,6 +170,8 @@ vulnerability-report.*
 .claude/
 .gemini/
 .gstack/
+.impeccable/
+.superpowers/
 skills-lock.json
 docs/
 .env*
