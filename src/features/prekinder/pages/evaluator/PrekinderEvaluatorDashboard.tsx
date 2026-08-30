@@ -184,10 +184,10 @@ export function PrekinderEvaluatorDashboard({ profile }: PrekinderEvaluatorDashb
                 const group = assignment.group;
                 const members = assignment.reports;
                 const isExpanded = expandedGroups.has(group.groupId);
-                const isPsychomotor = profile === "PSYCHOMOTOR";
-                const evalUrl = isPsychomotor
-                  ? `/prekinder/evaluador/psychomotor/evaluacion/${assignment.assignmentId}`
-                  : `/prekinder/evaluador/${profile.toLowerCase().replace("_", "-")}/grupo/${group.groupId}?date=${date}`;
+                const profileSlug = profile === "PSYCHOMOTOR"
+                  ? "psychomotor"
+                  : profile.toLowerCase().replace("_", "-");
+                const evalUrl = `/prekinder/evaluador/${profileSlug}/evaluacion/${assignment.assignmentId}`;
 
                 return (
                   <div key={assignment.assignmentId}>
