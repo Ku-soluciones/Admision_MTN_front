@@ -64,6 +64,7 @@ export async function apiRequest<T>(
     throw new ApiError(
       response.status,
       body?.error?.message || recoveryMessage(response.status),
+      body?.error?.code,
     );
   }
   return body.data as T;
@@ -81,6 +82,7 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly code?: string,
   ) {
     super(message);
   }
@@ -262,6 +264,15 @@ export type Room = {
   name: string;
   capacity: number;
   active: boolean;
+  version: number;
+};
+
+export type EvaluationDay = {
+  dayId: string;
+  processId: string;
+  name: string;
+  date: string;
+  timezone: string;
   version: number;
 };
 
@@ -815,6 +826,28 @@ export const prekinderApi = {
   deleteRoom: (roomId: string, expectedVersion: number) =>
     apiRequest<Room>(
       `/v1/prekinder/rooms/${roomId}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
+  evaluationDays: (processId: string) =>
+    apiRequest<EvaluationDay[]>(
+      `/v1/prekinder/processes/${processId}/evaluation-days`,
+    ),
+  createEvaluationDay: (processId: string, input: { name: string; date: string }) =>
+    apiRequest<EvaluationDay>(
+      `/v1/prekinder/processes/${processId}/evaluation-days`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  updateEvaluationDay: (
+    evaluationDayId: string,
+    input: { name: string; date: string; expectedVersion: number },
+  ) =>
+    apiRequest<EvaluationDay>(
+      `/v1/prekinder/evaluation-days/${evaluationDayId}`,
+      { method: "PATCH", body: JSON.stringify(input) },
+    ),
+  deleteEvaluationDay: (evaluationDayId: string, expectedVersion: number) =>
+    apiRequest<void>(
+      `/v1/prekinder/evaluation-days/${evaluationDayId}?expectedVersion=${expectedVersion}`,
       { method: "DELETE" },
     ),
   groups: (processId: string, date: string) =>

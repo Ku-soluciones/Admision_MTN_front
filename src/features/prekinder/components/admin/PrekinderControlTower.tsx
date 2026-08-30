@@ -35,7 +35,7 @@ import {
   type Professional,
   type Room,
 } from "../../services/api";
-import type { EvaluationJourney } from "../../data/evaluationJourneys";
+import type { EvaluationJourney, JourneyActionResult } from "../../data/evaluationJourneys";
 
 type Props = {
   processId: string;
@@ -53,9 +53,9 @@ type Props = {
   journeys: EvaluationJourney[];
   selectedJourneyId: string | null;
   onSelectJourney: (id: string) => void;
-  onCreateJourney: (name: string, date: string) => void;
-  onRenameJourney: (id: string, name: string, date: string) => void;
-  onDeleteJourney: (id: string) => void;
+  onCreateJourney: (name: string, date: string) => Promise<JourneyActionResult>;
+  onRenameJourney: (journey: EvaluationJourney, name: string, date: string) => Promise<JourneyActionResult>;
+  onDeleteJourney: (journey: EvaluationJourney) => Promise<JourneyActionResult>;
 };
 
 const fixedTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
@@ -446,16 +446,19 @@ function JourneyManager({
   selectedJourneyId: string | null;
   busy: boolean;
   onSelect: (id: string) => void;
-  onCreate: (name: string, date: string) => void;
-  onRename: (id: string, name: string, date: string) => void;
-  onDelete: (id: string) => void;
+  onCreate: (name: string, date: string) => Promise<JourneyActionResult>;
+  onRename: (journey: EvaluationJourney, name: string, date: string) => Promise<JourneyActionResult>;
+  onDelete: (journey: EvaluationJourney) => Promise<JourneyActionResult>;
   expandedContent: ReactNode;
 }) {
   const [editing, setEditing] = useState<EvaluationJourney | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const sorted = [...journeys].sort((a, b) => a.date.localeCompare(b.date));
 
@@ -464,6 +467,7 @@ function JourneyManager({
     setFormOpen(false);
     setName("");
     setDate("");
+    setFormError("");
   }
 
   function edit(journey: EvaluationJourney) {
@@ -471,6 +475,7 @@ function JourneyManager({
     setFormOpen(true);
     setName(journey.name);
     setDate(journey.date);
+    setFormError("");
   }
 
   function toggleRow(id: string) {
@@ -507,12 +512,17 @@ function JourneyManager({
             {formOpen && (
               <form
                 className="px-6 pb-6"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  if (!canSave) return;
-                  if (editing) onRename(editing.id, name.trim(), date);
-                  else onCreate(name.trim(), date);
-                  clearForm();
+                  if (!canSave || saving) return;
+                  setFormError("");
+                  setSaving(true);
+                  const result = editing
+                    ? await onRename(editing, name.trim(), date)
+                    : await onCreate(name.trim(), date);
+                  setSaving(false);
+                  if ("error" in result) setFormError(result.error);
+                  else clearForm();
                 }}
               >
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -537,11 +547,14 @@ function JourneyManager({
                     />
                   </Field>
                 </div>
+                {formError && (
+                  <p className="mt-3 text-sm font-semibold text-red-700" role="alert">{formError}</p>
+                )}
                 <div className="mt-4 flex gap-2">
-                  <button className="primary" disabled={busy || !canSave}>
-                    {editing ? "Guardar cambios" : "Crear jornada de evaluación"}
+                  <button className="primary" disabled={busy || saving || !canSave}>
+                    {saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear jornada de evaluación"}
                   </button>
-                  <button type="button" className="secondary" disabled={busy} onClick={clearForm}>
+                  <button type="button" className="secondary" disabled={busy || saving} onClick={clearForm}>
                     Cancelar
                   </button>
                 </div>
@@ -584,9 +597,11 @@ function JourneyManager({
                             type="button"
                             className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={busy}
-                            onClick={() => {
-                              onDelete(journey.id);
-                              setDeletingId(null);
+                            onClick={async () => {
+                              setDeleteError("");
+                              const result = await onDelete(journey);
+                              if ("error" in result) setDeleteError(result.error);
+                              else setDeletingId(null);
                             }}
                           >
                             Confirmar
@@ -594,7 +609,10 @@ function JourneyManager({
                           <button
                             type="button"
                             className="min-h-9 rounded-lg border border-slate-300 px-3 text-xs font-black text-slate-700 transition hover:bg-slate-100"
-                            onClick={() => setDeletingId(null)}
+                            onClick={() => {
+                              setDeletingId(null);
+                              setDeleteError("");
+                            }}
                           >
                             Cancelar
                           </button>
@@ -623,6 +641,9 @@ function JourneyManager({
                       )}
                     </div>
                   </div>
+                  {deletingId === journey.id && deleteError && (
+                    <p className="border-t border-red-100 bg-red-50 px-5 py-2 text-sm font-semibold text-red-700" role="alert">{deleteError}</p>
+                  )}
                   {expanded && (
                     <div className="border-t border-slate-200 bg-slate-50 p-5">
                       {journey.id === selectedJourneyId

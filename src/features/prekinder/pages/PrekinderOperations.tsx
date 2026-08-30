@@ -59,9 +59,10 @@ import { PrekinderControlTower } from "../components/admin/PrekinderControlTower
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
 import {
-  loadJourneys,
-  saveJourneys,
+  journeyErrorMessage,
+  journeyFromApi,
   type EvaluationJourney,
+  type JourneyActionResult,
 } from "../data/evaluationJourneys";
 
 const sections = [
@@ -233,7 +234,7 @@ export function PrekinderOperations({
     setError("");
     try {
       const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower,
-        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextBatches] =
+        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextBatches, nextEvaluationDays] =
         await Promise.all([
           prekinderApi.dashboard(id),
           prekinderApi.waves(id),
@@ -246,6 +247,7 @@ export function PrekinderOperations({
           prekinderApi.readiness(id),
           prekinderApi.communicationTemplates(id),
           prekinderApi.publicationBatches(id),
+          prekinderApi.evaluationDays(id),
         ]);
       setMetrics(nextMetrics);
       setWaves(nextWaves);
@@ -261,6 +263,13 @@ export function PrekinderOperations({
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
       );
+      const nextJourneys = nextEvaluationDays.map(journeyFromApi);
+      setJourneys(nextJourneys);
+      setSelectedJourneyId((current) => {
+        if (current && nextJourneys.some((journey) => journey.id === current)) return current;
+        const sorted = [...nextJourneys].sort((a, b) => a.date.localeCompare(b.date));
+        return sorted[0]?.id ?? null;
+      });
       setLastLoaded(new Date());
     } catch (reason) {
       setError(
@@ -287,43 +296,66 @@ export function PrekinderOperations({
     else setDate(nextDate);
   }
 
-  function createJourney(name: string, journeyDate: string) {
-    const created: EvaluationJourney = { id: crypto.randomUUID(), name, date: journeyDate };
-    setJourneys((current) => {
-      const updated = [...current, created];
-      saveJourneys(processId, updated);
-      return updated;
-    });
-    setSelectedJourneyId(created.id);
-    setMessage("Jornada creada.");
+  async function createJourney(name: string, journeyDate: string): Promise<JourneyActionResult> {
+    setBusy(true);
+    try {
+      const created = await prekinderApi.createEvaluationDay(processId, { name, date: journeyDate });
+      await loadProcess();
+      setSelectedJourneyId(created.dayId);
+      setMessage("Jornada creada.");
+      return { ok: true };
+    } catch (reason) {
+      return {
+        ok: false,
+        error: reason instanceof ApiError
+          ? journeyErrorMessage(reason.code, reason.message)
+          : "No pudimos crear la jornada.",
+      };
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function renameJourney(id: string, name: string, journeyDate: string) {
-    setJourneys((current) => {
-      const updated = current.map((journey) =>
-        journey.id === id ? { ...journey, name, date: journeyDate } : journey,
-      );
-      saveJourneys(processId, updated);
-      return updated;
-    });
-    setMessage("Jornada actualizada.");
+  async function renameJourney(journey: EvaluationJourney, name: string, journeyDate: string): Promise<JourneyActionResult> {
+    setBusy(true);
+    try {
+      await prekinderApi.updateEvaluationDay(journey.id, {
+        name,
+        date: journeyDate,
+        expectedVersion: journey.version,
+      });
+      await loadProcess();
+      setMessage("Jornada actualizada.");
+      return { ok: true };
+    } catch (reason) {
+      return {
+        ok: false,
+        error: reason instanceof ApiError
+          ? journeyErrorMessage(reason.code, reason.message)
+          : "No pudimos actualizar la jornada.",
+      };
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function deleteJourney(id: string) {
-    setJourneys((current) => {
-      const updated = current.filter((journey) => journey.id !== id);
-      saveJourneys(processId, updated);
-      if (updated.length) {
-        setSelectedJourneyId((currentSelected) =>
-          currentSelected === id ? updated[0].id : currentSelected,
-        );
-        return updated;
-      }
-      const seeded = loadJourneys(processId);
-      setSelectedJourneyId(seeded[0]?.id ?? null);
-      return seeded;
-    });
-    setMessage("Jornada eliminada.");
+  async function deleteJourney(journey: EvaluationJourney): Promise<JourneyActionResult> {
+    setBusy(true);
+    try {
+      await prekinderApi.deleteEvaluationDay(journey.id, journey.version);
+      await loadProcess();
+      setMessage("Jornada eliminada.");
+      return { ok: true };
+    } catch (reason) {
+      return {
+        ok: false,
+        error: reason instanceof ApiError
+          ? journeyErrorMessage(reason.code, reason.message)
+          : "No pudimos eliminar la jornada.",
+      };
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -332,17 +364,6 @@ export function PrekinderOperations({
   useEffect(() => {
     if (processId) void loadProcess(processId, date);
   }, [processId, date]);
-  useEffect(() => {
-    if (!processId) return;
-    const next = loadJourneys(processId);
-    const sorted = [...next].sort((a, b) => a.date.localeCompare(b.date));
-    setJourneys(next);
-    setSelectedJourneyId((current) =>
-      current && next.some((journey) => journey.id === current)
-        ? current
-        : (sorted[0]?.id ?? null),
-    );
-  }, [processId]);
   useEffect(() => {
     const journey = journeys.find((item) => item.id === selectedJourneyId);
     if (journey) setDate(journey.date);
