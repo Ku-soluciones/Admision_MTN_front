@@ -168,9 +168,12 @@ export function PrekinderEvaluatorGroupPage({ profile }: PrekinderEvaluatorGroup
                 {group.reports.map((report, index) => (
                   <button
                     key={report.reportId}
-                    onClick={() =>
-                      navigate(`/prekinder/evaluador/psychomotor/evaluacion/${group.assignmentId}`)
-                    }
+                    onClick={() => {
+                      const profileSlug = profile === "PSYCHOMOTOR"
+                        ? "psychomotor"
+                        : profile.toLowerCase().replace("_", "-");
+                      navigate(`/prekinder/evaluador/${profileSlug}/evaluacion/${group.assignmentId}`);
+                    }}
                     className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-gray-50"
                   >
                     <div className="grid h-12 w-12 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
