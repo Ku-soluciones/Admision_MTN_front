@@ -73,8 +73,23 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   const [editableStatus, setEditableStatus] = useState<{ [appId: string]: boolean }>({});
   const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const countdownRef = useRef<number | null>(null);
+  const [explicitlySelected, setExplicitlySelected] = useState<Set<string>>(new Set());
 
   const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
+
+  async function loadRubric(reportId: string) {
+    try {
+      const report = await prekinderApi.report(reportId);
+      const sorted = report.criteria.map((c) => ({
+        ...c,
+        options: [...c.options].sort((a, b) => a.position - b.position),
+      }));
+      setRubricCriteria(sorted);
+      setReportsData((current) => ({ ...current, [report.header.applicationId]: report }));
+    } catch (err) {
+      console.error("Error loading rubric:", err);
+    }
+  }
 
   async function loadAllReports() {
     if (!selectedAssignment) return;
@@ -132,6 +147,15 @@ export function ConnectedAcademicConsole({ profile }: Props) {
   useEffect(() => {
     void loadAgenda();
   }, []);
+
+  // Load rubric when assignmentId is available from URL params
+  useEffect(() => {
+    if (!assignmentId || !selectedAssignment) return;
+    const firstReportId = selectedAssignment.reports[0]?.reportId;
+    if (firstReportId) {
+      void loadRubric(firstReportId);
+    }
+  }, [assignmentId, selectedAssignment?.assignmentId]);
 
   // When entering via direct URL (assignmentId in path), load reports immediately to get criteria
   useEffect(() => {
@@ -487,9 +511,11 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                 <h3 className="text-2xl font-black" style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}>
                   Evaluación bloqueada
                 </h3>
-                <p className="mt-2 text-sm text-white/80">
-                  La franja horaria aún no comienza
-                </p>
+                {minutesUntilStart > 0 ? (
+                  <p className="mt-2 text-sm text-white/80">La franja horaria aún no comienza</p>
+                ) : (
+                  <p className="mt-2 text-sm text-amber-300">La franja ya pasó. Contacta a administración.</p>
+                )}
                 {minutesUntilStart > 0 ? (
                   <>
                     <div className="mt-6">
@@ -739,26 +765,14 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                             }`}
                           >
                             <span className="block text-lg font-black">{option.value}</span>
-                            <span className={`block text-xs font-semibold ${isSelected ? "text-white/90" : ""}`}>
-                              {option.label}
-                            </span>
+                            {option.descriptor && (
+                              <span className={`mt-1 block text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>
+                                {option.descriptor}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
-                      {/* NO OBSERVED */}
-                      <button
-                        disabled={!editableStatus[activeApplicant.applicationId] || saving}
-                        onClick={() => void setScore(activeApplicant.applicationId, cIdx, -1)}
-                        className={`min-h-16 rounded-xl border-2 p-3 text-left text-xs font-bold transition focus:outline-none focus:ring-2 ${
-                          activeScores[cIdx] === -1
-                            ? "border-slate-400 bg-slate-400 text-white shadow-md"
-                            : "border-slate-200 bg-white hover:border-slate-400 disabled:bg-slate-50"
-                        }`}
-                      >
-                        NO
-                        <br />
-                        OBSERVADO
-                      </button>
                     </div>
                   </div>
                 ))}
