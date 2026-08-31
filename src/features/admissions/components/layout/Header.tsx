@@ -46,11 +46,17 @@ const Header: React.FC = () => {
                             </Button>
                         </a>
                         {isHomePage && (
-                            <a href={appUrls.guardianApplicationEntry}>
-                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
+                            <div className="relative group">
+                                <a href={appUrls.guardianRegister} onClick={(e) => e.preventDefault()} className="pointer-events-none opacity-50 cursor-not-allowed">
+                                    <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                        Postular
+                                    </Button>
+                                </a>
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                    El proceso de postulación ha finalizado
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
+                                </div>
+                            </div>
                         )}
                     </div>
                     {/* Hamburger button */}
@@ -115,11 +121,17 @@ const Header: React.FC = () => {
                             </Button>
                         </a>
                         {isHomePage && (
-                            <a href={appUrls.guardianApplicationEntry} onClick={() => setIsMobileMenuOpen(false)}>
-                                <Button variant="primary" className="w-full !text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
+                            <div className="relative group">
+                                <a href={appUrls.guardianRegister} onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); }} className="pointer-events-none opacity-50 cursor-not-allowed">
+                                    <Button variant="primary" className="w-full !text-blanco-pureza">
+                                        Postular
+                                    </Button>
+                                </a>
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                    El proceso de postulación ha finalizado
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </nav>

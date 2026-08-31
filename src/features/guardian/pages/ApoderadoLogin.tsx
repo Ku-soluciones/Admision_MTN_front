@@ -106,9 +106,9 @@ const ApoderadoLogin: React.FC = () => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [showRegister, setShowRegister] = useState(
-        new URLSearchParams(window.location.search).get('register') === '1'
-    );
+    // Si el proceso no está activo,forzar showRegister a false
+    const urlRegisterParam = new URLSearchParams(window.location.search).get('register') === '1';
+    const [showRegister, setShowRegister] = useState(false);
     const [isEmailVerified, setIsEmailVerified] = useState(false);
     const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
@@ -288,15 +288,10 @@ const ApoderadoLogin: React.FC = () => {
                             <img src="https://ik.imagekit.io/11mmsqbe5/mtn-admisiones/logoMTN.png?updatedAt=1780848171943" alt="Logo Monte Tabor y Nazaret" className="h-16" />
                         </div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-azul-monte-tabor">
-                            {showRegister ? 'Crear Cuenta para Postular' : 'Portal de Familias'}
+                            Portal de Familias
                         </h2>
                         <p className="mt-2 text-lg text-azul-monte-tabor font-light">
-                            {showRegister
-                                ? (registerStep === 1
-                                    ? 'Paso 1 de 2: Verifica tu identidad y correo'
-                                    : 'Paso 2 de 2: Datos de contacto y contraseña')
-                                : 'Inicia sesión para acceder a tu portal'
-                            }
+                            Inicia sesión para acceder a tu portal
                         </p>
                     </div>
                     {!showRegister ? (
@@ -341,13 +336,15 @@ const ApoderadoLogin: React.FC = () => {
                             </Button>
 
                             <div className="text-center pt-6 border-t border-gray-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegister(true)}
-                                    className="text-azul-monte-tabor hover:underline text-sm font-semibold"
-                                >
-                                    ¿Primera vez? Crear cuenta para postular
-                                </button>
+                                <div className="relative inline-block group">
+                                    <span className="text-gray-400 text-sm font-semibold cursor-not-allowed">
+                                        ¿Primera vez? Crear cuenta para postular
+                                    </span>
+                                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                        El proceso de postulación ha finalizado
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
+                                    </div>
+                                </div>
                             </div>
                         </form>
                     ) : (
