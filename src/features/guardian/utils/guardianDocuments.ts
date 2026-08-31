@@ -1,5 +1,5 @@
 export interface GuardianDocument {
-  id: number;
+  id: number | string;
   documentType?: string;
   document_type?: string;
   originalName?: string;
@@ -11,7 +11,7 @@ export interface GuardianDocument {
 }
 
 export interface GuardianApplicationDocumentsSource {
-  id: number;
+  id: number | string;
   student?: {
     firstName?: string;
     lastName?: string;
@@ -21,13 +21,13 @@ export interface GuardianApplicationDocumentsSource {
 }
 
 export interface GuardianDocumentGroup {
-  applicationId: number;
+  applicationId: number | string;
   studentName: string;
   documents: GuardianDocument[];
   loadError: boolean;
 }
 
-type DocumentsLoader = (applicationId: number) => Promise<unknown>;
+type DocumentsLoader = (applicationId: number | string) => Promise<unknown>;
 
 function readDocumentList(payload: unknown): GuardianDocument[] | null {
   if (Array.isArray(payload)) {

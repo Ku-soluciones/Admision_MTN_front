@@ -70,6 +70,9 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+                    <p className="mx-auto mt-4 max-w-2xl text-sm text-blue-100">
+                        Después de ingresar podrás elegir Prekínder u otro curso disponible.
+                    </p>
                 </div>
             </section>
 

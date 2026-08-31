@@ -50,6 +50,10 @@ import {
   loadGuardianDocumentGroups,
   type GuardianDocumentGroup,
 } from '../utils/guardianDocuments';
+import {
+  guardianPrekinderService,
+  type GuardianPrekinderApplication,
+} from '../services/guardianPrekinderService';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -77,6 +81,22 @@ const getDocumentStatusIcon = (status: Document['status']) => {
         case 'rejected': return <XCircleIcon className="w-5 h-5 text-rojo-sagrado" />;
         default: return <FileTextIcon className="w-5 h-5 text-gris-piedra" />;
     }
+};
+
+const prekinderStatusLabel = (status: string) => ({
+  DRAFT: 'Borrador',
+  SUBMITTED: 'Formulario recibido',
+  UNDER_REVIEW: 'En revisión',
+  SCHEDULED: 'Jornada programada',
+  IN_EVALUATION: 'En evaluación',
+  OFFERED: 'Admitido',
+  WAITLISTED: 'Lista de espera',
+  NOT_ADMITTED: 'No admitido',
+}[status] || status);
+
+const formatPaymentAmount = (amount?: number, currency = 'CLP') => {
+  if (amount == null || amount <= 0) return '';
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 };
 
 interface SidebarContentProps {
@@ -143,6 +163,10 @@ const FamilyDashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState('resumen');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [realApplications, setRealApplications] = useState<Application[]>([]);
+  const [prekinderApplications, setPrekinderApplications] = useState<GuardianPrekinderApplication[]>([]);
+  const [isPrekinderLoading, setIsPrekinderLoading] = useState(true);
+  const [selectedPrekinderFormApplication, setSelectedPrekinderFormApplication] = useState<GuardianPrekinderApplication | null>(null);
+  const [prekinderPaymentLoadingId, setPrekinderPaymentLoadingId] = useState<string | null>(null);
   const [selectedApplicationIndex, setSelectedApplicationIndex] = useState(0);
   const [documentGroups, setDocumentGroups] = useState<GuardianDocumentGroup[]>([]);
   const [documentLoadErrors, setDocumentLoadErrors] = useState(0);
@@ -151,11 +175,13 @@ const FamilyDashboard: React.FC = () => {
   const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
 
   // Function to download/view document
-  const handleViewDocument = async (documentId: number, documentName: string) => {
+  const handleViewDocument = async (documentId: number | string, documentName: string) => {
     const viewer = window.open('', '_blank');
 
     try {
-      const blob = await documentService.viewDocument(documentId);
+      const blob = typeof documentId === 'string'
+        ? await guardianPrekinderService.viewDocument(documentId)
+        : await documentService.viewDocument(documentId);
       const url = window.URL.createObjectURL(blob);
 
       if (viewer) {
@@ -220,13 +246,56 @@ const FamilyDashboard: React.FC = () => {
     };
   }, [isAuthenticated, user]);
 
+  // Prekínder es una lectura adicional y aislada: si falla, el dashboard y las
+  // acciones de las postulaciones regulares continúan exactamente igual.
+  useEffect(() => {
+    let isMounted = true;
+    if (!isAuthenticated || !user) {
+      setIsPrekinderLoading(false);
+      return undefined;
+    }
+
+    setIsPrekinderLoading(true);
+
+    guardianPrekinderService.applications()
+      .then(async items => {
+        const applications = Array.isArray(items) ? items : [];
+        const reconciled = await Promise.all(applications.map(async application => {
+          if (application.paymentStatus !== 'PAYMENT_PENDING') return application;
+          try {
+            const payment = await guardianPrekinderService.getPaymentStatus(application.applicationId);
+            return {
+              ...application,
+              paymentStatus: payment.paymentStatus,
+              paidAt: payment.paidAt,
+              canFillComplementaryForm: payment.canFillComplementaryForm,
+            };
+          } catch {
+            return application;
+          }
+        }));
+        if (!isMounted) return;
+        setPrekinderApplications(reconciled);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPrekinderApplications([]);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsPrekinderLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [isAuthenticated, user]);
+
   // Load documents for every application so families with multiple applicants
   // can see every available attachment in one place.
   useEffect(() => {
     let isMounted = true;
 
     const loadDocuments = async () => {
-      if (realApplications.length === 0) {
+      if (realApplications.length === 0 && prekinderApplications.length === 0) {
         if (isMounted) {
           setDocumentGroups([]);
           setDocumentLoadErrors(0);
@@ -237,10 +306,28 @@ const FamilyDashboard: React.FC = () => {
 
       try {
         if (isMounted) setLoadingDocuments(true);
-        const groups = await loadGuardianDocumentGroups(
+        const generalGroups = await loadGuardianDocumentGroups(
           realApplications,
-          applicationId => applicationService.getApplicationDocuments(applicationId),
+          applicationId => applicationService.getApplicationDocuments(Number(applicationId)),
         );
+        const prekinderGroups = await Promise.all(prekinderApplications.map(async application => {
+          try {
+            return {
+              applicationId: application.applicationId,
+              studentName: `${application.firstName} ${application.paternalLastName} ${application.maternalLastName || ''}`.trim(),
+              documents: await guardianPrekinderService.documents(application.applicationId),
+              loadError: false,
+            };
+          } catch {
+            return {
+              applicationId: application.applicationId,
+              studentName: `${application.firstName} ${application.paternalLastName} ${application.maternalLastName || ''}`.trim(),
+              documents: [],
+              loadError: true,
+            };
+          }
+        }));
+        const groups: GuardianDocumentGroup[] = [...generalGroups, ...prekinderGroups];
 
         if (isMounted) {
           setDocumentGroups(groups);
@@ -257,7 +344,7 @@ const FamilyDashboard: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [realApplications, documentsReloadKey]);
+  }, [realApplications, prekinderApplications, documentsReloadKey]);
 
   // Use real applications if available, otherwise fallback to context or mock data
   const hasRealApplication = Array.isArray(realApplications) && realApplications.length > 0;
@@ -266,6 +353,8 @@ const FamilyDashboard: React.FC = () => {
     : (applications.length > 0 ? applications[0] : null);
   const payableApplications = realApplications.filter(app => app.canFillComplementaryForm && !app.hasComplementaryForm);
   const hasComplementaryFormAccess = payableApplications.length > 0;
+  const activePrekinderFormApplication = selectedPrekinderFormApplication
+    || (!hasRealApplication ? prekinderApplications.find(application => application.paymentStatus === 'PAID') || null : null);
   const visibleSections = sections;
   const availableDocumentGroups = documentGroups.filter(group => group.documents.length > 0);
   const totalDocuments = availableDocumentGroups.reduce((total, group) => total + group.documents.length, 0);
@@ -296,14 +385,14 @@ const FamilyDashboard: React.FC = () => {
   };
 
   // Navega a postulación dentro del mismo frontend integrado sin perder el estado React.
-  const navigateToAdmissions = (path = '/postulacion') => {
-    const state = path === '/postulacion' ? buildFamilyPrefillState() : undefined;
+  const navigateToAdmissions = (path = '/postulacion/elegir') => {
+    const state = ['/postulacion', '/postulacion/elegir'].includes(path) ? buildFamilyPrefillState() : undefined;
     navigate(path, state ? { state } : undefined);
   };
 
   // Handler for adding another child (navigate to form with family data pre-filled)
   const handleAddAnotherChild = () => {
-    navigateToAdmissions('/postulacion');
+    navigateToAdmissions('/postulacion/elegir');
   };
 
   const handlePayApplication = async (applicationId: number) => {
@@ -344,14 +433,132 @@ const FamilyDashboard: React.FC = () => {
     }
   };
 
+  const handlePayPrekinderApplication = async (applicationId: string) => {
+    const paymentWindow = window.open('about:blank', '_blank');
+    if (paymentWindow) paymentWindow.opener = null;
+
+    try {
+      setPrekinderPaymentLoadingId(applicationId);
+      const payment = await guardianPrekinderService.startPaymentCheckout(applicationId);
+      setPrekinderApplications(previous => previous.map(application =>
+        application.applicationId === applicationId
+          ? {
+              ...application,
+              paymentStatus: payment.paymentStatus,
+              paidAt: payment.paidAt,
+              canFillComplementaryForm: payment.canFillComplementaryForm,
+              paymentAmount: payment.amount ?? application.paymentAmount,
+              paymentCurrency: payment.currency ?? application.paymentCurrency,
+            }
+          : application
+      ));
+      if (payment.checkoutUrl) {
+        if (paymentWindow && !paymentWindow.closed) paymentWindow.location.replace(payment.checkoutUrl);
+        else if (!window.open(payment.checkoutUrl, '_blank', 'noopener,noreferrer')) {
+          setToast({ message: 'Permite las ventanas emergentes para abrir el portal de pago', type: 'error' });
+        }
+      } else if (payment.paymentStatus === 'PAID') {
+        paymentWindow?.close();
+        setToast({ message: 'La postulación Prekínder ya se encuentra pagada', type: 'success' });
+      } else {
+        paymentWindow?.close();
+        setToast({ message: 'No se recibió un enlace de pago. Inténtalo nuevamente.', type: 'error' });
+      }
+    } catch (paymentError: any) {
+      paymentWindow?.close();
+      const message = paymentError?.response?.data?.message
+        || paymentError?.response?.data?.error
+        || paymentError?.message
+        || 'No fue posible iniciar el pago de Prekínder';
+      setToast({ message, type: 'error' });
+    } finally {
+      setPrekinderPaymentLoadingId(null);
+    }
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case 'resumen':
         return (
           <div className="space-y-6">
 
+            {prekinderApplications.length > 0 && (
+              <Card className="p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-azul-monte-tabor">Postulaciones Prekínder</h2>
+                    <p className="mt-1 text-sm text-gris-piedra">Información de solo lectura del proceso independiente de Prekínder.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="info" size="sm">{prekinderApplications.length} registrada{prekinderApplications.length === 1 ? '' : 's'}</Badge>
+                    {!hasRealApplication && (
+                      <Button variant="success" size="sm" onClick={handleAddAnotherChild} className="flex items-center gap-2">
+                        <FiPlus className="h-4 w-4" />
+                        Postular otro hijo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="divide-y divide-gray-200 rounded-xl border border-gray-200">
+                    {prekinderApplications.map(application => (
+                      <div key={application.applicationId} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-azul-monte-tabor">
+                            {application.firstName} {application.paternalLastName} {application.maternalLastName}
+                          </p>
+                          <p className="mt-1 text-sm text-gris-piedra">
+                            {application.gradeApplied} · Proceso {application.academicYear}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-start gap-3 lg:items-end">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="info" size="sm">Prekínder</Badge>
+                            <Badge variant={application.status === 'OFFERED' ? 'success' : application.status === 'NOT_ADMITTED' ? 'error' : 'warning'} size="sm">
+                              {prekinderStatusLabel(application.status)}
+                            </Badge>
+                            <Badge variant={application.paymentStatus === 'PAID' ? 'success' : application.paymentStatus === 'FAILED' ? 'error' : 'warning'} size="sm">
+                              {application.paymentStatus === 'PAID' ? 'Pagada' : application.paymentStatus === 'PAYMENT_PENDING' ? 'Pago pendiente' : application.paymentStatus === 'FAILED' ? 'Pago no completado' : 'Pendiente de pago'}
+                            </Badge>
+                          </div>
+                          {application.paymentStatus !== 'PAID' ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => void handlePayPrekinderApplication(application.applicationId)}
+                              disabled={prekinderPaymentLoadingId === application.applicationId}
+                              className="flex items-center gap-2 text-white"
+                            >
+                              <FiCreditCard className="h-4 w-4" />
+                              {prekinderPaymentLoadingId === application.applicationId
+                                ? 'Preparando pago...'
+                                : application.paymentStatus === 'PAYMENT_PENDING'
+                                  ? 'Continuar pago'
+                                  : `Pagar postulación${formatPaymentAmount(application.paymentAmount, application.paymentCurrency) ? ` · ${formatPaymentAmount(application.paymentAmount, application.paymentCurrency)}` : ''}`}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPrekinderFormApplication(application);
+                                setActiveSection('formulario-complementario');
+                              }}
+                              className="flex items-center gap-2 text-white"
+                            >
+                              <FiFileText className="h-4 w-4" />
+                              {application.hasComplementaryForm ? 'Ver formulario' : 'Completar formulario'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </Card>
+            )}
+
             {/* Sección de Nueva Postulación o Resumen */}
-            {!hasRealApplication ? (
+            {!hasRealApplication && prekinderApplications.length === 0 ? (
               <Card className="p-8 text-center bg-gradient-to-br from-green-50 to-blue-50 border-2 border-dashed border-azul-monte-tabor">
                 <div className="max-w-md mx-auto">
                   <FileTextIcon className="w-16 h-16 text-azul-monte-tabor mx-auto mb-4" />
@@ -377,7 +584,7 @@ const FamilyDashboard: React.FC = () => {
                   )}
                 </div>
               </Card>
-            ) : (
+            ) : hasRealApplication ? (
               <div className="space-y-6">
                 {/* Lista de Hijos Postulantes */}
                 <Card className="p-6">
@@ -486,7 +693,10 @@ const FamilyDashboard: React.FC = () => {
                         <Button
                           variant="primary"
                           className="flex items-center gap-2 text-white"
-                          onClick={() => setActiveSection('formulario-complementario')}
+                          onClick={() => {
+                            setSelectedPrekinderFormApplication(null);
+                            setActiveSection('formulario-complementario');
+                          }}
                         >
                           <FiFileText className="w-4 h-4 mr-2" />
                           Completar Formulario Complementario
@@ -568,7 +778,7 @@ const FamilyDashboard: React.FC = () => {
 
             </Card>
               </div>
-            )}
+            ) : null}
           </div>
         );
       case 'datos':
@@ -576,24 +786,24 @@ const FamilyDashboard: React.FC = () => {
           <Card className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-azul-monte-tabor">Datos del Postulante y Apoderados</h2>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  // Redirect to application form in edit mode
-                  // The application ID will be passed to pre-fill the form
-                  navigate('/postulacion', {
-                    state: {
-                      editMode: true,
-                      applicationId: myApplication.id,
-                      applicationData: myApplication
-                    }
-                  });
-                }}
-              >
-                <FiEdit className="w-4 h-4 mr-2" />
-                Editar Datos
-              </Button>
+              {hasRealApplication && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    navigate('/postulacion', {
+                      state: {
+                        editMode: true,
+                        applicationId: myApplication.id,
+                        applicationData: myApplication
+                      }
+                    });
+                  }}
+                >
+                  <FiEdit className="w-4 h-4 mr-2" />
+                  Editar Datos
+                </Button>
+              )}
             </div>
 
             {hasRealApplication ? (
@@ -696,6 +906,54 @@ const FamilyDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
+            ) : prekinderApplications.length > 0 ? (
+              <div className="space-y-6">
+                {prekinderApplications.map(application => {
+                  const details = application.applicationDetails || {};
+                  const address = details.address;
+                  const studentAddress = [address?.street, address?.number, address?.apartment, address?.commune]
+                    .filter(Boolean).join(' ');
+                  return (
+                    <section key={application.applicationId} className="rounded-xl border border-gray-200 p-5" aria-labelledby={`datos-pk-${application.applicationId}`}>
+                      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                        <h3 id={`datos-pk-${application.applicationId}`} className="font-semibold text-azul-monte-tabor">
+                          {application.firstName} {application.paternalLastName} {application.maternalLastName}
+                        </h3>
+                        <Badge variant="info" size="sm">Prekínder · {application.academicYear}</Badge>
+                      </div>
+                      <div className="grid gap-5 text-sm md:grid-cols-2">
+                        <div>
+                          <h4 className="mb-2 font-semibold text-azul-monte-tabor">Postulante</h4>
+                          <p><strong>RUT:</strong> {application.rut}</p>
+                          <p><strong>Fecha de nacimiento:</strong> {new Date(application.birthDate).toLocaleDateString('es-CL')}</p>
+                          <p><strong>Nivel:</strong> {application.gradeApplied}</p>
+                          {studentAddress && <p><strong>Dirección:</strong> {studentAddress}</p>}
+                          {details.currentSchool && <p><strong>Colegio actual:</strong> {details.currentSchool}</p>}
+                        </div>
+                        <div>
+                          <h4 className="mb-2 font-semibold text-azul-monte-tabor">Apoderado</h4>
+                          <p><strong>Nombre:</strong> {details.guardian?.fullName || 'No informado'}</p>
+                          <p><strong>RUT:</strong> {details.guardian?.rut || 'No informado'}</p>
+                          <p><strong>Email:</strong> {details.guardian?.email || 'No informado'}</p>
+                          <p><strong>Teléfono:</strong> {details.guardian?.phone || 'No informado'}</p>
+                        </div>
+                        <div>
+                          <h4 className="mb-2 font-semibold text-azul-monte-tabor">Padre</h4>
+                          <p><strong>Nombre:</strong> {details.father?.fullName || 'No informado'}</p>
+                          <p><strong>Email:</strong> {details.father?.email || 'No informado'}</p>
+                          <p><strong>Teléfono:</strong> {details.father?.phone || 'No informado'}</p>
+                        </div>
+                        <div>
+                          <h4 className="mb-2 font-semibold text-azul-monte-tabor">Madre</h4>
+                          <p><strong>Nombre:</strong> {details.mother?.fullName || 'No informado'}</p>
+                          <p><strong>Email:</strong> {details.mother?.email || 'No informado'}</p>
+                          <p><strong>Teléfono:</strong> {details.mother?.phone || 'No informado'}</p>
+                        </div>
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-center py-8">
                 <FileTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -712,7 +970,9 @@ const FamilyDashboard: React.FC = () => {
       case 'formulario-complementario':
         return (
           <div>
-            {hasRealApplication ? (
+            {activePrekinderFormApplication ? (
+              <ComplementaryApplicationForm prekinderApplication={activePrekinderFormApplication} />
+            ) : hasRealApplication ? (
               hasComplementaryFormAccess ? (
                 <ComplementaryApplicationForm applications={payableApplications} />
               ) : (
@@ -863,7 +1123,7 @@ const FamilyDashboard: React.FC = () => {
 
 
   // Mostrar estado de carga
-  if (isLoading) {
+  if (isLoading || isPrekinderLoading) {
     return (
       <div className="bg-gray-50 min-h-screen py-12 flex items-center justify-center">
         <Card className="p-8 text-center">

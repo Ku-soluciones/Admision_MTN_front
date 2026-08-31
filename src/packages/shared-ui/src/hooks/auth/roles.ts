@@ -12,6 +12,7 @@
  */
 export const STAFF_ROLES: ReadonlySet<string> = new Set<string>([
   // Roles backend actuales
+  'PREKINDER_PROFESSIONAL',
   'TEACHER',
   'COORDINATOR',
   'CYCLE_DIRECTOR',

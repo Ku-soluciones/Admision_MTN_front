@@ -9,6 +9,10 @@ import SimpleToast from '../components/ui/SimpleToast';
 import { FiSave, FiArrowLeft, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { applicationService, Application } from '../services/applicationService';
 import { useAuth } from '../context/AuthContext';
+import {
+  guardianPrekinderService,
+  type GuardianPrekinderApplication,
+} from '../../../../features/guardian/services/guardianPrekinderService';
 
 interface ChildDescription {
   childName: string;
@@ -51,15 +55,25 @@ interface ComplementaryFormData {
 
 interface ComplementaryApplicationFormProps {
   applications?: Application[];
+  prekinderApplication?: GuardianPrekinderApplication;
 }
 
-const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> = ({ applications: providedApplications }) => {
+type ComplementaryApplication = Application | GuardianPrekinderApplication;
+
+const isPrekinderApplication = (application: ComplementaryApplication): application is GuardianPrekinderApplication =>
+  'source' in application && application.source === 'PREKINDER';
+
+const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> = ({
+  applications: providedApplications,
+  prekinderApplication,
+}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [applicationId, setApplicationId] = useState<number | null>(null);
-  const [eligibleApplications, setEligibleApplications] = useState<Application[]>([]);
+  const [applicationId, setApplicationId] = useState<number | string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<'GENERAL' | 'PREKINDER'>('GENERAL');
+  const [eligibleApplications, setEligibleApplications] = useState<ComplementaryApplication[]>([]);
   const [formData, setFormData] = useState<ComplementaryFormData>({
     email: '',
     studentLastNames: '',
@@ -89,11 +103,16 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
 
   useEffect(() => {
     loadApplicationData();
-  }, [providedApplications]);
+  }, [providedApplications, prekinderApplication]);
 
   const loadApplicationData = async () => {
     try {
       setLoading(true);
+      if (prekinderApplication) {
+        setEligibleApplications([prekinderApplication]);
+        await selectApplication(prekinderApplication);
+        return;
+      }
       const dashboardData = providedApplications
         ? { applications: providedApplications }
         : await applicationService.getDashboardData();
@@ -111,24 +130,38 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
     }
   };
 
-  const selectApplication = async (app: Application) => {
-    setApplicationId(app.id);
+  const selectApplication = async (app: ComplementaryApplication) => {
+    const prekinder = isPrekinderApplication(app);
+    const selectedId = prekinder ? app.applicationId : app.id;
+    setApplicationId(selectedId);
+    setSelectedSource(prekinder ? 'PREKINDER' : 'GENERAL');
     setIsReadOnly(false);
+    const details = prekinder ? app.applicationDetails : null;
     setFormData(prev => ({
       ...prev,
-      email: user?.email || app.applicantUser?.email || '',
-      studentLastNames: app.student?.lastName || '',
-      studentFirstNames: app.student?.firstName || '',
-      studentRut: app.student?.rut || '',
-      currentSchool: app.student?.currentSchool || '',
-      gradeApplied: app.student?.gradeApplied || '',
-      fatherName: app.father?.fullName || '',
-      motherName: app.mother?.fullName || '',
-      childrenDescriptions: [{ childName: `${app.student?.firstName || ''} ${app.student?.lastName || ''}`.trim(), description: '', dream: '' }]
+      email: user?.email || (prekinder ? details?.guardian?.email : app.applicantUser?.email) || '',
+      studentLastNames: prekinder
+        ? `${app.paternalLastName || ''} ${app.maternalLastName || ''}`.trim()
+        : app.student?.lastName || '',
+      studentFirstNames: prekinder ? app.firstName : app.student?.firstName || '',
+      studentRut: prekinder ? app.rut : app.student?.rut || '',
+      currentSchool: prekinder ? details?.currentSchool || '' : app.student?.currentSchool || '',
+      gradeApplied: prekinder ? app.gradeApplied : app.student?.gradeApplied || '',
+      fatherName: prekinder ? details?.father?.fullName || '' : app.father?.fullName || '',
+      motherName: prekinder ? details?.mother?.fullName || '' : app.mother?.fullName || '',
+      childrenDescriptions: [{
+        childName: prekinder
+          ? `${app.firstName} ${app.paternalLastName} ${app.maternalLastName || ''}`.trim()
+          : `${app.student?.firstName || ''} ${app.student?.lastName || ''}`.trim(),
+        description: '',
+        dream: '',
+      }]
     }));
 
     try {
-      const complementaryData = await applicationService.getComplementaryForm(app.id);
+      const complementaryData = prekinder
+        ? await guardianPrekinderService.getComplementaryForm(app.applicationId)
+        : await applicationService.getComplementaryForm(app.id);
       if (complementaryData && complementaryData.id) {
         setFormData(prev => ({ ...prev, ...complementaryData }));
         if (complementaryData.isSubmitted || complementaryData.is_submitted) {
@@ -225,10 +258,12 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
     if (!applicationId) return;
     try {
       setSaving(true);
-      await applicationService.saveComplementaryForm(applicationId, {
-        ...formData,
-        isSubmitted: isSubmitting
-      });
+      const payload = { ...formData, isSubmitted: isSubmitting };
+      if (selectedSource === 'PREKINDER') {
+        await guardianPrekinderService.saveComplementaryForm(String(applicationId), payload);
+      } else {
+        await applicationService.saveComplementaryForm(Number(applicationId), payload);
+      }
 
       if (isSubmitting) {
         setSuccess(true);
@@ -328,14 +363,21 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
             <select
               value={applicationId || ''}
               onChange={(event) => {
-                const selected = eligibleApplications.find(app => app.id === Number(event.target.value));
+                const selected = eligibleApplications.find(app =>
+                  String(isPrekinderApplication(app) ? app.applicationId : app.id) === event.target.value
+                );
                 if (selected) selectApplication(selected);
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
             >
               {eligibleApplications.map(app => (
-                <option key={app.id} value={app.id}>
-                  {app.student?.firstName} {app.student?.lastName} - {app.student?.gradeApplied}
+                <option
+                  key={isPrekinderApplication(app) ? app.applicationId : app.id}
+                  value={isPrekinderApplication(app) ? app.applicationId : app.id}
+                >
+                  {isPrekinderApplication(app)
+                    ? `${app.firstName} ${app.paternalLastName} - ${app.gradeApplied}`
+                    : `${app.student?.firstName} ${app.student?.lastName} - ${app.student?.gradeApplied}`}
                 </option>
               ))}
             </select>

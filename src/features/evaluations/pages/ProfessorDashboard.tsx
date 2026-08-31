@@ -30,7 +30,7 @@ import {
     mockStudentProfiles
 } from '../../admin/services/staticData';
 import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
@@ -50,6 +50,12 @@ import { UserRole, USER_ROLE_LABELS } from '../../admin/types/user';
 import api from '../../admin/services/api';
 import { appUrls } from '../../admin/utils/appUrls';
 import { getStorageKey, BASE_STORAGE_KEYS, useAuthStore } from '../../../packages/backend-sdk/src/index';
+import PrekinderEvaluationWorkspace from './PrekinderEvaluationWorkspace';
+import PrekinderRubricsView from './PrekinderRubricsView';
+import {
+    prekinderApi,
+    type EvaluationInstrument,
+} from '../../prekinder/services/api';
 
 const baseSections = [
     { key: 'dashboard',    label: 'Dashboard General',        icon: DashboardIcon },
@@ -60,6 +66,30 @@ const baseSections = [
     { key: 'reportes',     label: 'Reportes y Estadísticas',  icon: FileTextIcon },
     { key: 'configuracion',label: 'Información',               icon: BookOpenIcon },
 ];
+
+const prekinderSectionLabels: Record<string, string> = {
+    ACADEMIC: 'Evaluador académico',
+    PSYCHOMOTOR: 'Psicomotricidad',
+    PSYCHOLOGY: 'Psicología',
+    ENTRY_INDICATORS: 'Indicadores de ingreso',
+    GROUP_OBSERVATION: 'Observación grupal',
+    LEARNING_SUPPORT: 'Apoyo al Aprendizaje',
+    DAP: 'DAP',
+};
+
+const prekinderSectionIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+    ACADEMIC: FileTextIcon,
+    PSYCHOMOTOR: CheckCircleIcon,
+    PSYCHOLOGY: UsersIcon,
+    ENTRY_INDICATORS: FileTextIcon,
+    GROUP_OBSERVATION: UsersIcon,
+    LEARNING_SUPPORT: BookOpenIcon,
+    DAP: CheckCircleIcon,
+};
+
+function currentPrekinderDate(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+}
 
 interface SidebarNavProps {
     sections: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }>; route?: string }>;
@@ -144,6 +174,7 @@ const SidebarNav = React.memo(function SidebarNav({
 
 const ProfessorDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Obtener profesor actual del localStorage (con namespace de entorno)
     const [currentProfessor, setCurrentProfessor] = useState(() => {
@@ -156,6 +187,16 @@ const ProfessorDashboard: React.FC = () => {
 
     // Determinar sección inicial según el rol
     const getInitialSection = () => {
+        if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
+            const instrument = searchParams.get('instrument');
+            return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
+        }
+        if (searchParams.get('section') === 'prekinder') {
+            if (searchParams.get('view') === 'rubrics') return 'prekinder-pautas';
+            const instrument = searchParams.get('instrument');
+            return instrument ? `prekinder:${instrument.toUpperCase()}` : 'prekinder';
+        }
         if (currentProfessor?.role === 'CYCLE_DIRECTOR' || currentProfessor?.role === 'PSYCHOLOGIST') {
             return 'entrevistas'; // Directores de ciclo y psicólogos ven entrevistas por defecto
         }
@@ -164,6 +205,27 @@ const ProfessorDashboard: React.FC = () => {
 
     const [activeSection, setActiveSection] = useState(getInitialSection());
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const handleSectionChange = useCallback((key: string) => {
+        setActiveSection(key);
+        const next = new URLSearchParams(searchParams);
+        if (key === 'prekinder-pautas') {
+            next.set('section', 'prekinder');
+            next.set('view', 'rubrics');
+            next.delete('instrument');
+        } else if (key === 'prekinder' || key.startsWith('prekinder:')) {
+            next.set('section', 'prekinder');
+            next.delete('view');
+            const instrument = key.split(':')[1];
+            if (instrument) next.set('instrument', instrument);
+            else next.delete('instrument');
+        } else {
+            next.delete('section');
+            next.delete('instrument');
+            next.delete('view');
+        }
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     // Usar useRef para estabilizar la referencia y evitar re-renders infinitos
     const currentProfessorRef = useRef(currentProfessor);
@@ -182,6 +244,49 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [prekinderInstruments, setPrekinderInstruments] = useState<EvaluationInstrument[]>([]);
+    const [prekinderActorId, setPrekinderActorId] = useState<string>();
+    const [prekinderAccessResolved, setPrekinderAccessResolved] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        void prekinderApi.evaluatorWorkspace(currentPrekinderDate())
+            .then((workspace) => {
+                if (!active) return;
+                setPrekinderInstruments(workspace.instruments.map(({ instrument }) => instrument));
+                setPrekinderActorId(workspace.actorId);
+            })
+            .catch(() => {
+                if (active) setPrekinderInstruments([]);
+            })
+            .finally(() => {
+                if (active) setPrekinderAccessResolved(true);
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!prekinderAccessResolved || !activeSection.startsWith('prekinder') || activeSection === 'prekinder-pautas') return;
+        const requestedCode = activeSection.startsWith('prekinder:')
+            ? activeSection.slice('prekinder:'.length)
+            : '';
+        const requestedExists = prekinderInstruments.some(
+            (instrument) => instrument.instrumentCode === requestedCode,
+        );
+        if (requestedExists) return;
+        const first = prekinderInstruments[0];
+        const fallback = currentProfessor?.role === 'PREKINDER_PROFESSIONAL' ? 'prekinder' : 'dashboard';
+        if (!first && activeSection === fallback) return;
+        handleSectionChange(first ? `prekinder:${first.instrumentCode}` : fallback);
+    }, [activeSection, currentProfessor?.role, handleSectionChange, prekinderAccessResolved, prekinderInstruments]);
+
+    useEffect(() => {
+        if (currentProfessor?.role === 'PREKINDER_PROFESSIONAL' && !activeSection.startsWith('prekinder')) {
+            handleSectionChange('prekinder');
+        }
+    }, [activeSection, currentProfessor?.role, handleSectionChange]);
 
     // Estado para documentos de estudiantes (mapa por applicationId)
     const [documentsByApplication, setDocumentsByApplication] = useState<Record<number, any[]>>({});
@@ -342,10 +447,35 @@ const ProfessorDashboard: React.FC = () => {
             try {
                 if (isMounted) setIsLoading(true);
 
+                // Las cuentas creadas desde el flujo aislado de Prekínder no consultan
+                // evaluaciones, entrevistas ni estadísticas de los demás cursos.
+                if (currentProfessorRef.current?.role === 'PREKINDER_PROFESSIONAL') {
+                    if (isMounted) {
+                        setEvaluations([]);
+                        setInterviews([]);
+                        setEvaluationStats({ total: 0, pending: 0, inProgress: 0, completed: 0, averageScore: 0 });
+                    }
+                    return;
+                }
+
                 // Fetch fresh professor data to guarantee correct ID regardless of localStorage state
                 const freshProfessor = await professorAuthService.getCurrentProfessor();
                 if (!freshProfessor) {
                     if (isMounted) setIsLoading(false);
+                    return;
+                }
+
+                // También aislar el flujo cuando el rol aún no estaba disponible
+                // en localStorage y acaba de resolverse desde el BFF.
+                if (freshProfessor.role === 'PREKINDER_PROFESSIONAL') {
+                    if (isMounted) {
+                        const updated = { ...currentProfessorRef.current, ...freshProfessor };
+                        localStorage.setItem(getStorageKey(BASE_STORAGE_KEYS.CURRENT_PROFESSOR), JSON.stringify(updated));
+                        setCurrentProfessor(updated);
+                        setEvaluations([]);
+                        setInterviews([]);
+                        setEvaluationStats({ total: 0, pending: 0, inProgress: 0, completed: 0, averageScore: 0 });
+                    }
                     return;
                 }
 
@@ -491,9 +621,25 @@ const ProfessorDashboard: React.FC = () => {
     const isAdminUser = useAuthStore((s) => s.user?.role === 'ADMIN')
         || currentProfessor?.role === 'ADMIN';
 
-    const sections = isAdminUser
-        ? [...filteredSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
-        : filteredSections;
+    const prekinderSections = prekinderInstruments.map((instrument) => ({
+        key: `prekinder:${instrument.instrumentCode}`,
+        label: prekinderSectionLabels[instrument.instrumentCode] ?? instrument.displayName,
+        icon: prekinderSectionIcons[instrument.instrumentCode] ?? CheckCircleIcon,
+    }));
+    const prekinderRubricsSection = prekinderInstruments.length > 0
+        ? [{ key: 'prekinder-pautas', label: 'Pautas', icon: BookOpenIcon }]
+        : [];
+    const professorSections = filteredSections.flatMap((section) =>
+        section.key === 'reportes' ? [...prekinderRubricsSection, ...prekinderSections, section] : [section],
+    );
+    const prekinderOnlySections = prekinderSections.length > 0
+        ? [...prekinderRubricsSection, ...prekinderSections]
+        : [{ key: 'prekinder', label: 'Evaluación Prekínder', icon: CheckCircleIcon }];
+    const sections = currentProfessor?.role === 'PREKINDER_PROFESSIONAL'
+        ? prekinderOnlySections
+        : isAdminUser
+        ? [...professorSections, { key: 'admin', label: 'Panel Administrador', icon: UsersIcon }]
+        : professorSections;
 
     const getSubjectName = (subjectId: string) => {
         const names: { [key: string]: string } = {
@@ -2181,6 +2327,10 @@ const ProfessorDashboard: React.FC = () => {
                 );
             case 'reportes':
                 return renderReportesEstadisticas();
+            case 'prekinder':
+                return <PrekinderEvaluationWorkspace />;
+            case 'prekinder-pautas':
+                return <PrekinderRubricsView actorId={prekinderActorId} />;
             case 'configuracion':
                 return (
                     <div className="space-y-6">
@@ -2248,6 +2398,13 @@ const ProfessorDashboard: React.FC = () => {
                     </Card>
                 );
             default:
+                if (activeSection.startsWith('prekinder:')) {
+                    return (
+                        <PrekinderEvaluationWorkspace
+                            initialInstrumentCode={activeSection.slice('prekinder:'.length)}
+                        />
+                    );
+                }
                 return renderEvaluaciones();
         }
     };
@@ -2294,7 +2451,7 @@ const ProfessorDashboard: React.FC = () => {
                 <SidebarNav
                     sections={sections}
                     activeSection={activeSection}
-                    onSectionChange={setActiveSection}
+                    onSectionChange={handleSectionChange}
                     onShowLogout={() => setShowLogoutConfirm(true)}
                     interviews={interviews}
                     badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}
@@ -2309,7 +2466,7 @@ const ProfessorDashboard: React.FC = () => {
                     <SidebarNav
                         sections={sections}
                         activeSection={activeSection}
-                        onSectionChange={setActiveSection}
+                        onSectionChange={handleSectionChange}
                         onShowLogout={() => setShowLogoutConfirm(true)}
                         interviews={interviews}
                         badgeCount={currentProfessor?.role === 'CYCLE_DIRECTOR' ? interviews.filter(i => i.type === 'FAMILY' || i.type === 'CYCLE_DIRECTOR').length + evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT').length : undefined}

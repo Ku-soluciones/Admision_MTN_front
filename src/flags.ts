@@ -46,3 +46,21 @@ export const processActiveGuard = flag<boolean>({
   ],
   adapter: vercelAdapter(),
 });
+
+/**
+ * Flag: process-active-prekinder
+ *
+ * Interruptor de publicación del flujo público de Prekínder. La postulación
+ * sólo se habilita cuando este flag y la ventana almacenada en PostgreSQL
+ * Prekínder se encuentran activos al mismo tiempo.
+ */
+export const processActivePrekinder = flag<boolean>({
+  key: 'process-active-prekinder',
+  description: 'Controla si el proceso público de postulación Prekínder está habilitado',
+  defaultValue: false,
+  options: [
+    { value: false, label: 'Off' },
+    { value: true, label: 'On' },
+  ],
+  adapter: vercelAdapter(),
+});
