@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FiAlertTriangle,
+  FiArrowLeft,
   FiCalendar,
   FiCheck,
   FiClock,
   FiInfo,
   FiMapPin,
+  FiMail,
   FiSearch,
   FiShield,
   FiUser,
@@ -23,13 +25,16 @@ import {
   InterviewStatus,
   InterviewType,
   ManualInterviewCreateRequest,
+  ManualInterviewCreateResult,
   ManualInterviewWarning,
 } from '../../types/interview';
 
 interface ManualInterviewDialogProps {
   onClose: () => void;
-  onCreated: () => Promise<void> | void;
+  onCreated: (result: ManualInterviewCreateResult) => Promise<void> | void;
 }
+
+type DialogStep = 'EDIT' | 'REVIEW';
 
 const ELIGIBLE_APPLICATION_STATUSES = new Set([
   'PENDING',
@@ -72,6 +77,7 @@ const formatDate = (date: string): string => {
 const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, onCreated }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [existingInterviews, setExistingInterviews] = useState<Awaited<ReturnType<typeof interviewService.getAllInterviews>>['interviews']>([]);
   const [interviewers, setInterviewers] = useState<User[]>([]);
@@ -88,6 +94,9 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
   const [mode, setMode] = useState<InterviewMode>(InterviewMode.IN_PERSON);
   const [location, setLocation] = useState('');
   const [reason, setReason] = useState('');
+  const [step, setStep] = useState<DialogStep>('EDIT');
+  const [sendEmail, setSendEmail] = useState(false);
+  const [assignmentConfirmed, setAssignmentConfirmed] = useState(false);
   const [warnings, setWarnings] = useState<ManualInterviewWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,6 +210,10 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSubmitting, onClose]);
 
+  useEffect(() => {
+    if (step === 'REVIEW') reviewHeadingRef.current?.focus();
+  }, [step]);
+
   const clearWarnings = () => {
     if (warnings.length) setWarnings([]);
     if (error) setError(null);
@@ -227,8 +240,28 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     mode,
     location: location.trim() || undefined,
     reason: reason.trim(),
+    sendEmail,
     confirmWarnings,
   });
+
+  const openReview = () => {
+    if (formError) {
+      setError(formError);
+      return;
+    }
+    setError(null);
+    setWarnings([]);
+    setAssignmentConfirmed(false);
+    setStep('REVIEW');
+  };
+
+  const returnToEdit = () => {
+    setStep('EDIT');
+    setAssignmentConfirmed(false);
+    setWarnings([]);
+    setError(null);
+    window.requestAnimationFrame(() => searchRef.current?.focus());
+  };
 
   const submit = async (confirmWarnings: boolean) => {
     if (formError) {
@@ -238,12 +271,13 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     setIsSubmitting(true);
     setError(null);
     try {
-      await interviewService.createManualInterview(buildRequest(confirmWarnings));
-      await onCreated();
+      const result = await interviewService.createManualInterview(buildRequest(confirmWarnings));
+      await onCreated(result);
       onClose();
     } catch (submitError: any) {
       if (submitError instanceof ManualInterviewConfirmationError) {
         setWarnings(submitError.warnings);
+        setAssignmentConfirmed(false);
         setError(null);
       } else {
         setError(submitError.message || 'No se pudo guardar la entrevista excepcional.');
@@ -266,7 +300,9 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
           <div className="min-w-0">
             <h2 id="manual-interview-title" className="text-xl font-bold text-gray-950 sm:text-2xl">Ingreso excepcional</h2>
             <p className="mt-1 max-w-2xl text-sm text-gray-600">
-              Registra una entrevista familiar o de director de ciclo fuera del flujo habitual.
+              {step === 'EDIT'
+                ? 'Registra una entrevista familiar o de director de ciclo fuera del flujo habitual.'
+                : 'Revisa cuidadosamente la asignación antes de confirmarla.'}
             </p>
           </div>
           <button
@@ -284,8 +320,8 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
           <div className="mb-6 flex items-start gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
             <FiShield className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <div>
-              <p className="font-bold">Este ingreso no enviará correos.</p>
-              <p className="mt-0.5 text-blue-800">Las excepciones quedarán identificadas en el calendario y asociadas a tu usuario administrador.</p>
+              <p className="font-bold">Por defecto, este ingreso no enviará correos.</p>
+              <p className="mt-0.5 text-blue-800">En la revisión final podrás decidir si envías la invitación al apoderado y las notificaciones a los profesionales.</p>
             </div>
           </div>
 
@@ -293,6 +329,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
             <div className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-800" role="alert">{optionsError}</div>
           )}
 
+          {step === 'EDIT' ? (
           <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
             <div className="space-y-6">
               <fieldset>
@@ -484,12 +521,12 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
                 <div className="mt-6 flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={() => void submit(warnings.length > 0)}
+                    onClick={openReview}
                     disabled={isSubmitting || isLoadingOptions || Boolean(optionsError)}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${warnings.length ? 'bg-amber-700 hover:bg-amber-800 focus:ring-amber-300' : 'bg-blue-700 hover:bg-blue-800 focus:ring-blue-300'}`}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {warnings.length ? <FiAlertTriangle className="h-4 w-4" aria-hidden="true" /> : <FiCheck className="h-4 w-4" aria-hidden="true" />}
-                    {isSubmitting ? 'Guardando...' : warnings.length ? 'Guardar de todas formas' : 'Revisar y guardar'}
+                    <FiCheck className="h-4 w-4" aria-hidden="true" />
+                    Revisar y guardar
                   </button>
                   <button type="button" onClick={onClose} disabled={isSubmitting} className="inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50">Cancelar</button>
                 </div>
@@ -501,6 +538,115 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
               </div>
             </aside>
           </div>
+          ) : (
+            <section className="mx-auto w-full max-w-3xl" aria-labelledby="manual-review-heading">
+              <button
+                type="button"
+                onClick={returnToEdit}
+                disabled={isSubmitting}
+                className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
+              >
+                <FiArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Corregir datos
+              </button>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
+                <h3
+                  ref={reviewHeadingRef}
+                  id="manual-review-heading"
+                  tabIndex={-1}
+                  className="text-lg font-bold text-gray-950 outline-none sm:text-xl"
+                >
+                  Confirma la asignación
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">Esta es la última revisión antes de crear la entrevista y sus evaluaciones asociadas.</p>
+
+                <dl className="mt-6 grid gap-x-6 gap-y-5 text-sm sm:grid-cols-2">
+                  <div><dt className="font-semibold text-gray-500">Tipo</dt><dd className="mt-1 font-bold text-gray-950">{interviewType === InterviewType.FAMILY ? 'Entrevista familiar' : 'Director de ciclo y psicológica'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">Postulante</dt><dd className="mt-1 font-bold text-gray-950">{selectedApplication ? `${getStudentName(selectedApplication)} · #${selectedApplication.id}` : 'Sin seleccionar'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">{interviewType === InterviewType.FAMILY ? 'Primer entrevistador' : 'Director/a de ciclo'}</dt><dd className="mt-1 text-gray-900">{getInterviewerName(firstInterviewer) || 'Sin completar'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">{interviewType === InterviewType.FAMILY ? 'Segundo entrevistador' : 'Psicólogo/a'}</dt><dd className="mt-1 text-gray-900">{getInterviewerName(secondInterviewer) || 'Sin completar'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">Fecha y hora</dt><dd className="mt-1 capitalize text-gray-900">{formatDate(scheduledDate)}, {scheduledTime}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">Duración y modalidad</dt><dd className="mt-1 text-gray-900">{duration} min · {mode === InterviewMode.IN_PERSON ? 'Presencial' : mode === InterviewMode.VIRTUAL ? 'Virtual' : 'Híbrida'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">{locationLabel}</dt><dd className="mt-1 break-words text-gray-900">{location.trim() || 'No informado'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">Evaluaciones asociadas</dt><dd className="mt-1 text-gray-900">{interviewType === InterviewType.FAMILY ? 'Entrevista familiar' : 'Entrevista e informe de director, más entrevista psicológica'}</dd></div>
+                  <div className="sm:col-span-2"><dt className="font-semibold text-gray-500">Motivo excepcional</dt><dd className="mt-1 whitespace-pre-wrap break-words text-gray-900">{reason.trim()}</dd></div>
+                </dl>
+              </div>
+
+              <fieldset className="mt-5">
+                <legend className="flex items-center gap-2 text-base font-bold text-gray-950">
+                  <FiMail className="h-5 w-5 text-gray-500" aria-hidden="true" />
+                  Envío de correos
+                </legend>
+                <p className="mt-1 text-sm text-gray-600">Elige qué debe ocurrir al confirmar. La opción segura viene seleccionada por defecto.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${!sendEmail ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'}`}>
+                    <input
+                      type="radio"
+                      name="manual-email-choice"
+                      checked={!sendEmail}
+                      onChange={() => { setSendEmail(false); setAssignmentConfirmed(false); }}
+                      className="mt-0.5 h-4 w-4 border-gray-300 text-blue-700 focus:ring-blue-500"
+                    />
+                    <span><span className="block font-bold text-gray-950">No enviar correos</span><span className="mt-1 block text-sm text-gray-600">Sólo guarda la cita en calendarios y crea sus evaluaciones.</span></span>
+                  </label>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${sendEmail ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'}`}>
+                    <input
+                      type="radio"
+                      name="manual-email-choice"
+                      checked={sendEmail}
+                      onChange={() => { setSendEmail(true); setAssignmentConfirmed(false); }}
+                      className="mt-0.5 h-4 w-4 border-gray-300 text-blue-700 focus:ring-blue-500"
+                    />
+                    <span><span className="block font-bold text-gray-950">Enviar correos</span><span className="mt-1 block text-sm text-gray-600">Invita al apoderado y notifica a ambos profesionales asignados.</span></span>
+                  </label>
+                </div>
+              </fieldset>
+
+              {warnings.length > 0 && (
+                <div className="mt-5 rounded-xl bg-amber-50 p-4 text-amber-950" role="alert" aria-live="assertive">
+                  <div className="flex items-start gap-2">
+                    <FiAlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                    <div>
+                      <p className="font-bold">La asignación tiene excepciones</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                        {warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.message}</li>)}
+                      </ul>
+                      <p className="mt-3 text-sm font-semibold">Revísalas y vuelve a confirmar la asignación para continuar.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-800" role="alert">{error}</div>}
+
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-gray-300 bg-white p-4">
+                <input
+                  type="checkbox"
+                  checked={assignmentConfirmed}
+                  onChange={event => setAssignmentConfirmed(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-500"
+                />
+                <span className="text-sm font-semibold text-gray-900">
+                  Confirmo que el postulante, el tipo de entrevista, los profesionales, el horario y la opción de correo son correctos.
+                </span>
+              </label>
+
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={returnToEdit} disabled={isSubmitting} className="inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50">Corregir datos</button>
+                <button
+                  type="button"
+                  onClick={() => void submit(warnings.length > 0)}
+                  disabled={isSubmitting || !assignmentConfirmed}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${warnings.length ? 'bg-amber-700 hover:bg-amber-800 focus:ring-amber-300' : 'bg-blue-700 hover:bg-blue-800 focus:ring-blue-300'}`}
+                >
+                  {warnings.length ? <FiAlertTriangle className="h-4 w-4" aria-hidden="true" /> : <FiCheck className="h-4 w-4" aria-hidden="true" />}
+                  {isSubmitting ? 'Guardando...' : warnings.length ? 'Guardar de todas formas' : 'Confirmar y guardar'}
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>,

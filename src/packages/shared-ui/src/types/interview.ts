@@ -186,7 +186,15 @@ export interface ManualInterviewCreateRequest {
   mode: InterviewMode;
   location?: string;
   reason: string;
+  sendEmail: boolean;
   confirmWarnings: boolean;
+}
+
+export interface ManualInterviewCreateResult {
+  interview: Interview;
+  emailRequested: boolean;
+  emailSent: boolean;
+  emailMessage?: string;
 }
 
 export interface UpdateInterviewRequest {
