@@ -764,7 +764,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const formatDate = (dateString: string | undefined) => {
             if (!dateString) return 'No especificado';
             try {
-                const date = new Date(dateString);
+                const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? `${dateString}T00:00:00` : dateString);
                 if (isNaN(date.getTime())) return 'No especificado';
                 return date.toLocaleDateString('es-ES', {
                     year: 'numeric',
@@ -1224,7 +1224,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                                 {interview && (
                                     <div className="space-y-1 text-xs text-gray-600">
-                                        <p>{new Date(interview.scheduledDate).toLocaleDateString('es-CL')}</p>
+                                        <p>{new Date(`${interview.scheduledDate}T00:00:00`).toLocaleDateString('es-CL')}</p>
                                         <p>{interview.scheduledTime}</p>
                                         <p>{interview.interviewerName}</p>
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
@@ -1280,7 +1280,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         </Badge>
                                     </div>
                                     <div className="mt-2 text-sm text-gray-600">
-                                        {new Date(interview.scheduledDate).toLocaleDateString('es-CL')}
+                                        {new Date(`${interview.scheduledDate}T00:00:00`).toLocaleDateString('es-CL')}
                                         {interview.scheduledTime}
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
                                             <span className="ml-2 text-green-600 font-medium">⭐ {interview.score}/10</span>
