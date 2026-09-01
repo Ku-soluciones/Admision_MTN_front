@@ -148,7 +148,11 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
 
       // Aplicar filtros adicionales
       if (filters.status) {
-        calendarInterviews = calendarInterviews.filter(i => i.status === filters.status);
+        calendarInterviews = calendarInterviews.filter(interview => (
+          filters.status === InterviewStatus.SCHEDULED
+            ? interview.status === InterviewStatus.SCHEDULED || interview.status === InterviewStatus.CONFIRMED
+            : interview.status === filters.status
+        ));
       }
       if (filters.type) {
         calendarInterviews = calendarInterviews.filter(i => i.type === filters.type);
