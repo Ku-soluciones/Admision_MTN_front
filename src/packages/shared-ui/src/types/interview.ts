@@ -117,6 +117,32 @@ export const InterviewLifecycle = {
   canComplete: (status: InterviewStatus | string): boolean => statusIn(status, INTERVIEW_COMPLETABLE_STATUSES)
 };
 
+const currentInterviewPriority = (status: InterviewStatus | string): number => {
+  if ([
+    InterviewStatus.PENDING,
+    InterviewStatus.SCHEDULED,
+    InterviewStatus.CONFIRMED,
+    InterviewStatus.IN_PROGRESS,
+  ].includes(status as InterviewStatus)) return 3;
+  if (status === InterviewStatus.COMPLETED) return 2;
+  if (status === InterviewStatus.RESCHEDULED) return 1;
+  return 0;
+};
+
+export const selectCurrentInterview = (interviews: Interview[], type: InterviewType | string): Interview | undefined => (
+  interviews
+    .filter(interview => interview.type === type)
+    .sort((first, second) => {
+      const priorityDifference = currentInterviewPriority(second.status) - currentInterviewPriority(first.status);
+      if (priorityDifference !== 0) return priorityDifference;
+      const firstSchedule = `${first.scheduledDate || ''}T${first.scheduledTime || ''}`;
+      const secondSchedule = `${second.scheduledDate || ''}T${second.scheduledTime || ''}`;
+      const scheduleDifference = secondSchedule.localeCompare(firstSchedule);
+      if (scheduleDifference !== 0) return scheduleDifference;
+      return second.id - first.id;
+    })[0]
+);
+
 // Interface principal de Entrevista
 export interface Interview {
   id: number;

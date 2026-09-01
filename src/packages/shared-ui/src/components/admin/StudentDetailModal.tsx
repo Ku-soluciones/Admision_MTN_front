@@ -11,7 +11,7 @@ import {
 import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
-import { Interview, InterviewStatus, INTERVIEW_TYPE_LABELS } from '../../types/interview';
+import { Interview, InterviewStatus, INTERVIEW_TYPE_LABELS, selectCurrentInterview } from '../../types/interview';
 import evaluationService from '../../services/evaluationService';
 import { Evaluation, EvaluationType } from '../../types/evaluation';
 import institutionalEmailService from '../../services/institutionalEmailService';
@@ -1182,11 +1182,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 {/* Estado de cada tipo de entrevista */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {REQUIRED_INTERVIEW_TYPES.map(type => {
-                        const interview = interviews.find(i => i.type === type.type);
+                        const interview = selectCurrentInterview(interviews, type.type);
                         const hasInterview = !!interview;
                         const isCompleted = interview?.status === InterviewStatus.COMPLETED;
+                        const isConfirmed = interview?.status === InterviewStatus.CONFIRMED;
                         const isScheduled = interview?.status === InterviewStatus.SCHEDULED ||
-                                          interview?.status === InterviewStatus.CONFIRMED;
+                                          isConfirmed;
 
                         return (
                             <div key={type.type} className={`p-4 rounded-lg border-2 ${
@@ -1211,6 +1212,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         }`}
                                     >
                                         {isCompleted ? 'Completada' :
+                                         isConfirmed ? 'Confirmada' :
                                          isScheduled ? 'Programada' :
                                          type.required ? 'Requerida' : 'Opcional'}
                                     </Badge>
