@@ -432,7 +432,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   const handleManualInterviewCreated = async (result: ManualInterviewCreateResult) => {
     setError(null);
     if (!result.emailRequested) {
-      setSuccessMessage('Entrevista excepcional guardada. No se enviaron correos.');
+      setSuccessMessage('Entrevista excepcional confirmada y agregada a las agendas. No se enviaron correos.');
     } else if (result.emailSent) {
       setSuccessMessage('Entrevista excepcional guardada. Se enviaron la invitación y las notificaciones.');
     } else {
