@@ -259,6 +259,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+  const [calendarFocusDate, setCalendarFocusDate] = useState<string | undefined>();
   const availabilityCacheRef = useRef<SlotAvailabilityCache>(readSlotAvailabilityCache());
 
   const range = useMemo(() => getRangeForMode(anchorDate, viewMode), [anchorDate, viewMode]);
@@ -439,6 +440,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       setSuccessMessage('Entrevista excepcional guardada correctamente.');
       setError(result.emailMessage || 'La entrevista quedó guardada, pero no se pudieron enviar los correos.');
     }
+    setCalendarFocusDate(result.interview.scheduledDate);
     setCalendarRefreshKey(current => current + 1);
     await loadOverview();
   };
@@ -497,6 +499,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       {surface === 'calendar' ? (
         <SharedCalendar
           key={calendarRefreshKey}
+          initialDate={calendarFocusDate}
           onCreateInterview={() => setSurface('operations')}
           showCreateButton
         />

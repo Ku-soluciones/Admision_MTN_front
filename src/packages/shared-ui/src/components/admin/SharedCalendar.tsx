@@ -85,14 +85,23 @@ interface SharedCalendarProps {
   className?: string;
   onCreateInterview?: (date: Date, time?: string) => void;
   showCreateButton?: boolean;
+  initialDate?: string;
 }
+
+const parseCalendarDate = (value?: string): Date => {
+  if (!value) return new Date();
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
+};
 
 const SharedCalendar: React.FC<SharedCalendarProps> = ({
   className = '',
   onCreateInterview,
-  showCreateButton = true
+  showCreateButton = true,
+  initialDate,
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => parseCalendarDate(initialDate));
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -386,7 +395,7 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
       <div className="flex gap-2 overflow-x-auto pb-1">
         {[
           { label: 'Total', value: summary.total, Icon: FiGrid, className: 'border-gray-200 bg-gray-50 text-gray-600' },
-          { label: 'Programadas', value: summary.byStatus[InterviewStatus.SCHEDULED] || 0, Icon: FiCalendarIcon, className: 'border-blue-200 bg-blue-50 text-blue-700' },
+          { label: 'Agendadas', value: (summary.byStatus[InterviewStatus.SCHEDULED] || 0) + (summary.byStatus[InterviewStatus.CONFIRMED] || 0), Icon: FiCalendarIcon, className: 'border-blue-200 bg-blue-50 text-blue-700' },
           { label: 'Completadas', value: summary.byStatus[InterviewStatus.COMPLETED] || 0, Icon: FiCheckCircle, className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
         ].map(({ label, value, Icon, className }) => (
           <div key={label} className={`min-w-[132px] flex items-center gap-2 rounded-lg border px-3 py-2 ${className}`}>
