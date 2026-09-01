@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiCalendar, FiEdit3, FiGrid, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
-import { AvailableInterviewerPair, InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
+import { AvailableInterviewerPair, InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, ManualInterviewCreateResult, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
@@ -429,8 +429,16 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     }
   };
 
-  const handleManualInterviewCreated = async () => {
-    setSuccessMessage('Entrevista excepcional guardada. No se enviaron correos.');
+  const handleManualInterviewCreated = async (result: ManualInterviewCreateResult) => {
+    setError(null);
+    if (!result.emailRequested) {
+      setSuccessMessage('Entrevista excepcional guardada. No se enviaron correos.');
+    } else if (result.emailSent) {
+      setSuccessMessage('Entrevista excepcional guardada. Se enviaron la invitación y las notificaciones.');
+    } else {
+      setSuccessMessage('Entrevista excepcional guardada correctamente.');
+      setError(result.emailMessage || 'La entrevista quedó guardada, pero no se pudieron enviar los correos.');
+    }
     setCalendarRefreshKey(current => current + 1);
     await loadOverview();
   };

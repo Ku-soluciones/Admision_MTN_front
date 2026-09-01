@@ -21,6 +21,7 @@ import {
   UpdateInterviewRequest,
   CompleteInterviewRequest,
   ManualInterviewCreateRequest,
+  ManualInterviewCreateResult,
   ManualInterviewWarning,
   NextAvailableSlotsResponse,
   WeeklyOverviewResponse,
@@ -264,14 +265,19 @@ class InterviewService {
     return this.mapBackendResponse(interviewData);
   }
 
-  async createManualInterview(request: ManualInterviewCreateRequest): Promise<Interview> {
+  async createManualInterview(request: ManualInterviewCreateRequest): Promise<ManualInterviewCreateResult> {
     try {
       const response = await api.post<any>(`${this.baseUrl}/manual`, request);
       const interviewData = response.data?.data ?? response.data;
       if (!interviewData || typeof interviewData !== 'object') {
         throw new Error('Respuesta inválida del servidor al guardar la entrevista excepcional');
       }
-      return this.mapBackendResponse(interviewData);
+      return {
+        interview: this.mapBackendResponse(interviewData),
+        emailRequested: Boolean(interviewData.emailRequested),
+        emailSent: Boolean(interviewData.emailSent),
+        emailMessage: typeof interviewData.emailMessage === 'string' ? interviewData.emailMessage : undefined,
+      };
     } catch (error: any) {
       const apiError = error.response?.data?.error;
       if (error.response?.status === 409 && apiError?.code === 'MANUAL_CONFIRMATION_REQUIRED') {
