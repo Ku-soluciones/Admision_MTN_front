@@ -12,6 +12,7 @@ import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
 import { Interview, InterviewStatus, INTERVIEW_TYPE_LABELS } from '../../types/interview';
+import InterviewDetailsPanel from '../interviews/InterviewDetailsPanel';
 import evaluationService from '../../services/evaluationService';
 import { Evaluation, EvaluationType } from '../../types/evaluation';
 import institutionalEmailService from '../../services/institutionalEmailService';
@@ -108,6 +109,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [documentSubTab, setDocumentSubTab] = useState<'academic' | 'other'>('academic');
     const [fullApplication, setFullApplication] = useState<Application | null>(null);
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [selectedInterviewDetails, setSelectedInterviewDetails] = useState<Interview | null>(null);
     const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
     const [loading, setLoading] = useState(false);
     const [interviewsLoading, setInterviewsLoading] = useState(false);
@@ -140,6 +142,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
         if (postulante && isOpen) {
+            setSelectedInterviewDetails(null);
             setSelectedSchool(postulante.colegioDestino || '');
             setIsEditingSchool(false);
             loadFullApplication();
@@ -1314,6 +1317,15 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     );
 
     const renderEntrevistasTab = () => {
+        if (selectedInterviewDetails) {
+            return (
+                <InterviewDetailsPanel
+                    interview={selectedInterviewDetails}
+                    onClose={() => setSelectedInterviewDetails(null)}
+                />
+            );
+        }
+
         const requiredTypes = REQUIRED_INTERVIEW_TYPES.filter(t => t.required);
         const completedInterviews = interviews.filter(i => i.status === InterviewStatus.COMPLETED).length;
         const scheduledInterviews = interviews.filter(i =>
@@ -1419,7 +1431,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                                 <div className="mt-3">
                                     {hasInterview ? (
-                                        <Button size="sm" variant="outline" className="w-full text-xs">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-xs"
+                                            onClick={() => setSelectedInterviewDetails(interview)}
+                                        >
                                             <FiEye className="w-3 h-3 mr-1" />
                                             Ver Detalles
                                         </Button>
