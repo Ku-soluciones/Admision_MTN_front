@@ -1190,7 +1190,22 @@ const ProfessorDashboard: React.FC = () => {
                     e.applicationId === interview.applicationId &&
                     e.evaluationType === expectedEvalType
                 );
-                return matchingEval || evaluation;
+                if (matchingEval) return matchingEval;
+
+                // Entrevistas históricas cargadas directamente por SQL pueden no tener
+                // la evaluación asociada que necesita el formulario para abrirse.
+                const repairedEvaluations = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
+                const repairedEvaluation = repairedEvaluations.find(e =>
+                    e.applicationId === interview.applicationId &&
+                    e.evaluationType === expectedEvalType
+                );
+                if (repairedEvaluation) {
+                    setEvaluations(current => {
+                        const repairedIds = new Set(repairedEvaluations.map(item => item.id));
+                        return [...current.filter(item => !repairedIds.has(item.id)), ...repairedEvaluations];
+                    });
+                }
+                return repairedEvaluation || null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
@@ -1338,9 +1353,15 @@ const ProfessorDashboard: React.FC = () => {
                                 variant="primary"
                                 size="sm"
                                 onClick={async () => {
-                                    const evalToUse = await getEvaluationToUse();
-                                    if (evalToUse) {
-                                        navigate(getEvaluationUrl(evalToUse));
+                                    try {
+                                        const evalToUse = await getEvaluationToUse();
+                                        if (evalToUse) {
+                                            navigate(getEvaluationUrl(evalToUse));
+                                            return;
+                                        }
+                                        notify.error('No se encontró una evaluación realizable para esta entrevista.');
+                                    } catch (error) {
+                                        notify.error(error instanceof Error ? error.message : 'No se pudo abrir la entrevista.');
                                     }
                                 }}
                             >
