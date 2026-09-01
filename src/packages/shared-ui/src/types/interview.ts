@@ -177,6 +177,7 @@ export interface ManualInterviewWarning {
 
 export interface ManualInterviewCreateRequest {
   applicationId: number;
+  interviewType: InterviewType;
   interviewerId: number;
   secondInterviewerId: number;
   scheduledDate: string;

@@ -73,10 +73,12 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
   const dialogRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [existingInterviews, setExistingInterviews] = useState<Awaited<ReturnType<typeof interviewService.getAllInterviews>>['interviews']>([]);
   const [interviewers, setInterviewers] = useState<User[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [interviewType, setInterviewType] = useState<InterviewType>(InterviewType.FAMILY);
   const [selectedApplicationId, setSelectedApplicationId] = useState('');
   const [firstInterviewerId, setFirstInterviewerId] = useState('');
   const [secondInterviewerId, setSecondInterviewerId] = useState('');
@@ -90,7 +92,21 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedApplication = applications.find(item => String(item.id) === selectedApplicationId);
+  const availableApplications = useMemo(() => {
+    const assignedApplications = new Set(
+      existingInterviews
+        .filter(interview => interview.type === interviewType && InterviewLifecycle.countsAsAssigned(interview.status as InterviewStatus))
+        .map(interview => interview.applicationId)
+    );
+    return applications.filter(application => !assignedApplications.has(application.id));
+  }, [applications, existingInterviews, interviewType]);
+
+  const selectedApplication = availableApplications.find(item => String(item.id) === selectedApplicationId);
+  const familyInterviewers = interviewers.filter(user => user.role === UserRole.INTERVIEWER || user.role === UserRole.COORDINATOR);
+  const cycleDirectors = interviewers.filter(user => user.role === UserRole.CYCLE_DIRECTOR);
+  const psychologists = interviewers.filter(user => user.role === UserRole.PSYCHOLOGIST);
+  const firstInterviewerOptions = interviewType === InterviewType.FAMILY ? familyInterviewers : cycleDirectors;
+  const secondInterviewerOptions = interviewType === InterviewType.FAMILY ? familyInterviewers : psychologists;
   const firstInterviewer = interviewers.find(item => String(item.id) === firstInterviewerId);
   const secondInterviewer = interviewers.find(item => String(item.id) === secondInterviewerId);
   const locationLabel = mode === InterviewMode.VIRTUAL
@@ -101,7 +117,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
 
   const filteredApplications = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return applications.filter(application => {
+    return availableApplications.filter(application => {
       if (!query) return true;
       const haystack = [
         getStudentName(application),
@@ -111,17 +127,21 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
       ].join(' ').toLowerCase();
       return haystack.includes(query);
     }).slice(0, 30);
-  }, [applications, search]);
+  }, [availableApplications, search]);
 
   const formError = useMemo(() => {
     if (!selectedApplication) return 'Selecciona un postulante.';
-    if (!firstInterviewerId || !secondInterviewerId) return 'Selecciona dos entrevistadores.';
+    if (!firstInterviewerId || !secondInterviewerId) {
+      return interviewType === InterviewType.FAMILY
+        ? 'Selecciona dos entrevistadores familiares.'
+        : 'Selecciona un director de ciclo y un psicólogo/a.';
+    }
     if (firstInterviewerId === secondInterviewerId) return 'Los entrevistadores deben ser personas distintas.';
     if (!scheduledDate || !scheduledTime) return 'Indica fecha y hora.';
     if (duration < 15 || duration > 240) return 'La duración debe estar entre 15 y 240 minutos.';
     if (reason.trim().length < 5) return 'Explica brevemente el motivo del ingreso excepcional.';
     return null;
-  }, [duration, firstInterviewerId, reason, scheduledDate, scheduledTime, secondInterviewerId, selectedApplication]);
+  }, [duration, firstInterviewerId, interviewType, reason, scheduledDate, scheduledTime, secondInterviewerId, selectedApplication]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,17 +154,17 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
       staffService.getStaffUsers({ active: true, page: 0, size: 2000 }),
     ]).then(([applicationRows, interviewRows, staffRows]) => {
       if (cancelled) return;
-      const assignedFamilyApplications = new Set(
-        interviewRows.interviews
-          .filter(interview => interview.type === InterviewType.FAMILY && InterviewLifecycle.countsAsAssigned(interview.status as InterviewStatus))
-          .map(interview => interview.applicationId)
-      );
       setApplications(applicationRows.filter(application => (
         ELIGIBLE_APPLICATION_STATUSES.has((application.status || '').toUpperCase())
-        && !assignedFamilyApplications.has(application.id)
       )));
+      setExistingInterviews(interviewRows.interviews);
       setInterviewers(staffRows.content.filter(user => (
-        user.active && (user.role === UserRole.INTERVIEWER || user.role === UserRole.COORDINATOR)
+        user.active && [
+          UserRole.INTERVIEWER,
+          UserRole.COORDINATOR,
+          UserRole.CYCLE_DIRECTOR,
+          UserRole.PSYCHOLOGIST,
+        ].includes(user.role)
       )));
     }).catch(() => {
       if (!cancelled) setOptionsError('No pudimos cargar postulantes y entrevistadores. Cierra y vuelve a intentar.');
@@ -186,8 +206,19 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     if (error) setError(null);
   };
 
+  const selectInterviewType = (nextType: InterviewType) => {
+    if (nextType === interviewType) return;
+    setInterviewType(nextType);
+    setSelectedApplicationId('');
+    setFirstInterviewerId('');
+    setSecondInterviewerId('');
+    setSearch('');
+    clearWarnings();
+  };
+
   const buildRequest = (confirmWarnings: boolean): ManualInterviewCreateRequest => ({
     applicationId: Number(selectedApplicationId),
+    interviewType,
     interviewerId: Number(firstInterviewerId),
     secondInterviewerId: Number(secondInterviewerId),
     scheduledDate,
@@ -235,7 +266,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
           <div className="min-w-0">
             <h2 id="manual-interview-title" className="text-xl font-bold text-gray-950 sm:text-2xl">Ingreso excepcional</h2>
             <p className="mt-1 max-w-2xl text-sm text-gray-600">
-              Registra una entrevista familiar fuera del flujo de agenda habitual.
+              Registra una entrevista familiar o de director de ciclo fuera del flujo habitual.
             </p>
           </div>
           <button
@@ -264,6 +295,35 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
 
           <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
             <div className="space-y-6">
+              <fieldset>
+                <legend className="text-base font-bold text-gray-950">Tipo de entrevista</legend>
+                <p className="mt-1 text-sm text-gray-600">El tipo define los roles requeridos y las evaluaciones asociadas.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2" role="radiogroup">
+                  {[
+                    { value: InterviewType.FAMILY, label: 'Entrevista familiar', description: 'Dos entrevistadores o coordinadores' },
+                    { value: InterviewType.CYCLE_DIRECTOR, label: 'Director de ciclo', description: 'Director de ciclo y psicólogo/a' },
+                  ].map(option => {
+                    const selected = interviewType === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => selectInterviewType(option.value)}
+                        className={`min-h-16 rounded-xl border px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-200 ${selected ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'}`}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="font-bold text-gray-950">{option.label}</span>
+                          {selected && <FiCheck className="h-5 w-5 flex-shrink-0 text-blue-700" aria-hidden="true" />}
+                        </span>
+                        <span className="mt-1 block text-sm text-gray-600">{option.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
               <section aria-labelledby="manual-applicant-heading">
                 <div className="mb-3 flex items-center gap-2">
                   <FiUser className="h-5 w-5 text-gray-500" aria-hidden="true" />
@@ -302,7 +362,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
                       </button>
                     );
                   }) : (
-                    <p className="p-4 text-sm text-gray-600">No hay postulantes pendientes que coincidan.</p>
+                    <p className="p-4 text-sm text-gray-600">No hay postulantes pendientes disponibles para este tipo de entrevista.</p>
                   )}
                 </div>
               </section>
@@ -314,26 +374,28 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-semibold text-gray-800">
-                    Primer entrevistador
+                    {interviewType === InterviewType.FAMILY ? 'Primer entrevistador' : 'Director/a de ciclo'}
                     <select
                       value={firstInterviewerId}
                       onChange={event => { setFirstInterviewerId(event.target.value); clearWarnings(); }}
                       className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Seleccionar</option>
-                      {interviewers.map(user => <option key={user.id} value={user.id}>{getInterviewerName(user)}</option>)}
+                      {firstInterviewerOptions.map(user => <option key={user.id} value={user.id}>{getInterviewerName(user)}</option>)}
                     </select>
+                    {!isLoadingOptions && firstInterviewerOptions.length === 0 && <span className="mt-1 block text-xs font-normal text-red-700">No hay profesionales activos con este rol.</span>}
                   </label>
                   <label className="block text-sm font-semibold text-gray-800">
-                    Segundo entrevistador
+                    {interviewType === InterviewType.FAMILY ? 'Segundo entrevistador' : 'Psicólogo/a'}
                     <select
                       value={secondInterviewerId}
                       onChange={event => { setSecondInterviewerId(event.target.value); clearWarnings(); }}
                       className="mt-2 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Seleccionar</option>
-                      {interviewers.map(user => <option key={user.id} value={user.id}>{getInterviewerName(user)}</option>)}
+                      {secondInterviewerOptions.map(user => <option key={user.id} value={user.id}>{getInterviewerName(user)}</option>)}
                     </select>
+                    {!isLoadingOptions && secondInterviewerOptions.length === 0 && <span className="mt-1 block text-xs font-normal text-red-700">No hay profesionales activos con este rol.</span>}
                   </label>
                 </div>
               </section>
@@ -395,10 +457,12 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
               <div className="lg:sticky lg:top-0">
                 <h3 className="text-base font-bold text-gray-950">Resumen antes de guardar</h3>
                 <dl className="mt-4 space-y-4 text-sm">
+                  <div><dt className="font-semibold text-gray-500">Tipo</dt><dd className="mt-1 font-bold text-gray-950">{interviewType === InterviewType.FAMILY ? 'Entrevista familiar' : 'Director de ciclo y psicológica'}</dd></div>
                   <div><dt className="font-semibold text-gray-500">Postulante</dt><dd className="mt-1 font-bold text-gray-950">{selectedApplication ? getStudentName(selectedApplication) : 'Sin seleccionar'}</dd></div>
                   <div><dt className="font-semibold text-gray-500">Entrevistadores</dt><dd className="mt-1 text-gray-900">{firstInterviewer && secondInterviewer ? `${getInterviewerName(firstInterviewer)} y ${getInterviewerName(secondInterviewer)}` : 'Sin completar'}</dd></div>
                   <div><dt className="font-semibold text-gray-500">Fecha</dt><dd className="mt-1 capitalize text-gray-900">{formatDate(scheduledDate)}{scheduledTime ? `, ${scheduledTime}` : ''}</dd></div>
                   <div><dt className="font-semibold text-gray-500">Duración y modalidad</dt><dd className="mt-1 text-gray-900">{duration || 0} min · {mode === InterviewMode.IN_PERSON ? 'Presencial' : mode === InterviewMode.VIRTUAL ? 'Virtual' : 'Híbrida'}</dd></div>
+                  <div><dt className="font-semibold text-gray-500">Evaluaciones asociadas</dt><dd className="mt-1 text-gray-900">{interviewType === InterviewType.FAMILY ? 'Entrevista familiar' : 'Entrevista e informe de director, más entrevista psicológica'}</dd></div>
                 </dl>
 
                 {warnings.length > 0 && (
