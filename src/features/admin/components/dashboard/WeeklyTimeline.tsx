@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
 import {
   AvailableInterviewerPair,
@@ -34,6 +34,8 @@ const TIME_SLOTS = [
   '08:00', '09:00', '10:00', '11:00', '12:00',
   '14:00', '15:00', '16:00', '17:00'
 ];
+
+const normalizeTime = (time: string): string => time.slice(0, 5);
 
 const getFamilyPairCount = (interviewers: InterviewerInfo[], reportedCount?: number): number => (
   typeof reportedCount === 'number' ? reportedCount : countFamilyInterviewerPairs(interviewers)
@@ -117,6 +119,12 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
   onInterviewClick
 }) => {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const timelineSlots = useMemo(() => Array.from(new Set([
+    ...TIME_SLOTS,
+    ...days.flatMap(day => day.scheduled
+      .filter(interview => isInterviewVisible(interview, filterByInterviewer))
+      .map(interview => normalizeTime(interview.time)))
+  ])).sort((first, second) => first.localeCompare(second)), [days, filterByInterviewer]);
 
   const showTooltip = (interview: WeeklyOverviewScheduledInterview, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -237,24 +245,24 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
               </div>
             ))}
 
-            {TIME_SLOTS.map(time => (
+            {timelineSlots.map(time => (
               <React.Fragment key={time}>
                 <div className="flex h-28 items-center justify-end pr-2 text-xs font-semibold text-gray-500">{time}</div>
                 {days.map(day => {
                   const slotInterviews = day.scheduled.filter(interview =>
-                    interview.time === time && isInterviewVisible(interview, filterByInterviewer)
+                    normalizeTime(interview.time) === time && isInterviewVisible(interview, filterByInterviewer)
                   );
                   const scheduled = getPrimaryOperationalInterview(slotInterviews);
                   const activeCount = getOperationalInterviews(slotInterviews).length;
                   const historicalCount = getHistoricalInterviews(slotInterviews).length;
                   const pastAvailable = day.date < getTodayDateString()
-                    ? day.available.find(slot => slot.time === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
+                    ? day.available.find(slot => normalizeTime(slot.time) === time && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer)))
                     : undefined;
                   const available = day.date >= getTodayDateString()
                     ? day.available.find(slot => {
                       const familyPairCount = getFamilyPairCount(slot.availableInterviewers, slot.familyPairCount);
                       const cyclePairCount = slot.availablePairCount ?? slot.availablePairs?.length ?? 0;
-                      return slot.time === time
+                      return normalizeTime(slot.time) === time
                         && (familyPairCount > 0 || cyclePairCount > 0)
                         && (!filterByInterviewer || slot.availableInterviewers.some(interviewer => interviewer.id === filterByInterviewer));
                     })

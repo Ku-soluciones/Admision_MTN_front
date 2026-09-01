@@ -143,6 +143,18 @@ export const selectCurrentInterview = (interviews: Interview[], type: InterviewT
     })[0]
 );
 
+export const selectScheduledInterview = (interviews: Interview[]): Interview | undefined => (
+  interviews
+    .filter(interview => [
+      InterviewStatus.SCHEDULED,
+      InterviewStatus.CONFIRMED,
+      InterviewStatus.IN_PROGRESS,
+    ].includes(interview.status as InterviewStatus) && Boolean(interview.scheduledDate))
+    .sort((first, second) => (
+      `${first.scheduledDate}T${first.scheduledTime}`.localeCompare(`${second.scheduledDate}T${second.scheduledTime}`)
+    ))[0]
+);
+
 // Interface principal de Entrevista
 export interface Interview {
   id: number;

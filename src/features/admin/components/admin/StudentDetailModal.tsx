@@ -11,7 +11,7 @@ import {
 import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
-import { Interview, InterviewStatus, INTERVIEW_TYPE_LABELS, selectCurrentInterview } from '../../types/interview';
+import { Interview, InterviewStatus, INTERVIEW_STATUS_LABELS, INTERVIEW_TYPE_LABELS, selectCurrentInterview, selectScheduledInterview } from '../../types/interview';
 import InterviewDetailsPanel from '../interviews/InterviewDetailsPanel';
 import evaluationService from '../../services/evaluationService';
 import { Evaluation, EvaluationType } from '../../types/evaluation';
@@ -138,6 +138,10 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         postulante?.id,
         isOpen
     );
+    const currentScheduledInterview = selectScheduledInterview(interviews);
+    const interviewStatusLabel = currentScheduledInterview
+        ? INTERVIEW_STATUS_LABELS[currentScheduledInterview.status as InterviewStatus] || 'Programada'
+        : 'No programada';
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
@@ -995,11 +999,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                 {formatDate(submissionDate)}
                             </span>
                         </div>
-                        {postulante.fechaEntrevista && (
+                        {currentScheduledInterview?.scheduledDate && (
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Fecha Entrevista:</span>
                                 <span className="font-medium text-purple-600">
-                                    {formatDate(postulante.fechaEntrevista)}
+                                    {formatDate(currentScheduledInterview.scheduledDate)}
                                 </span>
                             </div>
                         )}
@@ -1057,8 +1061,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-gray-600">Entrevista:</span>
-                            <Badge variant={postulante.entrevistaProgramada ? 'purple' : 'gray'} size="sm">
-                                {postulante.entrevistaProgramada ? 'Programada' : 'No programada'}
+                            <Badge variant={currentScheduledInterview ? 'purple' : 'gray'} size="sm">
+                                {interviewsLoading ? 'Cargando…' : interviewStatusLabel}
                             </Badge>
                         </div>
                         <div className="flex flex-col gap-2 border-t border-gray-200 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -1270,15 +1274,15 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                            <FiCalendar className={`w-5 h-5 ${postulante.entrevistaProgramada ? 'text-purple-500' : 'text-gray-400'}`} />
+                            <FiCalendar className={`w-5 h-5 ${currentScheduledInterview ? 'text-purple-500' : 'text-gray-400'}`} />
                             <span className="font-medium">Entrevista</span>
                         </div>
-                        <Badge variant={postulante.entrevistaProgramada ? 'purple' : 'gray'} size="sm">
-                            {postulante.entrevistaProgramada ? 'Programada' : 'No programada'}
+                        <Badge variant={currentScheduledInterview ? 'purple' : 'gray'} size="sm">
+                            {interviewsLoading ? 'Cargando…' : interviewStatusLabel}
                         </Badge>
-                        {postulante.fechaEntrevista && (
+                        {currentScheduledInterview?.scheduledDate && (
                             <div className="text-sm text-gray-600 mt-1">
-                                {new Date(postulante.fechaEntrevista).toLocaleDateString('es-ES')}
+                                {new Date(`${currentScheduledInterview.scheduledDate}T00:00:00`).toLocaleDateString('es-ES')}
                             </div>
                         )}
                     </div>
@@ -1862,13 +1866,13 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </div>
                 </div>
 
-                {postulante.fechaEntrevista && (
+                {currentScheduledInterview?.scheduledDate && (
                     <div className="flex items-start gap-3 p-3 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
                         <FiCalendar className="w-5 h-5 text-purple-600 mt-0.5" />
                         <div className="flex-1">
                             <h4 className="font-medium text-purple-900">Entrevista Programada</h4>
                             <p className="text-sm text-purple-700">
-                                {new Date(postulante.fechaEntrevista).toLocaleDateString('es-ES')}
+                                {new Date(`${currentScheduledInterview.scheduledDate}T00:00:00`).toLocaleDateString('es-ES')}
                             </p>
                         </div>
                     </div>
