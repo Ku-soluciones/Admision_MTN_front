@@ -613,22 +613,15 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
-                    <div className="relative group">
-                      <Button
+                    <Button
                         variant="success"
-                        size="sm"
-                        onClick={(e) => e.preventDefault()}
-                        disabled
-                        className="flex items-center gap-2 opacity-50 cursor-not-allowed"
-                      >
-                        <FiPlus className="w-4 h-4" />
-                        Postular otro hijo
-                      </Button>
-                      <div className="absolute left-0 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 max-w-48">
-                        El proceso de postulación ha finalizado
-                        <div className="absolute bottom-full left-4 border-4 border-transparent border-b-gray-800"></div>
-                      </div>
-                    </div>
+                      size="sm"
+                      onClick={handleAddAnotherChild}
+                      className="flex items-center gap-2"
+                    >
+                      <FiPlus className="w-4 h-4" />
+                      Postular otro hijo
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mb-4">
