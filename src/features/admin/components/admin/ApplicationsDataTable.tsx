@@ -34,9 +34,6 @@ interface Application {
     admissionScore?: number;
     createdAt: string;
     updatedAt?: string;
-    // Nuevos campos
-    paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
-    hasComplementaryForm?: boolean;
 }
 
 interface ApplicationsDataTableProps {
@@ -248,42 +245,6 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
             render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-'
         },
         {
-            key: 'paymentStatus',
-            title: 'Pago',
-            dataIndex: 'paymentStatus',
-            sortable: true,
-            filterable: true,
-            filterType: 'select',
-            width: 110,
-            align: 'center',
-            render: (value) => {
-                const config: Record<string, { color: string; label: string }> = {
-                    'PAID': { color: 'green', label: 'Pagado' },
-                    'UNPAID': { color: 'red', label: 'Sin pagar' },
-                    'PAYMENT_PENDING': { color: 'yellow', label: 'Pendiente' },
-                    'FAILED': { color: 'red', label: 'Fallido' },
-                    'EXPIRED': { color: 'gray', label: 'Vencido' }
-                };
-                const c = config[value || ''] || { color: 'gray', label: 'N/A' };
-                return <Badge variant={c.color as any} size="sm">{c.label}</Badge>;
-            }
-        },
-        {
-            key: 'hasComplementaryForm',
-            title: 'Cuestionario',
-            dataIndex: 'hasComplementaryForm',
-            sortable: true,
-            filterable: true,
-            filterType: 'boolean',
-            width: 110,
-            align: 'center',
-            render: (value) => (
-                <Badge variant={value ? 'green' : 'red'} size="sm">
-                    {value ? 'Llenado' : 'Sin llenar'}
-                </Badge>
-            )
-        },
-        {
             key: 'actions',
             title: 'Acciones',
             dataIndex: 'id',
@@ -380,9 +341,7 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
                     documentsComplete: app.documentsComplete || false,
                     admissionScore: app.admissionScore,
                     createdAt: app.createdAt,
-                    updatedAt: app.updatedAt,
-                    paymentStatus: app.paymentStatus,
-                    hasComplementaryForm: app.hasComplementaryForm
+                    updatedAt: app.updatedAt
                 };
             });
 

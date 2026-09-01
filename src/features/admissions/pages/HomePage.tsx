@@ -58,17 +58,11 @@ const HomePage: React.FC = () => {
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Unidos al corazón de Jesús, construimos una comunidad de esperanza</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únanse a una comunidad educativa comprometida con la excelencia académica y formación católica</p>
                     <div className="flex justify-center">
-                        <div className="relative group">
-                            <a href={appUrls.guardianRegister} onClick={(e) => e.preventDefault()} className="pointer-events-none opacity-50 cursor-not-allowed">
-                                <Button size="lg" variant="primary" className="!text-blanco-pureza">
-                                    Iniciar postulación
-                                </Button>
-                            </a>
-                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                                El proceso de postulación ha finalizado
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
-                            </div>
-                        </div>
+                        <a href={appUrls.guardianApplicationEntry}>
+                            <Button size="lg" variant="primary" className="!text-blanco-pureza">
+                                Iniciar postulación
+                            </Button>
+                        </a>
                     </div>
                     <p className="mx-auto mt-4 max-w-2xl text-sm text-blue-100">
                         Después de ingresar podrás elegir Prekínder u otro curso disponible.

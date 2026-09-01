@@ -126,7 +126,6 @@ export interface Application {
     paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
     paymentRequired?: boolean;
     paidAt?: string;
-    hasComplementaryForm?: boolean;
     submissionDate: string;
     applicantUser: {
         email: string;

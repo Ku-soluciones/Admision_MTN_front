@@ -63,24 +63,6 @@ const formatDate = (dateString: string | undefined | null): string => {
   } catch { return '—'; }
 };
 
-const getPaymentBadge = (paymentStatus?: string): { bg: string; text: string; label: string } => {
-  switch (paymentStatus?.toUpperCase()) {
-    case 'PAID': return { bg: 'bg-green-100', text: 'text-green-800', label: 'Pagado' };
-    case 'UNPAID': return { bg: 'bg-red-100', text: 'text-red-800', label: 'Sin pagar' };
-    case 'PAYMENT_PENDING': return { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' };
-    case 'FAILED': return { bg: 'bg-red-100', text: 'text-red-800', label: 'Fallido' };
-    case 'EXPIRED': return { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Vencido' };
-    default: return { bg: 'bg-gray-100', text: 'text-gray-600', label: 'N/A' };
-  }
-};
-
-const getComplementaryBadge = (hasComplementaryForm?: boolean): { bg: string; text: string; label: string } => {
-  if (hasComplementaryForm) {
-    return { bg: 'bg-green-100', text: 'text-green-800', label: 'Llenado' };
-  }
-  return { bg: 'bg-red-100', text: 'text-red-800', label: 'Sin llenar' };
-};
-
 const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   applications,
   isLoading = false,
@@ -187,8 +169,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
               <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Grado</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Apoderado</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Pago</th>
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Cuestionario</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ minWidth: 180 }}>Fecha / Acciones</th>
             </tr>
           </thead>
@@ -257,30 +237,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
                       {getStatusLabel(application.status)}
                     </span>
-                  </td>
-
-                  {/* Pago */}
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    {(() => {
-                      const badge = getPaymentBadge(application.paymentStatus);
-                      return (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
-                  </td>
-
-                  {/* Cuestionario */}
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    {(() => {
-                      const badge = getComplementaryBadge(application.hasComplementaryForm);
-                      return (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
                   </td>
 
                   {/* Fecha / Acciones — cross-fade */}
