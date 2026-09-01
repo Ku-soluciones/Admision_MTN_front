@@ -321,7 +321,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
             <FiShield className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <div>
               <p className="font-bold">Por defecto, este ingreso no enviará correos.</p>
-              <p className="mt-0.5 text-blue-800">En la revisión final podrás decidir si envías la invitación al apoderado y las notificaciones a los profesionales.</p>
+              <p className="mt-0.5 text-blue-800">Sin correo, la entrevista quedará confirmada inmediatamente y visible en las agendas. En la revisión final podrás cambiar esta opción.</p>
             </div>
           </div>
 
@@ -589,7 +589,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
                       onChange={() => { setSendEmail(false); setAssignmentConfirmed(false); }}
                       className="mt-0.5 h-4 w-4 border-gray-300 text-blue-700 focus:ring-blue-500"
                     />
-                    <span><span className="block font-bold text-gray-950">No enviar correos</span><span className="mt-1 block text-sm text-gray-600">Sólo guarda la cita en calendarios y crea sus evaluaciones.</span></span>
+                    <span><span className="block font-bold text-gray-950">No enviar correos</span><span className="mt-1 block text-sm text-gray-600">La deja confirmada y visible en el calendario y las agendas de ambos profesionales.</span></span>
                   </label>
                   <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${sendEmail ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'}`}>
                     <input
@@ -599,7 +599,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
                       onChange={() => { setSendEmail(true); setAssignmentConfirmed(false); }}
                       className="mt-0.5 h-4 w-4 border-gray-300 text-blue-700 focus:ring-blue-500"
                     />
-                    <span><span className="block font-bold text-gray-950">Enviar correos</span><span className="mt-1 block text-sm text-gray-600">Invita al apoderado y notifica a ambos profesionales asignados.</span></span>
+                    <span><span className="block font-bold text-gray-950">Enviar correos</span><span className="mt-1 block text-sm text-gray-600">Invita al apoderado, notifica a ambos profesionales y queda pendiente de confirmación familiar.</span></span>
                   </label>
                 </div>
               </fieldset>
