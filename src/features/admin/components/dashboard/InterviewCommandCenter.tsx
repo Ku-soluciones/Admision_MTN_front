@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiCalendar, FiGrid, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FiCalendar, FiEdit3, FiGrid, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import interviewService from '../../services/interviewService';
 import { AvailableInterviewerPair, InterviewLifecycle, InterviewStatus, INTERVIEW_VALIDATION, InterviewerInfo, WeeklyOverviewResponse } from '../../types/interview';
 import SharedCalendar from '../admin/SharedCalendar';
 import AvailableSlotsPanel from './AvailableSlotsPanel';
 import InterviewerLoadPanel from './InterviewerLoadPanel';
+import ManualInterviewDialog from './ManualInterviewDialog';
 import QuickSchedulePopover from './QuickSchedulePopover';
 import RangeSelector from './RangeSelector';
 import RejectedInterviewsQueue from './RejectedInterviewsQueue';
@@ -256,6 +257,8 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   const [filterByInterviewer, setFilterByInterviewer] = useState<number | null>(null);
   const [isScheduling, setIsScheduling] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const availabilityCacheRef = useRef<SlotAvailabilityCache>(readSlotAvailabilityCache());
 
   const range = useMemo(() => getRangeForMode(anchorDate, viewMode), [anchorDate, viewMode]);
@@ -426,18 +429,33 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     }
   };
 
+  const handleManualInterviewCreated = async () => {
+    setSuccessMessage('Entrevista excepcional guardada. No se enviaron correos.');
+    setCalendarRefreshKey(current => current + 1);
+    await loadOverview();
+  };
+
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Calendario global</p>
+          <h2 className="text-xl font-bold text-gray-950">Calendario global</h2>
           <p className="mt-1 max-w-3xl text-sm text-gray-600">
             {surface === 'operations'
               ? 'Agenda, disponibilidad y carga de entrevistadores.'
               : 'Vista mensual de todas las entrevistas.'}
           </p>
         </div>
-        <div className="inline-flex self-start gap-2" aria-label="Vista del calendario">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowManualEntry(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          >
+            <FiEdit3 className="h-4 w-4" aria-hidden="true" />
+            Ingreso excepcional
+          </button>
+          <div className="inline-flex gap-2" aria-label="Vista del calendario">
             <button
               type="button"
               onClick={() => setSurface('operations')}
@@ -464,11 +482,13 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
               <FiCalendar className="h-4 w-4" aria-hidden="true" />
               Calendario
             </button>
+          </div>
         </div>
       </section>
 
       {surface === 'calendar' ? (
         <SharedCalendar
+          key={calendarRefreshKey}
           onCreateInterview={() => setSurface('operations')}
           showCreateButton
         />
@@ -561,7 +581,15 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           onClose={() => setSelectedSlot(null)}
         />
       )}
+
         </>
+      )}
+
+      {showManualEntry && (
+        <ManualInterviewDialog
+          onClose={() => setShowManualEntry(false)}
+          onCreated={handleManualInterviewCreated}
+        />
       )}
     </div>
   );

@@ -149,6 +149,7 @@ export interface Interview {
   createdAt: string;
   updatedAt?: string;
   completedAt?: string;
+  entrySource?: 'STANDARD' | 'MANUAL';
 }
 
 // DTOs para requests
@@ -167,6 +168,25 @@ export interface CreateInterviewRequest {
   notes?: string;
   preparation?: string;
   status?: InterviewStatus; // Estado inicial - por defecto será SCHEDULED al programar
+}
+
+export interface ManualInterviewWarning {
+  code: 'PAST_DATE' | 'LOCATION_MISSING' | 'OUTSIDE_AVAILABILITY' | 'SCHEDULE_CONFLICT' | string;
+  message: string;
+}
+
+export interface ManualInterviewCreateRequest {
+  applicationId: number;
+  interviewType: InterviewType;
+  interviewerId: number;
+  secondInterviewerId: number;
+  scheduledDate: string;
+  scheduledTime: string;
+  duration: number;
+  mode: InterviewMode;
+  location?: string;
+  reason: string;
+  confirmWarnings: boolean;
 }
 
 export interface UpdateInterviewRequest {
@@ -343,6 +363,7 @@ export interface WeeklyOverviewScheduledInterview {
   interviewType: InterviewType | string;
   mode: InterviewMode | string;
   status: InterviewStatus | string;
+  entrySource?: 'STANDARD' | 'MANUAL';
 }
 
 export interface WeeklyOverviewAvailableSlot {

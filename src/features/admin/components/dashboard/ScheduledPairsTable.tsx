@@ -34,7 +34,14 @@ const ScheduledPairsTable: React.FC<ScheduledPairsTableProps> = ({
       <tr key={`${tone}-${row.id}`} className={tone === 'history' ? 'bg-gray-50/70 hover:bg-gray-100' : 'hover:bg-gray-50'}>
         <td className="whitespace-nowrap px-4 py-3 text-gray-700">{row.dayLabel}, {row.time}</td>
         <td className="px-4 py-3 text-gray-700">{pair}</td>
-        <td className="px-4 py-3 font-medium text-gray-900">{row.studentName}</td>
+        <td className="px-4 py-3 font-medium text-gray-900">
+          <span>{row.studentName}</span>
+          {row.entrySource === 'MANUAL' && (
+            <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+              Excepcional
+            </span>
+          )}
+        </td>
         <td className="whitespace-nowrap px-4 py-3 text-gray-600">{getLabel(INTERVIEW_TYPE_LABELS, row.interviewType)}</td>
         <td className="whitespace-nowrap px-4 py-3 text-gray-600">{getLabel(INTERVIEW_STATUS_LABELS, row.status)}</td>
         <td className="px-4 py-3">
