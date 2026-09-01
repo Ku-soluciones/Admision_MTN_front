@@ -139,6 +139,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         isOpen
     );
     const currentScheduledInterview = selectScheduledInterview(interviews);
+    const visibleInterviewHistory = interviews.filter(interview => interview.status !== InterviewStatus.CANCELLED);
     const interviewStatusLabel = currentScheduledInterview
         ? INTERVIEW_STATUS_LABELS[currentScheduledInterview.status as InterviewStatus] || 'Programada'
         : 'No programada';
@@ -1464,11 +1465,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 </div>
 
                 {/* Lista de entrevistas */}
-                {interviews.length > 0 && (
+                {visibleInterviewHistory.length > 0 && (
                     <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Historial de Entrevistas ({interviews.length})</h4>
+                        <h4 className="font-medium text-gray-900 mb-3">Historial de Entrevistas ({visibleInterviewHistory.length})</h4>
                         <div className="space-y-3">
-                            {interviews.map(interview => (
+                            {visibleInterviewHistory.map(interview => (
                                 <div key={interview.id} className="border rounded-lg p-3 bg-white">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2">
