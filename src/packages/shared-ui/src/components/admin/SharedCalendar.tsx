@@ -299,6 +299,11 @@ const SharedCalendar: React.FC<SharedCalendarProps> = ({
         <div className="truncate font-medium text-xs">
           {interview.studentName}
         </div>
+        {interview.entrySource === 'MANUAL' && (
+          <span className="mt-0.5 inline-flex rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">
+            Excepcional
+          </span>
+        )}
         
         {isUpcoming && (
           <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>

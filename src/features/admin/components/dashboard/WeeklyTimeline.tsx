@@ -285,6 +285,7 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                             </span>
                           )}
                           <p className="truncate font-bold">{scheduled.studentName}</p>
+                          {scheduled.entrySource === 'MANUAL' && <p className="truncate text-[10px] font-bold">Excepcional</p>}
                           <p className="truncate text-[11px]" title={pair.map(interviewer => interviewer.name).join(' + ')}>
                             {pair.map(interviewer => interviewer.name).join(' + ')}
                           </p>
@@ -325,6 +326,7 @@ const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({
                           </span>
                         )}
                         <p className="truncate font-bold">{scheduled.studentName}</p>
+                        {scheduled.entrySource === 'MANUAL' && <p className="mt-0.5 truncate text-[10px] font-bold">Excepcional</p>}
                         <p className="mt-1 line-clamp-2 text-[11px] leading-snug" title={pair.map(interviewer => interviewer.name).join(' + ')}>
                           {pair.map(interviewer => interviewer.name).join(' + ')}
                         </p>

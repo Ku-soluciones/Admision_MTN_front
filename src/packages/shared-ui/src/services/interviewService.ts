@@ -20,6 +20,8 @@ import {
   CreateInterviewRequest,
   UpdateInterviewRequest,
   CompleteInterviewRequest,
+  ManualInterviewCreateRequest,
+  ManualInterviewWarning,
   NextAvailableSlotsResponse,
   WeeklyOverviewResponse,
   WeeklyOverviewDay,
@@ -62,6 +64,17 @@ export interface InterviewResponse {
   canBeCompleted: boolean;
   canBeEdited: boolean;
   canBeCancelled: boolean;
+  entrySource?: 'STANDARD' | 'MANUAL';
+}
+
+export class ManualInterviewConfirmationError extends Error {
+  readonly warnings: ManualInterviewWarning[];
+
+  constructor(message: string, warnings: ManualInterviewWarning[]) {
+    super(message);
+    this.name = 'ManualInterviewConfirmationError';
+    this.warnings = warnings;
+  }
 }
 
 export interface PaginatedInterviewResponse {
@@ -113,7 +126,8 @@ class InterviewService {
       isOverdue: response.isOverdue,
       canBeCompleted: response.canBeCompleted,
       canBeEdited: response.canBeEdited,
-      canBeCancelled: response.canBeCancelled
+      canBeCancelled: response.canBeCancelled,
+      entrySource: response.entrySource
     };
   }
 
@@ -166,7 +180,8 @@ class InterviewService {
       isOverdue: this.isOverdueInterview(backendData.scheduledDate, backendData.status),
       canBeCompleted: this.canBeCompleted(backendData.status),
       canBeEdited: this.canBeEdited(backendData.status),
-      canBeCancelled: this.canBeCancelled(backendData.status)
+      canBeCancelled: this.canBeCancelled(backendData.status),
+      entrySource: backendData.entrySource || 'STANDARD'
     };
   }
 
@@ -247,6 +262,26 @@ class InterviewService {
     }
     
     return this.mapBackendResponse(interviewData);
+  }
+
+  async createManualInterview(request: ManualInterviewCreateRequest): Promise<Interview> {
+    try {
+      const response = await api.post<any>(`${this.baseUrl}/manual`, request);
+      const interviewData = response.data?.data ?? response.data;
+      if (!interviewData || typeof interviewData !== 'object') {
+        throw new Error('Respuesta inválida del servidor al guardar la entrevista excepcional');
+      }
+      return this.mapBackendResponse(interviewData);
+    } catch (error: any) {
+      const apiError = error.response?.data?.error;
+      if (error.response?.status === 409 && apiError?.code === 'MANUAL_CONFIRMATION_REQUIRED') {
+        throw new ManualInterviewConfirmationError(
+          apiError.message || 'Revisa las advertencias antes de guardar',
+          apiError.details?.warnings || []
+        );
+      }
+      throw new Error(apiError?.message || error.message || 'No se pudo guardar la entrevista excepcional');
+    }
   }
 
   // Enviar invitación con botones de confirmación (patrón pasarela)
