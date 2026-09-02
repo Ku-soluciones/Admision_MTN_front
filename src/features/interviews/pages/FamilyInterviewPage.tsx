@@ -6,7 +6,7 @@ import Badge from '../../admin/components/ui/Badge';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 import { familyInterviewService } from '../services/familyInterviewService';
-import FamilyInterviewForm, { FamilyInterviewData } from '../components/FamilyInterviewForm';
+import FamilyInterviewForm from '../components/FamilyInterviewForm';
 import ParentQuestionnaireModal from '../components/interviews/ParentQuestionnaireModal';
 
 interface EvaluationData {
@@ -47,7 +47,6 @@ const FamilyInterviewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [interviewData, setInterviewData] = useState<FamilyInterviewData | null>(null);
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false);
 
   useEffect(() => {
@@ -62,17 +61,6 @@ const FamilyInterviewPage: React.FC = () => {
       const data = await professorEvaluationService.getEvaluationById(parseInt(evaluationId));
       setEvaluation(data as any);
 
-      // Si ya existe data, cargarla en el formulario
-      if (data.observations) {
-        try {
-          const parsed = JSON.parse(data.observations);
-          setInterviewData(parsed);
-        } catch (e) {
-          // Si no es JSON, es una evaluación nueva
-          setInterviewData(null);
-        }
-      }
-
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Error al cargar la evaluación');
@@ -81,7 +69,7 @@ const FamilyInterviewPage: React.FC = () => {
     }
   };
 
-  const handleSave = async (data: FamilyInterviewData) => {
+  const handleSave = async (data: any) => {
     if (!evaluationId) return;
 
     try {
@@ -91,7 +79,7 @@ const FamilyInterviewPage: React.FC = () => {
 
       // Use the correct endpoint: PUT /api/evaluations/:id/family-interview-data
       // This endpoint expects { interviewData: {...} } and has INTERVIEWER role permission
-      const result = await familyInterviewService.saveInterviewData(
+      await familyInterviewService.saveInterviewData(
         parseInt(evaluationId),
         data
       );
@@ -102,30 +90,6 @@ const FamilyInterviewPage: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Error al guardar la entrevista familiar');
       throw err; // Re-throw para que el formulario lo maneje
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async (data: FamilyInterviewData) => {
-    if (!evaluationId) return;
-
-    try {
-      setSaving(true);
-      setError(null);
-
-      const updateData = {
-        observations: JSON.stringify(data),
-        score: data.grandTotal || 0,
-        status: 'IN_PROGRESS'
-      };
-
-      await professorEvaluationService.updateEvaluation(parseInt(evaluationId), updateData);
-
-      navigate('/profesor');
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar el borrador');
-      throw err;
     } finally {
       setSaving(false);
     }
@@ -315,9 +279,7 @@ const FamilyInterviewPage: React.FC = () => {
         {/* Family Interview Form */}
         <FamilyInterviewForm
           evaluation={evaluation}
-          initialData={interviewData || undefined}
           onSave={handleSave}
-          onSaveDraft={handleSaveDraft}
           onCancel={() => navigate('/profesor')}
           disabled={saving}
           readonly={evaluation.status === 'COMPLETED'}

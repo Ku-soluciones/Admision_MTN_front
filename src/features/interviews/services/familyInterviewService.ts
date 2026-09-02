@@ -88,7 +88,11 @@ class FamilyInterviewService {
             );
 
             if (response.data.success) {
-                return response.data.data;
+                return {
+                    evaluationId,
+                    totalScore: Number(response.data.score || 0),
+                    interview_data: response.data.data || {}
+                };
             }
 
             throw new Error('Invalid response from server');

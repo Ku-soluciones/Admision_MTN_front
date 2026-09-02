@@ -14,6 +14,15 @@ export interface BaseEvaluation {
   strengths?: string;
   areasForImprovement?: string;
   recommendations?: string;
+  interviewData?: Record<string, any>;
+  academicReadiness?: string;
+  behavioralAssessment?: string;
+  emotionalMaturity?: string;
+  socialSkillsAssessment?: string;
+  motivationAssessment?: string;
+  familySupportAssessment?: string;
+  integrationPotential?: string;
+  finalRecommendation?: boolean;
   
   // Relaciones
   evaluator?: {

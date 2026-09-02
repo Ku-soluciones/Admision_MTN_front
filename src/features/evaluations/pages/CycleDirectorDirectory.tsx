@@ -7,6 +7,7 @@ import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertTriangleIc
 import { interviewService } from '../services/interviewService';
 import { documentService } from '../../../packages/shared-ui/src/services/documentService';
 import { useNotifications } from '../../admin/context/AppContext';
+import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -127,8 +128,19 @@ const CycleDirectorDirectory: React.FC = () => {
     loadStudentsWithDocuments();
   }, [currentProfessorId, addNotification]);
 
-  const handleViewInterview = (interviewId: number) => {
-    navigate(`/profesor/entrevista-director/${interviewId}`);
+  const handleViewInterview = async (interviewId: number) => {
+    try {
+      const evaluations = await professorEvaluationService.ensureInterviewEvaluations(interviewId);
+      const directorInterview = evaluations.find(item => item.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW');
+      if (!directorInterview) throw new Error('No se encontró la evaluación asociada');
+      navigate(`/profesor/entrevista-director/${directorInterview.id}`);
+    } catch (error: any) {
+      addNotification({
+        type: 'error',
+        title: 'No se pudo abrir la entrevista',
+        message: error.message || 'No fue posible obtener la evaluación asociada a esta entrevista'
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {

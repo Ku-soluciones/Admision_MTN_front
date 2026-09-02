@@ -41,6 +41,21 @@ interface AdmissionReportData {
     entranceGrade: string;
 }
 
+const parseLegacyAdmissionObservations = (value?: string): Partial<AdmissionReportData> => {
+    if (!value) return {};
+    const marker = '\n\nAdecuación al examen:';
+    const markerIndex = value.indexOf(marker);
+    const extract = (pattern: RegExp) => value.match(pattern)?.[1]?.trim() || '';
+    return {
+        observations: markerIndex >= 0 ? value.slice(0, markerIndex).trim() : value,
+        examAdaptation: extract(/Adecuación al examen:\s*([\s\S]*?)\nDificultades:/),
+        difficulties: extract(/Dificultades:\s*([\s\S]*?)\n\n=== RECOMENDACIONES FINALES ===/),
+        admissionDecision: extract(/Decisión:\s*([^\n]*)/),
+        entranceGrade: extract(/Curso ingreso:\s*([^\n]*)/),
+        finalRecommendations: extract(/Comentarios finales:\s*([\s\S]*)$/)
+    };
+};
+
 const AdmissionReportForm: React.FC = () => {
     const { examId } = useParams<{ examId: string }>();
     const navigate = useNavigate();
@@ -103,6 +118,9 @@ const AdmissionReportForm: React.FC = () => {
 
                 if (evaluationData) {
                     setEvaluation(evaluationData);
+                    const structuredReport = evaluationData.interviewData?.formType === 'ADMISSION_REPORT'
+                        ? evaluationData.interviewData
+                        : parseLegacyAdmissionObservations(evaluationData.observations);
 
                     // Obtener puntaje máximo por defecto para el tipo de evaluación
                     const defaultMaxScore = getMaxScore(evaluationData.evaluationType);
@@ -151,12 +169,15 @@ const AdmissionReportForm: React.FC = () => {
                                 Math.round((evaluationData.score / (evaluationData.maxScore || defaultMaxScore)) * 100) : 0,
 
                             // Campos específicos de evaluación - mapeo desde evaluación del profesor
-                            strengths: evaluationData.strengths || '',
-                            difficulties: '', // Campo que completa el director, no auto-poblar
-                            examAdaptation: '', // Campo que completa el director, no auto-poblar
-                            observations: '', // Campo que completa el director, no auto-poblar desde profesor
+                            strengths: structuredReport.strengths ?? evaluationData.strengths ?? '',
+                            difficulties: structuredReport.difficulties ?? '',
+                            examAdaptation: structuredReport.examAdaptation ?? '',
+                            observations: structuredReport.observations ?? '',
                             comments: evaluationData.recommendations || '', // COMENTARIOS ← Recomendaciones del profesor (jorge gangale)
-                            areasToWork: evaluationData.areasForImprovement || '' // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
+                            areasToWork: evaluationData.areasForImprovement || '', // ÁREAS A TRABAJAR ← Áreas de mejora del profesor (chatgpt)
+                            finalRecommendations: structuredReport.finalRecommendations ?? '',
+                            admissionDecision: structuredReport.admissionDecision ?? '',
+                            entranceGrade: structuredReport.entranceGrade ?? ''
                         }));
                     }
 
@@ -253,6 +274,16 @@ const AdmissionReportForm: React.FC = () => {
                 areasForImprovement: reportData.areasToWork,  // SAVE: Director's ÁREAS A TRABAJAR → Backend areasForImprovement
                 observations: `${reportData.observations}\n\nAdecuación al examen: ${reportData.examAdaptation}\nDificultades: ${reportData.difficulties}\n\n=== RECOMENDACIONES FINALES ===\nDecisión: ${reportData.admissionDecision}\nCurso ingreso: ${reportData.entranceGrade}\nComentarios finales: ${reportData.finalRecommendations}`,
                 recommendations: reportData.comments,  // SAVE: Director's COMENTARIOS → Backend recommendations
+                interviewData: {
+                    formType: 'ADMISSION_REPORT',
+                    strengths: reportData.strengths,
+                    difficulties: reportData.difficulties,
+                    examAdaptation: reportData.examAdaptation,
+                    observations: reportData.observations,
+                    finalRecommendations: reportData.finalRecommendations,
+                    admissionDecision: reportData.admissionDecision,
+                    entranceGrade: reportData.entranceGrade
+                },
                 status: 'COMPLETED' // Cambiar estado a COMPLETED
             };
 

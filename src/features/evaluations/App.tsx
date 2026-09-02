@@ -10,7 +10,7 @@ import CycleDirectorReportForm from './components/evaluations/CycleDirectorRepor
 import CycleDirectorInterviewForm from './components/evaluations/CycleDirectorInterviewForm';
 import CycleDirectorDirectory from './pages/CycleDirectorDirectory';
 import ViewStudentDocuments from './pages/ViewStudentDocuments';
-import PsychologicalInterviewForm from '../admin/components/evaluations/PsychologicalInterviewForm';
+import PsychologicalInterviewPage from './pages/PsychologicalInterviewPage';
 import ProtectedProfessorRoute from './components/auth/ProtectedProfessorRoute';
 import ProcessActiveGuard from '../../packages/shared-ui/src/components/auth/ProcessActiveGuard';
 import { AppProvider } from '../admin/context/AppContext';
@@ -47,11 +47,11 @@ function App() {
         <Route path="/profesor/evaluacion/:evaluationId" element={<ProtectedProfessorRoute><EvaluationForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/informe/:examId" element={<ProtectedProfessorRoute><AdmissionReportForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/informe-director/:evaluationId" element={<ProtectedProfessorRoute><CycleDirectorReportForm /></ProtectedProfessorRoute>} />
-        <Route path="/profesor/entrevista-director/:examId" element={<ProtectedProfessorRoute><CycleDirectorInterviewForm /></ProtectedProfessorRoute>} />
+        <Route path="/profesor/entrevista-director/:evaluationId" element={<ProtectedProfessorRoute><CycleDirectorInterviewForm /></ProtectedProfessorRoute>} />
         <Route path="/cycle-director-interview/:evaluationId" element={<ProtectedProfessorRoute><CycleDirectorInterviewForm /></ProtectedProfessorRoute>} />
         <Route path="/profesor/documentos-validados" element={<ProtectedProfessorRoute><CycleDirectorDirectory /></ProtectedProfessorRoute>} />
         <Route path="/profesor/ver-documentos/:applicationId" element={<ProtectedProfessorRoute><ViewStudentDocuments /></ProtectedProfessorRoute>} />
-        <Route path="/psychological-interview/:evaluationId" element={<ProtectedProfessorRoute><PsychologicalInterviewForm /></ProtectedProfessorRoute>} />
+        <Route path="/psychological-interview/:evaluationId" element={<ProtectedProfessorRoute><PsychologicalInterviewPage /></ProtectedProfessorRoute>} />
         <Route path="/profesor/estudiante/:studentId" element={<ProtectedProfessorRoute><StudentProfile /></ProtectedProfessorRoute>} />
         <Route path="*" element={<Navigate to="/profesor/login" replace />} />
     

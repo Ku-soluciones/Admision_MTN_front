@@ -80,90 +80,22 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
         setIsLoading(true);
       }
       
-      // Simulamos evaluaciones con datos mock para desarrollo
-      const mockEvaluations: EvaluationWithDetails[] = [
-        {
-          id: 1,
-          evaluationType: EvaluationType.LANGUAGE_EXAM,
-          status: EvaluationStatus.COMPLETED,
-          score: 85,
-          grade: 'B+',
-          observations: 'El estudiante demuestra buen dominio del lenguaje escrito y comprensión lectora.',
-          strengths: 'Excelente vocabulario y capacidad de análisis de textos.',
-          areasForImprovement: 'Mejorar la expresión oral y participación en discusiones.',
-          recommendations: 'Fomentar la participación en debates y presentaciones orales.',
-          evaluationDate: '2025-08-15',
-          completionDate: '2025-08-15',
-          createdAt: '2025-08-15T10:00:00',
-          updatedAt: '2025-08-15T15:30:00',
-          evaluator: {
-            id: 1,
-            firstName: 'María',
-            lastName: 'González',
-            email: 'maria.gonzalez@mtn.cl',
-            role: 'TEACHER_LANGUAGE'
-          },
-          applicationDetails: {
-            studentName: 'Juan Carlos Gangale González',
-            rut: '12345678-9',
-            gradeApplied: '3 Básico'
-          }
-        },
-        {
-          id: 2,
-          evaluationType: EvaluationType.MATHEMATICS_EXAM,
-          status: EvaluationStatus.IN_PROGRESS,
-          evaluationDate: '2025-08-16',
-          createdAt: '2025-08-16T09:00:00',
-          updatedAt: '2025-08-16T09:00:00',
-          evaluator: {
-            id: 2,
-            firstName: 'Pedro',
-            lastName: 'Rodríguez',
-            email: 'pedro.rodriguez@mtn.cl',
-            role: 'TEACHER_MATHEMATICS'
-          },
-          applicationDetails: {
-            studentName: 'Ana Sofía González López',
-            rut: '87654321-0',
-            gradeApplied: '4 Básico'
-          }
-        },
-        {
-          id: 3,
-          evaluationType: EvaluationType.PSYCHOLOGICAL_INTERVIEW,
-          status: EvaluationStatus.COMPLETED,
-          observations: 'Estudiante con buen desarrollo socioemocional y alta motivación.',
-          socialSkillsAssessment: 'Demuestra habilidades sociales apropiadas para su edad.',
-          emotionalMaturity: 'Nivel de madurez emocional acorde a su desarrollo.',
-          motivationAssessment: 'Alta motivación intrínseca hacia el aprendizaje.',
-          familySupportAssessment: 'Familia muy comprometida con el proceso educativo.',
-          strengths: 'Resiliencia, adaptabilidad y buenas relaciones interpersonales.',
-          areasForImprovement: 'Trabajar en la tolerancia a la frustración en tareas complejas.',
-          recommendations: 'Continuar con el apoyo familiar y considerar actividades extracurriculares.',
-          evaluationDate: '2025-08-17',
-          completionDate: '2025-08-17',
-          createdAt: '2025-08-17T14:00:00',
-          updatedAt: '2025-08-17T16:45:00',
-          evaluator: {
-            id: 3,
-            firstName: 'Ana',
-            lastName: 'López',
-            email: 'ana.lopez@mtn.cl',
-            role: 'PSYCHOLOGIST'
-          },
-          applicationDetails: {
-            studentName: 'Diego Muñoz Rivera',
-            rut: '19876543-2',
-            gradeApplied: '5 Básico'
-          }
-        }
-      ];
-      
-      if (isManualRefresh) {
-        await new Promise(resolve => setTimeout(resolve, 600));
-      }
-      setEvaluations(mockEvaluations);
+      const backendEvaluations = await evaluationService.getAllEvaluations();
+      const mapped = backendEvaluations.map((item: any): EvaluationWithDetails => {
+        const student = item.application?.student;
+        return {
+          ...item,
+          evaluationType: item.evaluationType || item.type,
+          interviewData: item.interviewData || {},
+          applicationDetails: student ? {
+            studentName: [student.firstName, student.paternalLastName || student.lastName, student.maternalLastName]
+              .filter(Boolean).join(' '),
+            rut: student.rut || '',
+            gradeApplied: student.gradeApplied || ''
+          } : undefined
+        };
+      });
+      setEvaluations(mapped);
     } catch (error) {
       addNotification({
         type: 'error',
@@ -243,14 +175,14 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
 
     try {
       setIsSubmitting(true);
-      // Simular guardado
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Actualizar el estado local
+      const updated = await evaluationService.updateEvaluation(selectedEvaluation.id, {
+        ...data,
+        status: EvaluationStatus.IN_PROGRESS
+      });
       setEvaluations(prev => 
         prev.map(evaluation => 
           evaluation.id === selectedEvaluation.id 
-            ? { ...evaluation, ...data, status: EvaluationStatus.IN_PROGRESS }
+            ? { ...evaluation, ...updated, ...data, status: EvaluationStatus.IN_PROGRESS }
             : evaluation
         )
       );
@@ -276,14 +208,14 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
 
     try {
       setIsSubmitting(true);
-      // Simular completado
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Actualizar el estado local
+      const updated = await evaluationService.updateEvaluation(selectedEvaluation.id, {
+        ...data,
+        status: EvaluationStatus.COMPLETED
+      });
       setEvaluations(prev => 
         prev.map(evaluation => 
           evaluation.id === selectedEvaluation.id 
-            ? { ...evaluation, ...data, status: EvaluationStatus.COMPLETED, completionDate: new Date().toISOString() }
+            ? { ...evaluation, ...updated, ...data, status: EvaluationStatus.COMPLETED, completionDate: new Date().toISOString() }
             : evaluation
         )
       );

@@ -21,6 +21,7 @@ export interface ProfessorEvaluation {
     strengths?: string;
     areasForImprovement?: string;
     recommendations?: string;
+    interviewData?: Record<string, any>;
     requiresFollowUp?: boolean;
     followUpNotes?: string;
     evaluatorName?: string;
@@ -229,6 +230,12 @@ class ProfessorEvaluationService {
             throw new Error('Error al obtener la evaluación.');
         }
     }
+
+    async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
+        const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
+        const evaluations = response.data?.data || [];
+        return this.mapToProfessorEvaluations(evaluations);
+    }
     
     /**
      * Mapear respuesta de la API a formato del frontend
@@ -259,6 +266,7 @@ class ProfessorEvaluationService {
             strengths: apiEvaluation.strengths,
             areasForImprovement: apiEvaluation.areasForImprovement || apiEvaluation.areas_for_improvement,
             recommendations: apiEvaluation.recommendations,
+            interviewData: apiEvaluation.interviewData || apiEvaluation.interview_data || {},
             requiresFollowUp: apiEvaluation.requiresFollowUp,
             followUpNotes: apiEvaluation.followUpNotes,
             evaluatorName: this.getEvaluatorName(apiEvaluation),
@@ -328,10 +336,8 @@ class ProfessorEvaluationService {
     }
     
     private getStudentGrade(apiEvaluation: any): string {
-        // Primero intentar obtener del campo directo grade (lo que retorna /my-evaluations)
-        if (apiEvaluation.grade) return apiEvaluation.grade;
-
-        // Luego intentar student_grade (snake_case del backend)
+        // La calificación de la evaluación también se llama "grade"; el curso del
+        // estudiante debe salir primero de la postulación para no confundir ambos datos.
         if (apiEvaluation.student_grade) return apiEvaluation.student_grade;
         if (apiEvaluation.studentGrade) return apiEvaluation.studentGrade;
 
@@ -345,8 +351,9 @@ class ProfessorEvaluationService {
         if (apiEvaluation.application?.student?.grade_applied) return apiEvaluation.application.student.grade_applied;
         if (apiEvaluation.application?.student?.grade) return apiEvaluation.application.student.grade;
 
-        // Finalmente intentar de otros campos
+        // Compatibilidad con respuestas legacy que usaban grade como curso.
         if (apiEvaluation.gradeLevel) return apiEvaluation.gradeLevel;
+        if (apiEvaluation.grade) return apiEvaluation.grade;
 
         return 'Grado no especificado';
     }

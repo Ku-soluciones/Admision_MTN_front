@@ -181,17 +181,12 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         return;
       }
 
-      // Save to backend
-      const result = await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
-
-      // Actualizar timestamp de guardado
-      setLastSaved(new Date());
-
-      // Call parent onSave callback if provided
-      // Parent will handle navigation and success message
       if (onSave) {
-        await onSave(result.interview_data, result.totalScore);
+        await onSave(interviewData, currentScore);
+      } else {
+        await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
       }
+      setLastSaved(new Date());
     } catch (error: any) {
       notify.error(error.message || 'Error al guardar la entrevista');
     } finally {

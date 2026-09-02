@@ -103,6 +103,9 @@ const CycleDirectorReportForm: React.FC = () => {
                 
                 if (directorEvaluation) {
                     setEvaluation(directorEvaluation);
+                    const structuredReport = directorEvaluation.interviewData?.formType === 'CYCLE_DIRECTOR_REPORT'
+                        ? directorEvaluation.interviewData
+                        : null;
 
 
                     // Parsear recommendations para extraer finalDecision y entryCourse
@@ -146,14 +149,14 @@ const CycleDirectorReportForm: React.FC = () => {
 
                     // Primero mapear datos de la evaluación
                     const evaluationData = {
-                        strengths: directorEvaluation.strengths || '',
-                        difficulties: directorEvaluation.areasForImprovement || '',
-                        interviewAdaptation,
-                        outstandingTraits,
-                        familyBackground,
-                        academicBackground,
-                        finalDecision,
-                        entryCourse
+                        strengths: structuredReport?.strengths ?? directorEvaluation.strengths ?? '',
+                        difficulties: structuredReport?.difficulties ?? directorEvaluation.areasForImprovement ?? '',
+                        interviewAdaptation: structuredReport?.interviewAdaptation ?? interviewAdaptation,
+                        outstandingTraits: structuredReport?.outstandingTraits ?? outstandingTraits,
+                        familyBackground: structuredReport?.familyBackground ?? familyBackground,
+                        academicBackground: structuredReport?.academicBackground ?? academicBackground,
+                        finalDecision: structuredReport?.finalDecision ?? finalDecision,
+                        entryCourse: structuredReport?.entryCourse ?? entryCourse
                     };
 
                     // Cargar información completa del estudiante desde la aplicación embebida
@@ -323,6 +326,17 @@ const CycleDirectorReportForm: React.FC = () => {
                 areasForImprovement: reportData.difficulties,
                 observations: `${reportData.academicBackground}\n\nAdaptación a entrevista: ${reportData.interviewAdaptation}\nRasgos sobresalientes: ${reportData.outstandingTraits}\nAntecedentes familiares: ${reportData.familyBackground}`,
                 recommendations: `Informe completado por Director de Ciclo: ${currentProfessor?.firstName} ${currentProfessor?.lastName}\n\nDecisión Final: ${reportData.finalDecision}\nCurso de Ingreso: ${reportData.entryCourse}`,
+                interviewData: {
+                    formType: 'CYCLE_DIRECTOR_REPORT',
+                    strengths: reportData.strengths,
+                    difficulties: reportData.difficulties,
+                    interviewAdaptation: reportData.interviewAdaptation,
+                    outstandingTraits: reportData.outstandingTraits,
+                    familyBackground: reportData.familyBackground,
+                    academicBackground: reportData.academicBackground,
+                    finalDecision: reportData.finalDecision,
+                    entryCourse: reportData.entryCourse
+                },
                 status: 'COMPLETED'
             };
 

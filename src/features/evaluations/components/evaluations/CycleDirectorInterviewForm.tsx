@@ -176,9 +176,12 @@ const CycleDirectorInterviewForm: React.FC = () => {
                     const birthDate = foundEvaluation.studentBirthDate || foundEvaluation.application?.student?.birthDate;
                     const formattedBirthDate = formatDateForInput(birthDate);
 
-                    // Intentar recuperar datos guardados desde el campo strengths (JSON)
-                    let savedInterviewData = null;
-                    if (foundEvaluation.strengths) {
+                    // Recuperar el contrato estructurado actual; mantener compatibilidad
+                    // con entrevistas antiguas que guardaban JSON en strengths.
+                    let savedInterviewData = foundEvaluation.interviewData?.formType === 'CYCLE_DIRECTOR_INTERVIEW'
+                        ? foundEvaluation.interviewData
+                        : null;
+                    if (!savedInterviewData && foundEvaluation.strengths) {
                         try {
                             // Intentar parsear como JSON
                             savedInterviewData = JSON.parse(foundEvaluation.strengths);
@@ -293,8 +296,7 @@ const CycleDirectorInterviewForm: React.FC = () => {
         setIsSubmitting(true);
         
         try {
-            // Guardar datos estructurados en JSON para recuperación posterior
-            const interviewDataJSON = JSON.stringify(interviewData);
+            const { studentName, birthDate, age, currentSchool, gradeApplied, ...answers } = interviewData;
             const storedProfessorName = [currentProfessor?.firstName, currentProfessor?.lastName]
                 .filter((part): part is string => typeof part === 'string' && part.trim().length > 0 && !['undefined', 'null'].includes(part.trim().toLowerCase()))
                 .join(' ');
@@ -302,8 +304,10 @@ const CycleDirectorInterviewForm: React.FC = () => {
 
             // Consolidar toda la información de la entrevista en los campos de la evaluación
             const updatedEvaluation: Partial<ProfessorEvaluation> = {
-                // Guardar datos estructurados en JSON en el campo strengths
-                strengths: interviewDataJSON,
+                interviewData: {
+                    formType: 'CYCLE_DIRECTOR_INTERVIEW',
+                    ...answers
+                },
 
                 // Mantener formato legible en observations para revisión
                 observations: `ENTREVISTA DIRECTOR DE CICLO
