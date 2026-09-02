@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
   CalendarDays,
   ChevronDown,
   ChevronUp,
   Clock3,
+  Layers,
   Pencil,
   Plus,
   Search,
   Trash2,
+  TriangleAlert,
   UserRoundCheck,
   UsersRound,
   X,
@@ -94,15 +99,36 @@ function overlaps(
   );
 }
 
+type GroupsView = "groups" | "clusters";
+
+const groupsViews: Array<{ id: GroupsView; label: string; icon: typeof UsersRound }> = [
+  { id: "groups", label: "Grupos", icon: UsersRound },
+  { id: "clusters", label: "Agrupaciones", icon: Layers },
+];
+
 export function PrekinderGroups(props: Props) {
+  const [view, setView] = useState<GroupsView>("groups");
   const [editor, setEditor] = useState<EditorState>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ACTIVE");
+  const [sort, setSort] = useState<{ key: "name" | "estado" | "time"; dir: "asc" | "desc" }>({
+    key: "time",
+    dir: "asc",
+  });
+
+  function toggleGroupSort(key: "name" | "estado") {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }
 
   const visibleGroups = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
+    const factor = sort.dir === "asc" ? 1 : -1;
     return props.groups
       .filter((group) =>
         status === "ALL"
@@ -117,8 +143,16 @@ export function PrekinderGroups(props: Props) {
           .toLocaleLowerCase("es")
           .includes(normalized);
       })
-      .sort((left, right) => left.startsAt.localeCompare(right.startsAt));
-  }, [props.groups, query, status]);
+      .sort((left, right) => {
+        const value =
+          sort.key === "name"
+            ? left.code.localeCompare(right.code, "es")
+            : sort.key === "estado"
+              ? (statusMeta[left.status]?.label ?? left.status).localeCompare(statusMeta[right.status]?.label ?? right.status, "es")
+              : left.startsAt.localeCompare(right.startsAt);
+        return value * factor;
+      });
+  }, [props.groups, query, status, sort]);
 
   const activeGroups = props.groups.filter((group) => group.status !== "CANCELLED");
   const assignedChildren = new Set(activeGroups.flatMap((group) => group.memberIds));
@@ -133,8 +167,36 @@ export function PrekinderGroups(props: Props) {
 
   return (
     <div className="space-y-5">
+      <aside>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de grupos</p>
+          <p className="mt-1 text-sm text-slate-600">Arma grupos individuales o reúnelos en agrupaciones.</p>
+        </div>
+        <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de grupos">
+          {groupsViews.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${view === id ? "border border-slate-300 bg-white font-bold text-slate-900" : "font-semibold text-slate-600 hover:text-slate-900"}`}
+              aria-current={view === id ? "page" : undefined}
+            >
+              <Icon size={16} />{label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      {view === "clusters" && (
+        <GroupClusters
+          groups={props.groups}
+          date={props.date}
+          journeys={props.journeys}
+          onDateChange={props.onDateChange}
+        />
+      )}
+      {view === "groups" && (
+    <div className="space-y-5">
       {sortedJourneys.length ? (
-        <label className="flex min-h-9 w-fit items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
+        <label className="flex min-h-9 w-fit items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
           <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
           <span className="shrink-0">Jornada de evaluación</span>
           <select
@@ -209,36 +271,37 @@ export function PrekinderGroups(props: Props) {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-            <input
-              className="control w-full pl-10"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por código o sala"
-              aria-label="Buscar grupos"
-            />
-          </div>
-          <div className="relative sm:w-52">
-            <select
-              className="control w-full appearance-none pr-9"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              aria-label="Filtrar por estado"
-            >
-              <option value="ACTIVE">Grupos activos</option>
-              <option value="DRAFT">En preparación</option>
-              <option value="CONFIRMED">Listos</option>
-              <option value="COMPLETED">Finalizados</option>
-              <option value="CANCELLED">Eliminados</option>
-              <option value="ALL">Todos los estados</option>
-            </select>
-            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-          </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <span className="text-sm font-normal text-slate-400">{visibleGroups.length} de {props.groups.length}</span>
+        <div className="relative inline-block">
+          <select
+            className="control appearance-none pr-9"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            aria-label="Filtrar por estado"
+          >
+            <option value="ACTIVE">Grupos activos</option>
+            <option value="DRAFT">En preparación</option>
+            <option value="CONFIRMED">Listos</option>
+            <option value="COMPLETED">Finalizados</option>
+            <option value="CANCELLED">Eliminados</option>
+            <option value="ALL">Todos los estados</option>
+          </select>
+          <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
         </div>
+        <label className="relative block w-full max-w-xs">
+          <span className="sr-only">Buscar grupos</span>
+          <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+          <input
+            className="control w-full pl-10"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar por código o sala"
+          />
+        </label>
+      </div>
 
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {visibleGroups.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <UsersRound className="mx-auto text-slate-300" size={36} />
@@ -265,117 +328,367 @@ export function PrekinderGroups(props: Props) {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {visibleGroups.map((group) => {
-              const meta = statusMeta[group.status] ?? {
-                label: group.status,
-                className: "bg-slate-100 text-slate-700",
-              };
-              const expanded = expandedId === group.groupId;
-              const canModify =
-                ["DRAFT", "CONFIRMED"].includes(group.status) &&
-                new Date(group.startsAt).getTime() > Date.now();
-              const members = group.memberIds
-                .map((id) => props.applications.find((application) => application.applicationId === id))
-                .filter(Boolean) as FlowApplication[];
-              const evaluators = group.evaluatorIds
-                .map((id) => props.professionals.find((professional) => professional.professionalId === id))
-                .filter(Boolean) as Professional[];
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse">
+              <colgroup>
+                <col className="w-[26%]" />
+                <col className="w-[13%]" />
+                <col className="w-[19%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  {(
+                    [
+                      ["Nombre", "name"],
+                      ["Estado", "estado"],
+                    ] as const
+                  ).map(([label, key]) => (
+                    <th key={key} className={`px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 ${key === "estado" ? "text-center" : "text-left"}`}>
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1.5 uppercase hover:text-slate-700 ${key === "estado" ? "mx-auto" : ""}`}
+                        onClick={() => toggleGroupSort(key)}
+                      >
+                        {label}
+                        {sort.key === key ? (
+                          sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                        ) : (
+                          <ArrowUpDown size={13} className="text-slate-300" />
+                        )}
+                      </button>
+                    </th>
+                  ))}
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Observación focal</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Postulantes</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Evaluadores</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleGroups.map((group) => {
+                  const meta = statusMeta[group.status] ?? {
+                    label: group.status,
+                    className: "bg-slate-100 text-slate-700",
+                  };
+                  const expanded = expandedId === group.groupId;
+                  const canModify =
+                    ["DRAFT", "CONFIRMED"].includes(group.status) &&
+                    new Date(group.startsAt).getTime() > Date.now();
+                  const members = group.memberIds
+                    .map((id) => props.applications.find((application) => application.applicationId === id))
+                    .filter(Boolean) as FlowApplication[];
+                  const evaluators = group.evaluatorIds
+                    .map((id) => props.professionals.find((professional) => professional.professionalId === id))
+                    .filter(Boolean) as Professional[];
 
-              return (
-                <article key={group.groupId}>
-                  <div className="grid gap-4 p-4 lg:grid-cols-[minmax(180px,1fr)_160px_170px_auto] lg:items-center">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-base font-black text-slate-950">{group.code}</h2>
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-black ${meta.className}`}>
-                          {meta.label}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-slate-600">
-                        {group.roomName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="flex items-center gap-1.5 text-sm font-black text-slate-900">
-                        <Clock3 size={15} className="text-slate-400" aria-hidden="true" />
-                        {formatTime(group.startsAt)}–{formatTime(group.endsAt)}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {group.stage === "GROUP_3" ? "Observación focal" : "Interacción grupal"}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <span><b className="block text-slate-950">{group.memberIds.length}/{group.capacity}</b><small className="text-slate-500">postulantes</small></span>
-                      <span><b className="block text-slate-950">{group.evaluatorIds.length}/{group.requiredEvaluators}</b><small className="text-slate-500">evaluadores</small></span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                      <button
-                        className="secondary"
-                        onClick={() => setExpandedId(expanded ? null : group.groupId)}
-                        aria-expanded={expanded}
-                      >
-                        {expanded ? <ChevronUp className="mr-1 inline" size={16} /> : <ChevronDown className="mr-1 inline" size={16} />}
-                        Ver
-                      </button>
-                      <button
-                        className="secondary"
-                        disabled={props.busy || !canModify}
-                        onClick={() => setEditor({ mode: "edit", group })}
-                        title={canModify ? "Editar planificación" : "Sólo se editan grupos futuros en preparación o listos"}
-                      >
-                        <Pencil className="mr-1 inline" size={16} />Editar
-                      </button>
-                      {deletingId === group.groupId ? (
-                        <>
-                          <button
-                            className="min-h-10 rounded-lg bg-red-700 px-3 text-sm font-black text-white hover:bg-red-800 disabled:opacity-50"
-                            disabled={props.busy}
-                            onClick={async () => {
-                              const deleted = await props.onAction(
-                                () => prekinderApi.deleteGroup(group.groupId, group.version),
-                                `Grupo ${group.code} eliminado. La trazabilidad quedó conservada.`,
-                              );
-                              if (deleted) setDeletingId(null);
-                            }}
-                          >
-                            Confirmar
-                          </button>
-                          <button className="secondary" onClick={() => setDeletingId(null)}>Cancelar</button>
-                        </>
+                  return (
+                    <Fragment key={group.groupId}>
+                      <tr className="align-middle">
+                        <td className="px-5 py-4">
+                          <p className="font-black text-slate-950">{group.code}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{group.roomName}</p>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${meta.className}`}>
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <p className="flex items-center justify-center gap-1.5 text-sm text-slate-700">
+                            <Clock3 size={13} className="text-slate-400" aria-hidden="true" />
+                            {formatTime(group.startsAt)}–{formatTime(group.endsAt)}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4 text-center text-sm">
+                          <b className="text-slate-950">{group.memberIds.length}/{group.capacity}</b>
+                        </td>
+                        <td className="px-5 py-4 text-center text-sm">
+                          <b className="text-slate-950">{group.evaluatorIds.length}/{group.requiredEvaluators}</b>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              className="secondary !px-3 !py-2 text-xs"
+                              onClick={() => setExpandedId(expanded ? null : group.groupId)}
+                              aria-expanded={expanded}
+                            >
+                              Ver
+                              {expanded ? <ChevronUp className="ml-1 inline" size={14} /> : <ChevronDown className="ml-1 inline" size={14} />}
+                            </button>
+                            <button
+                              className="secondary !px-3 !py-2 text-xs"
+                              disabled={props.busy || !canModify}
+                              onClick={() => setEditor({ mode: "edit", group })}
+                              title={canModify ? "Editar planificación" : "Sólo se editan grupos futuros en preparación o listos"}
+                            >
+                              <Pencil className="mr-1 inline" size={14} />Editar
+                            </button>
+                            {deletingId === group.groupId ? (
+                              <>
+                                <button
+                                  className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white hover:bg-red-800 disabled:opacity-50"
+                                  disabled={props.busy}
+                                  onClick={async () => {
+                                    const deleted = await props.onAction(
+                                      () => prekinderApi.deleteGroup(group.groupId, group.version),
+                                      `Grupo ${group.code} eliminado. La trazabilidad quedó conservada.`,
+                                    );
+                                    if (deleted) setDeletingId(null);
+                                  }}
+                                >
+                                  Confirmar
+                                </button>
+                                <button className="secondary !px-3 !py-2 text-xs" onClick={() => setDeletingId(null)}>Cancelar</button>
+                              </>
+                            ) : (
+                              <button
+                                className="min-h-9 rounded-lg px-3 text-xs font-black text-red-700 hover:bg-red-50 disabled:text-red-300 disabled:hover:bg-transparent"
+                                disabled={props.busy || !canModify}
+                                onClick={() => setDeletingId(group.groupId)}
+                                title={canModify ? "Eliminar grupo" : "Este grupo ya no se puede eliminar"}
+                              >
+                                <Trash2 className="mr-1 inline" size={14} />Eliminar
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr>
+                          <td colSpan={6} className="bg-slate-50 px-5 py-5">
+                            <div className="grid gap-5 md:grid-cols-2">
+                              <DetailList
+                                icon={<UsersRound size={17} />}
+                                title="Postulantes"
+                                empty="Todavía no hay postulantes asignados."
+                                values={members.map((application) => fullName(application))}
+                              />
+                              <DetailList
+                                icon={<UserRoundCheck size={17} />}
+                                title="Equipo evaluador"
+                                empty="Todavía no hay profesionales asignados."
+                                values={evaluators.map((professional) => professional.displayName)}
+                              />
+                              <div className="md:col-span-2">
+                                <button className="primary" onClick={() => props.onOpenGroup(group.groupId)}>
+                                  Abrir composición y operación
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+      )}
+    </div>
+  );
+}
+
+function GroupClusters({
+  groups,
+  date,
+  journeys,
+  onDateChange,
+}: {
+  groups: EvaluationGroup[];
+  date: string;
+  journeys: EvaluationJourney[];
+  onDateChange: (date: string) => void;
+}) {
+  const [clusters, setClusters] = useState<Array<{ id: string; name: string; groupIds: string[] }>>([]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const activeGroups = groups.filter((group) => group.status !== "CANCELLED");
+  const sortedJourneys = [...journeys].sort((a, b) => a.date.localeCompare(b.date));
+
+  useEffect(() => setSelected(new Set()), [date]);
+
+  function toggleGroup(groupId: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setName("");
+    setSelected(new Set());
+  }
+
+  function createCluster() {
+    if (!name.trim() || selected.size === 0) return;
+    setClusters((current) => [...current, { id: crypto.randomUUID(), name: name.trim(), groupIds: [...selected] }]);
+    closeForm();
+  }
+
+  function removeCluster(id: string) {
+    setClusters((current) => current.filter((cluster) => cluster.id !== id));
+  }
+
+  return (
+    <div className="space-y-5">
+      {sortedJourneys.length ? (
+        <label className="flex min-h-9 w-fit items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600">
+          <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+          <span className="shrink-0">Jornada de evaluación</span>
+          <select
+            className="min-w-0 bg-transparent text-sm font-semibold text-gray-950 outline-none"
+            value={date}
+            onChange={(event) => {
+              if (event.target.value) onDateChange(event.target.value);
+            }}
+          >
+            {!sortedJourneys.some((journey) => journey.date === date) && (
+              <option value={date}>{formatDay(date)}</option>
+            )}
+            {sortedJourneys.map((journey) => (
+              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Aún no hay jornadas de evaluación.
+        </div>
+      )}
+
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        Vista de prueba: las agrupaciones se guardan solo en este navegador y se pierden al recargar la página.
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-6">
+          <div>
+            <h2 className="text-lg font-black">Crear agrupación</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">Une varios grupos de evaluación en una sola agrupación.</p>
+          </div>
+          {formOpen ? (
+            <button className="secondary shrink-0 !px-3" onClick={closeForm} aria-label="Cerrar formulario">
+              <X size={18} />
+            </button>
+          ) : (
+            <button
+              className="primary shrink-0"
+              disabled={!activeGroups.length}
+              onClick={() => setFormOpen(true)}
+            >
+              <Plus className="mr-2 inline" size={17} />
+              Nueva agrupación
+            </button>
+          )}
+        </div>
+        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${formOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <div className="overflow-hidden">
+            {formOpen && (
+              <div className="border-t border-slate-200">
+                <div className="grid gap-5 p-6 lg:grid-cols-2">
+                  <div className="grid content-start gap-4">
+                    <Field label="Nombre de la agrupación">
+                      <input
+                        className="control w-full"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        placeholder="Ej. Bloque mañana - Salas A y B"
+                        maxLength={120}
+                      />
+                    </Field>
+                  </div>
+                  <fieldset className="min-w-0">
+                    <legend className="mb-2 flex w-full items-center justify-between gap-3 text-sm font-black text-slate-900">
+                      Grupos a incluir<span className="text-blue-700">{selected.size} seleccionados</span>
+                    </legend>
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
+                      {!activeGroups.length ? (
+                        <p className="p-3 text-sm leading-6 text-slate-500">No hay grupos activos para agrupar.</p>
                       ) : (
-                        <button
-                          className="min-h-10 rounded-lg px-3 text-sm font-black text-red-700 hover:bg-red-50 disabled:text-red-300 disabled:hover:bg-transparent"
-                          disabled={props.busy || !canModify}
-                          onClick={() => setDeletingId(group.groupId)}
-                          title={canModify ? "Eliminar grupo" : "Este grupo ya no se puede eliminar"}
-                        >
-                          <Trash2 className="mr-1 inline" size={16} />Eliminar
-                        </button>
+                        activeGroups.map((group) => {
+                          const checked = selected.has(group.groupId);
+                          return (
+                            <label key={group.groupId} className="flex cursor-pointer items-start gap-3 rounded-lg p-2.5 hover:bg-white">
+                              <input
+                                className="mt-1 h-4 w-4 accent-blue-700"
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleGroup(group.groupId)}
+                              />
+                              <span className="min-w-0">
+                                <b className="block truncate text-sm text-slate-900">{group.code}</b>
+                                <small className="block truncate text-slate-500">{group.roomName}</small>
+                              </span>
+                            </label>
+                          );
+                        })
                       )}
                     </div>
-                  </div>
-                  {expanded && (
-                    <div className="grid gap-5 bg-slate-50 px-4 py-5 md:grid-cols-2">
-                      <DetailList
-                        icon={<UsersRound size={17} />}
-                        title="Postulantes"
-                        empty="Todavía no hay postulantes asignados."
-                        values={members.map((application) => fullName(application))}
-                      />
-                      <DetailList
-                        icon={<UserRoundCheck size={17} />}
-                        title="Equipo evaluador"
-                        empty="Todavía no hay profesionales asignados."
-                        values={evaluators.map((professional) => professional.displayName)}
-                      />
-                      <div className="md:col-span-2">
-                        <button className="primary" onClick={() => props.onOpenGroup(group.groupId)}>
-                          Abrir composición y operación
-                        </button>
-                      </div>
+                  </fieldset>
+                </div>
+                <div className="flex justify-end gap-2 border-t border-slate-200 p-6">
+                  <button className="secondary" onClick={closeForm}>Cancelar</button>
+                  <button className="primary" disabled={!name.trim() || selected.size === 0} onClick={createCluster}>
+                    <Plus className="mr-2 inline" size={17} />Crear agrupación
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {!clusters.length ? (
+          <div className="px-5 py-14 text-center">
+            <Layers className="mx-auto text-slate-300" size={36} />
+            <h2 className="mt-3 text-lg font-black text-slate-900">Aún no hay agrupaciones</h2>
+            <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
+              Selecciona dos o más grupos arriba y crea la primera agrupación.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {clusters.map((cluster) => {
+              const members = groups.filter((group) => cluster.groupIds.includes(group.groupId));
+              const totalPostulantes = members.reduce((sum, group) => sum + group.memberIds.length, 0);
+              const totalEvaluadores = members.reduce((sum, group) => sum + group.evaluatorIds.length, 0);
+              return (
+                <article key={cluster.id} className="p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-black text-slate-950">{cluster.name}</h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {members.length} grupos · {totalPostulantes} postulantes · {totalEvaluadores} evaluadores
+                      </p>
                     </div>
-                  )}
+                    <button
+                      className="min-h-10 rounded-lg px-3 text-sm font-black text-red-700 hover:bg-red-50"
+                      onClick={() => removeCluster(cluster.id)}
+                    >
+                      <Trash2 className="mr-1 inline" size={16} />Eliminar
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {members.map((group) => (
+                      <span key={group.groupId} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                        {group.code} · {group.roomName}
+                      </span>
+                    ))}
+                  </div>
                 </article>
               );
             })}

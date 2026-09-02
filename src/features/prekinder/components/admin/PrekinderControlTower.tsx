@@ -842,7 +842,27 @@ function ReviewView({ controlTower }: Props) {
   </div>;
 }
 
-type ResultsSortKey = "name" | "academic" | "psychology" | "psychomotor" | "total" | "estado";
+type ResultsSortKey =
+  | "name"
+  | "academic"
+  | "learningSupport"
+  | "dap"
+  | "psychology"
+  | "psychomotor"
+  | "entryIndicators"
+  | "groupObservation"
+  | "total"
+  | "estado";
+
+const RESULTS_INSTRUMENT_KEYS = [
+  "academic",
+  "learningSupport",
+  "dap",
+  "psychology",
+  "psychomotor",
+  "entryIndicators",
+  "groupObservation",
+] as const;
 
 const RESULTS_PAGE_SIZE = 10;
 
@@ -856,17 +876,24 @@ function ResultsView({ applications }: Props) {
   const enriched = useMemo(
     () => applications.slice(0, 30).map((app, index) => {
       const academic = 62 + index % 28;
+      const learningSupport = 60 + index % 26;
+      const dap = 66 + index % 20;
       const psychology = 65 + index % 24;
       const psychomotor = 68 + index % 22;
-      const total = Math.round(academic * .34 + psychology * .33 + psychomotor * .33);
+      const entryIndicators = 63 + index % 25;
+      const groupObservation = 61 + index % 27;
+      const total = Math.round(
+        (academic + learningSupport + dap + psychology + psychomotor + entryIndicators + groupObservation) /
+          RESULTS_INSTRUMENT_KEYS.length,
+      );
       const ready = index % 4 !== 0;
-      return { app, academic, psychology, psychomotor, total, ready };
+      return { app, academic, learningSupport, dap, psychology, psychomotor, entryIndicators, groupObservation, total, ready };
     }),
     [applications],
   );
   const sorted = useMemo(() => {
     const factor = sort.dir === "asc" ? 1 : -1;
-    const numericKey = sort.key as "academic" | "psychology" | "psychomotor" | "total";
+    const numericKey = sort.key as (typeof RESULTS_INSTRUMENT_KEYS)[number] | "total";
     return [...enriched].sort((a, b) => {
       const value =
         sort.key === "name"
@@ -888,8 +915,12 @@ function ResultsView({ applications }: Props) {
   const columns: [string, ResultsSortKey][] = [
     ["Postulante", "name"],
     ["Académico", "academic"],
+    ["Apoyo al aprendizaje", "learningSupport"],
+    ["DAP", "dap"],
     ["Psicología", "psychology"],
     ["Psicomotricidad", "psychomotor"],
+    ["Indicadores de ingreso", "entryIndicators"],
+    ["Observación grupal", "groupObservation"],
     ["Resultado", "total"],
     ["Estado", "estado"],
   ];
@@ -903,7 +934,7 @@ function ResultsView({ applications }: Props) {
     </div>
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[1220px] text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               {columns.map(([label, key]) => (
@@ -917,19 +948,23 @@ function ResultsView({ applications }: Props) {
             </tr>
           </thead>
           <tbody>
-            {visible.map(({ app, academic, psychology, psychomotor, total, ready }) => (
+            {visible.map(({ app, academic, learningSupport, dap, psychology, psychomotor, entryIndicators, groupObservation, total, ready }) => (
               <tr key={app.applicationId} className="border-t border-slate-100">
                 <td className="p-4"><b className="block text-slate-900">{fullName(app)}</b><small className="text-slate-500">{app.identity.rut}</small></td>
                 <td className="text-center">{ready ? `${academic}%` : "—"}</td>
+                <td className="text-center">{ready ? `${learningSupport}%` : "—"}</td>
+                <td className="text-center">{ready ? `${dap}%` : "—"}</td>
                 <td className="text-center">{ready ? `${psychology}%` : "—"}</td>
                 <td className="text-center">{ready ? `${psychomotor}%` : "—"}</td>
+                <td className="text-center">{ready ? `${entryIndicators}%` : "—"}</td>
+                <td className="text-center">{ready ? `${groupObservation}%` : "—"}</td>
                 <td className="text-center font-black text-slate-900">{ready ? `${total}%` : "Pendiente"}</td>
                 <td className="text-center"><span className={`rounded-full px-3 py-1 text-xs font-black ${ready ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{ready ? "Listo para comité" : "Incompleto"}</span></td>
               </tr>
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan={6} className="p-10 text-center text-sm text-slate-500">No hay postulantes que coincidan.</td>
+                <td colSpan={10} className="p-10 text-center text-sm text-slate-500">No hay postulantes que coincidan.</td>
               </tr>
             )}
           </tbody>

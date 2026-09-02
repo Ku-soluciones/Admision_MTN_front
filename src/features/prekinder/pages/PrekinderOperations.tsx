@@ -672,7 +672,7 @@ export function PrekinderOperations({
         )}
 
         <Content className={embedded ? "min-w-0" : "min-w-0 flex-1 overflow-y-auto p-4 lg:p-7"}>
-          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && !(section === "Configuración" && processId && currentProcess?.status !== "DRAFT") && (
+          {!(section === "Resumen" && processId && currentProcess?.status !== "DRAFT") && !(section === "Torre de control" && processId && currentProcess?.status !== "DRAFT") && !(section === "Configuración" && processId && currentProcess?.status !== "DRAFT") && !(section === "Grupos" && processId && currentProcess?.status !== "DRAFT") && (
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 {section === "Postulaciones" && processId && currentProcess?.status !== "DRAFT" ? (
@@ -684,11 +684,6 @@ export function PrekinderOperations({
                   <>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Etapas</p>
                     <p className="mt-1 text-sm text-gray-600">Configura los periodos y estados de cada etapa de admisión.</p>
-                  </>
-                ) : section === "Grupos" && processId && currentProcess?.status !== "DRAFT" ? (
-                  <>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Grupos</p>
-                    <p className="mt-1 text-sm text-gray-600">Visualiza, arma, modifica y elimina grupos antes de iniciar la jornada.</p>
                   </>
                 ) : section === "Salas" && processId && currentProcess?.status !== "DRAFT" ? (
                   <>
@@ -3350,42 +3345,90 @@ function Rubrics({ processId, busy, onChanged }: { processId: string; busy: bool
           <p className="p-8 text-center text-sm text-slate-500">Aún no hay pautas. Crea la primera para comenzar.</p>
         ) : (
           <div className="overflow-x-auto">
-            <div className="min-w-[1040px]">
-              <div className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+            <div className="min-w-[1150px]">
+              <div className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(90px,0.5fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
                 <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("name")}>
                   Pauta
                   {sort.key === "name" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
                 </button>
-                <button type="button" className="flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("instrument")}>
+                <button type="button" className="mx-auto flex w-fit items-center gap-1.5 whitespace-nowrap uppercase hover:text-slate-700" onClick={() => toggleSort("instrument")}>
                   Instrumento
                   {sort.key === "instrument" ? (sort.dir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} className="text-slate-300" />}
                 </button>
+                <span className="text-center whitespace-nowrap">Criterios</span>
                 <span className="text-center leading-tight">Versión publicada</span>
                 <span className="text-center whitespace-nowrap">Borrador</span>
                 <span className="text-center whitespace-nowrap">Acción</span>
               </div>
-              {catalog.map((rubric) => {
-                const rubricVersions = versions[rubric.rubricId] ?? [];
-                const published = rubricVersions.find((v) => v.status === "PUBLISHED");
-                const draft = rubricVersions.find((v) => v.status === "DRAFT");
-                const assigned = assignments.some((a) => a.instrumentCode === rubric.instrumentCode && a.processId === processId);
-                return (
-                  <div key={rubric.rubricId} className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 border-b border-slate-100 px-5 py-3">
-                    <div>
-                      <p className="font-bold text-slate-900">{rubric.name}</p>
-                      <p className="text-sm text-slate-500">{instrumentLabels[rubric.instrumentCode]}</p>
-                    </div>
-                    <p className="text-center text-sm text-slate-600">{published ? `v${published.version}` : "—"}</p>
-                    <p className="text-center text-sm text-slate-600">{draft ? `v${draft.version}` : "—"}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {published && !assigned && <button className="secondary" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>}
-                      {published && <button className="secondary" disabled={busy || localBusy} onClick={() => void openPreview(published.versionId)}>Ver publicada</button>}
-                      {published && <button className="secondary" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>}
-                      {draft && <button className="primary inline-flex items-center gap-2" disabled={busy || localBusy} onClick={() => void openVersion(draft.versionId)}><Pencil size={16} />Editar contenido</button>}
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="divide-y divide-slate-100">
+                {[...catalog]
+                  .sort((a, b) => {
+                    const factor = sort.dir === "asc" ? 1 : -1;
+                    const value =
+                      sort.key === "name"
+                        ? a.name.localeCompare(b.name, "es")
+                        : (instrumentLabels[a.instrumentCode] ?? a.instrumentCode).localeCompare(instrumentLabels[b.instrumentCode] ?? b.instrumentCode, "es");
+                    return value * factor;
+                  })
+                  .map((rubric) => {
+                    const rubricVersions = versions[rubric.rubricId] ?? [];
+                    const draft = rubricVersions.find((version) => version.status === "DRAFT");
+                    const published = rubricVersions.find((version) => version.status === "PUBLISHED");
+                    const assigned = assignments.some((a) => a.instrumentCode === rubric.instrumentCode && a.processId === processId);
+                    return (
+                      <div key={rubric.rubricId} className="grid grid-cols-[minmax(220px,1.5fr)_minmax(140px,0.9fr)_minmax(90px,0.5fr)_minmax(130px,0.7fr)_minmax(110px,0.6fr)_minmax(360px,1.6fr)] items-center gap-4 px-5 py-4">
+                        <span className="min-w-0 truncate font-black text-slate-950">{rubric.name}</span>
+                        <span className="min-w-0 truncate text-center text-xs text-slate-500">{instrumentLabels[rubric.instrumentCode] ?? rubric.instrumentCode}</span>
+                        <span className="text-center text-xs text-slate-500">{published?.criteriaCount ?? draft?.criteriaCount ?? 0}</span>
+                        <span className="flex justify-center">
+                          {published ? (
+                            <span className="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-800">v{published.version}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </span>
+                        <span className="flex justify-center">
+                          {draft ? (
+                            <span className="w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-900">v{draft.version}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </span>
+                        <div className="grid grid-cols-[minmax(80px,1fr)_minmax(100px,1.2fr)_minmax(100px,1.2fr)_44px] items-center gap-2">
+                          <span>
+                            {published && !assigned && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy} onClick={() => void run(() => prekinderApi.assignRubric(processId, published.instrumentCode, published.versionId))}>Asociar</button>
+                            )}
+                          </span>
+                          <span>
+                            {published && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy} onClick={() => void openPreview(published.versionId)}>Ver publicada</button>
+                            )}
+                          </span>
+                          <span>
+                            {published && (
+                              <button className="secondary w-full px-2 py-2 text-xs" disabled={busy || localBusy || Boolean(draft)} onClick={() => void duplicateAndEdit(rubric.rubricId)}>Nueva versión</button>
+                            )}
+                          </span>
+                          <span>
+                            {draft && (
+                              <button
+                                type="button"
+                                className="grid h-10 w-10 place-items-center rounded-lg bg-azul-monte-tabor text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={busy || localBusy}
+                                onClick={() => void openVersion(draft.versionId)}
+                                aria-label="Editar borrador"
+                                title="Editar borrador"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         )}
