@@ -234,16 +234,12 @@ const ProfessorDashboard: React.FC = () => {
             tabs.push({ key: 'familiares', label: 'Entrevistas Familiares', count: familyCount });
         }
 
-        // Entrevistas Director de Ciclo
+        // La entrevista de Director de Ciclo es la entrevista compartida. El
+        // director y el psicólogo ven esta misma instancia, pero cada uno
+        // completa una evaluación independiente.
         const directorCount = interviews.filter(i => i.type === 'CYCLE_DIRECTOR').length;
-        if (directorCount > 0 || evaluations.some(e => e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
+        if (directorCount > 0) {
             tabs.push({ key: 'director_ciclo', label: 'Entrevistas Director de Ciclo', count: directorCount });
-        }
-
-        // Entrevistas Psicológicas (para psicólogos ven las mismas que DC)
-        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL' || i.type === 'CYCLE_DIRECTOR').length;
-        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW' || e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
-            tabs.push({ key: 'psicologicas', label: 'Entrevistas Psicológicas', count: psychoCount });
         }
 
         // Informes Finales (solo para Directores de Ciclo)
@@ -540,7 +536,7 @@ const ProfessorDashboard: React.FC = () => {
             [EvaluationType.MATHEMATICS_EXAM]: 'Examen de Matemáticas',
             [EvaluationType.LANGUAGE_EXAM]: 'Examen de Lenguaje',
             [EvaluationType.ENGLISH_EXAM]: 'Examen de Inglés',
-            [EvaluationType.PSYCHOLOGICAL_INTERVIEW]: 'Entrevista Psicológica',
+            [EvaluationType.PSYCHOLOGICAL_INTERVIEW]: 'Entrevista Director de Ciclo',
             [EvaluationType.CYCLE_DIRECTOR_INTERVIEW]: 'Entrevista Director de Ciclo',
             [EvaluationType.CYCLE_DIRECTOR_REPORT]: 'Informe Director de Ciclo',
             [EvaluationType.FAMILY_INTERVIEW]: 'Entrevista Familiar'
@@ -711,9 +707,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/cycle-director-interview/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -750,7 +745,7 @@ const ProfessorDashboard: React.FC = () => {
                 case EvaluationType.MATHEMATICS_EXAM: return 'Matemática';
                 case EvaluationType.LANGUAGE_EXAM: return 'Lenguaje';
                 case EvaluationType.ENGLISH_EXAM: return 'Inglés';
-                case EvaluationType.PSYCHOLOGICAL_INTERVIEW: return 'Psicológica';
+                case EvaluationType.PSYCHOLOGICAL_INTERVIEW: return 'Director de Ciclo';
                 case EvaluationType.CYCLE_DIRECTOR_INTERVIEW: return 'Director de Ciclo';
                 case EvaluationType.CYCLE_DIRECTOR_REPORT: return 'Informe Director';
                 case EvaluationType.FAMILY_INTERVIEW: return 'Familiar';
@@ -802,7 +797,7 @@ const ProfessorDashboard: React.FC = () => {
         const getTabLabel = () => {
             switch (activeEvaluationTab) {
                 case 'academicas': return 'Exámenes';
-                case 'psicologicas': return 'Entrevistas Psicológicas';
+                case 'psicologicas': return 'Entrevistas Director de Ciclo';
                 case 'familiares': return 'Entrevistas Familiares';
                 default: return '';
             }
@@ -918,7 +913,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     >
-                                        Psicológicas/Director <span className="ml-1 opacity-75">{psychologicalEvaluations.length}</span>
+                                        Director de Ciclo <span className="ml-1 opacity-75">{psychologicalEvaluations.length}</span>
                                     </button>
                                 )}
                                 {hasFamilyEvaluations && (
@@ -1093,23 +1088,11 @@ const ProfessorDashboard: React.FC = () => {
 
     const renderEntrevistas = () => {
 
-        // Helper function to get the correct evaluation type for a tab
-        const getEvaluationTypeForTab = (tabKey: string): string | null => {
-            switch (tabKey) {
-                case 'familiares': return 'FAMILY_INTERVIEW';
-                case 'director_ciclo': return 'CYCLE_DIRECTOR_INTERVIEW';
-                case 'psicologicas': return 'PSYCHOLOGICAL_INTERVIEW';
-                case 'informes': return 'CYCLE_DIRECTOR_REPORT';
-                default: return null;
-            }
-        };
-
         // Helper function to get the correct interview type for a tab
         const getInterviewTypeForTab = (tabKey: string): string | null => {
             switch (tabKey) {
                 case 'familiares': return 'FAMILY';
                 case 'director_ciclo': return 'CYCLE_DIRECTOR';
-                case 'psicologicas': return 'PSYCHOLOGICAL';
                 default: return null;
             }
         };
@@ -1120,9 +1103,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/cycle-director-interview/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -1151,14 +1133,9 @@ const ProfessorDashboard: React.FC = () => {
 
         // Get data for the current tab
         const getTabData = () => {
-            const evalType = getEvaluationTypeForTab(activeInterviewTab);
-
             if (activeInterviewTab === 'informes') {
                 // For informes, use evaluations directly
                 return evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
-            } else if (activeInterviewTab === 'psicologicas') {
-                // Psicólogos ven las mismas entrevistas que el director de ciclo (CYCLE_DIRECTOR)
-                return interviews.filter(i => i.type === 'CYCLE_DIRECTOR' || i.type === 'PSYCHOLOGICAL');
             } else {
                 // For other interviews, filter by type
                 const intType = getInterviewTypeForTab(activeInterviewTab);
@@ -1245,7 +1222,7 @@ const ProfessorDashboard: React.FC = () => {
                                     ) : (
                                         <div>Entrevistador: {interview.interviewerName}</div>
                                     )}
-                                    {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && parentContactsByApplication[applicationId] && (
+                                    {activeInterviewTab === 'director_ciclo' && parentContactsByApplication[applicationId] && (
                                         <div className="mt-1 pt-1 border-t border-gray-200 space-y-1">
                                             {(() => {
                                                 const contacts = parentContactsByApplication[applicationId];
@@ -1286,7 +1263,7 @@ const ProfessorDashboard: React.FC = () => {
                             </div>
 
                             {/* Sección de Documentos (solo para entrevistas de Director de Ciclo) */}
-                            {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && (
+                            {activeInterviewTab === 'director_ciclo' && (
                                 <div className="mt-2 pt-2 border-t border-gray-200">
                                     {(() => {
                                         const docs = documentsByApplication[applicationId] || [];
@@ -1666,7 +1643,7 @@ const ProfessorDashboard: React.FC = () => {
                                     evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
                                         ? `/profesor/entrevista-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                                        ? `/psychological-interview/${evaluation.id}`
+                                        ? `/profesor/entrevista-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
                                         ? `/profesor/informe-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'FAMILY_INTERVIEW'
@@ -1815,7 +1792,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                     evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
                                                                         ? `/profesor/entrevista-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                                                                        ? `/psychological-interview/${evaluation.id}`
+                                                                        ? `/profesor/entrevista-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
                                                                         ? `/profesor/informe-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'FAMILY_INTERVIEW'
