@@ -182,6 +182,7 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [openingInterviewId, setOpeningInterviewId] = useState<number | null>(null);
 
     // Estado para documentos de estudiantes (mapa por applicationId)
     const [documentsByApplication, setDocumentsByApplication] = useState<Record<number, any[]>>({});
@@ -1061,13 +1062,24 @@ const ProfessorDashboard: React.FC = () => {
         );
     };
 
+    const getEvaluationTypeForInterview = (interview: Interview): EvaluationType => {
+        // En las entrevistas de Director de Ciclo participan dos profesionales.
+        // Cada uno debe abrir su propia pauta, aunque la tarjeta provenga de la
+        // misma entrevista compartida.
+        if (currentProfessor?.role === 'PSYCHOLOGIST' && interview.type === 'CYCLE_DIRECTOR') {
+            return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+        }
+
+        return interview.type === 'CYCLE_DIRECTOR'
+            ? EvaluationType.CYCLE_DIRECTOR_INTERVIEW
+            : interview.type === 'FAMILY'
+                ? EvaluationType.FAMILY_INTERVIEW
+                : EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+    };
+
     // Helper function to check if an interview has a completed evaluation
     const isInterviewCompleted = (interview: Interview): boolean => {
-        // Map interview type to expected evaluation type
-        const expectedEvalType =
-            interview.type === 'CYCLE_DIRECTOR' ? 'CYCLE_DIRECTOR_INTERVIEW' :
-            interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
-            'PSYCHOLOGICAL_INTERVIEW';
+        const expectedEvalType = getEvaluationTypeForInterview(interview);
 
         // Search for matching evaluation
         const matchingEval = evaluations.find(e =>
@@ -1184,13 +1196,21 @@ const ProfessorDashboard: React.FC = () => {
             const getEvaluationToUse = async () => {
                 if (!isInterview) return evaluation;
 
-                // For interviews, find the matching evaluation
-                const expectedEvalType = getEvaluationTypeForTab(activeInterviewTab);
+                // Buscar la pauta correspondiente al rol del usuario, no solo a
+                // la pestaña visible (una entrevista de ciclo también genera la
+                // pauta psicológica del segundo entrevistador).
+                const expectedEvalType = getEvaluationTypeForInterview(interview);
                 const matchingEval = evaluations.find(e =>
                     e.applicationId === interview.applicationId &&
                     e.evaluationType === expectedEvalType
                 );
-                return matchingEval || evaluation;
+                if (matchingEval) return matchingEval;
+
+                // Las entrevistas históricas pueden no tener sus evaluaciones
+                // creadas. El endpoint es idempotente y devuelve solo las pautas
+                // accesibles para el usuario autenticado.
+                const ensuredEvaluations = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
+                return ensuredEvaluations.find(e => e.evaluationType === expectedEvalType) || null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
@@ -1337,10 +1357,25 @@ const ProfessorDashboard: React.FC = () => {
                             <Button
                                 variant="primary"
                                 size="sm"
+                                isLoading={openingInterviewId === item.id}
+                                loadingText="Abriendo..."
                                 onClick={async () => {
-                                    const evalToUse = await getEvaluationToUse();
-                                    if (evalToUse) {
+                                    if (openingInterviewId !== null) return;
+                                    setOpeningInterviewId(item.id);
+                                    try {
+                                        const evalToUse = await getEvaluationToUse();
+                                        if (!evalToUse) {
+                                            throw new Error('No se encontró una evaluación asociada para tu rol');
+                                        }
                                         navigate(getEvaluationUrl(evalToUse));
+                                    } catch (error: any) {
+                                        notify(
+                                            'error',
+                                            'No se pudo abrir la evaluación',
+                                            error.message || 'Intenta actualizar la página y volver a abrirla'
+                                        );
+                                    } finally {
+                                        setOpeningInterviewId(null);
                                     }
                                 }}
                             >
