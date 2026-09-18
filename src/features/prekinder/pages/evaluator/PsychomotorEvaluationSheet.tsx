@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, ChevronRight, UserCheck, Loader2, Clock, Lock, AlertCircle } from "lucide-react";
 import {
   prekinderApi,
+  scheduledDurationMinutes,
   type EvaluatorAssignment,
   type RubricVersion,
   type RubricAssignment,
@@ -450,7 +451,7 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
                     <div className="border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r">
                       {formatTime(assignment.group.startsAt)}
                       <small className="block text-xs font-bold text-slate-500">
-                        30 min
+                        {scheduledDurationMinutes(assignment.group.startsAt, assignment.group.endsAt)} min
                       </small>
                     </div>
                     <div className="min-w-0 p-4">

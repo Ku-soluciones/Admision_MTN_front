@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, ChevronRight, UserCheck } from "lucide-react";
-import { prekinderApi, type EvaluatorAssignment } from "../../services/api";
+import { prekinderApi, scheduledDurationMinutes, type EvaluatorAssignment } from "../../services/api";
 import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 import { isMockMode, buildMockAgenda } from "../dev/mockApi";
 
@@ -290,7 +290,7 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                   >
                     <div className="border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r">
                       {formatTime(assignment.group.startsAt)}
-                      <small className="block text-xs font-bold text-slate-500">30 min</small>
+                      <small className="block text-xs font-bold text-slate-500">{scheduledDurationMinutes(assignment.group.startsAt, assignment.group.endsAt)} min</small>
                     </div>
                     <div className="min-w-0 p-4">
                       <b className="block text-sm text-slate-900">{assignment.group.code} - {assignment.group.roomName}</b>

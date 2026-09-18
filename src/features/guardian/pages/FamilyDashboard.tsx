@@ -54,6 +54,7 @@ import {
   guardianPrekinderService,
   type GuardianPrekinderApplication,
 } from '../services/guardianPrekinderService';
+import PrekinderInclusionDeclaration from '../components/PrekinderInclusionDeclaration';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -502,55 +503,60 @@ const FamilyDashboard: React.FC = () => {
 
                 <div className="divide-y divide-gray-200 rounded-xl border border-gray-200">
                     {prekinderApplications.map(application => (
-                      <div key={application.applicationId} className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-azul-monte-tabor">
-                            {application.firstName} {application.paternalLastName} {application.maternalLastName}
-                          </p>
-                          <p className="mt-1 text-sm text-gris-piedra">
-                            {application.gradeApplied} · Proceso {application.academicYear}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-start gap-3 lg:items-end">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="info" size="sm">Prekínder</Badge>
-                            <Badge variant={application.status === 'OFFERED' ? 'success' : application.status === 'NOT_ADMITTED' ? 'error' : 'warning'} size="sm">
-                              {prekinderStatusLabel(application.status)}
-                            </Badge>
-                            <Badge variant={application.paymentStatus === 'PAID' ? 'success' : application.paymentStatus === 'FAILED' ? 'error' : 'warning'} size="sm">
-                              {application.paymentStatus === 'PAID' ? 'Pagada' : application.paymentStatus === 'PAYMENT_PENDING' ? 'Pago pendiente' : application.paymentStatus === 'FAILED' ? 'Pago no completado' : 'Pendiente de pago'}
-                            </Badge>
+                      <div key={application.applicationId} className="flex flex-col gap-4 p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-azul-monte-tabor">
+                              {application.firstName} {application.paternalLastName} {application.maternalLastName}
+                            </p>
+                            <p className="mt-1 text-sm text-gris-piedra">
+                              {application.gradeApplied} · Proceso {application.academicYear}
+                            </p>
                           </div>
-                          {application.paymentStatus !== 'PAID' ? (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => void handlePayPrekinderApplication(application.applicationId)}
-                              disabled={prekinderPaymentLoadingId === application.applicationId}
-                              className="flex items-center gap-2 text-white"
-                            >
-                              <FiCreditCard className="h-4 w-4" />
-                              {prekinderPaymentLoadingId === application.applicationId
-                                ? 'Preparando pago...'
-                                : application.paymentStatus === 'PAYMENT_PENDING'
-                                  ? 'Continuar pago'
-                                  : `Pagar postulación${formatPaymentAmount(application.paymentAmount, application.paymentCurrency) ? ` · ${formatPaymentAmount(application.paymentAmount, application.paymentCurrency)}` : ''}`}
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPrekinderFormApplication(application);
-                                setActiveSection('formulario-complementario');
-                              }}
-                              className="flex items-center gap-2 text-white"
-                            >
-                              <FiFileText className="h-4 w-4" />
-                              {application.hasComplementaryForm ? 'Ver formulario' : 'Completar formulario'}
-                            </Button>
-                          )}
+                          <div className="flex flex-col items-start gap-3 lg:items-end">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="info" size="sm">Prekínder</Badge>
+                              <Badge variant={application.status === 'OFFERED' ? 'success' : application.status === 'NOT_ADMITTED' ? 'error' : 'warning'} size="sm">
+                                {prekinderStatusLabel(application.status)}
+                              </Badge>
+                              <Badge variant={application.paymentStatus === 'PAID' ? 'success' : application.paymentStatus === 'FAILED' ? 'error' : 'warning'} size="sm">
+                                {application.paymentStatus === 'PAID' ? 'Pagada' : application.paymentStatus === 'PAYMENT_PENDING' ? 'Pago pendiente' : application.paymentStatus === 'FAILED' ? 'Pago no completado' : 'Pendiente de pago'}
+                              </Badge>
+                            </div>
+                            {application.paymentStatus !== 'PAID' ? (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => void handlePayPrekinderApplication(application.applicationId)}
+                                disabled={prekinderPaymentLoadingId === application.applicationId}
+                                className="flex items-center gap-2 text-white"
+                              >
+                                <FiCreditCard className="h-4 w-4" />
+                                {prekinderPaymentLoadingId === application.applicationId
+                                  ? 'Preparando pago...'
+                                  : application.paymentStatus === 'PAYMENT_PENDING'
+                                    ? 'Continuar pago'
+                                    : `Pagar postulación${formatPaymentAmount(application.paymentAmount, application.paymentCurrency) ? ` · ${formatPaymentAmount(application.paymentAmount, application.paymentCurrency)}` : ''}`}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPrekinderFormApplication(application);
+                                  setActiveSection('formulario-complementario');
+                                }}
+                                className="flex items-center gap-2 text-white"
+                              >
+                                <FiFileText className="h-4 w-4" />
+                                {application.hasComplementaryForm ? 'Ver formulario' : 'Completar formulario'}
+                              </Button>
+                            )}
+                          </div>
                         </div>
+                        {application.paymentStatus === 'PAID' && (
+                          <PrekinderInclusionDeclaration applicationId={application.applicationId} />
+                        )}
                       </div>
                     ))}
                 </div>

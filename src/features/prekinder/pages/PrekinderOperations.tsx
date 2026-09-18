@@ -45,6 +45,7 @@ import {
   type ProcessReadiness,
   type PublicationBatch,
   type PublicationPreview,
+  type Questionnaire,
   type RubricAssignment,
   type RubricDraftInput,
   type RubricSummary,
@@ -173,6 +174,7 @@ export function PrekinderOperations({
   const [configuration, setConfiguration] = useState<ProcessConfiguration | null>(null);
   const [readiness, setReadiness] = useState<ProcessReadiness | null>(null);
   const [communicationTemplates, setCommunicationTemplates] = useState<CommunicationTemplate[]>([]);
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
   const [publicationBatches, setPublicationBatches] = useState<PublicationBatch[]>([]);
   const [date, setDate] = useState(initialDate);
@@ -239,7 +241,7 @@ export function PrekinderOperations({
     setError("");
     try {
       const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower,
-        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextBatches, nextEvaluationDays,
+        nextProcessProfessionals, nextConfiguration, nextReadiness, nextCommunications, nextQuestionnaire, nextBatches, nextEvaluationDays,
         nextClusters] =
         await Promise.all([
           prekinderApi.dashboard(id),
@@ -252,6 +254,7 @@ export function PrekinderOperations({
           prekinderApi.processConfiguration(id),
           prekinderApi.readiness(id),
           prekinderApi.communicationTemplates(id),
+          prekinderApi.questionnaire(id).catch(() => null),
           prekinderApi.publicationBatches(id),
           prekinderApi.evaluationDays(id),
           // Aislado del resto: si el módulo de agrupaciones aún no está
@@ -270,6 +273,7 @@ export function PrekinderOperations({
       setConfiguration(nextConfiguration);
       setReadiness(nextReadiness);
       setCommunicationTemplates(nextCommunications);
+      setQuestionnaire(nextQuestionnaire);
       setPublicationBatches(nextBatches);
       setSelectedGroup((current) =>
         nextGroups.some((group) => group.groupId === current) ? current : null,
@@ -765,6 +769,7 @@ export function PrekinderOperations({
               readiness={readiness}
               waves={waves}
               communications={communicationTemplates}
+              questionnaire={questionnaire}
               busy={busy}
               onSaveConfiguration={(input) => action(
                 () => prekinderApi.saveProcessConfiguration(processId, input),
@@ -772,6 +777,7 @@ export function PrekinderOperations({
               )}
               onSaveWave={saveStage}
               onChanged={() => loadProcess(processId)}
+              onQuestionnaireAction={action}
               onPublish={publishAdmissionProcess}
             />
           ) : (
@@ -817,7 +823,9 @@ export function PrekinderOperations({
               onSaveConfiguration={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
               onChangedRubrics={() => loadProcess(processId)}
               communicationTemplates={communicationTemplates}
+              questionnaire={questionnaire}
               onCommunicationAction={action}
+              onQuestionnaireAction={action}
               expandedDrafts={expandedDrafts}
               onToggleDraftExpanded={(contentVersionId) =>
                 setExpandedDrafts((current) => {
@@ -860,6 +868,7 @@ export function PrekinderOperations({
               applications={applications}
               professionals={processProfessionals}
               journeys={journeys}
+              configuration={configuration}
               busy={busy}
               onDateChange={selectJourneyByDate}
               onAction={action}
@@ -879,6 +888,7 @@ export function PrekinderOperations({
               groups={groups}
               applications={eligible}
               professionals={processProfessionals}
+              configuration={configuration}
               selected={selected}
               controlTower={controlTower}
               busy={busy}
@@ -1108,10 +1118,12 @@ function ProcessSetup({
   readiness,
   waves,
   communications,
+  questionnaire,
   busy,
   onSaveConfiguration,
   onSaveWave,
   onChanged,
+  onQuestionnaireAction,
   onPublish,
 }: {
   process: AdmissionProcess;
@@ -1119,10 +1131,12 @@ function ProcessSetup({
   readiness: ProcessReadiness | null;
   waves: Wave[];
   communications: CommunicationTemplate[];
+  questionnaire: Questionnaire | null;
   busy: boolean;
   onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
   onSaveWave: (wave: Wave, opensAt: string, closesAt: string, status: Wave["status"]) => Promise<void>;
   onChanged: () => Promise<void>;
+  onQuestionnaireAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onPublish: (startsAt: string, endsAt: string) => Promise<void>;
 }) {
   const openPhase = readiness?.phases.OPEN_APPLICATIONS;
@@ -1159,6 +1173,11 @@ function ProcessSetup({
         <h2 className="text-xl font-black text-slate-950">Calendario de postulación</h2>
         <p className="mt-2 text-sm text-slate-600">Las tres ventanas deben tener inicio y cierre antes de abrir el proceso.</p>
         <div className="mt-5"><Waves waves={waves} busy={busy} onSave={onSaveWave} /></div>
+      </section>
+      <section>
+        <h2 className="text-xl font-black text-slate-950">Cuestionario de postulación</h2>
+        <p className="mt-2 text-sm text-slate-600">Publica la versión que quedará congelada al iniciar cada formulario.</p>
+        <div className="mt-5"><QuestionnaireEditor processId={process.processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChanged} /></div>
       </section>
       <section>
         <h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2>
@@ -1218,10 +1237,11 @@ function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null 
   );
 }
 
-type ConfigurationView = "policies" | "rubrics" | "communications";
+type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communications";
 
 const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
   { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
+  { id: "questionnaire", label: "Cuestionario", icon: FileCheck2 },
   { id: "policies", label: "Políticas del proceso", icon: Settings2 },
   { id: "communications", label: "Comunicaciones", icon: Mail },
 ];
@@ -1233,7 +1253,9 @@ function ConfigurationHub({
   onSaveConfiguration,
   onChangedRubrics,
   communicationTemplates,
+  questionnaire,
   onCommunicationAction,
+  onQuestionnaireAction,
   expandedDrafts,
   onToggleDraftExpanded,
 }: {
@@ -1243,7 +1265,9 @@ function ConfigurationHub({
   onSaveConfiguration: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
   onChangedRubrics: () => Promise<void>;
   communicationTemplates: CommunicationTemplate[];
+  questionnaire: Questionnaire | null;
   onCommunicationAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  onQuestionnaireAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   expandedDrafts: Set<string>;
   onToggleDraftExpanded: (contentVersionId: string) => void;
 }) {
@@ -1273,6 +1297,9 @@ function ConfigurationHub({
           <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
         )}
         {view === "rubrics" && <Rubrics processId={processId} busy={busy} onChanged={onChangedRubrics} />}
+        {view === "questionnaire" && (
+          <QuestionnaireEditor processId={processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChangedRubrics} />
+        )}
         {view === "communications" && (
           <Communications
             templates={communicationTemplates}
@@ -1284,6 +1311,109 @@ function ConfigurationHub({
         )}
       </div>
     </div>
+  );
+}
+
+function QuestionnaireEditor({
+  processId,
+  questionnaire,
+  busy,
+  onAction,
+  onChanged,
+}: {
+  processId: string;
+  questionnaire: Questionnaire | null;
+  busy: boolean;
+  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
+  onChanged: () => Promise<void>;
+}) {
+  const preferred = questionnaire?.versions.find((version) => version.status === "DRAFT")
+    ?? questionnaire?.versions.find((version) => version.status === "PUBLISHED")
+    ?? questionnaire?.versions[0];
+  const [selectedId, setSelectedId] = useState(preferred?.versionId ?? "");
+  const selected = questionnaire?.versions.find((version) => version.versionId === selectedId) ?? preferred;
+  const [schemaText, setSchemaText] = useState(selected ? JSON.stringify(selected.schema, null, 2) : "");
+  const [validationError, setValidationError] = useState("");
+
+  useEffect(() => {
+    const next = questionnaire?.versions.find((version) => version.status === "DRAFT")
+      ?? questionnaire?.versions.find((version) => version.status === "PUBLISHED")
+      ?? questionnaire?.versions[0];
+    setSelectedId(next?.versionId ?? "");
+    setSchemaText(next ? JSON.stringify(next.schema, null, 2) : "");
+    setValidationError("");
+  }, [questionnaire]);
+
+  if (!questionnaire || !selected) {
+    return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">No fue posible cargar el cuestionario versionado.</div>;
+  }
+
+  const run = async (work: () => Promise<unknown>, success: string) => {
+    const ok = await onAction(work, success);
+    if (ok) await onChanged();
+  };
+
+  const save = async () => {
+    try {
+      const parsed = JSON.parse(schemaText) as Record<string, unknown>;
+      if (!parsed || Array.isArray(parsed)) throw new Error("El esquema debe ser un objeto JSON");
+      setValidationError("");
+      await run(
+        () => prekinderApi.saveQuestionnaire(processId, selected.versionId, parsed, selected.rowVersion),
+        "Borrador de cuestionario guardado.",
+      );
+    } catch (reason) {
+      setValidationError(reason instanceof Error ? reason.message : "El esquema JSON no es válido.");
+    }
+  };
+
+  return (
+    <section className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-black text-slate-950">{questionnaire.name}</h3>
+          <p className="mt-1 text-sm text-slate-600">Cada formulario nuevo conserva la versión publicada con la que fue iniciado.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select className="control" value={selected.versionId} onChange={(event) => {
+            const next = questionnaire.versions.find((version) => version.versionId === event.target.value);
+            setSelectedId(event.target.value);
+            setSchemaText(next ? JSON.stringify(next.schema, null, 2) : "");
+            setValidationError("");
+          }}>
+            {questionnaire.versions.map((version) => <option key={version.versionId} value={version.versionId}>v{version.version} · {version.status}</option>)}
+          </select>
+          {!questionnaire.versions.some((version) => version.status === "DRAFT") && (
+            <button className="secondary" disabled={busy} onClick={() => void run(() => prekinderApi.duplicateQuestionnaire(processId), "Nueva versión de cuestionario creada.")}>Nueva versión</button>
+          )}
+        </div>
+      </div>
+      <label className="mt-5 block text-sm font-bold text-slate-700">
+        Esquema JSON
+        <textarea
+          className="control mt-2 min-h-80 w-full font-mono text-xs leading-5"
+          value={schemaText}
+          onChange={(event) => setSchemaText(event.target.value)}
+          readOnly={selected.status !== "DRAFT"}
+          spellCheck={false}
+        />
+      </label>
+      {validationError && <p className="mt-3 text-sm font-semibold text-red-700" role="alert">{validationError}</p>}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className={`rounded-full px-3 py-1 text-xs font-black ${selected.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+          {selected.status === "PUBLISHED" ? "Publicada" : selected.status === "DRAFT" ? "Borrador" : "Reemplazada"}
+        </span>
+        {selected.status === "DRAFT" && (
+          <div className="flex gap-2">
+            <button className="secondary" disabled={busy} onClick={() => void save()}>Guardar</button>
+            <button className="primary" disabled={busy} onClick={() => void run(
+              () => prekinderApi.publishQuestionnaire(processId, selected.versionId, selected.rowVersion),
+              "Cuestionario publicado.",
+            )}>Publicar versión</button>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1303,24 +1433,52 @@ function ConfigurationEditor({ configuration, busy, onSave }: {
       void onSave(payload);
     }}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h2 className="text-lg font-black text-slate-950">Políticas del proceso</h2><p className="mt-1 text-sm text-slate-600">Pago, inclusión, edad y ponderación quedan versionados.</p></div>
+        <div><h2 className="text-lg font-black text-slate-950">Políticas del proceso</h2><p className="mt-1 text-sm text-slate-600">Los valores operativos quedan versionados y no alteran otros cursos.</p></div>
         <label className="flex min-h-11 items-center gap-3 rounded-lg bg-slate-50 px-4 text-sm font-bold text-slate-700">
           <input type="checkbox" checked={form.paymentEnabled} onChange={(event) => update("paymentEnabled", event.target.checked)} /> Cobro obligatorio
         </label>
       </div>
-      <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-slate-500">Pagos y requisitos</h3>
+      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Field label="Monto"><input className="control w-full" type="number" min="1" disabled={!form.paymentEnabled} value={form.paymentAmount ?? ""} onChange={(e) => update("paymentAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
         <Field label="Moneda"><select className="control w-full" value={form.paymentCurrency} onChange={(e) => update("paymentCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
         <Field label="Vencimiento (días)"><input className="control w-full" type="number" min="1" max="30" value={form.paymentDueDays} onChange={(e) => update("paymentDueDays", Number(e.target.value))} /></Field>
         <Field label="Glosa"><input className="control w-full" maxLength={180} value={form.paymentGlosa} onChange={(e) => update("paymentGlosa", e.target.value)} /></Field>
         <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="84" value={form.minimumAgeMonths} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
         <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
-        <Field label="Ponderación postulante"><input className="control w-full" type="number" min="0" max="1" step="0.05" value={form.applicantWeight} onChange={(e) => { const value = Number(e.target.value); update("applicantWeight", value); update("familyWeight", Number((1 - value).toFixed(2))); }} /></Field>
-        <Field label="Ponderación familia"><input className="control w-full" readOnly value={form.familyWeight} /></Field>
+        <Field label="Fecha de referencia de edad"><input className="control w-full" type="date" required value={form.ageReferenceDate ?? ""} onChange={(e) => update("ageReferenceDate", e.target.value || null)} /></Field>
+        <Field label="Arancel de incorporación"><input className="control w-full" type="number" min="1" required value={form.incorporationFeeAmount ?? ""} onChange={(e) => update("incorporationFeeAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
+        <Field label="Moneda incorporación"><select className="control w-full" value={form.incorporationFeeCurrency} onChange={(e) => update("incorporationFeeCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
+        <Field label="Glosa incorporación"><input className="control w-full" maxLength={180} value={form.incorporationFeeGlosa} onChange={(e) => update("incorporationFeeGlosa", e.target.value)} /></Field>
+        <Field label="Documentos obligatorios"><input className="control w-full" value={form.requiredDocuments.join(", ")} onChange={(e) => update("requiredDocuments", e.target.value.toUpperCase().split(",").map((value) => value.trim()).filter(Boolean))} /></Field>
+      </div>
+      <h3 className="mt-7 text-sm font-black uppercase tracking-wide text-slate-500">Cupos y plazos</h3>
+      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Cupos totales"><input className="control w-full" type="number" min="1" value={form.totalSeats} onChange={(e) => update("totalSeats", Number(e.target.value))} /></Field>
+        <Field label="Cupos masculinos"><input className="control w-full" type="number" min="0" value={form.maleSeats} onChange={(e) => update("maleSeats", Number(e.target.value))} /></Field>
+        <Field label="Cupos femeninos"><input className="control w-full" type="number" min="0" value={form.femaleSeats} onChange={(e) => update("femaleSeats", Number(e.target.value))} /></Field>
+        <Field label="Umbral orientativo (%)"><input className="control w-full" type="number" min="0" max="100" step="0.1" value={form.advisoryThreshold} onChange={(e) => update("advisoryThreshold", Number(e.target.value))} /></Field>
+        <Field label="Oferta inicial (horas)"><input className="control w-full" type="number" min="1" value={form.initialOfferHours} onChange={(e) => update("initialOfferHours", Number(e.target.value))} /></Field>
+        <Field label="Oferta lista de espera (horas)"><input className="control w-full" type="number" min="1" value={form.waitlistOfferHours} onChange={(e) => update("waitlistOfferHours", Number(e.target.value))} /></Field>
+        <Field label="Canal de resultados"><input className="control w-full" readOnly value="Solo correo" /></Field>
+        <Field label="Fórmula"><input className="control w-full" readOnly value="Académica 34% · Psicología 33% · Psicomotricidad 33%" /></Field>
+      </div>
+      <h3 className="mt-7 text-sm font-black uppercase tracking-wide text-slate-500">Agenda sugerida</h3>
+      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Zona horaria"><input className="control w-full" value={form.scheduleTimezone} onChange={(e) => update("scheduleTimezone", e.target.value)} /></Field>
+        <Field label="Inicio jornada"><input className="control w-full" type="time" value={form.scheduleDayStart} onChange={(e) => update("scheduleDayStart", e.target.value)} /></Field>
+        <Field label="Fin jornada"><input className="control w-full" type="time" value={form.scheduleDayEnd} onChange={(e) => update("scheduleDayEnd", e.target.value)} /></Field>
+        <Field label="Duración bloque (min)"><input className="control w-full" type="number" min="10" max="240" value={form.scheduleBlockMinutes} onChange={(e) => update("scheduleBlockMinutes", Number(e.target.value))} /></Field>
+        <Field label="Bloques máximos sugeridos"><input className="control w-full" type="number" min="1" value={form.scheduleMaxBlocks} onChange={(e) => update("scheduleMaxBlocks", Number(e.target.value))} /></Field>
+        <Field label="Capacidad paralela sugerida"><input className="control w-full" type="number" min="1" value={form.suggestedParallelCapacity} onChange={(e) => update("suggestedParallelCapacity", Number(e.target.value))} /></Field>
+        <Field label="Tamaño grupo académico"><input className="control w-full" type="number" min="1" value={form.academicGroupSize} onChange={(e) => update("academicGroupSize", Number(e.target.value))} /></Field>
+        <Field label="Tamaño grupo psicomotor"><input className="control w-full" type="number" min="1" value={form.psychomotorGroupSize} onChange={(e) => update("psychomotorGroupSize", Number(e.target.value))} /></Field>
+        <Field label="Evaluadores grupo académico"><input className="control w-full" type="number" min="1" max="24" value={form.academicRequiredEvaluators} onChange={(e) => update("academicRequiredEvaluators", Number(e.target.value))} /></Field>
+        <Field label="Evaluadores grupo psicomotor"><input className="control w-full" type="number" min="1" max="24" value={form.psychomotorRequiredEvaluators} onChange={(e) => update("psychomotorRequiredEvaluators", Number(e.target.value))} /></Field>
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
         <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label>
-        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount)}>{busy ? "Guardando…" : "Guardar cambios"}</button>
+        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount) || !form.incorporationFeeAmount || !form.ageReferenceDate || form.totalSeats !== form.maleSeats + form.femaleSeats}>{busy ? "Guardando…" : "Guardar cambios"}</button>
       </div>
     </form>
   );

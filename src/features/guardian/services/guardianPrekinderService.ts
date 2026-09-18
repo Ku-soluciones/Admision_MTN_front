@@ -45,6 +45,26 @@ export type GuardianPrekinderPayment = {
   expiresAt?: string;
 };
 
+export type GuardianPrekinderInclusion = {
+  enabled: boolean;
+  declared: boolean;
+  inclusionId: string | null;
+  consentStatus: 'PENDING' | 'ACCEPTED' | 'REVOKED';
+  specificInterviewRequired: boolean;
+  specificInterviewStatus: 'NOT_REQUIRED' | 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'WAIVED';
+  declaredAt: string | null;
+  version: number;
+  revisionNumber: number | null;
+  revisionState: 'DRAFT' | 'SUBMITTED' | 'REVIEWED' | 'WITHDRAWN' | null;
+  declaration: {
+    backgroundSummary?: string;
+    currentSupports?: string;
+    relevantDocuments?: string;
+    consentAccepted?: boolean;
+    isSubmitted?: boolean;
+  };
+};
+
 export const guardianPrekinderService = {
   async applications(): Promise<GuardianPrekinderApplication[]> {
     const response = await api.get('/v1/prekinder/me/applications');
@@ -59,6 +79,16 @@ export const guardianPrekinderService = {
 
   async getPaymentStatus(applicationId: string): Promise<GuardianPrekinderPayment> {
     const response = await api.get(`/v1/prekinder/applications/${applicationId}/payments/status`);
+    return response.data?.data || response.data;
+  },
+
+  async inclusion(applicationId: string): Promise<GuardianPrekinderInclusion> {
+    const response = await api.get(`/v1/prekinder/applications/${applicationId}/inclusion`);
+    return response.data?.data || response.data;
+  },
+
+  async saveInclusion(applicationId: string, declaration: GuardianPrekinderInclusion['declaration']): Promise<GuardianPrekinderInclusion> {
+    const response = await api.post(`/v1/prekinder/applications/${applicationId}/inclusion`, declaration);
     return response.data?.data || response.data;
   },
 

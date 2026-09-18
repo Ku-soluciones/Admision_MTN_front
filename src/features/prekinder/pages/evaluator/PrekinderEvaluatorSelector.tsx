@@ -31,6 +31,7 @@ function instrumentToRoute(instrumentCode: string): string {
     PSYCHOLOGY: 'psychology',
     INDICATORS: 'indicators',
     GROUP_OBSERVATION: 'group-observation',
+    FAMILY_INTERVIEW: 'family-interview',
     LEARNING_SUPPORT: 'learning-support',
     DAP: 'dap',
   };
@@ -43,6 +44,7 @@ const INSTRUMENT_LABELS: Record<string, string> = {
   PSYCHOLOGY: 'Psicológico',
   INDICATORS: 'Indicadores',
   GROUP_OBSERVATION: 'Observación Grupal',
+  FAMILY_INTERVIEW: 'Entrevista Familiar',
   LEARNING_SUPPORT: 'Apoyo de Aprendizaje',
   DAP: 'DAP',
 };

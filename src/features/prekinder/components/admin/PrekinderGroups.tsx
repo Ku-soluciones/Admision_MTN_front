@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  Download,
   Layers,
   Pencil,
   Plus,
@@ -25,7 +26,9 @@ import {
   type FlowApplication,
   type GroupCluster,
   type Professional,
+  type ProcessConfiguration,
   type Room,
+  type SchedulePlan,
 } from "../../services/api";
 import type { EvaluationJourney } from "../../data/evaluationJourneys";
 import {
@@ -46,6 +49,7 @@ type Props = {
   applications: FlowApplication[];
   professionals: Professional[];
   journeys: EvaluationJourney[];
+  configuration: ProcessConfiguration | null;
   busy: boolean;
   onDateChange: (date: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
@@ -69,12 +73,12 @@ const statusMeta: Record<string, { label: string; className: string }> = {
   CANCELLED: { label: "Eliminado", className: "bg-slate-100 text-slate-600" },
 };
 
-function formatTime(iso: string) {
+function formatTime(iso: string, timeZone = "America/Santiago") {
   return new Intl.DateTimeFormat("es-CL", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "America/Santiago",
+    timeZone,
   }).format(new Date(iso));
 }
 
@@ -88,14 +92,14 @@ function fullName(application: FlowApplication) {
     .join(" ");
 }
 
-function formatDay(date: string) {
+function formatDay(date: string, timeZone = "America/Santiago") {
   if (!date) return "";
   return new Intl.DateTimeFormat("es-CL", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "America/Santiago",
+    timeZone,
   }).format(new Date(`${date}T12:00:00`));
 }
 
@@ -111,6 +115,22 @@ function overlaps(
   );
 }
 
+function csvCell(value: unknown) {
+  const raw = String(value ?? "");
+  const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replaceAll('"', '""')}"`;
+}
+
+function downloadCsv(fileName: string, headers: string[], rows: unknown[][]) {
+  const content = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF", content], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 type GroupsView = "groups" | "clusters";
 
 const groupsViews: Array<{ id: GroupsView; label: string; icon: typeof UsersRound }> = [
@@ -119,12 +139,17 @@ const groupsViews: Array<{ id: GroupsView; label: string; icon: typeof UsersRoun
 ];
 
 export function PrekinderGroups(props: Props) {
+  const timeZone = props.configuration?.scheduleTimezone ?? "America/Santiago";
   const [view, setView] = useState<GroupsView>("groups");
   const [editor, setEditor] = useState<EditorState>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ACTIVE");
+  const [automaticStage, setAutomaticStage] = useState<"GROUP_3" | "GROUP_9">("GROUP_3");
+  const [schedulePlan, setSchedulePlan] = useState<SchedulePlan | null>(null);
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleBusy, setScheduleBusy] = useState(false);
   const [sort, setSort] = useState<{ key: "name" | "estado" | "time"; dir: "asc" | "desc" }>({
     key: "time",
     dir: "asc",
@@ -170,12 +195,92 @@ export function PrekinderGroups(props: Props) {
   const assignedChildren = new Set(activeGroups.flatMap((group) => group.memberIds));
   const availableEligible = props.applications.filter(
     (application) =>
-      application.eligibilityStatus === "VERIFIED" &&
+      (application.status === "READY_TO_SCHEDULE" || application.status === "SCHEDULED") &&
       !assignedChildren.has(application.applicationId),
   ).length;
   const ready = activeGroups.filter((group) => group.status === "CONFIRMED").length;
 
   const sortedJourneys = [...props.journeys].sort((a, b) => a.date.localeCompare(b.date));
+
+  useEffect(() => {
+    setSchedulePlan(null);
+    setScheduleError("");
+  }, [props.date, props.processId, automaticStage]);
+
+  async function previewAutomaticSchedule() {
+    setScheduleBusy(true);
+    setScheduleError("");
+    try {
+      setSchedulePlan(await prekinderApi.previewSchedule(props.processId, {
+        date: props.date,
+        stage: automaticStage,
+      }));
+    } catch (reason) {
+      setScheduleError(reason instanceof Error ? reason.message : "No fue posible preparar la agenda.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
+
+  async function confirmAutomaticSchedule() {
+    if (!schedulePlan) return;
+    const confirmed = await props.onAction(
+      () => prekinderApi.confirmSchedule(schedulePlan.planId),
+      "Agenda confirmada sin dobles reservas.",
+    );
+    if (confirmed) setSchedulePlan(null);
+  }
+
+  function operationRows() {
+    return visibleGroups.flatMap((group) => {
+      const evaluatorNames = group.evaluatorIds
+        .map((id) => props.professionals.find((professional) => professional.professionalId === id)?.displayName)
+        .filter(Boolean)
+        .join(" · ");
+      return group.memberIds.map((id) => ({
+        group,
+        application: props.applications.find((candidate) => candidate.applicationId === id),
+        evaluatorNames,
+      }));
+    });
+  }
+
+  function exportRoster(kind: "roster" | "labels" | "contingency") {
+    const rows = operationRows();
+    const prefix = `${props.date || "jornada"}-prekinder`;
+    if (kind === "labels") {
+      downloadCsv(`${prefix}-etiquetas.csv`, ["Postulante", "Grupo", "Sala", "Horario"], rows.map(({ group, application }) => [
+        application ? fullName(application) : "Postulante no disponible",
+        group.code,
+        group.roomName,
+        `${formatTime(group.startsAt, timeZone)}–${formatTime(group.endsAt, timeZone)}`,
+      ]));
+      return;
+    }
+    if (kind === "contingency") {
+      downloadCsv(`${prefix}-contingencia.csv`, ["Postulante", "RUT", "Grupo", "Sala", "Presente", "Atraso", "Ausente", "No evaluable", "Observación", "Firma"], rows.map(({ group, application }) => [
+        application ? fullName(application) : "Postulante no disponible",
+        application?.identity.rut,
+        group.code,
+        group.roomName,
+        "", "", "", "", "", "",
+      ]));
+      return;
+    }
+    downloadCsv(`${prefix}-nomina.csv`, ["Fecha", "Grupo", "Instancia", "Sala", "Inicio", "Fin", "Postulante", "RUT", "Sexo", "Estado", "Evaluadores"], rows.map(({ group, application, evaluatorNames }) => [
+      props.date,
+      group.code,
+      group.stage,
+      group.roomName,
+      formatTime(group.startsAt, timeZone),
+      formatTime(group.endsAt, timeZone),
+      application ? fullName(application) : "Postulante no disponible",
+      application?.identity.rut,
+      application?.applicationDetails?.gender,
+      application?.status,
+      evaluatorNames,
+    ]));
+  }
 
   return (
     <div className="space-y-5">
@@ -206,6 +311,7 @@ export function PrekinderGroups(props: Props) {
           date={props.date}
           journeys={props.journeys}
           busy={props.busy}
+          timeZone={timeZone}
           onDateChange={props.onDateChange}
           onClusterAction={props.onClusterAction}
         />
@@ -227,10 +333,10 @@ export function PrekinderGroups(props: Props) {
             }}
           >
             {!sortedJourneys.some((journey) => journey.date === props.date) && (
-              <option value={props.date}>{formatDay(props.date)}</option>
+              <option value={props.date}>{formatDay(props.date, timeZone)}</option>
             )}
             {sortedJourneys.map((journey) => (
-              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date, timeZone)}</option>
             ))}
           </select>
         </label>
@@ -245,6 +351,55 @@ export function PrekinderGroups(props: Props) {
         <Summary label="Grupos activos" value={activeGroups.length} detail={`${props.rooms.length} salas disponibles`} />
         <Summary label="Listos para evaluar" value={ready} detail="Con composición confirmada" />
         <Summary label="Postulantes asignados" value={assignedChildren.size} detail={`${availableEligible} elegibles aún disponibles`} />
+      </section>
+
+      <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Asignación automática</p>
+            <h2 className="mt-1 text-lg font-black text-slate-950">Vista previa antes de reservar</h2>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Considera salas, disponibilidad, conflictos, capacidades configuradas y una entrevista familiar independiente el mismo día.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm font-bold text-slate-700">
+              Instancia
+              <select className="control mt-1 block" value={automaticStage} onChange={(event) => setAutomaticStage(event.target.value as "GROUP_3" | "GROUP_9")}>
+                <option value="GROUP_3">Académica / focal</option>
+                <option value="GROUP_9">Psicomotricidad / grupal</option>
+              </select>
+            </label>
+            <button className="primary" disabled={props.busy || scheduleBusy || !props.journeys.length} onClick={() => void previewAutomaticSchedule()}>
+              {scheduleBusy ? "Calculando…" : "Generar vista previa"}
+            </button>
+          </div>
+        </div>
+        {scheduleError && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800" role="alert">{scheduleError}</p>}
+        {schedulePlan && (
+          <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="font-black text-slate-950">{schedulePlan.groups.length} grupos · {schedulePlan.familyInterviews.length} entrevistas familiares</p>
+                <p className="mt-1 text-xs text-slate-500">Configuración v{schedulePlan.configurationVersion} · vence {formatTime(schedulePlan.expiresAt, timeZone)}</p>
+              </div>
+              <button className="primary" disabled={props.busy || schedulePlan.blockers.length > 0} onClick={() => void confirmAutomaticSchedule()}>
+                Confirmar agenda
+              </button>
+            </div>
+            {schedulePlan.blockers.map((blocker) => <p key={blocker} className="mt-3 flex gap-2 text-sm font-bold text-red-800"><TriangleAlert size={17} className="shrink-0" />{blocker}</p>)}
+            {schedulePlan.warnings.map((warning) => <p key={warning} className="mt-3 flex gap-2 text-sm font-semibold text-amber-800"><TriangleAlert size={17} className="shrink-0" />{warning}</p>)}
+            {!schedulePlan.blockers.length && (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {schedulePlan.groups.map((group) => (
+                  <div key={`${group.code}-${group.startsAt}`} className="rounded-lg bg-slate-50 p-3 text-sm">
+                    <b>{group.code}</b><span className="ml-2 text-slate-500">{formatTime(group.startsAt, timeZone)} · {group.applicationIds.length} niños</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -289,6 +444,15 @@ export function PrekinderGroups(props: Props) {
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
+        <button type="button" className="secondary" onClick={() => exportRoster("roster")} disabled={!visibleGroups.length}>
+          <Download className="mr-2 inline" size={16} />Nómina CSV
+        </button>
+        <button type="button" className="secondary" onClick={() => exportRoster("labels")} disabled={!visibleGroups.length}>
+          <Download className="mr-2 inline" size={16} />Etiquetas CSV
+        </button>
+        <button type="button" className="secondary" onClick={() => exportRoster("contingency")} disabled={!visibleGroups.length}>
+          <Download className="mr-2 inline" size={16} />Contingencia CSV
+        </button>
         <span className="text-sm font-normal text-slate-400">{visibleGroups.length} de {props.groups.length}</span>
         <div className="relative inline-block">
           <select
@@ -393,6 +557,7 @@ export function PrekinderGroups(props: Props) {
                   const expanded = expandedId === group.groupId;
                   const canModify =
                     ["DRAFT", "CONFIRMED"].includes(group.status) &&
+                    group.stage !== "FAMILY_INTERVIEW" &&
                     new Date(group.startsAt).getTime() > Date.now();
                   const members = group.memberIds
                     .map((id) => props.applications.find((application) => application.applicationId === id))
@@ -422,7 +587,7 @@ export function PrekinderGroups(props: Props) {
                         <td className="px-5 py-4 text-center">
                           <p className="flex items-center justify-center gap-1.5 text-sm text-slate-700">
                             <Clock3 size={13} className="text-slate-400" aria-hidden="true" />
-                            {formatTime(group.startsAt)}–{formatTime(group.endsAt)}
+                            {formatTime(group.startsAt, timeZone)}–{formatTime(group.endsAt, timeZone)}
                           </p>
                         </td>
                         <td className="px-5 py-4 text-center text-sm">
@@ -544,6 +709,7 @@ function GroupClusters({
   date,
   journeys,
   busy,
+  timeZone,
   onDateChange,
   onClusterAction,
 }: {
@@ -554,6 +720,7 @@ function GroupClusters({
   date: string;
   journeys: EvaluationJourney[];
   busy: boolean;
+  timeZone: string;
   onDateChange: (date: string) => void;
   onClusterAction: (work: () => Promise<unknown>, success: string) => Promise<ClusterActionResult>;
 }) {
@@ -687,10 +854,10 @@ function GroupClusters({
             }}
           >
             {!sortedJourneys.some((journey) => journey.date === date) && (
-              <option value={date}>{formatDay(date)}</option>
+              <option value={date}>{formatDay(date, timeZone)}</option>
             )}
             {sortedJourneys.map((journey) => (
-              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+              <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date, timeZone)}</option>
             ))}
           </select>
         </label>
@@ -782,7 +949,7 @@ function GroupClusters({
                               <span className="min-w-0">
                                 <b className="block truncate text-sm text-slate-900">{group.code}</b>
                                 <small className="block truncate text-slate-500">
-                                  {group.roomName} · {formatTime(group.startsAt)}
+                                  {group.roomName} · {formatTime(group.startsAt, timeZone)}
                                   {takenBy ? ` · Ya está en ${takenBy.name}` : ""}
                                 </small>
                               </span>
@@ -845,7 +1012,7 @@ function GroupClusters({
                       <p className="mt-1 text-sm text-slate-500">
                         {cluster.groupCount} grupos · {cluster.memberCount} postulantes · {cluster.evaluatorCount} evaluadores
                         {cluster.startsAt && cluster.endsAt
-                          ? ` · ${formatTime(cluster.startsAt)}–${formatTime(cluster.endsAt)}`
+                          ? ` · ${formatTime(cluster.startsAt, timeZone)}–${formatTime(cluster.endsAt, timeZone)}`
                           : ""}
                       </p>
                     </div>
@@ -896,7 +1063,7 @@ function GroupClusters({
                   <div className="mt-3 flex flex-wrap gap-2">
                     {members.map((group) => (
                       <span key={group.groupId} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                        {group.code} · {group.roomName} · {formatTime(group.startsAt)}
+                        {group.code} · {group.roomName} · {formatTime(group.startsAt, timeZone)}
                       </span>
                     ))}
                     {removed > 0 && (
@@ -921,12 +1088,13 @@ function GroupEditor({
   ...props
 }: Props & { editor: Exclude<EditorState, null>; onClose: () => void }) {
   const editing = editor.mode === "edit" ? editor.group : null;
+  const timeZone = props.configuration?.scheduleTimezone ?? "America/Santiago";
   const [stage, setStage] = useState<EvaluationGroup["stage"]>(editing?.stage ?? "GROUP_3");
   const [roomId, setRoomId] = useState(editing?.roomId ?? "");
-  const [time, setTime] = useState(editing ? formatTime(editing.startsAt) : "09:00");
+  const [time, setTime] = useState(editing ? formatTime(editing.startsAt, timeZone) : "09:00");
   const [code, setCode] = useState(editing?.code ?? "");
-  const [capacity, setCapacity] = useState(editing?.capacity ?? 3);
-  const [requiredEvaluators, setRequiredEvaluators] = useState(editing?.requiredEvaluators ?? 3);
+  const [capacity, setCapacity] = useState(editing?.capacity ?? props.configuration?.academicGroupSize ?? 3);
+  const [requiredEvaluators, setRequiredEvaluators] = useState(editing?.requiredEvaluators ?? props.configuration?.academicRequiredEvaluators ?? 3);
   const [memberIds, setMemberIds] = useState<string[]>(editing?.memberIds ?? []);
   const [evaluatorIds, setEvaluatorIds] = useState<string[]>(editing?.evaluatorIds ?? []);
 
@@ -935,7 +1103,7 @@ function GroupEditor({
     ? startCandidate.toISOString()
     : null;
   const endsAt = startsAt
-    ? new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString()
+    ? new Date(new Date(startsAt).getTime() + (props.configuration?.scheduleBlockMinutes ?? 30) * 60_000).toISOString()
     : null;
   const bookedMembers = new Set(
     props.groups
@@ -951,7 +1119,9 @@ function GroupEditor({
   );
   const eligibleApplications = props.applications.filter(
     (application) =>
-      (application.eligibilityStatus === "VERIFIED" || editing?.memberIds.includes(application.applicationId)) &&
+      (application.status === "READY_TO_SCHEDULE" ||
+        application.status === "SCHEDULED" ||
+        editing?.memberIds.includes(application.applicationId)) &&
       !bookedMembers.has(application.applicationId),
   );
   const eligibleProfessionals = props.professionals.filter(
@@ -990,7 +1160,7 @@ function GroupEditor({
             stage,
             code: code.trim(),
             startsAt: startsAt!,
-            durationMinutes: 30,
+            durationMinutes: props.configuration?.scheduleBlockMinutes ?? 30,
             capacity,
             requiredEvaluators,
             memberIds,
@@ -1006,7 +1176,7 @@ function GroupEditor({
       () => prekinderApi.updateGroup(editing.groupId, {
         roomId,
         startsAt: startsAt!,
-        durationMinutes: 30,
+        durationMinutes: props.configuration?.scheduleBlockMinutes ?? 30,
         capacity,
         requiredEvaluators,
         memberIds,
@@ -1035,8 +1205,12 @@ function GroupEditor({
                 onChange={(event) => {
                   const next = event.target.value as EvaluationGroup["stage"];
                   setStage(next);
-                  setCapacity(next === "GROUP_3" ? 3 : 9);
-                  setRequiredEvaluators(next === "GROUP_3" ? 3 : 6);
+                  setCapacity(next === "GROUP_3"
+                    ? props.configuration?.academicGroupSize ?? 3
+                    : props.configuration?.psychomotorGroupSize ?? 9);
+                  setRequiredEvaluators(next === "GROUP_3"
+                    ? props.configuration?.academicRequiredEvaluators ?? 3
+                    : props.configuration?.psychomotorRequiredEvaluators ?? 6);
                   setMemberIds([]);
                   setEvaluatorIds([]);
                 }}
@@ -1059,10 +1233,10 @@ function GroupEditor({
               >
                 {!props.journeys.length && <option value="">Sin jornadas de evaluación</option>}
                 {!props.journeys.some((journey) => journey.date === props.date) && props.date && (
-                  <option value={props.date}>{formatDay(props.date)}</option>
+                  <option value={props.date}>{formatDay(props.date, timeZone)}</option>
                 )}
                 {[...props.journeys].sort((a, b) => a.date.localeCompare(b.date)).map((journey) => (
-                  <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date)}</option>
+                  <option key={journey.id} value={journey.date}>{journey.name} · {formatDay(journey.date, timeZone)}</option>
                 ))}
               </select>
               <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />

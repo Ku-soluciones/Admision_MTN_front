@@ -4,6 +4,10 @@ import { auth } from "../../admin/src/lib/firebase";
 
 const LOCAL_GATEWAY = "http://localhost:8081";
 
+export function scheduledDurationMinutes(startsAt: string, endsAt: string): number {
+  return Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000));
+}
+
 function baseUrl(): string {
   const configured = (import.meta as any).env?.VITE_API_BASE_URL as
     string | undefined;
@@ -117,6 +121,41 @@ export type PrekinderApplicationOption = {
   waveType: "SIBLINGS" | "STAFF_OR_ALUMNI" | "NEW_FAMILIES";
   opensAt: string;
   closesAt: string;
+  ageReferenceDate: string;
+  minimumAgeMonths: number;
+  maximumAgeMonths: number;
+};
+
+export type InclusionDeclaration = {
+  enabled: boolean;
+  declared: boolean;
+  inclusionId: string | null;
+  consentStatus: string;
+  specificInterviewRequired: boolean;
+  specificInterviewStatus: "NOT_REQUIRED" | "PENDING" | "SCHEDULED" | "COMPLETED" | "WAIVED";
+  declaredAt: string | null;
+  version: number;
+  revisionNumber: number | null;
+  revisionState: "DRAFT" | "SUBMITTED" | "REVIEWED" | "WITHDRAWN" | null;
+  declaration: Record<string, unknown>;
+};
+
+export type QuestionnaireVersion = {
+  versionId: string;
+  templateId: string;
+  version: number;
+  status: "DRAFT" | "PUBLISHED" | "SUPERSEDED";
+  schema: Record<string, unknown>;
+  rowVersion: number;
+  createdAt: string;
+  publishedAt: string | null;
+};
+
+export type Questionnaire = {
+  templateId: string;
+  processId: string;
+  name: string;
+  versions: QuestionnaireVersion[];
 };
 
 export type PrekinderApplication = {
@@ -240,6 +279,7 @@ export type ProfessionalRoleCode =
   | "PK_EVALUATOR_PSYCHOLOGY"
   | "PK_EVALUATOR_ENTRY_INDICATORS"
   | "PK_EVALUATOR_GROUP_OBSERVATION"
+  | "PK_EVALUATOR_FAMILY_INTERVIEW"
   | "PK_EVALUATOR_LEARNING_SUPPORT"
   | "PK_EVALUATOR_DAP";
 
@@ -286,7 +326,7 @@ export type EvaluationGroup = {
   processId: string;
   roomId: string;
   roomName: string;
-  stage: "GROUP_3" | "GROUP_9";
+  stage: "GROUP_3" | "GROUP_9" | "FAMILY_INTERVIEW";
   code: string;
   startsAt: string;
   endsAt: string;
@@ -447,6 +487,13 @@ export type ControlTowerDay = {
       instrumentProgress: Record<string, string>;
       version: number;
       clusters?: GroupClusterRef[];
+      members: Array<{
+        applicationId: string;
+        status: "PENDING" | "PRESENT" | "LATE" | "ABSENT" | "COULD_NOT_ENTER" | "NOT_EVALUABLE";
+        reasonCode: string | null;
+        version: number;
+        recordedAt: string | null;
+      }>;
     }>;
   }>;
   clusters?: Array<{
@@ -513,14 +560,6 @@ export type DashboardMetrics = {
   decisionsReady: number;
 };
 
-export type PublishedResult = {
-  applicationId: string;
-  applicantName: string;
-  decision: "ACCEPTED" | "REJECTED" | "WAITLIST";
-  publishedAt: string;
-  decisionVersion: number;
-};
-
 export type ProcessConfiguration = {
   processId: string;
   paymentEnabled: boolean;
@@ -532,9 +571,62 @@ export type ProcessConfiguration = {
   inclusionDocumentsRequired: boolean;
   minimumAgeMonths: number;
   maximumAgeMonths: number;
+  ageReferenceDate: string | null;
   applicantWeight: number;
   familyWeight: number;
+  schemaVersion: number;
+  totalSeats: number;
+  maleSeats: number;
+  femaleSeats: number;
+  incorporationFeeAmount: number | null;
+  incorporationFeeCurrency: string;
+  incorporationFeeGlosa: string;
+  requiredDocuments: string[];
+  scheduleTimezone: string;
+  scheduleDayStart: string;
+  scheduleDayEnd: string;
+  scheduleBlockMinutes: number;
+  scheduleMaxBlocks: number;
+  suggestedParallelCapacity: number;
+  academicGroupSize: number;
+  psychomotorGroupSize: number;
+  academicRequiredEvaluators: number;
+  psychomotorRequiredEvaluators: number;
+  initialOfferHours: number;
+  waitlistOfferHours: number;
+  advisoryThreshold: number;
+  resultChannel: "EMAIL_ONLY";
   version: number;
+};
+
+export type SchedulePlan = {
+  planId: string;
+  processId: string;
+  date: string;
+  stage: "GROUP_3" | "GROUP_9";
+  configurationVersion: number;
+  groups: Array<{
+    code: string;
+    stage: "GROUP_3" | "GROUP_9";
+    roomId: string;
+    startsAt: string;
+    endsAt: string;
+    applicationIds: string[];
+    evaluatorIds: string[];
+    capacity: number;
+    requiredEvaluators: number;
+  }>;
+  familyInterviews: Array<{
+    applicationId: string;
+    evaluatorId: string;
+    roomId: string;
+    startsAt: string;
+    endsAt: string;
+  }>;
+  blockers: string[];
+  warnings: string[];
+  expiresAt: string;
+  confirmed: boolean;
 };
 
 export type ReadinessItem = {
@@ -664,6 +756,7 @@ export type CommunicationTemplate = {
 };
 export type ApplicationDraft = { draftId: string; processId: string; currentSection: number; data: Record<string, unknown>; version: number };
 export type AdmissionOffer = { offerId: string; applicationId: string; status: "OFFERED" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "CANCELLED"; expiresAt: string; version: number; processName: string; academicYear: number };
+export type IncorporationPayment = { applicationId: string; paymentStatus: string; paymentKind: "INCORPORATION" | null; checkoutUrl?: string; amount: number; currency: string; paidAt?: string };
 
 export type Comment = {
   commentId: string;
@@ -908,6 +1001,18 @@ export const prekinderApi = {
     apiRequest<EvaluationGroup[]>(
       `/v1/prekinder/processes/${processId}/groups?date=${date}`,
     ),
+  previewSchedule: (
+    processId: string,
+    input: { date: string; stage: "GROUP_3" | "GROUP_9"; applicationIds?: string[] },
+  ) =>
+    apiRequest<SchedulePlan>(
+      `/v1/prekinder/processes/${processId}/schedule/preview`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  confirmSchedule: (planId: string) =>
+    apiRequest<SchedulePlan>(`/v1/prekinder/schedule-plans/${planId}/confirmation`, {
+      method: "POST",
+    }),
   createGroup: (input: {
     processId: string;
     roomId: string;
@@ -1129,7 +1234,7 @@ export const prekinderApi = {
     groupId: string,
     applicationId: string,
     input: {
-      status: "PENDING" | "PRESENT" | "LATE" | "ABSENT" | "COULD_NOT_ENTER";
+      status: "PENDING" | "PRESENT" | "LATE" | "ABSENT" | "COULD_NOT_ENTER" | "NOT_EVALUABLE";
       reasonCode?: string | null;
       expectedVersion: number;
       operationId: string;
@@ -1217,6 +1322,15 @@ export const prekinderApi = {
   assignRubric: (processId: string, instrumentCode: string, versionId: string, expectedVersion?: number) =>
     apiRequest<RubricAssignment[]>(`/v1/prekinder/processes/${processId}/rubric-assignments/${instrumentCode}`, { method: "PUT", body: JSON.stringify({ versionId, expectedVersion }) }),
   communicationTemplates: (processId: string) => apiRequest<CommunicationTemplate[]>(`/v1/prekinder/processes/${processId}/communication-templates`),
+  questionnaire: (processId: string) => apiRequest<Questionnaire>(`/v1/prekinder/processes/${processId}/questionnaire`),
+  duplicateQuestionnaire: (processId: string) => apiRequest<Questionnaire>(`/v1/prekinder/processes/${processId}/questionnaire/versions`, { method: "POST" }),
+  saveQuestionnaire: (processId: string, versionId: string, schema: Record<string, unknown>, expectedVersion: number) =>
+    apiRequest<Questionnaire>(`/v1/prekinder/processes/${processId}/questionnaire/versions/${versionId}`, {
+      method: "PUT",
+      body: JSON.stringify({ schema, expectedVersion }),
+    }),
+  publishQuestionnaire: (processId: string, versionId: string, expectedVersion: number) =>
+    apiRequest<Questionnaire>(`/v1/prekinder/processes/${processId}/questionnaire/versions/${versionId}/publication?expectedVersion=${expectedVersion}`, { method: "POST" }),
   duplicateCommunication: (templateId: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-templates/${templateId}/versions`, { method: "POST" }),
   saveCommunication: (versionId: string, subject: string, bodyHtml: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-template-versions/${versionId}`, { method: "PUT", body: JSON.stringify({ subject, bodyHtml }) }),
   publishCommunication: (versionId: string) => apiRequest<CommunicationTemplate>(`/v1/prekinder/communication-template-versions/${versionId}/publication`, { method: "POST" }),
@@ -1224,10 +1338,20 @@ export const prekinderApi = {
     apiRequest<DashboardMetrics>(
       `/v1/prekinder/processes/${processId}/dashboard`,
     ),
-  myResults: () => apiRequest<PublishedResult[]>("/v1/prekinder/me/results"),
   myOffers: () => apiRequest<AdmissionOffer[]>("/v1/prekinder/me/offers"),
   respondOffer: (offerId: string, response: "ACCEPTED" | "DECLINED", expectedVersion: number) =>
     apiRequest<AdmissionOffer>(`/v1/prekinder/offers/${offerId}/response`, { method: "POST", body: JSON.stringify({ response, expectedVersion }) }),
+  checkoutIncorporation: (applicationId: string) =>
+    apiRequest<IncorporationPayment>(`/v1/prekinder/applications/${applicationId}/incorporation-payments/checkout`, { method: "POST" }),
+  incorporationPaymentStatus: (applicationId: string) =>
+    apiRequest<IncorporationPayment>(`/v1/prekinder/applications/${applicationId}/incorporation-payments/status`),
+  inclusion: (applicationId: string) =>
+    apiRequest<InclusionDeclaration>(`/v1/prekinder/applications/${applicationId}/inclusion`),
+  saveInclusion: (applicationId: string, declaration: Record<string, unknown>) =>
+    apiRequest<InclusionDeclaration>(`/v1/prekinder/applications/${applicationId}/inclusion`, {
+      method: "POST",
+      body: JSON.stringify(declaration),
+    }),
   uploadDocument: (applicationId: string, category: string, file: File) => {
     const body = new FormData();
     body.append("file", file);

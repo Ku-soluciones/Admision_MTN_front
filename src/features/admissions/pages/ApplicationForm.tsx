@@ -128,19 +128,17 @@ const prekinderWaveLabels: Record<PrekinderApplicationOption['waveType'], string
     NEW_FAMILIES: 'Nuevas familias',
 };
 
-function hasPrekinderApplicationAge(birthDate: string): boolean {
-    if (!birthDate) return false;
-    const birth = new Date(`${birthDate}T12:00:00`);
-    if (Number.isNaN(birth.getTime())) return false;
-    const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Santiago',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).format(new Date()).split('-').map(Number);
-    let age = year - birth.getFullYear();
-    if (month - 1 < birth.getMonth() || (month - 1 === birth.getMonth() && day < birth.getDate())) age--;
-    return age === 3 || age === 4;
+function prekinderAgeInConfiguredRange(
+    birthDate: string,
+    option: PrekinderApplicationOption | null,
+): boolean {
+    if (!birthDate || !option?.ageReferenceDate) return false;
+    const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
+    const [referenceYear, referenceMonth, referenceDay] = option.ageReferenceDate.split('-').map(Number);
+    if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) return false;
+    let months = (referenceYear - birthYear) * 12 + referenceMonth - birthMonth;
+    if (referenceDay < birthDay) months--;
+    return months >= option.minimumAgeMonths && months <= option.maximumAgeMonths;
 }
 
 function PrekinderEligibilityFields({
@@ -1256,7 +1254,7 @@ const ApplicationForm: React.FC = () => {
                 if (errors.rut) {
                     return false;
                 }
-                if (isPrekinder && !hasPrekinderApplicationAge(data.birthDate)) return false;
+                if (isPrekinder && !prekinderAgeInConfiguredRange(data.birthDate, activePrekinderOption)) return false;
                 // Nota: La validación de coherencia fecha-grado es solo informativa en Step 0
                 // porque el grado se elige en Step 2. No bloqueamos aquí.
                 // Validate optional email if provided
@@ -2244,11 +2242,11 @@ const ApplicationForm: React.FC = () => {
                                             </div>
                                         );
                                     }
-                                    if (isPrekinder && !hasPrekinderApplicationAge(data.birthDate)) {
+                                    if (isPrekinder && !prekinderAgeInConfiguredRange(data.birthDate, activePrekinderOption)) {
                                         return (
                                             <div className="mt-2 rounded-lg border border-rojo-sagrado/40 bg-red-50 p-2" role="alert">
                                                 <p className="text-sm text-rojo-sagrado">
-                                                    Para postular a Prekínder debe tener 3 o 4 años cumplidos al momento de enviar.
+                                                    La fecha no cumple la edad configurada para el proceso al {activePrekinderOption?.ageReferenceDate ?? 'día de referencia'}.
                                                 </p>
                                             </div>
                                         );

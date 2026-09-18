@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { PrekinderAdminGuard } from "./components/PrekinderAdminGuard";
 import { EvaluatorDesk } from "./pages/EvaluatorDesk";
 import { EvaluatorReport } from "./pages/EvaluatorReport";
-import { PrekinderResultPage } from "./pages/PrekinderResultPage";
+import { PrekinderOfferPage } from "./pages/PrekinderResultPage";
 import { PrekinderEvaluatorGuard } from "./components/evaluator/PrekinderEvaluatorGuard";
 import { PrekinderEvaluatorLogin } from "./pages/evaluator/PrekinderEvaluatorLogin";
 import { PrekinderEvaluatorSelector } from "./pages/evaluator/PrekinderEvaluatorSelector";
@@ -38,6 +38,14 @@ const LEGACY_EVALUATOR_ROLES = [
 ];
 
 export default function PrekinderApp() {
+  const location = useLocation();
+  const publicSurface = ["/prekinder/postular", "/prekinder/oferta", "/prekinder/resultado"]
+    .some((path) => location.pathname.startsWith(path));
+  const publicEnabled = import.meta.env.VITE_PREKINDER_PUBLIC_ENABLED !== "false";
+  const internalEnabled = import.meta.env.VITE_PREKINDER_INTERNAL_ENABLED !== "false";
+  if ((publicSurface && !publicEnabled) || (!publicSurface && !internalEnabled)) {
+    return <Navigate to="/" replace />;
+  }
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
@@ -166,6 +174,14 @@ export default function PrekinderApp() {
           }
         />
         <Route
+          path="/prekinder/evaluador/family-interview/evaluacion/:assignmentId"
+          element={
+            <PrekinderEvaluatorGuard profile="FAMILY_INTERVIEW">
+              <ConnectedPsychologyConsole profile="FAMILY_INTERVIEW" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
           path="/prekinder/evaluador/learning-support/evaluacion/:assignmentId"
           element={
             <PrekinderEvaluatorGuard profile="LEARNING_SUPPORT">
@@ -214,6 +230,22 @@ export default function PrekinderApp() {
           }
         />
         <Route
+          path="/prekinder/evaluador/family-interview"
+          element={
+            <PrekinderEvaluatorGuard profile="FAMILY_INTERVIEW">
+              <PrekinderEvaluatorDashboard profile="FAMILY_INTERVIEW" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
+          path="/prekinder/evaluador/family-interview/grupo/:groupId"
+          element={
+            <PrekinderEvaluatorGuard profile="FAMILY_INTERVIEW">
+              <PrekinderEvaluatorGroupPage profile="FAMILY_INTERVIEW" />
+            </PrekinderEvaluatorGuard>
+          }
+        />
+        <Route
           path="/prekinder/evaluador/learning-support"
           element={
             <PrekinderEvaluatorGuard profile="LEARNING_SUPPORT">
@@ -254,16 +286,17 @@ export default function PrekinderApp() {
           element={<Navigate to="/postulacion?proceso=prekinder" replace />}
         />
         <Route
-          path="/prekinder/resultado"
+          path="/prekinder/oferta"
           element={
             <PrekinderAdminGuard
               roles={["APODERADO"]}
               loginPath="/apoderado/login"
             >
-              <PrekinderResultPage />
+              <PrekinderOfferPage />
             </PrekinderAdminGuard>
           }
         />
+        <Route path="/prekinder/resultado" element={<Navigate to="/apoderado" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

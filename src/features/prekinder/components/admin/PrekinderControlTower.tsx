@@ -33,6 +33,7 @@ import {
   type EvaluationGroup,
   type FlowApplication,
   type Professional,
+  type ProcessConfiguration,
   type Room,
 } from "../../services/api";
 import type { EvaluationJourney, JourneyActionResult } from "../../data/evaluationJourneys";
@@ -45,6 +46,7 @@ type Props = {
   controlTower: ControlTowerDay | null;
   applications: FlowApplication[];
   professionals: Professional[];
+  configuration: ProcessConfiguration | null;
   selected: EvaluationGroup | null;
   busy: boolean;
   onSelect: (id: string) => void;
@@ -58,8 +60,21 @@ type Props = {
   onDeleteJourney: (journey: EvaluationJourney) => Promise<JourneyActionResult>;
 };
 
-const fixedTimes = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];
 const terminalStatuses = ["COMPLETED", "CANCELLED"];
+
+function configuredTimes(configuration: ProcessConfiguration | null): string[] {
+  if (!configuration) return [];
+  const [startHour, startMinute] = configuration.scheduleDayStart.split(":").map(Number);
+  const [endHour, endMinute] = configuration.scheduleDayEnd.split(":").map(Number);
+  const start = startHour * 60 + startMinute;
+  const end = endHour * 60 + endMinute;
+  const values: string[] = [];
+  for (let minute = start; minute + configuration.scheduleBlockMinutes <= end
+    && values.length < configuration.scheduleMaxBlocks; minute += configuration.scheduleBlockMinutes) {
+    values.push(`${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`);
+  }
+  return values;
+}
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("es-CL", {
@@ -287,7 +302,6 @@ const controlViews: Array<{ id: ControlView; label: string; icon: typeof Users }
 
 export function PrekinderControlTower(props: Props) {
   const [view, setView] = useState<ControlView>("tower");
-  const [attendance, setAttendance] = useState<Record<string, string>>({});
   return (
     <div className="space-y-5">
       <aside>
@@ -305,7 +319,7 @@ export function PrekinderControlTower(props: Props) {
       </aside>
       <div className="min-w-0">
         {view === "tower" && <TowerHome {...props} />}
-        {view === "reception" && <ReceptionView {...props} attendance={attendance} onAttendance={(id, value) => setAttendance((current) => ({ ...current, [id]: value }))} />}
+        {view === "reception" && <ReceptionView {...props} />}
         {view === "evaluations" && <EvaluationsView {...props} />}
         {view === "monitor" && <MonitorView {...props} onOpenGroup={(id) => { props.onSelect(id); setView("tower"); }} />}
         {view === "review" && <ReviewView {...props} />}
@@ -316,7 +330,7 @@ export function PrekinderControlTower(props: Props) {
 }
 
 function TowerHome(props: Props) {
-  const { groups, rooms, applications, selected, controlTower, journeys, selectedJourneyId } = props;
+  const { groups, rooms, applications, selected, controlTower, journeys, selectedJourneyId, configuration } = props;
   const [creating, setCreating] = useState<{ roomId: string; time: string } | null>(null);
   const activeRooms = useMemo(() => rooms.filter((room) => room.active), [rooms]);
   const activeJourney = journeys.find((journey) => journey.id === selectedJourneyId) ?? null;
@@ -338,10 +352,10 @@ function TowerHome(props: Props) {
   }, [alerts]);
 
   const times = useMemo(() => {
-    const values = new Set(fixedTimes);
+    const values = new Set(configuredTimes(configuration));
     groups.forEach((group) => values.add(formatTime(group.startsAt)));
     return [...values].sort();
-  }, [groups]);
+  }, [configuration, groups]);
 
   const occupied = controlTower?.summary.applicants ?? groups.reduce((sum, group) => sum + group.memberIds.length, 0);
   const capacity = groups.reduce((sum, group) => sum + group.capacity, 0);
@@ -726,7 +740,7 @@ function PageTitle({ eyebrow, title, description }: { eyebrow?: string; title: s
 
 const RECEPTION_PAGE_SIZE = 10;
 
-function ReceptionView({ applications, groups, attendance, onAttendance, onSelect }: Props & { attendance: Record<string, string>; onAttendance: (id: string, value: string) => void }) {
+function ReceptionView({ applications, groups, controlTower, busy, onAction, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const filtered = useMemo(
@@ -763,6 +777,9 @@ function ReceptionView({ applications, groups, attendance, onAttendance, onSelec
           <tbody className="divide-y divide-slate-100">
             {visible.map((app) => {
               const group = groups.find((item) => item.memberIds.includes(app.applicationId));
+              const towerGroup = (controlTower?.rooms ?? []).flatMap((room) => room.groups)
+                .find((item) => item.groupId === group?.groupId);
+              const member = towerGroup?.members.find((item) => item.applicationId === app.applicationId);
               return (
                 <tr key={app.applicationId} className="align-middle">
                   <td className="px-5 py-4">
@@ -773,11 +790,30 @@ function ReceptionView({ applications, groups, attendance, onAttendance, onSelec
                     {group ? `${formatTime(group.startsAt)} · ${group.roomName}` : "Sin asignación"}
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <select className="control mx-auto" value={attendance[app.applicationId] ?? "PENDING"} onChange={(event) => onAttendance(app.applicationId, event.target.value)}>
+                    <select
+                      className="control mx-auto"
+                      value={member?.status ?? "PENDING"}
+                      disabled={busy || !group || !member}
+                      onChange={(event) => {
+                        if (!group || !member) return;
+                        const next = event.target.value as "PENDING" | "PRESENT" | "LATE" | "ABSENT" | "COULD_NOT_ENTER" | "NOT_EVALUABLE";
+                        void onAction(
+                          () => prekinderApi.updateAttendance(group.groupId, app.applicationId, {
+                            status: next,
+                            reasonCode: ["COULD_NOT_ENTER", "NOT_EVALUABLE"].includes(next) ? next : null,
+                            expectedVersion: member.version,
+                            operationId: crypto.randomUUID(),
+                          }),
+                          "Asistencia registrada con trazabilidad.",
+                        );
+                      }}
+                    >
                       <option value="PENDING">Pendiente</option>
                       <option value="PRESENT">Presente</option>
                       <option value="LATE">Atrasado</option>
                       <option value="ABSENT">Ausente</option>
+                      <option value="COULD_NOT_ENTER">No pudo ingresar</option>
+                      <option value="NOT_EVALUABLE">No evaluable</option>
                     </select>
                   </td>
                   <td className="px-5 py-4 text-center">
@@ -1116,7 +1152,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
           <p className="mt-1 text-xs leading-5 text-slate-500">El backend valida cruces de sala y horario antes de guardar.</p>
           <div className="mt-3 grid grid-cols-2 gap-2"><select className="control" value={nextRoom} onChange={(event) => setNextRoom(event.target.value)}>{rooms.filter((room) => room.active || room.roomId === group.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.name}</option>)}</select><input className="control" type="time" value={nextTime} onChange={(event) => setNextTime(event.target.value)} /></div>
           <input className="control mt-2 w-full" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Motivo del cambio" />
-          <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: 30, reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
+          <button className="secondary mt-2 w-full" disabled={busy || !nextRoom || !nextTime || terminalStatuses.includes(group.status)} onClick={() => onAction(() => prekinderApi.rescheduleGroup(group.groupId, { roomId: nextRoom, startsAt: new Date(`${date}T${nextTime}:00`).toISOString(), durationMinutes: Math.round((new Date(group.endsAt).getTime() - new Date(group.startsAt).getTime()) / 60_000), reason, expectedVersion: group.version }), "Bloque reasignado correctamente.")}><ArrowRightLeft className="mr-2 inline" size={16} />Validar y cambiar bloque</button>
         </div>
 
         <ConfirmGroupSection group={group} canConfirm={canConfirm} busy={busy} onAction={onAction} rubricMissing={rubricMissing} />
@@ -1178,20 +1214,24 @@ function CreateGroupDialog({
   busy,
   onAction,
   onDateChange,
+  configuration,
   onClose,
 }: Props & { roomId: string; initialTime: string; onClose: () => void }) {
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
-  const [capacity, setCapacity] = useState(3);
+  const [capacity, setCapacity] = useState(configuration?.academicGroupSize ?? 0);
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [evaluatorIds, setEvaluatorIds] = useState<string[]>([]);
   const [childQuery, setChildQuery] = useState("");
   const [evaluatorQuery, setEvaluatorQuery] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState(roomId);
   const room = rooms.find((item) => item.roomId === selectedRoomId);
-  const requiredEvaluators = stage === "GROUP_3" ? 3 : 6;
+  const requiredEvaluators = stage === "GROUP_3"
+    ? configuration?.academicRequiredEvaluators ?? 0
+    : configuration?.psychomotorRequiredEvaluators ?? 0;
+  const durationMinutes = configuration?.scheduleBlockMinutes ?? 0;
   const startsAt = new Date(`${date}T${initialTime}:00`).toISOString();
-  const endsAt = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
 
   useEffect(() => {
     const closeWithEscape = (event: KeyboardEvent) => {
@@ -1229,6 +1269,8 @@ function CreateGroupDialog({
   const canCreate = Boolean(
     date
     && room
+    && configuration
+    && durationMinutes > 0
     && code.trim()
     && capacityIsValid
     && memberIds.length > 0
@@ -1256,7 +1298,7 @@ function CreateGroupDialog({
         stage,
         code: code.trim(),
         startsAt,
-        durationMinutes: 30,
+        durationMinutes,
         capacity,
         requiredEvaluators,
         memberIds,
@@ -1315,15 +1357,19 @@ function CreateGroupDialog({
             <label className="block text-sm font-bold text-slate-700">Modalidad
               <select className="control mt-1 w-full" value={stage} onChange={(event) => {
                 const next = event.target.value as EvaluationGroup["stage"];
-                const nextCapacity = next === "GROUP_3" ? 3 : 9;
-                const nextEvaluatorLimit = next === "GROUP_3" ? 3 : 6;
+                const nextCapacity = next === "GROUP_3"
+                  ? configuration?.academicGroupSize ?? 0
+                  : configuration?.psychomotorGroupSize ?? 0;
+                const nextEvaluatorLimit = next === "GROUP_3"
+                  ? configuration?.academicRequiredEvaluators ?? 0
+                  : configuration?.psychomotorRequiredEvaluators ?? 0;
                 setStage(next);
                 setCapacity(Math.min(nextCapacity, room?.capacity ?? nextCapacity));
                 setMemberIds((current) => current.slice(0, nextCapacity));
                 setEvaluatorIds((current) => current.slice(0, nextEvaluatorLimit));
               }}>
-                <option value="GROUP_3">Observación focal · base de 3</option>
-                <option value="GROUP_9" disabled={(room?.capacity ?? 0) < 9}>Interacción grupal · base de 9</option>
+                <option value="GROUP_3">Observación focal · base de {configuration?.academicGroupSize ?? "—"}</option>
+                <option value="GROUP_9" disabled={(room?.capacity ?? 0) < (configuration?.psychomotorGroupSize ?? Number.POSITIVE_INFINITY)}>Interacción grupal · base de {configuration?.psychomotorGroupSize ?? "—"}</option>
               </select>
             </label>
             <label className="block text-sm font-bold text-slate-700">Cupos para niños

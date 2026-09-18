@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   prekinderApi,
+  scheduledDurationMinutes,
   type EvaluatorAssignment,
   type RubricVersion,
   type Report,
@@ -279,7 +280,7 @@ export function ConnectedDapConsole({ profile }: Props) {
     setSaving(true);
     setError("");
     try {
-      const completedStatuses = ["COMPLETED", "SUBTED", "VALIDATED", "LOCKED"];
+      const completedStatuses = ["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"];
       const reportsToComplete = Object.values(reportsData).filter(
         (r) => !completedStatuses.includes(r.header.status),
       );
@@ -398,7 +399,7 @@ export function ConnectedDapConsole({ profile }: Props) {
                   >
                     <div className="border-b border-slate-200 p-4 text-xl font-black text-slate-950 md:border-b-0 md:border-r">
                       {formatTime(assignment.group.startsAt)}
-                      <small className="block text-xs font-bold text-slate-500">30 min</small>
+                      <small className="block text-xs font-bold text-slate-500">{scheduledDurationMinutes(assignment.group.startsAt, assignment.group.endsAt)} min</small>
                     </div>
                     <div className="min-w-0 p-4">
                       <b className="block text-sm text-slate-900">
