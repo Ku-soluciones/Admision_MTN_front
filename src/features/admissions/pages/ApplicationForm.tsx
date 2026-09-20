@@ -160,27 +160,34 @@ function getReferenceDateString(
 
 /**
  * Determina el año de destino (target year) para una aplicación de Prekínder
- * basado en la fecha de nacimiento y la fecha de referencia de edad.
+ * basado en si el niño cumple la edad mínima en la fecha de referencia.
  * 
- * Ejemplo: Si un niño cumple 4 años al 31/03/2027, el año de destino es 2027
- * porque ese es el año en el que entra al proceso de postulación.
+ * Ejemplo: 
+ * - Nacimiento: 2023-02-02, Referencia: 2027-03-31, Min: 48 meses
+ * - Al 31/03/2027 tiene 4 años y 1 mes (49 meses) ✓
+ * - Año destino: 2027
+ * 
+ * - Nacimiento: 2024-06-15, Referencia: 2027-03-31, Min: 48 meses
+ * - Al 31/03/2027 tiene 2 años y 9 meses (33 meses) ✗
+ * - Año destino: 2028 (próximo año académico)
  * 
  * @param birthDate - Fecha de nacimiento en formato YYYY-MM-DD
- * @param ageReferenceDate - Fecha de referencia en formato YYYY-MM-DD (ej: 2027-03-31)
- * @returns Año de destino (número del año) o null si no es válido
+ * @param referenceDate - Fecha de referencia en formato YYYY-MM-DD
+ * @param minimumAgeMonths - Edad mínima requerida en meses
+ * @returns Año de destino o null si no es válido
  */
 function getPrekinderTargetYear(
     birthDate: string,
-    ageReferenceDate: string | undefined | null,
+    referenceDate: string | undefined | null,
+    minimumAgeMonths: number | undefined,
 ): number | null {
-    if (!birthDate || !ageReferenceDate) return null;
+    if (!birthDate || !referenceDate) return null;
     
     try {
-        // Normalizar el formato de ageReferenceDate por si viene como Date object o timestamp
-        let refDateStr = ageReferenceDate;
-        if (typeof ageReferenceDate !== 'string') {
-            // Si es Date object o timestamp, convertir a string YYYY-MM-DD
-            const refDate = new Date(ageReferenceDate);
+        // Normalizar el formato de referenceDate por si viene como Date object o timestamp
+        let refDateStr = referenceDate;
+        if (typeof referenceDate !== 'string') {
+            const refDate = new Date(referenceDate);
             if (isNaN(refDate.getTime())) return null;
             refDateStr = refDate.toISOString().split('T')[0];
         }
@@ -192,15 +199,27 @@ function getPrekinderTargetYear(
             return null;
         }
         
-        // El año de destino es el año de referencia
-        // Ejemplo: si cumple 4 años al 31/03/2027, el año destino es 2027
+        // Calcular la edad en meses que tendrá en la fecha de referencia
+        let ageMonthsAtReference = (referenceYear - birthYear) * 12 + (referenceMonth - birthMonth);
+        if (referenceDay < birthDay) {
+            ageMonthsAtReference--;
+        }
+        
+        // Si cumple la edad mínima en la fecha de referencia, el año destino es el año de referencia
+        // Si NO cumple, el año destino es el siguiente año académico
+        if (minimumAgeMonths !== undefined && ageMonthsAtReference < minimumAgeMonths) {
+            // No cumple edad en la referencia, será el próximo año académico
+            return referenceYear + 1;
+        }
+         
+        // Cumple edad o no hay mínimo especificado
         return referenceYear;
     } catch (error) {
-        console.error('Error en getPrekinderTargetYear:', error, { birthDate, ageReferenceDate });
+        console.error('Error en getPrekinderTargetYear:', error, { birthDate, referenceDate, minimumAgeMonths });
         return null;
     }
 }
-
+ 
 function PrekinderEligibilityFields({
     option,
     loading,
@@ -2294,12 +2313,17 @@ const ApplicationForm: React.FC = () => {
                                                     activePrekinderOption.ageReferenceDate,
                                                     activePrekinderOption.academicYear
                                                 );
-                                                const targetYear = getPrekinderTargetYear(e.target.value, referenceDate);
+                                                const targetYear = getPrekinderTargetYear(
+                                                    e.target.value,
+                                                    referenceDate,
+                                                    activePrekinderOption.minimumAgeMonths
+                                                );
                                                 console.log('🎂 Cálculo de año destino:', {
                                                     birthDate: e.target.value,
                                                     ageReferenceDate: activePrekinderOption.ageReferenceDate,
                                                     academicYear: activePrekinderOption.academicYear,
                                                     calculatedReferenceDate: referenceDate,
+                                                    minimumAgeMonths: activePrekinderOption.minimumAgeMonths,
                                                     targetYear,
                                                 });
                                                 if (targetYear !== null) {
