@@ -142,38 +142,63 @@ function prekinderAgeInConfiguredRange(
 }
 
 /**
+ * Construye la fecha de referencia (31 de marzo del año académico) si no está disponible.
+ * 
+ * @param ageReferenceDate - Fecha de referencia del backend (puede ser null)
+ * @param academicYear - Año académico (usado si ageReferenceDate es null)
+ * @returns Fecha de referencia en formato YYYY-MM-DD
+ */
+function getReferenceDateString(
+    ageReferenceDate: string | null | undefined,
+    academicYear: number | undefined,
+): string | null {
+    if (ageReferenceDate) return ageReferenceDate;
+    if (!academicYear) return null;
+    // Asumimos que la fecha de referencia es el 31 de marzo del año académico
+    return `${academicYear}-03-31`;
+}
+
+/**
  * Determina el año de destino (target year) para una aplicación de Prekínder
  * basado en la fecha de nacimiento y la fecha de referencia de edad.
  * 
- * Ejemplo: Si un niño cumple 4 años al 31/03/2028, el año de destino es 2028
+ * Ejemplo: Si un niño cumple 4 años al 31/03/2027, el año de destino es 2027
  * porque ese es el año en el que entra al proceso de postulación.
  * 
  * @param birthDate - Fecha de nacimiento en formato YYYY-MM-DD
- * @param ageReferenceDate - Fecha de referencia en formato YYYY-MM-DD (ej: 2028-03-31)
- * @returns Año de destino o null si no es válido
+ * @param ageReferenceDate - Fecha de referencia en formato YYYY-MM-DD (ej: 2027-03-31)
+ * @returns Año de destino (número del año) o null si no es válido
  */
 function getPrekinderTargetYear(
     birthDate: string,
-    ageReferenceDate: string | undefined,
+    ageReferenceDate: string | undefined | null,
 ): number | null {
     if (!birthDate || !ageReferenceDate) return null;
     
-    const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
-    const [referenceYear, referenceMonth, referenceDay] = ageReferenceDate.split('-').map(Number);
-    
-    if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) {
+    try {
+        // Normalizar el formato de ageReferenceDate por si viene como Date object o timestamp
+        let refDateStr = ageReferenceDate;
+        if (typeof ageReferenceDate !== 'string') {
+            // Si es Date object o timestamp, convertir a string YYYY-MM-DD
+            const refDate = new Date(ageReferenceDate);
+            if (isNaN(refDate.getTime())) return null;
+            refDateStr = refDate.toISOString().split('T')[0];
+        }
+        
+        const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
+        const [referenceYear, referenceMonth, referenceDay] = refDateStr.split('-').map(Number);
+        
+        if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) {
+            return null;
+        }
+        
+        // El año de destino es el año de referencia
+        // Ejemplo: si cumple 4 años al 31/03/2027, el año destino es 2027
+        return referenceYear;
+    } catch (error) {
+        console.error('Error en getPrekinderTargetYear:', error, { birthDate, ageReferenceDate });
         return null;
     }
-    
-    // Calcular la edad que tendrá en la fecha de referencia
-    let ageAtReferenceDate = referenceYear - birthYear;
-    if (referenceMonth < birthMonth || (referenceMonth === birthMonth && referenceDay < birthDay)) {
-        ageAtReferenceDate--;
-    }
-    
-    // El año de destino es el año de referencia
-    // Ejemplo: si cumple 4 años al 31/03/2028, el año destino es 2028
-    return referenceYear;
 }
 
 function PrekinderEligibilityFields({
@@ -2263,10 +2288,25 @@ const ApplicationForm: React.FC = () => {
                                     onChange={(e) => {
                                         updateField('birthDate', e.target.value);
                                         // Si es Prekínder, calcular y guardar el año destino automáticamente
-                                        if (isPrekinder && e.target.value && activePrekinderOption?.ageReferenceDate) {
-                                            const targetYear = getPrekinderTargetYear(e.target.value, activePrekinderOption.ageReferenceDate);
-                                            if (targetYear) {
-                                                updateField('prekinderTargetYear', targetYear);
+                                        if (isPrekinder && e.target.value && activePrekinderOption) {
+                                            try {
+                                                const referenceDate = getReferenceDateString(
+                                                    activePrekinderOption.ageReferenceDate,
+                                                    activePrekinderOption.academicYear
+                                                );
+                                                const targetYear = getPrekinderTargetYear(e.target.value, referenceDate);
+                                                console.log('🎂 Cálculo de año destino:', {
+                                                    birthDate: e.target.value,
+                                                    ageReferenceDate: activePrekinderOption.ageReferenceDate,
+                                                    academicYear: activePrekinderOption.academicYear,
+                                                    calculatedReferenceDate: referenceDate,
+                                                    targetYear,
+                                                });
+                                                if (targetYear !== null) {
+                                                    updateField('prekinderTargetYear', targetYear);
+                                                }
+                                            } catch (err) {
+                                                console.error('Error calculando año destino:', err);
                                             }
                                         }
                                     }}
@@ -2290,16 +2330,16 @@ const ApplicationForm: React.FC = () => {
                                         return (
                                             <div className="mt-2 rounded-lg border border-rojo-sagrado/40 bg-red-50 p-2" role="alert">
                                                 <p className="text-sm text-rojo-sagrado">
-                                                    La fecha no cumple la edad configurada para el proceso al {activePrekinderOption?.ageReferenceDate ?? 'día de referencia'}.
+                                                    La fecha no cumple la edad configurada para el proceso de {activePrekinderOption?.academicYear}.
                                                 </p>
                                             </div>
                                         );
                                     }
                                     if (isPrekinder && data.prekinderTargetYear) {
                                         return (
-                                            <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2" role="status">
-                                                <p className="text-sm text-amber-800">
-                                                    <strong>Año de destino: {data.prekinderTargetYear}</strong> — Proceso de postulación para {data.prekinderTargetYear}
+                                            <div className="mt-2 rounded-lg border border-verde-agua/40 bg-verde-agua/5 p-2" role="status">
+                                                <p className="text-sm text-verde-agua font-medium">
+                                                    ✓ Año de destino: <strong>{data.prekinderTargetYear}</strong>
                                                 </p>
                                             </div>
                                         );
