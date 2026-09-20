@@ -1696,7 +1696,10 @@ const ApplicationForm: React.FC = () => {
                     // Guardar el ID de la aplicación para subir documentos
                     const applicationId = isEditMode
                         ? location.state.applicationId
-                        : isPrekinder ? response.applicationId : response.id;
+                        : response.id;
+                    if (applicationId == null || String(applicationId).trim() === '') {
+                        throw new Error('La postulación fue creada, pero el servidor no devolvió su identificador. Recarga el dashboard antes de subir documentos.');
+                    }
                     setSubmittedApplicationId(applicationId);
 
                     // El envío fue exitoso: descartar el borrador local.

@@ -1353,10 +1353,14 @@ export const prekinderApi = {
       body: JSON.stringify(declaration),
     }),
   uploadDocument: (applicationId: string, category: string, file: File) => {
+    const normalizedApplicationId = applicationId?.trim();
+    if (!normalizedApplicationId || normalizedApplicationId === "undefined" || normalizedApplicationId === "null") {
+      throw new Error("No se puede subir el documento sin un identificador de postulación válido.");
+    }
     const body = new FormData();
     body.append("file", file);
     return apiRequest(
-      `/v1/prekinder/applications/${applicationId}/documents?category=${encodeURIComponent(category)}`,
+      `/v1/prekinder/applications/${encodeURIComponent(normalizedApplicationId)}/documents?category=${encodeURIComponent(category)}`,
       { method: "POST", body },
     );
   },
