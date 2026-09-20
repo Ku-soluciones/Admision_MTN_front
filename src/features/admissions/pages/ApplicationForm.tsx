@@ -132,13 +132,17 @@ function prekinderAgeInConfiguredRange(
     birthDate: string,
     option: PrekinderApplicationOption | null,
 ): boolean {
-    if (!birthDate || !option?.ageReferenceDate) return false;
+    if (!birthDate || !option) return false;
+    const referenceDate = getReferenceDateString(option.ageReferenceDate, option.academicYear);
+    if (!referenceDate) return false;
     const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
-    const [referenceYear, referenceMonth, referenceDay] = option.ageReferenceDate.split('-').map(Number);
+    const [referenceYear, referenceMonth, referenceDay] = referenceDate.split('-').map(Number);
     if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) return false;
     let months = (referenceYear - birthYear) * 12 + referenceMonth - birthMonth;
     if (referenceDay < birthDay) months--;
-    return months >= option.minimumAgeMonths && months <= option.maximumAgeMonths;
+    const meetsMinimum = months >= option.minimumAgeMonths;
+    const meetsMaximum = option.maximumAgeMonths == null || months <= option.maximumAgeMonths;
+    return meetsMinimum && meetsMaximum;
 }
 
 /**

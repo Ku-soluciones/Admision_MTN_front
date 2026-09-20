@@ -121,9 +121,9 @@ export type PrekinderApplicationOption = {
   waveType: "SIBLINGS" | "STAFF_OR_ALUMNI" | "NEW_FAMILIES";
   opensAt: string;
   closesAt: string;
-  ageReferenceDate: string;
+  ageReferenceDate: string | null;
   minimumAgeMonths: number;
-  maximumAgeMonths: number;
+  maximumAgeMonths?: number | null;
 };
 
 export type InclusionDeclaration = {
