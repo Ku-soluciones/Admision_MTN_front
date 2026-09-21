@@ -1059,10 +1059,30 @@ const ProfessorDashboard: React.FC = () => {
 
     const getEvaluationTypeForInterview = (interview: Interview): EvaluationType => {
         // En las entrevistas de Director de Ciclo participan dos profesionales.
-        // Cada uno debe abrir su propia pauta, aunque la tarjeta provenga de la
-        // misma entrevista compartida.
-        if (currentProfessor?.role === 'PSYCHOLOGIST' && interview.type === 'CYCLE_DIRECTOR') {
-            return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+        // La asignación efectiva retornada por el BFF prevalece sobre el rol
+        // genérico guardado en el navegador: un psicólogo también puede ser el
+        // entrevistador principal y completar la pauta de Director de Ciclo.
+        if (interview.type === 'CYCLE_DIRECTOR') {
+            const currentProfessorId = Number(currentProfessor?.id);
+            if (Number.isFinite(currentProfessorId)) {
+                if (currentProfessorId === Number(interview.interviewerId)) {
+                    return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+                }
+                if (currentProfessorId === Number(interview.secondInterviewerId)) {
+                    return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+                }
+            }
+
+            const assignedEvaluations = evaluations.filter(e => e.applicationId === interview.applicationId);
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)) {
+                return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+            }
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)) {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
+            if (currentProfessor?.role === 'PSYCHOLOGIST') {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
         }
 
         return interview.type === 'CYCLE_DIRECTOR'
@@ -1190,11 +1210,12 @@ const ProfessorDashboard: React.FC = () => {
                 const ensuredMatch = ensuredEvaluations.find(e => e.evaluationType === expectedEvalType);
                 if (ensuredMatch) return ensuredMatch;
 
-                // El rol guardado en el navegador puede estar desactualizado. El BFF ya filtra
-                // las pautas por el usuario autenticado, por lo que una única pauta retornada es
-                // la fuente de verdad y debe poder abrirse aunque el tipo calculado localmente no
-                // coincida.
-                return ensuredEvaluations.length === 1 ? ensuredEvaluations[0] : null;
+                // El BFF ya filtró las pautas por asignación. Para el botón "Realizar" se abre
+                // una pauta de entrevista, nunca el informe asociado.
+                return ensuredEvaluations.find(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.FAMILY_INTERVIEW)
+                    || null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
