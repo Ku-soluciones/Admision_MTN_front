@@ -31,6 +31,7 @@ import {
 import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
+import { notify } from '../../packages/shared-ui/src/utils/notify';
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
 import { EvaluationStatus, EvaluationType } from '../../admin/types/evaluation';
@@ -243,6 +244,7 @@ const ProfessorDashboard: React.FC = () => {
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [resolvingCardId, setResolvingCardId] = useState<number | null>(null);
     const [prekinderInstruments, setPrekinderInstruments] = useState<EvaluationInstrument[]>([]);
     const [prekinderActorId, setPrekinderActorId] = useState<string>();
     const [prekinderAccessResolved, setPrekinderAccessResolved] = useState(false);
@@ -1292,7 +1294,8 @@ const ProfessorDashboard: React.FC = () => {
             const status = evaluation?.status || (isInterview ? (isInterviewCompleted(interview) ? 'COMPLETED' : 'PENDING') : 'PENDING');
             const isCompleted = status === 'COMPLETED';
 
-            // Get the evaluation to navigate
+            // Resolver la evaluación asociada a la tarjeta. Si la entrevista aún no tiene
+            // su evaluación creada (agenda histórica o manual), el BFF la repara al vuelo.
             const getEvaluationToUse = async () => {
                 if (!isInterview) return evaluation;
 
@@ -1302,7 +1305,24 @@ const ProfessorDashboard: React.FC = () => {
                     e.applicationId === interview.applicationId &&
                     e.evaluationType === expectedEvalType
                 );
-                return matchingEval || evaluation;
+                if (matchingEval) return matchingEval;
+
+                try {
+                    const ensured = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
+                    if (ensured.length > 0) {
+                        setEvaluations(prev => {
+                            const byId = new Map(prev.map(e => [e.id, e]));
+                            ensured.forEach(e => byId.set(e.id, e));
+                            return Array.from(byId.values());
+                        });
+                    }
+                    // El segundo entrevistador puede no tener la evaluación del tipo de la
+                    // pestaña (p.ej. en la entrevista del director de ciclo le corresponde la
+                    // entrevista psicológica); en ese caso se abre la evaluación que sí es suya.
+                    return ensured.find(e => e.evaluationType === expectedEvalType) || ensured[0] || null;
+                } catch {
+                    return null;
+                }
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';

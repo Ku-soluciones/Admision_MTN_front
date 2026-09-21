@@ -142,6 +142,16 @@ class ProfessorEvaluationService {
             throw new Error('Error al obtener las evaluaciones pendientes.');
         }
     }
+
+    /**
+     * Repara/crea las evaluaciones vinculadas a una entrevista (idempotente en el BFF).
+     * Cubre entrevistas históricas o agendadas manualmente cuyas evaluaciones no existen.
+     */
+    async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
+        const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
+        const evaluations = response.data?.data || response.data || [];
+        return this.mapToProfessorEvaluations(Array.isArray(evaluations) ? evaluations : []);
+    }
     
     /**
      * Obtener estadísticas de evaluaciones del profesor

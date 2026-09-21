@@ -113,7 +113,6 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
       if (prekinderApplication) {
         const related = prekinderApplications?.filter(candidate =>
           candidate.academicYear === prekinderApplication.academicYear
-          && candidate.processName === prekinderApplication.processName
         ) ?? [prekinderApplication];
         setEligibleApplications([prekinderApplication]);
         await selectApplication(prekinderApplication, related);
@@ -152,6 +151,13 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
       : allApplications.filter(candidate => !isPrekinderApplication(candidate)
           && (candidate.familyId ?? candidate.id) === (app.familyId ?? app.id)
           && (candidate.processKey ?? '') === (app.processKey ?? ''));
+    const familyChildren = familyApplications.map(candidate => ({
+      childName: isPrekinderApplication(candidate)
+        ? `${candidate.firstName} ${candidate.paternalLastName} ${candidate.maternalLastName || ''}`.trim()
+        : `${candidate.student?.firstName || ''} ${candidate.student?.lastName || ''}`.trim(),
+      description: '',
+      dream: '',
+    }));
     setFormData(prev => ({
       ...prev,
       email: user?.email || (prekinder ? details?.guardian?.email : app.applicantUser?.email) || '',
@@ -164,13 +170,7 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
       gradeApplied: prekinder ? app.gradeApplied : app.student?.gradeApplied || '',
       fatherName: prekinder ? details?.father?.fullName || '' : app.father?.fullName || '',
       motherName: prekinder ? details?.mother?.fullName || '' : app.mother?.fullName || '',
-      childrenDescriptions: familyApplications.map(candidate => ({
-        childName: isPrekinderApplication(candidate)
-          ? `${candidate.firstName} ${candidate.paternalLastName} ${candidate.maternalLastName || ''}`.trim()
-          : `${candidate.student?.firstName || ''} ${candidate.student?.lastName || ''}`.trim(),
-        description: '',
-        dream: '',
-      }))
+      childrenDescriptions: familyChildren,
     }));
 
     try {
@@ -178,12 +178,16 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         ? await guardianPrekinderService.getComplementaryForm(app.applicationId)
         : await applicationService.getComplementaryForm(app.id);
       if (complementaryData && complementaryData.id) {
-        setFormData(prev => ({ ...prev, ...complementaryData }));
-        // En Prekínder el formulario pertenece a la familia y al proceso: si ya fue enviado,
-        // el hermano o hermana lo comparte y no debe completarlo otra vez. Sólo se reabre con
-        // una solicitud de corrección vigente.
-        setIsReadOnly(complementaryData.processOpen === false
-          || (prekinder && complementaryData.isSubmitted === true && complementaryData.correctionOpen !== true));
+        const savedChildren = Array.isArray(complementaryData.childrenDescriptions)
+          ? complementaryData.childrenDescriptions as ChildDescription[]
+          : [];
+        const childrenDescriptions = familyChildren.map(child =>
+          savedChildren.find(saved => saved.childName.trim().toLocaleLowerCase('es-CL')
+            === child.childName.trim().toLocaleLowerCase('es-CL')) ?? child);
+        setFormData(prev => ({ ...prev, ...complementaryData, childrenDescriptions }));
+        // En Prekínder el formulario pertenece a la familia: permanece editable mientras el
+        // proceso esté abierto para poder incorporar hermanos postulados posteriormente.
+        setIsReadOnly(complementaryData.processOpen === false);
       }
     } catch {
       // Formulario inexistente: flujo normal.
@@ -356,8 +360,8 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         <Card className="p-4 sm:p-6 mb-6 bg-gradient-to-r from-azul-monte-tabor to-blue-700 text-white">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Formulario Complementario de Postulación</h1>
-              <p className="text-blue-100">Complete la siguiente información sobre su familia y motivaciones</p>
+              <h1 className="text-3xl font-bold mb-2">Formulario familiar de admisión</h1>
+              <p className="text-blue-100">Un único formulario para la familia y todos sus postulantes del proceso</p>
             </div>
             <Button
                 variant="outline"

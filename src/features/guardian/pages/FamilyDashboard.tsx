@@ -354,8 +354,15 @@ const FamilyDashboard: React.FC = () => {
     : (applications.length > 0 ? applications[0] : null);
   const payableApplications = realApplications.filter(app => app.canFillComplementaryForm || app.hasComplementaryForm);
   const hasComplementaryFormAccess = payableApplications.length > 0;
+  const prekinderFamilyFormApplication = prekinderApplications.find(application => application.hasComplementaryForm)
+    || prekinderApplications.find(application => application.canFillComplementaryForm)
+    || null;
+  const prekinderFamilyApplications = prekinderFamilyFormApplication
+    ? prekinderApplications.filter(application =>
+        application.academicYear === prekinderFamilyFormApplication.academicYear)
+    : [];
   const activePrekinderFormApplication = selectedPrekinderFormApplication
-    || (!hasRealApplication ? prekinderApplications.find(application => application.paymentStatus === 'PAID') || null : null);
+    || prekinderFamilyFormApplication;
   const visibleSections = sections;
   const availableDocumentGroups = documentGroups.filter(group => group.documents.length > 0);
   const totalDocuments = availableDocumentGroups.reduce((total, group) => total + group.documents.length, 0);
@@ -501,6 +508,35 @@ const FamilyDashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {prekinderFamilyFormApplication && (
+                  <section className="mb-4 flex flex-col gap-4 rounded-xl bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="prekinder-family-form-title">
+                    <div>
+                      <h3 id="prekinder-family-form-title" className="font-semibold text-azul-monte-tabor">
+                        Formulario familiar · Proceso {prekinderFamilyFormApplication.academicYear}
+                      </h3>
+                      <p className="mt-1 text-sm text-blue-900">
+                        Se completa una sola vez e incluye a {prekinderFamilyApplications.length === 1
+                          ? 'su postulante'
+                          : `sus ${prekinderFamilyApplications.length} postulantes`} de Prekínder.
+                      </p>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPrekinderFormApplication(prekinderFamilyFormApplication);
+                        setActiveSection('formulario-complementario');
+                      }}
+                      className="flex shrink-0 items-center gap-2 text-white"
+                    >
+                      <FiFileText className="h-4 w-4" />
+                      {prekinderFamilyFormApplication.hasComplementaryForm
+                        ? 'Ver formulario familiar'
+                        : 'Completar formulario familiar'}
+                    </Button>
+                  </section>
+                )}
+
                 <div className="divide-y divide-gray-200 rounded-xl border border-gray-200">
                     {prekinderApplications.map(application => (
                       <div key={application.applicationId} className="flex flex-col gap-4 p-4">
@@ -538,20 +574,7 @@ const FamilyDashboard: React.FC = () => {
                                     ? 'Continuar pago'
                                     : `Pagar postulación${formatPaymentAmount(application.paymentAmount, application.paymentCurrency) ? ` · ${formatPaymentAmount(application.paymentAmount, application.paymentCurrency)}` : ''}`}
                               </Button>
-                            ) : (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedPrekinderFormApplication(application);
-                                  setActiveSection('formulario-complementario');
-                                }}
-                                className="flex items-center gap-2 text-white"
-                              >
-                                <FiFileText className="h-4 w-4" />
-                                {application.hasComplementaryForm ? 'Ver formulario' : 'Completar formulario'}
-                              </Button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                         {application.paymentStatus === 'PAID' && (
@@ -984,7 +1007,7 @@ const FamilyDashboard: React.FC = () => {
             {activePrekinderFormApplication ? (
               <ComplementaryApplicationForm
                 prekinderApplication={activePrekinderFormApplication}
-                prekinderApplications={prekinderApplications}
+                prekinderApplications={prekinderFamilyApplications}
               />
             ) : hasRealApplication ? (
               hasComplementaryFormAccess ? (
