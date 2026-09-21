@@ -62,6 +62,8 @@ export interface ApplicationResponse {
 
 export interface Application {
     id: number;
+    familyId?: number;
+    processKey?: string;
     student: {
         id?: string;
         fullName?: string;
@@ -149,6 +151,12 @@ export interface PaymentCheckoutResponse {
     providerInvoiceId?: string;
     providerStatus?: string;
     lastStatusCheckedAt?: string;
+}
+
+export interface FamilyCandidate {
+    familyId: number;
+    applicantCount: number;
+    applicantFirstNames?: string;
 }
 
 class ApplicationService {
@@ -289,6 +297,16 @@ class ApplicationService {
         } catch (error: any) {
             throw new Error('Error al obtener las postulaciones');
         }
+    }
+
+    async getFamilyCandidates(applicationId: number): Promise<FamilyCandidate[]> {
+        const response = await api.get(`/v1/families/applications/${applicationId}/candidates`);
+        const data = response.data?.data || response.data || [];
+        return Array.isArray(data) ? data : [];
+    }
+
+    async confirmFamilyAssociation(applicationId: number, familyId: number): Promise<void> {
+        await api.post(`/v1/families/applications/${applicationId}/association`, { familyId });
     }
     
     async getApplicationById(id: number): Promise<Application> {

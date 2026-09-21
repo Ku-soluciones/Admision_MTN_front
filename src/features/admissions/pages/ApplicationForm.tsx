@@ -1702,6 +1702,31 @@ const ApplicationForm: React.FC = () => {
                     }
                     setSubmittedApplicationId(applicationId);
 
+                    if (!isEditMode && !isPrekinder) {
+                        try {
+                            const candidates = await applicationService.getFamilyCandidates(Number(applicationId));
+                            if (candidates.length === 1) {
+                                const candidate = candidates[0];
+                                const children = candidate.applicantFirstNames
+                                    ? ` (${candidate.applicantFirstNames})`
+                                    : '';
+                                const confirmed = window.confirm(
+                                    `Encontramos un grupo familiar existente con ${candidate.applicantCount} postulante(s)${children}. `
+                                    + '¿Desea asociar esta postulación al mismo formulario familiar?'
+                                );
+                                if (confirmed) {
+                                    await applicationService.confirmFamilyAssociation(Number(applicationId), candidate.familyId);
+                                }
+                            }
+                        } catch {
+                            addNotification({
+                                type: 'info',
+                                title: 'Postulación creada',
+                                message: 'No fue posible revisar ahora la asociación familiar; puede solicitarla desde admisiones.'
+                            });
+                        }
+                    }
+
                     // El envío fue exitoso: descartar el borrador local.
                     clearDraft();
                     if (isPrekinder && activePrekinderOption) {

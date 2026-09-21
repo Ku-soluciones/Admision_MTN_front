@@ -56,6 +56,7 @@ interface ComplementaryFormData {
 interface ComplementaryApplicationFormProps {
   applications?: Application[];
   prekinderApplication?: GuardianPrekinderApplication;
+  prekinderApplications?: GuardianPrekinderApplication[];
 }
 
 type ComplementaryApplication = Application | GuardianPrekinderApplication;
@@ -66,6 +67,7 @@ const isPrekinderApplication = (application: ComplementaryApplication): applicat
 const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> = ({
   applications: providedApplications,
   prekinderApplication,
+  prekinderApplications,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -103,14 +105,18 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
 
   useEffect(() => {
     loadApplicationData();
-  }, [providedApplications, prekinderApplication]);
+  }, [providedApplications, prekinderApplication, prekinderApplications]);
 
   const loadApplicationData = async () => {
     try {
       setLoading(true);
       if (prekinderApplication) {
+        const related = prekinderApplications?.filter(candidate =>
+          candidate.academicYear === prekinderApplication.academicYear
+          && candidate.processName === prekinderApplication.processName
+        ) ?? [prekinderApplication];
         setEligibleApplications([prekinderApplication]);
-        await selectApplication(prekinderApplication);
+        await selectApplication(prekinderApplication, related);
         return;
       }
       const dashboardData = providedApplications
@@ -118,10 +124,14 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         : await applicationService.getDashboardData();
 
       if (dashboardData && dashboardData.applications && dashboardData.applications.length > 0) {
-        const eligible = dashboardData.applications.filter((app: Application) => app.canFillComplementaryForm && !app.hasComplementaryForm);
-        setEligibleApplications(eligible);
-        if (eligible.length > 0) {
-          await selectApplication(eligible[0]);
+        const accessible = dashboardData.applications.filter((app: Application) => app.canFillComplementaryForm || app.hasComplementaryForm);
+        const families = accessible.filter((app: Application, index: number, all: Application[]) =>
+          all.findIndex(candidate => (candidate.familyId ?? candidate.id) === (app.familyId ?? app.id)
+            && (candidate.processKey ?? '') === (app.processKey ?? '')) === index
+        );
+        setEligibleApplications(families);
+        if (families.length > 0) {
+          await selectApplication(families[0], accessible);
         }
       }
     } catch (error) {
@@ -130,13 +140,18 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
     }
   };
 
-  const selectApplication = async (app: ComplementaryApplication) => {
+  const selectApplication = async (app: ComplementaryApplication, allApplications: ComplementaryApplication[] = eligibleApplications) => {
     const prekinder = isPrekinderApplication(app);
     const selectedId = prekinder ? app.applicationId : app.id;
     setApplicationId(selectedId);
     setSelectedSource(prekinder ? 'PREKINDER' : 'GENERAL');
     setIsReadOnly(false);
     const details = prekinder ? app.applicationDetails : null;
+    const familyApplications = prekinder
+      ? allApplications.filter(candidate => isPrekinderApplication(candidate))
+      : allApplications.filter(candidate => !isPrekinderApplication(candidate)
+          && (candidate.familyId ?? candidate.id) === (app.familyId ?? app.id)
+          && (candidate.processKey ?? '') === (app.processKey ?? ''));
     setFormData(prev => ({
       ...prev,
       email: user?.email || (prekinder ? details?.guardian?.email : app.applicantUser?.email) || '',
@@ -149,13 +164,13 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
       gradeApplied: prekinder ? app.gradeApplied : app.student?.gradeApplied || '',
       fatherName: prekinder ? details?.father?.fullName || '' : app.father?.fullName || '',
       motherName: prekinder ? details?.mother?.fullName || '' : app.mother?.fullName || '',
-      childrenDescriptions: [{
-        childName: prekinder
-          ? `${app.firstName} ${app.paternalLastName} ${app.maternalLastName || ''}`.trim()
-          : `${app.student?.firstName || ''} ${app.student?.lastName || ''}`.trim(),
+      childrenDescriptions: familyApplications.map(candidate => ({
+        childName: isPrekinderApplication(candidate)
+          ? `${candidate.firstName} ${candidate.paternalLastName} ${candidate.maternalLastName || ''}`.trim()
+          : `${candidate.student?.firstName || ''} ${candidate.student?.lastName || ''}`.trim(),
         description: '',
         dream: '',
-      }]
+      }))
     }));
 
     try {
@@ -164,9 +179,7 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         : await applicationService.getComplementaryForm(app.id);
       if (complementaryData && complementaryData.id) {
         setFormData(prev => ({ ...prev, ...complementaryData }));
-        if (complementaryData.isSubmitted || complementaryData.is_submitted) {
-          setIsReadOnly(true);
-        }
+        setIsReadOnly(complementaryData.processOpen === false);
       }
     } catch {
       // Formulario inexistente: flujo normal.
@@ -359,7 +372,7 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         {/* Important Notice */}
         {eligibleApplications.length > 1 && !isReadOnly && (
           <Card className="p-4 mb-6">
-            <label className="block text-sm font-medium text-gris-piedra mb-2">Postulante</label>
+            <label className="block text-sm font-medium text-gris-piedra mb-2">Grupo familiar y proceso</label>
             <select
               value={applicationId || ''}
               onChange={(event) => {
@@ -376,8 +389,8 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
                   value={isPrekinderApplication(app) ? app.applicationId : app.id}
                 >
                   {isPrekinderApplication(app)
-                    ? `${app.firstName} ${app.paternalLastName} - ${app.gradeApplied}`
-                    : `${app.student?.firstName} ${app.student?.lastName} - ${app.student?.gradeApplied}`}
+                    ? `${app.processName || 'Prekínder'} · grupo familiar`
+                    : `${app.processKey || app.student?.gradeApplied || 'Admisión'} · grupo familiar`}
                 </option>
               ))}
             </select>

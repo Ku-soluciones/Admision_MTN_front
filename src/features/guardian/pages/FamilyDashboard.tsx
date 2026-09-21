@@ -352,7 +352,7 @@ const FamilyDashboard: React.FC = () => {
   const myApplication = hasRealApplication
     ? realApplications[selectedApplicationIndex]
     : (applications.length > 0 ? applications[0] : null);
-  const payableApplications = realApplications.filter(app => app.canFillComplementaryForm && !app.hasComplementaryForm);
+  const payableApplications = realApplications.filter(app => app.canFillComplementaryForm || app.hasComplementaryForm);
   const hasComplementaryFormAccess = payableApplications.length > 0;
   const activePrekinderFormApplication = selectedPrekinderFormApplication
     || (!hasRealApplication ? prekinderApplications.find(application => application.paymentStatus === 'PAID') || null : null);
@@ -970,7 +970,10 @@ const FamilyDashboard: React.FC = () => {
         return (
           <div>
             {activePrekinderFormApplication ? (
-              <ComplementaryApplicationForm prekinderApplication={activePrekinderFormApplication} />
+              <ComplementaryApplicationForm
+                prekinderApplication={activePrekinderFormApplication}
+                prekinderApplications={prekinderApplications}
+              />
             ) : hasRealApplication ? (
               hasComplementaryFormAccess ? (
                 <ComplementaryApplicationForm applications={payableApplications} />
