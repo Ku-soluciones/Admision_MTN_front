@@ -23,6 +23,7 @@ import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../pack
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 import {
     prekinderApi,
+    type FlowApplication,
     type PrekinderApplicationOption,
 } from '../../prekinder/services/api';
 
@@ -411,8 +412,12 @@ const ApplicationForm: React.FC = () => {
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
     const [submittedApplicationId, setSubmittedApplicationId] = useState<number | string | null>(null);
+    const [submittedPrekinderApplication, setSubmittedPrekinderApplication] = useState<FlowApplication | null>(null);
     const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, File>>(new Map());
+    const [uploadFailures, setUploadFailures] = useState<Map<string, string>>(new Map());
+    const [uploadedDocumentCount, setUploadedDocumentCount] = useState(0);
     const [existingDocuments, setExistingDocuments] = useState<any[]>([]);
+    const clientSubmissionIdRef = useRef(crypto.randomUUID());
 
     // Flag to indicate if user is adding another child (skip family data steps)
     const [isAddingAnotherChild, setIsAddingAnotherChild] = useState(false);
@@ -494,6 +499,10 @@ const ApplicationForm: React.FC = () => {
         serverDraftRestoredRef.current = true;
         prekinderApi.applicationDraft(activePrekinderOption.processId).then((draft) => {
             if (!draft) return;
+            const restoredSubmissionId = typeof draft.data.__clientSubmissionId === 'string'
+                ? draft.data.__clientSubmissionId
+                : crypto.randomUUID();
+            clientSubmissionIdRef.current = restoredSubmissionId;
             setData(draft.data);
             setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
             setServerDraftVersion(draft.version);
@@ -521,6 +530,7 @@ const ApplicationForm: React.FC = () => {
                 const option = options[0];
                 setData((current: any) => ({
                     ...current,
+                    __clientSubmissionId: current.__clientSubmissionId || clientSubmissionIdRef.current,
                     grade: 'PRE_KINDER',
                     applicationYear: String(option.academicYear),
                     admissionPreference: option.waveType === 'STAFF_OR_ALUMNI'
@@ -933,6 +943,12 @@ const ApplicationForm: React.FC = () => {
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
             if (location.state?.prefillFamilyData && location.state?.familyData) {
                 const familyData = location.state.familyData;
+                clientSubmissionIdRef.current = crypto.randomUUID();
+                setSubmittedApplicationId(null);
+                setSubmittedPrekinderApplication(null);
+                setUploadedDocuments(new Map());
+                setUploadFailures(new Map());
+                setUploadedDocumentCount(0);
 
                 // Hide auth form since user is already authenticated
                 setShowAuthForm(false);
@@ -954,6 +970,7 @@ const ApplicationForm: React.FC = () => {
                 // Y también pre-llenar la dirección del estudiante (típicamente la misma que la familia)
                 // Y datos de residencia geográfica de la postulación anterior
                 setData({
+                    __clientSubmissionId: clientSubmissionIdRef.current,
                     // Application year (always next year)
                     applicationYear: nextYear.toString(),
 
@@ -1489,6 +1506,7 @@ const ApplicationForm: React.FC = () => {
                 try {
                     // Determinar si estamos en modo edición o creación
                     const isEditMode = location.state?.editMode && location.state?.applicationId;
+                    const applicationWasAlreadyCreated = isPrekinder && submittedApplicationId != null;
                     let applicationRequest: any;
                     let response;
 
@@ -1496,6 +1514,14 @@ const ApplicationForm: React.FC = () => {
                         if (!activePrekinderOption) {
                             throw new Error('No existe una etapa de postulación Prekínder abierta.');
                         }
+                        if (submittedPrekinderApplication) {
+                            response = {
+                                id: submittedPrekinderApplication.applicationId,
+                                status: submittedPrekinderApplication.status,
+                                submissionDate: submittedPrekinderApplication.createdAt,
+                                folio: submittedPrekinderApplication.folio,
+                            };
+                        } else {
                         const isAlumni = data.admissionPreference === 'HIJO_EX_ALUMNO';
                         const alumniDeclaration = (parent: 'FATHER' | 'MOTHER') =>
                             isAlumni && data.alumniParent === parent
@@ -1503,6 +1529,7 @@ const ApplicationForm: React.FC = () => {
                                 : { status: 'NO_ALUMNI' };
                         const prekinderResponse = await prekinderApi.submitApplication({
                             processId: activePrekinderOption.processId,
+                            clientSubmissionId: clientSubmissionIdRef.current,
                             rut: data.rut,
                             firstName: data.firstName,
                             paternalLastName: data.paternalLastName,
@@ -1581,7 +1608,10 @@ const ApplicationForm: React.FC = () => {
                             id: prekinderResponse.applicationId,
                             status: prekinderResponse.status,
                             submissionDate: prekinderResponse.createdAt,
+                            folio: prekinderResponse.folio,
                         };
+                        setSubmittedPrekinderApplication(prekinderResponse);
+                        }
                     } else if (isEditMode) {
                         // Formato anidado para PUT (actualización)
                         applicationRequest = {
@@ -1727,56 +1757,79 @@ const ApplicationForm: React.FC = () => {
                         }
                     }
 
-                    // El envío fue exitoso: descartar el borrador local.
-                    clearDraft();
-                    if (isPrekinder && activePrekinderOption) {
-                        void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+                    if (!applicationWasAlreadyCreated) {
+                        addApplication({
+                            id: applicationId?.toString() || Date.now().toString(),
+                            applicant: {
+                                id: applicationId?.toString() || Date.now().toString(),
+                                firstName: data.firstName,
+                                lastName: `${data.paternalLastName} ${data.maternalLastName}`,
+                                birthDate: data.birthDate,
+                                grade: data.grade
+                            },
+                            status: response.status || 'pending',
+                            submissionDate: response.submissionDate || new Date().toISOString(),
+                            documents: []
+                        });
                     }
 
-                    // Subir documentos si hay alguno seleccionado
                     let documentsUploaded = 0;
-                    if (uploadedDocuments.size > 0) {
-
-                        const uploadPromises = Array.from(uploadedDocuments.entries()).map(([docType, file]) => {
-                            return isPrekinder
-                                ? prekinderApi.uploadDocument(String(applicationId), docType, file)
-                                : applicationService.uploadDocument(applicationId, file, docType);
+                    if (uploadedDocuments.size > 0 && isPrekinder) {
+                        const pendingDocuments = Array.from(uploadedDocuments.entries());
+                        const results = await Promise.allSettled(
+                            pendingDocuments.map(([docType, file]) =>
+                                prekinderApi.uploadDocument(String(applicationId), docType, file)),
+                        );
+                        const failed = new Map<string, string>();
+                        const remaining = new Map(uploadedDocuments);
+                        results.forEach((result, index) => {
+                            const [docType, file] = pendingDocuments[index];
+                            if (result.status === 'fulfilled') {
+                                remaining.delete(docType);
+                                documentsUploaded += 1;
+                            } else {
+                                const reason = result.reason instanceof Error
+                                    ? result.reason.message
+                                    : 'No fue posible cargar el archivo.';
+                                failed.set(docType, `${file.name}: ${reason}`);
+                            }
                         });
-
-                        await Promise.all(uploadPromises);
+                        setUploadedDocuments(remaining);
+                        setUploadFailures(failed);
+                        setUploadedDocumentCount((current) => current + documentsUploaded);
+                        if (failed.size > 0) {
+                            addNotification({
+                                type: 'warning',
+                                title: 'Postulación creada; faltan documentos',
+                                message: `La postulación quedó guardada. Reintenta los ${failed.size} adjunto(s) pendiente(s).`,
+                            });
+                            return;
+                        }
+                    } else if (uploadedDocuments.size > 0) {
+                        await Promise.all(Array.from(uploadedDocuments.entries()).map(([docType, file]) =>
+                            applicationService.uploadDocument(applicationId, file, docType)));
                         documentsUploaded = uploadedDocuments.size;
-                        
-                        addNotification({
-                            type: 'success',
-                            title: 'Documentos subidos',
-                            message: `${uploadedDocuments.size} documento(s) subido(s) exitosamente`
-                        });
-                        
-                        // Limpiar documentos después de subir
                         setUploadedDocuments(new Map());
                     }
-                    
-                    // Agregar a la lista local (opcional, para compatibilidad con el contexto existente)
-                    addApplication({
-                        id: applicationId?.toString() || Date.now().toString(),
-                        applicant: {
-                            id: applicationId?.toString() || Date.now().toString(),
-                            firstName: data.firstName,
-                            lastName: `${data.paternalLastName} ${data.maternalLastName}`,
-                            birthDate: data.birthDate,
-                            grade: data.grade
-                        },
-                        status: response.status || 'pending',
-                        submissionDate: response.submissionDate || new Date().toISOString(),
-                        documents: []
-                    });
+
+                    setUploadFailures(new Map());
+                    clearDraft();
+                    if (isPrekinder && activePrekinderOption) {
+                        await prekinderApi.deleteApplicationDraft(activePrekinderOption.processId).catch(() => {
+                            // La postulación y sus documentos ya están confirmados; el borrador residual
+                            // se puede limpiar en una visita posterior sin convertir el cierre en error.
+                        });
+                    }
                     
                     // Mensaje final según si se subieron documentos o no
-                    if (documentsUploaded > 0) {
+                    const totalDocumentsUploaded = isPrekinder
+                        ? uploadedDocumentCount + documentsUploaded
+                        : documentsUploaded;
+                    if (totalDocumentsUploaded > 0) {
                         addNotification({
                             type: 'success',
                             title: 'Postulación completada',
-                            message: `Su postulación y ${documentsUploaded} documento(s) han sido enviados exitosamente.`
+                            message: `Su postulación y ${totalDocumentsUploaded} documento(s) han sido enviados exitosamente.`
                         });
                     } else {
                         addNotification({
@@ -1880,9 +1933,13 @@ const ApplicationForm: React.FC = () => {
             return;
         }
 
-        const newDocs = new Map(uploadedDocuments);
-        newDocs.set(documentType, file);
-        setUploadedDocuments(newDocs);
+        setUploadedDocuments((current) => new Map(current).set(documentType, file));
+        setUploadFailures((current) => {
+            if (!current.has(documentType)) return current;
+            const next = new Map(current);
+            next.delete(documentType);
+            return next;
+        });
 
         addNotification({
             type: 'success',
@@ -3253,6 +3310,21 @@ const ApplicationForm: React.FC = () => {
                                             </p>
                                         </div>
                                     )}
+                                    {submittedApplicationId && uploadFailures.size > 0 && (
+                                        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4" role="alert">
+                                            <p className="font-semibold text-amber-900">
+                                                La postulación fue creada; faltan documentos por cargar.
+                                            </p>
+                                            <p className="mt-1 text-sm text-amber-800">
+                                                Identificador: {submittedApplicationId}. Los archivos ya cargados no se repetirán.
+                                            </p>
+                                            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">
+                                                {Array.from(uploadFailures.entries()).map(([category, failure]) => (
+                                                    <li key={category}><strong>{getDocumentLabel(category)}:</strong> {failure}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         
@@ -3288,6 +3360,11 @@ const ApplicationForm: React.FC = () => {
                         <p className="text-sm text-gris-piedra mt-1">
                             Te llegará un correo de confirmación con los próximos pasos.
                         </p>
+                        {submittedPrekinderApplication?.folio && (
+                            <p className="mt-3 text-sm font-semibold text-azul-monte-tabor">
+                                Folio: {submittedPrekinderApplication.folio}
+                            </p>
+                        )}
 
                         <div className="mt-8 p-5 bg-azul-monte-tabor/5 border border-azul-monte-tabor/10 rounded-lg text-left">
                             <h4 className="font-semibold text-azul-monte-tabor mb-3">Qué sigue</h4>
@@ -3398,6 +3475,12 @@ const ApplicationForm: React.FC = () => {
                                         void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
                                     }
                                     setData({});
+                                    clientSubmissionIdRef.current = crypto.randomUUID();
+                                    setSubmittedApplicationId(null);
+                                    setSubmittedPrekinderApplication(null);
+                                    setUploadedDocuments(new Map());
+                                    setUploadFailures(new Map());
+                                    setUploadedDocumentCount(0);
                                     setCurrentStep(0);
                                     setDraftRestored(false);
                                 }}
@@ -3457,7 +3540,7 @@ const ApplicationForm: React.FC = () => {
                             const isDone = index < currentStep;
                             const isCurrent = index === currentStep;
                             const isLast = index === steps.length - 1;
-                            const isNavigable = isDone; // Solo pasos completados son clickeables
+                            const isNavigable = isDone && !submittedApplicationId;
 
                             const circleClasses = `relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300 motion-reduce:transition-none ${
                                 isDone
@@ -3531,7 +3614,7 @@ const ApplicationForm: React.FC = () => {
                 {/* Navigation Buttons */}
                 {currentStep < steps.length - 1 && (
                     <div className={`mt-8 flex ${currentStep === 0 ? 'justify-end' : 'justify-between'}`}>
-                        {currentStep > 0 && (
+                        {currentStep > 0 && !(currentStep === 7 && submittedApplicationId) && (
                             <Button variant="outline" onClick={prevStep}>
                                 <span className="inline-flex items-center gap-1.5">
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -3551,7 +3634,11 @@ const ApplicationForm: React.FC = () => {
                         >
                             <span className="inline-flex items-center gap-1.5">
                                 {currentStep === 7
-                                    ? (location.state?.editMode ? 'Guardar Cambios' : 'Enviar Postulación')
+                                    ? (location.state?.editMode
+                                        ? 'Guardar Cambios'
+                                        : submittedApplicationId && uploadFailures.size > 0
+                                            ? 'Reintentar adjuntos pendientes'
+                                            : 'Enviar Postulación')
                                     : 'Siguiente'
                                 }
                                 {currentStep < 7 && (

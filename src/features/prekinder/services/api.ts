@@ -279,6 +279,7 @@ export type FlowApplication = {
   identity: ApplicantIdentity;
   applicationDetails: PrekinderApplicationDetails | null;
   createdAt: string;
+  folio: string | null;
 };
 
 export type Professional = {
@@ -900,6 +901,7 @@ export const prekinderApi = {
     ),
   submitApplication: (input: {
     processId: string;
+    clientSubmissionId: string;
     rut: string;
     firstName: string;
     paternalLastName: string;
