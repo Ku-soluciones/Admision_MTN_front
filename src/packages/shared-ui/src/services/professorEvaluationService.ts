@@ -233,7 +233,8 @@ class ProfessorEvaluationService {
 
     async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
         const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
-        const evaluations = response.data?.data || [];
+        const payload = response.data?.data ?? response.data;
+        const evaluations = Array.isArray(payload) ? payload : payload ? [payload] : [];
         return this.mapToProfessorEvaluations(evaluations);
     }
     
@@ -241,7 +242,9 @@ class ProfessorEvaluationService {
      * Mapear respuesta de la API a formato del frontend
      */
     private mapToProfessorEvaluations(apiEvaluations: any[]): ProfessorEvaluation[] {
-        return apiEvaluations.map((evaluation) => this.mapToProfessorEvaluation(evaluation));
+        return apiEvaluations
+            .filter((evaluation) => evaluation && typeof evaluation === 'object')
+            .map((evaluation) => this.mapToProfessorEvaluation(evaluation));
     }
     
     private mapToProfessorEvaluation(apiEvaluation: any): ProfessorEvaluation {
