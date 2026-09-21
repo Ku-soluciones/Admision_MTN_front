@@ -5,7 +5,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 
 interface PsychologicalInterviewFormProps {
-  evaluation: Evaluation;
+  evaluation?: Evaluation | null;
   onSave: (data: Partial<Evaluation>) => void;
   onComplete: (data: Partial<Evaluation>) => void;
   isSubmitting: boolean;
@@ -18,14 +18,14 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
   isSubmitting
 }) => {
   const [formData, setFormData] = useState<Partial<Evaluation>>({
-    observations: evaluation.observations || '',
-    strengths: evaluation.strengths || '',
-    areasForImprovement: evaluation.areasForImprovement || '',
-    recommendations: evaluation.recommendations || '',
-    socialSkillsAssessment: evaluation.socialSkillsAssessment || '',
-    emotionalMaturity: evaluation.emotionalMaturity || '',
-    motivationAssessment: evaluation.motivationAssessment || '',
-    familySupportAssessment: evaluation.familySupportAssessment || ''
+    observations: evaluation?.observations || '',
+    strengths: evaluation?.strengths || '',
+    areasForImprovement: evaluation?.areasForImprovement || '',
+    recommendations: evaluation?.recommendations || '',
+    socialSkillsAssessment: evaluation?.socialSkillsAssessment || '',
+    emotionalMaturity: evaluation?.emotionalMaturity || '',
+    motivationAssessment: evaluation?.motivationAssessment || '',
+    familySupportAssessment: evaluation?.familySupportAssessment || ''
   });
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -64,6 +64,17 @@ const PsychologicalInterviewForm: React.FC<PsychologicalInterviewFormProps> = ({
       onComplete(formData);
     }
   };
+
+  if (!evaluation) {
+    return (
+      <Card className="p-6 bg-red-50 border-red-200" role="alert">
+        <h3 className="font-semibold text-red-800">No se pudo cargar la entrevista psicológica</h3>
+        <p className="mt-1 text-sm text-red-700">
+          Vuelve al portal de profesores e intenta abrirla nuevamente.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

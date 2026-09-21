@@ -455,7 +455,7 @@ const ProfessorDashboard: React.FC = () => {
                 contentType: doc.contentType
             });
         } catch (err) {
-            notify('error', 'Error', 'No se pudo visualizar el documento');
+            notify.error('No se pudo visualizar el documento');
         }
     };
 
@@ -1059,10 +1059,30 @@ const ProfessorDashboard: React.FC = () => {
 
     const getEvaluationTypeForInterview = (interview: Interview): EvaluationType => {
         // En las entrevistas de Director de Ciclo participan dos profesionales.
-        // Cada uno debe abrir su propia pauta, aunque la tarjeta provenga de la
-        // misma entrevista compartida.
-        if (currentProfessor?.role === 'PSYCHOLOGIST' && interview.type === 'CYCLE_DIRECTOR') {
-            return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+        // La asignación efectiva retornada por el BFF prevalece sobre el rol
+        // genérico guardado en el navegador: un psicólogo también puede ser el
+        // entrevistador principal y completar la pauta de Director de Ciclo.
+        if (interview.type === 'CYCLE_DIRECTOR') {
+            const currentProfessorId = Number(currentProfessor?.id);
+            if (Number.isFinite(currentProfessorId)) {
+                if (currentProfessorId === Number(interview.interviewerId)) {
+                    return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+                }
+                if (currentProfessorId === Number(interview.secondInterviewerId)) {
+                    return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+                }
+            }
+
+            const assignedEvaluations = evaluations.filter(e => e.applicationId === interview.applicationId);
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)) {
+                return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+            }
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)) {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
+            if (currentProfessor?.role === 'PSYCHOLOGIST') {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
         }
 
         return interview.type === 'CYCLE_DIRECTOR'
@@ -1187,7 +1207,15 @@ const ProfessorDashboard: React.FC = () => {
                 // creadas. El endpoint es idempotente y devuelve solo las pautas
                 // accesibles para el usuario autenticado.
                 const ensuredEvaluations = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
-                return ensuredEvaluations.find(e => e.evaluationType === expectedEvalType) || null;
+                const ensuredMatch = ensuredEvaluations.find(e => e.evaluationType === expectedEvalType);
+                if (ensuredMatch) return ensuredMatch;
+
+                // El BFF ya filtró las pautas por asignación. Para el botón "Realizar" se abre
+                // una pauta de entrevista, nunca el informe asociado.
+                return ensuredEvaluations.find(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.FAMILY_INTERVIEW)
+                    || null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
@@ -1344,12 +1372,15 @@ const ProfessorDashboard: React.FC = () => {
                                         if (!evalToUse) {
                                             throw new Error('No se encontró una evaluación asociada para tu rol');
                                         }
+                                        if (!Number.isFinite(Number(evalToUse.id))) {
+                                            throw new Error('La evaluación asociada no tiene un identificador válido');
+                                        }
                                         navigate(getEvaluationUrl(evalToUse));
                                     } catch (error: any) {
-                                        notify(
-                                            'error',
-                                            'No se pudo abrir la evaluación',
-                                            error.message || 'Intenta actualizar la página y volver a abrirla'
+                                        notify.error(
+                                            error.message
+                                                ? `No se pudo abrir la evaluación: ${error.message}`
+                                                : 'No se pudo abrir la evaluación. Intenta actualizar la página y volver a abrirla.'
                                         );
                                     } finally {
                                         setOpeningInterviewId(null);
