@@ -688,7 +688,19 @@ const FamilyDashboard: React.FC = () => {
                   {/* Acción sobre el postulante seleccionado */}
                   {myApplication && (
                     <div className="pt-4 border-t border-gray-200">
-                      {myApplication.canFillComplementaryForm && !myApplication.hasComplementaryForm ? (
+                      {myApplication.hasComplementaryForm ? (
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2"
+                          onClick={() => {
+                            setSelectedPrekinderFormApplication(null);
+                            setActiveSection('formulario-complementario');
+                          }}
+                        >
+                          <FiFileText className="w-4 h-4 mr-2" />
+                          Ver Formulario Complementario
+                        </Button>
+                      ) : myApplication.canFillComplementaryForm ? (
                         <Button
                           variant="primary"
                           className="flex items-center gap-2 text-white"

@@ -179,7 +179,11 @@ const ComplementaryApplicationForm: React.FC<ComplementaryApplicationFormProps> 
         : await applicationService.getComplementaryForm(app.id);
       if (complementaryData && complementaryData.id) {
         setFormData(prev => ({ ...prev, ...complementaryData }));
-        setIsReadOnly(complementaryData.processOpen === false);
+        // En Prekínder el formulario pertenece a la familia y al proceso: si ya fue enviado,
+        // el hermano o hermana lo comparte y no debe completarlo otra vez. Sólo se reabre con
+        // una solicitud de corrección vigente.
+        setIsReadOnly(complementaryData.processOpen === false
+          || (prekinder && complementaryData.isSubmitted === true && complementaryData.correctionOpen !== true));
       }
     } catch {
       // Formulario inexistente: flujo normal.
