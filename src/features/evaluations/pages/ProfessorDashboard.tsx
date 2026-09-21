@@ -1187,7 +1187,14 @@ const ProfessorDashboard: React.FC = () => {
                 // creadas. El endpoint es idempotente y devuelve solo las pautas
                 // accesibles para el usuario autenticado.
                 const ensuredEvaluations = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
-                return ensuredEvaluations.find(e => e.evaluationType === expectedEvalType) || null;
+                const ensuredMatch = ensuredEvaluations.find(e => e.evaluationType === expectedEvalType);
+                if (ensuredMatch) return ensuredMatch;
+
+                // El rol guardado en el navegador puede estar desactualizado. El BFF ya filtra
+                // las pautas por el usuario autenticado, por lo que una única pauta retornada es
+                // la fuente de verdad y debe poder abrirse aunque el tipo calculado localmente no
+                // coincida.
+                return ensuredEvaluations.length === 1 ? ensuredEvaluations[0] : null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
@@ -1343,6 +1350,9 @@ const ProfessorDashboard: React.FC = () => {
                                         const evalToUse = await getEvaluationToUse();
                                         if (!evalToUse) {
                                             throw new Error('No se encontró una evaluación asociada para tu rol');
+                                        }
+                                        if (!Number.isFinite(Number(evalToUse.id))) {
+                                            throw new Error('La evaluación asociada no tiene un identificador válido');
                                         }
                                         navigate(getEvaluationUrl(evalToUse));
                                     } catch (error: any) {
