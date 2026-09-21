@@ -455,7 +455,7 @@ const ProfessorDashboard: React.FC = () => {
                 contentType: doc.contentType
             });
         } catch (err) {
-            notify('error', 'Error', 'No se pudo visualizar el documento');
+            notify.error('No se pudo visualizar el documento');
         }
     };
 
@@ -1346,10 +1346,10 @@ const ProfessorDashboard: React.FC = () => {
                                         }
                                         navigate(getEvaluationUrl(evalToUse));
                                     } catch (error: any) {
-                                        notify(
-                                            'error',
-                                            'No se pudo abrir la evaluación',
-                                            error.message || 'Intenta actualizar la página y volver a abrirla'
+                                        notify.error(
+                                            error.message
+                                                ? `No se pudo abrir la evaluación: ${error.message}`
+                                                : 'No se pudo abrir la evaluación. Intenta actualizar la página y volver a abrirla.'
                                         );
                                     } finally {
                                         setOpeningInterviewId(null);
