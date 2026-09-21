@@ -59,6 +59,7 @@ import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
+import { PrekinderInclusionAdminPanel } from "../components/admin/PrekinderInclusionAdminPanel";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
 import {
   journeyErrorMessage,
@@ -841,6 +842,7 @@ export function PrekinderOperations({
             <Applications
               applications={applications}
               busy={busy}
+              onRefresh={() => void loadBase()}
               onReview={(app, decision, reason) =>
                 action(
                   () =>
@@ -1945,6 +1947,7 @@ function Applications({
   applications,
   busy,
   onReview,
+  onRefresh,
 }: {
   applications: FlowApplication[];
   busy: boolean;
@@ -1953,10 +1956,12 @@ function Applications({
     decision: "VERIFIED" | "REJECTED",
     reason: string,
   ) => void;
+  onRefresh: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(0);
+  const [selectedInclusion, setSelectedInclusion] = useState<FlowApplication | null>(null);
   const [sort, setSort] = useState<{ key: "name" | "via" | "estado"; dir: "asc" | "desc" }>({
     key: "name",
     dir: "asc",
@@ -2086,6 +2091,7 @@ function Applications({
                 app={app}
                 busy={busy}
                 onReview={onReview}
+                onOpenInclusion={setSelectedInclusion}
               />
             ))}
             {!filtered.length && (
@@ -2119,6 +2125,13 @@ function Applications({
         </button>
       </div>
       </section>
+      {selectedInclusion && (
+        <PrekinderInclusionAdminPanel
+          application={selectedInclusion}
+          onClose={() => setSelectedInclusion(null)}
+          onApplicationChanged={onRefresh}
+        />
+      )}
     </div>
   );
 }
@@ -2127,6 +2140,7 @@ function ApplicationRow({
   app,
   busy,
   onReview,
+  onOpenInclusion,
 }: {
   app: FlowApplication;
   busy: boolean;
@@ -2135,6 +2149,7 @@ function ApplicationRow({
     decision: "VERIFIED" | "REJECTED",
     reason: string,
   ) => void;
+  onOpenInclusion: (application: FlowApplication) => void;
 }) {
   const [reason, setReason] = useState("");
   const details = app.applicationDetails;
@@ -2166,6 +2181,9 @@ function ApplicationRow({
             <span className="font-semibold">Hermanos:</span>{" "}
             {details?.hasSiblingsInSchool ? "Sí" : "No"}
           </p>
+          <button type="button" className="mt-2 font-bold text-blue-700 hover:underline" onClick={() => onOpenInclusion(app)}>
+            Ver inclusión individual
+          </button>
           <p>
             <span className="font-semibold">Preferencia:</span>{" "}
             {details?.admissionPreference === "HIJO_EX_ALUMNO"

@@ -138,6 +138,36 @@ export type InclusionDeclaration = {
   revisionNumber: number | null;
   revisionState: "DRAFT" | "SUBMITTED" | "REVIEWED" | "WITHDRAWN" | null;
   declaration: Record<string, unknown>;
+  applicant: InclusionApplicant;
+};
+
+export type InclusionApplicant = {
+  applicationId: string;
+  fullName: string;
+  maskedRut: string;
+  processName: string;
+  academicYear: number;
+  folio: string | null;
+};
+
+export type InclusionRevision = {
+  revisionId: string;
+  revisionNumber: number;
+  state: "DRAFT" | "SUBMITTED" | "REVIEWED" | "WITHDRAWN";
+  changeOrigin: "FAMILY" | "ADMIN_DIRECT_EDIT";
+  authorId: string;
+  authorName: string | null;
+  authorRole: string;
+  createdAt: string;
+  reason: string | null;
+  declaration: Record<string, unknown>;
+};
+
+export type AdminInclusionView = {
+  current: InclusionDeclaration;
+  revisions: InclusionRevision[];
+  canDirectEdit: boolean;
+  processOpen: boolean;
 };
 
 export type QuestionnaireVersion = {
@@ -1351,6 +1381,18 @@ export const prekinderApi = {
     apiRequest<InclusionDeclaration>(`/v1/prekinder/applications/${applicationId}/inclusion`, {
       method: "POST",
       body: JSON.stringify(declaration),
+    }),
+  adminInclusion: (applicationId: string) =>
+    apiRequest<AdminInclusionView>(`/v1/prekinder/applications/${applicationId}/inclusion/administrative-view`),
+  correctInclusion: (applicationId: string, answers: Record<string, unknown>, reason: string, expectedVersion: number) =>
+    apiRequest<AdminInclusionView>(`/v1/prekinder/applications/${applicationId}/inclusion/administrative-correction`, {
+      method: "PUT",
+      body: JSON.stringify({ answers, reason, expectedVersion }),
+    }),
+  requestCorrections: (applicationId: string, allowedFields: string[], reason: string, expectedVersion: number) =>
+    apiRequest<FlowApplication>(`/v1/prekinder/applications/${applicationId}/administrative-review/corrections`, {
+      method: "PUT",
+      body: JSON.stringify({ allowedFields, allowedDocumentCategories: [], reason, expectedVersion }),
     }),
   uploadDocument: (applicationId: string, category: string, file: File) => {
     const normalizedApplicationId = applicationId?.trim();

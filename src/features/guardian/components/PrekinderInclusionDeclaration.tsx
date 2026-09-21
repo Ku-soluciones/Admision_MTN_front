@@ -34,6 +34,10 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setRecord(null);
+    setForm(EMPTY_FORM);
+    setMessage(null);
+    setExpanded(false);
     guardianPrekinderService.inclusion(applicationId)
       .then(value => {
         if (!active) return;
@@ -105,6 +109,15 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
         </span>
         {expanded ? <FiChevronUp aria-hidden="true" /> : <FiChevronDown aria-hidden="true" />}
       </button>
+
+      <div className="mt-3 rounded-lg border border-blue-100 bg-white/80 p-3">
+        <p className="font-semibold text-slate-900">{record.applicant.fullName}</p>
+        <p className="mt-1 text-xs text-slate-600">
+          RUT {record.applicant.maskedRut} · {record.applicant.processName} {record.applicant.academicYear}
+          {record.applicant.folio ? ` · Folio ${record.applicant.folio}` : ''}
+        </p>
+        <p className="mt-1 text-xs font-medium text-blue-900">Este formulario corresponde únicamente a este postulante.</p>
+      </div>
 
       {record.declared && (
         <p className="mt-2 text-xs text-slate-600">

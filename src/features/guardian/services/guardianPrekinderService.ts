@@ -56,6 +56,14 @@ export type GuardianPrekinderInclusion = {
   version: number;
   revisionNumber: number | null;
   revisionState: 'DRAFT' | 'SUBMITTED' | 'REVIEWED' | 'WITHDRAWN' | null;
+  applicant: {
+    applicationId: string;
+    fullName: string;
+    maskedRut: string;
+    processName: string;
+    academicYear: number;
+    folio?: string | null;
+  };
   declaration: {
     backgroundSummary?: string;
     currentSupports?: string;
