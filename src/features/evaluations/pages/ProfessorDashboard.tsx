@@ -707,9 +707,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -1104,9 +1103,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -1645,7 +1643,7 @@ const ProfessorDashboard: React.FC = () => {
                                     evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
                                         ? `/profesor/entrevista-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                                        ? `/psychological-interview/${evaluation.id}`
+                                        ? `/profesor/entrevista-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
                                         ? `/profesor/informe-director/${evaluation.id}`
                                         : evaluation.evaluationType === 'FAMILY_INTERVIEW'
@@ -1794,7 +1792,7 @@ const ProfessorDashboard: React.FC = () => {
                                                                     evaluation.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW'
                                                                         ? `/profesor/entrevista-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'PSYCHOLOGICAL_INTERVIEW'
-                                                                        ? `/psychological-interview/${evaluation.id}`
+                                                                        ? `/profesor/entrevista-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'CYCLE_DIRECTOR_REPORT'
                                                                         ? `/profesor/informe-director/${evaluation.id}`
                                                                         : evaluation.evaluationType === 'FAMILY_INTERVIEW'
