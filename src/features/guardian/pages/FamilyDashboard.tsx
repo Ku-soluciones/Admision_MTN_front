@@ -577,7 +577,7 @@ const FamilyDashboard: React.FC = () => {
                             ) : null}
                           </div>
                         </div>
-                        {application.paymentStatus === 'PAID' && (
+                        {application.paymentStatus === 'PAID' && application.isInclusionStudent === true && (
                           <PrekinderInclusionDeclaration applicationId={application.applicationId} />
                         )}
                       </div>

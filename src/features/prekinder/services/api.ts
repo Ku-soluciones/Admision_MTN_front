@@ -927,6 +927,7 @@ export const prekinderApi = {
         withdrawalReason?: string;
       };
     };
+    inclusionStudent?: boolean;
   }) =>
     apiRequest<FlowApplication>("/v1/prekinder/applications", {
       method: "POST",

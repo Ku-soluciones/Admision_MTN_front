@@ -29,6 +29,7 @@ export type GuardianPrekinderApplication = {
   hasComplementaryForm: boolean;
   paymentAmount?: number;
   paymentCurrency?: string;
+  isInclusionStudent?: boolean;
 };
 
 export type GuardianPrekinderPayment = {
