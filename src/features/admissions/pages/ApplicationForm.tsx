@@ -1049,6 +1049,10 @@ const ApplicationForm: React.FC = () => {
                     currentSchool: appData.student?.currentSchool || '',
                     additionalNotes: appData.student?.additionalNotes || '',
                     admissionPreference: appData.student?.admissionPreference || appData.admissionPreference || '',
+                    // Sincronizar checkboxes desde admissionPreference al cargar borrador
+                    isStaffChild: appData.student?.admissionPreference === 'HIJO_FUNCIONARIO' || appData.admissionPreference === 'HIJO_FUNCIONARIO',
+                    isAlumniChild: appData.student?.admissionPreference === 'HIJO_EX_ALUMNO' || appData.admissionPreference === 'HIJO_EX_ALUMNO',
+                    inclusionStudent: appData.student?.inclusionStudent === true,
                     hasSiblingsInSchool: appData.student?.hasSiblingsInSchool === true,
                     siblingsInSchoolDetails: appData.student?.siblingsInSchoolDetails || '',
                     applicationYear: appData.applicationYear || new Date().getFullYear() + 1,
@@ -1603,6 +1607,7 @@ const ApplicationForm: React.FC = () => {
                                 fatherAlumni: alumniDeclaration('FATHER'),
                                 motherAlumni: alumniDeclaration('MOTHER'),
                             },
+                            inclusionStudent: data.inclusionStudent === true || undefined,
                         });
                         response = {
                             id: prekinderResponse.applicationId,
@@ -2475,6 +2480,98 @@ const ApplicationForm: React.FC = () => {
                                 })()}
                             </div>
                         </div>
+
+                        {/* Checkboxes de elegibilidad Prekínder */}
+                        {isPrekinder && (
+                            <div className="space-y-3 rounded-lg border border-verde-agua/30 bg-verde-agua/5 p-4">
+                                <p className="text-sm font-medium text-gray-700">
+                                    Condiciones especiales <span className="text-red-500">*</span>
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    Marque las opciones que correspondan. Si no aplica ninguna, déjelas sin marcar.
+                                </p>
+                                <div className="space-y-2">
+                                    <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="isStaffChild"
+                                            checked={data.isStaffChild === true}
+                                            onChange={(e) => {
+                                                updateField('isStaffChild', e.target.checked);
+                                                if (e.target.checked) {
+                                                    updateField('admissionPreference', 'HIJO_FUNCIONARIO');
+                                                    updateField('isAlumniChild', false);
+                                                    updateField('alumniParent', '');
+                                                    updateField('alumniGraduationYear', '');
+                                                } else {
+                                                    updateField('admissionPreference', 'NINGUNA');
+                                                    updateField('employeeParent', '');
+                                                }
+                                            }}
+                                            className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
+                                        />
+                                        <span className="ml-3 text-sm text-gray-900">
+                                            <strong>Hijo/a de funcionario</strong> — Uno de los padres trabaja actualmente en el colegio
+                                        </span>
+                                    </label>
+
+                                    <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="inclusionStudent"
+                                            checked={data.inclusionStudent === true}
+                                            onChange={(e) => updateField('inclusionStudent', e.target.checked)}
+                                            className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
+                                        />
+                                        <span className="ml-3 text-sm text-gray-900">
+                                            <strong>Cupo de inclusión</strong> — El postulante requiere adecuaciones de acceso o inclusión
+                                        </span>
+                                    </label>
+
+                                    <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="isAlumniChild"
+                                            checked={data.isAlumniChild === true}
+                                            onChange={(e) => {
+                                                updateField('isAlumniChild', e.target.checked);
+                                                if (e.target.checked) {
+                                                    updateField('admissionPreference', 'HIJO_EX_ALUMNO');
+                                                    updateField('isStaffChild', false);
+                                                    updateField('employeeParent', '');
+                                                } else {
+                                                    updateField('admissionPreference', 'NINGUNA');
+                                                    updateField('alumniParent', '');
+                                                    updateField('alumniGraduationYear', '');
+                                                }
+                                            }}
+                                            className="h-4 w-4 text-azul-monte-tabor focus:ring-azul-monte-tabor border-gray-300"
+                                        />
+                                        <span className="ml-3 text-sm text-gray-900">
+                                            <strong>Exalumno/a</strong> — Uno de los padres es ex-alumno del colegio
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Campo de año de egreso si marca exalumno */}
+                                {data.isAlumniChild && (
+                                    <div className="mt-3">
+                                        <Input
+                                            id="alumniGraduationYear"
+                                            label="Año de egreso del padre/madre exalumno/a"
+                                            type="number"
+                                            placeholder="Ej: 2005"
+                                            isRequired
+                                            value={data.alumniGraduationYear || ''}
+                                            onChange={(e) => updateField('alumniGraduationYear', e.target.value)}
+                                            min={1950}
+                                            max={new Date().getFullYear()}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <Select
                             id="gender"
                             label="Género del Postulante"
