@@ -3111,7 +3111,6 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
 
   function edit(person: Professional) {
     setEditing(person);
-    setFormOpen(true);
     setName(person.displayName);
     setEmail(person.email);
     setPassword("");
@@ -3126,9 +3125,7 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-start justify-between gap-4 p-6">
           <div>
-            <h2 className="text-lg font-black">{editing
-              ? editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"
-              : "Nuevo profesional"}</h2>
+            <h2 className="text-lg font-black">Nuevo profesional</h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
               {formOpen
                 ? "El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso."
@@ -3144,129 +3141,64 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
         <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${formOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
         {formOpen && (
-          <form
-            className="px-6 pb-6"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (!roleCode || !processId) return;
-              const saved = await onSave({
-                processId,
-                professionalId: editing?.professionalId,
-                legacyUserId: editing?.legacyUserId,
-                displayName: name.trim(),
-                email: email.trim(),
-                password: editing ? undefined : password || undefined,
-                specialty: specialty.trim(),
-                roleCode,
-                active: editing?.active ?? true,
-                expectedVersion: editing?.version ?? 0,
-              });
-              if (saved) clearForm();
-            }}
-          >
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Field label="Nombre completo">
-                <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
-              </Field>
-              <Field label="Correo institucional">
-                <input
-                  required
-                  type="email"
-                  autoComplete="off"
-                  placeholder="ejemplo@mtn.cl"
-                  disabled={Boolean(editing && !needsAccess)}
-                  className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </Field>
-              {!editing && (
-                <Field label="Contraseña (opcional)">
-                  <input type="password" autoComplete="new-password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-                </Field>
-              )}
-              {editing?.legacyUserId && (
-                <div className="sm:col-span-2">
-                  <Field label="Nueva contraseña (opcional)">
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        autoComplete="new-password"
-                        className="control min-w-0 flex-1"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        placeholder="Mínimo 6 caracteres"
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        className="secondary inline-flex items-center gap-2 px-3"
-                        disabled={busy || password.length < 6}
-                        onClick={async () => {
-                          if (await onPasswordUpdate(editing.professionalId, password)) {
-                            setPassword("");
-                          }
-                        }}
-                      >
-                        <KeyRound size={16} />
-                        Cambiar
-                      </button>
-                    </div>
-                  </Field>
-                </div>
-              )}
-              <Field label="Área dentro del flujo">
-                <div className="relative">
-                  <select
-                    required
-                    className="control w-full appearance-none pr-9"
-                    value={group}
-                    onChange={(event) => {
-                      setGroup(event.target.value as ProfessionalRoleGroup);
-                      setRoleCode("");
-                    }}
-                  >
-                    <option value="">Seleccionar área</option>
-                    {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
-                  </select>
-                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                </div>
-              </Field>
-              <Field label="Rol u ocupación">
-                <div className="relative">
-                  <select
-                    required
-                    disabled={!group}
-                    className="control w-full appearance-none pr-9 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    value={roleCode}
-                    onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
-                  >
-                    <option value="">Seleccionar rol</option>
-                    {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
-                  </select>
-                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                </div>
-              </Field>
-              <Field label="Título o profesión (opcional)">
-                <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
-              </Field>
-            </div>
-            {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
-              <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
-                Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
-              </p>
-            )}
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button disabled={busy || !processId || !roleCode} className="primary">
-                {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
-              </button>
-              <button type="button" className="secondary" onClick={clearForm}>Cancelar</button>
-            </div>
-          </form>
+          <div className="px-6 pb-6">
+            <ProfessionalForm
+              processId={processId}
+              editing={null}
+              name={name} setName={setName}
+              email={email} setEmail={setEmail}
+              password={password} setPassword={setPassword}
+              specialty={specialty} setSpecialty={setSpecialty}
+              group={group} setGroup={setGroup}
+              roleCode={roleCode} setRoleCode={setRoleCode}
+              roles={roles}
+              availableRoles={availableRoles}
+              needsAccess={needsAccess}
+              busy={busy}
+              onSave={onSave}
+              onPasswordUpdate={onPasswordUpdate}
+              onSaved={clearForm}
+              onCancel={clearForm}
+              wide
+            />
+          </div>
         )}
         </div>
         </div>
       </section>
+
+      {editing && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-professional-title">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="edit-professional-title" className="text-lg font-black">
+              {editing.roleGroup === "PENDING" ? "Homologar profesional" : "Editar profesional"}
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              El área y el rol determinan las acciones e instrumentos disponibles dentro del proceso.
+            </p>
+            <div className="mt-5">
+              <ProfessionalForm
+                processId={processId}
+                editing={editing}
+                name={name} setName={setName}
+                email={email} setEmail={setEmail}
+                password={password} setPassword={setPassword}
+                specialty={specialty} setSpecialty={setSpecialty}
+                group={group} setGroup={setGroup}
+                roleCode={roleCode} setRoleCode={setRoleCode}
+                roles={roles}
+                availableRoles={availableRoles}
+                needsAccess={needsAccess}
+                busy={busy}
+                onSave={onSave}
+                onPasswordUpdate={onPasswordUpdate}
+                onSaved={clearForm}
+                onCancel={clearForm}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-black">Equipo Prekínder</h2>
@@ -3409,6 +3341,178 @@ function Professionals({ processId, professionals, roles, busy, onSave, onPasswo
         </div>
       )}
     </div>
+  );
+}
+
+function ProfessionalForm({
+  processId,
+  editing,
+  name, setName,
+  email, setEmail,
+  password, setPassword,
+  specialty, setSpecialty,
+  group, setGroup,
+  roleCode, setRoleCode,
+  roles,
+  availableRoles,
+  needsAccess,
+  busy,
+  onSave,
+  onPasswordUpdate,
+  onSaved,
+  onCancel,
+  wide = false,
+}: {
+  processId: string;
+  editing: Professional | null;
+  name: string;
+  setName: (value: string) => void;
+  email: string;
+  setEmail: (value: string) => void;
+  password: string;
+  setPassword: (value: string) => void;
+  specialty: string;
+  setSpecialty: (value: string) => void;
+  group: ProfessionalRoleGroup | "";
+  setGroup: (value: ProfessionalRoleGroup | "") => void;
+  roleCode: ProfessionalRoleCode | "";
+  setRoleCode: (value: ProfessionalRoleCode | "") => void;
+  roles: ProfessionalRoleDefinition[];
+  availableRoles: ProfessionalRoleDefinition[];
+  needsAccess: boolean;
+  busy: boolean;
+  onSave: (input: Partial<Professional> & {
+    processId: string;
+    displayName: string;
+    email: string;
+    password?: string;
+    roleCode: ProfessionalRoleCode;
+    expectedVersion: number;
+  }) => Promise<boolean>;
+  onPasswordUpdate: (professionalId: string, password: string) => Promise<boolean>;
+  onSaved: () => void;
+  onCancel: () => void;
+  wide?: boolean;
+}) {
+  return (
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (!roleCode || !processId) return;
+        const saved = await onSave({
+          processId,
+          professionalId: editing?.professionalId,
+          legacyUserId: editing?.legacyUserId,
+          displayName: name.trim(),
+          email: email.trim(),
+          password: editing ? undefined : password || undefined,
+          specialty: specialty.trim(),
+          roleCode,
+          active: editing?.active ?? true,
+          expectedVersion: editing?.version ?? 0,
+        });
+        if (saved) onSaved();
+      }}
+    >
+      <div className={`grid gap-4 sm:grid-cols-2 ${wide ? "xl:grid-cols-4" : ""}`}>
+        <Field label="Nombre completo">
+          <input required className="control w-full" value={name} onChange={(event) => setName(event.target.value)} />
+        </Field>
+        <Field label="Correo institucional">
+          <input
+            required
+            type="email"
+            autoComplete="off"
+            placeholder="ejemplo@mtn.cl"
+            disabled={Boolean(editing && !needsAccess)}
+            className="control w-full disabled:cursor-not-allowed disabled:bg-slate-100"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </Field>
+        <Field label="Área dentro del flujo">
+          <div className="relative">
+            <select
+              required
+              className="control w-full appearance-none pr-9"
+              value={group}
+              onChange={(event) => {
+                setGroup(event.target.value as ProfessionalRoleGroup);
+                setRoleCode("");
+              }}
+            >
+              <option value="">Seleccionar área</option>
+              {professionalGroupOrder.map((code) => <option key={code} value={code}>{professionalGroupLabels[code]}</option>)}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
+        </Field>
+        <Field label="Rol u ocupación">
+          <div className="relative">
+            <select
+              required
+              disabled={!group}
+              className="control w-full appearance-none pr-9 disabled:cursor-not-allowed disabled:bg-slate-100"
+              value={roleCode}
+              onChange={(event) => setRoleCode(event.target.value as ProfessionalRoleCode)}
+            >
+              <option value="">Seleccionar rol</option>
+              {availableRoles.map((role) => <option key={role.roleCode} value={role.roleCode}>{role.label}</option>)}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          </div>
+        </Field>
+        <Field label="Título o profesión (opcional)">
+          <input className="control w-full" value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ej. Educadora de párvulos" />
+        </Field>
+        {!editing && (
+          <Field label="Contraseña (opcional)">
+            <input type="password" autoComplete="new-password" className="control w-full" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+          </Field>
+        )}
+        {editing?.legacyUserId && (
+          <div className="sm:col-span-2">
+            <Field label="Nueva contraseña (opcional)">
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  className="control min-w-0 flex-1"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="secondary inline-flex items-center gap-2 px-3"
+                  disabled={busy || password.length < 6}
+                  onClick={async () => {
+                    if (await onPasswordUpdate(editing.professionalId, password)) {
+                      setPassword("");
+                    }
+                  }}
+                >
+                  <KeyRound size={16} />
+                  Cambiar
+                </button>
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
+      {roleCode && roles.find((role) => role.roleCode === roleCode)?.instrumentCode && (
+        <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">
+          Instrumento habilitado: {professionalInstrumentLabels[roles.find((role) => role.roleCode === roleCode)?.instrumentCode || ""]}
+        </p>
+      )}
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <button disabled={busy || !processId || !roleCode} className="primary">
+          {editing ? editing.roleGroup === "PENDING" ? "Guardar homologación" : "Guardar cambios" : "Crear profesional y acceso"}
+        </button>
+        <button type="button" className="secondary" onClick={onCancel}>Cancelar</button>
+      </div>
+    </form>
   );
 }
 
