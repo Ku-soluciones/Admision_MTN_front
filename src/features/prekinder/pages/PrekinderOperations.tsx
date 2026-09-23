@@ -1243,7 +1243,6 @@ type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communicati
 
 const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
   { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
-  { id: "questionnaire", label: "Cuestionario", icon: FileCheck2 },
   { id: "policies", label: "Políticas del proceso", icon: Settings2 },
   { id: "communications", label: "Comunicaciones", icon: Mail },
 ];
