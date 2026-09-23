@@ -4,6 +4,7 @@ import {
   guardianPrekinderService,
   type GuardianPrekinderInclusion,
 } from '../services/guardianPrekinderService';
+import ConfirmDialog from '../../admissions/components/ui/ConfirmDialog';
 
 type FormState = Required<Pick<GuardianPrekinderInclusion['declaration'],
   'backgroundSummary' | 'currentSupports' | 'relevantDocuments' | 'consentAccepted'>>;
@@ -32,6 +33,7 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const initialLoadRef = useRef(true);
 
   useEffect(() => {
@@ -248,7 +250,13 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
               <button type="button" className="rounded-lg border border-blue-900 px-4 py-2 text-sm font-semibold text-blue-900 disabled:opacity-50" onClick={() => void save(false)} disabled={saving}>
                 Guardar borrador
               </button>
-              <button type="button" className="rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void save(true)} disabled={saving}>
+              <button type="button" className="rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => {
+                if (!form.backgroundSummary.trim() || !form.consentAccepted) {
+                  setMessage({ type: 'error', text: 'Describe los antecedentes y acepta el consentimiento antes de enviar.' });
+                  return;
+                }
+                setShowConfirmSubmit(true);
+              }} disabled={saving}>
                 Enviar declaración
               </button>
               {hasChanges && (
@@ -260,6 +268,21 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showConfirmSubmit}
+        title="¿Está seguro de enviar la declaración?"
+        variant="warning"
+        message={`Esta información es confidencial y una vez enviada no podrá modificarla a menos que el equipo del colegio lo solicite.\n\nRevise que todos los datos estén correctos antes de continuar.`}
+        confirmText="Sí, enviar"
+        cancelText="Revisar nuevamente"
+        onConfirm={() => {
+          setShowConfirmSubmit(false);
+          void save(true);
+        }}
+        onClose={() => setShowConfirmSubmit(false)}
+        isLoading={saving}
+      />
     </div>
   );
 }
