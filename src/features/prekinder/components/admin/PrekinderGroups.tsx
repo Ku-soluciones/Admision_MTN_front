@@ -365,10 +365,13 @@ export function PrekinderGroups(props: Props) {
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm font-bold text-slate-700">
               Instancia
-              <select className="control mt-1 block" value={automaticStage} onChange={(event) => setAutomaticStage(event.target.value as "GROUP_3" | "GROUP_9")}>
-                <option value="GROUP_3">Académica / focal</option>
-                <option value="GROUP_9">Psicomotricidad / grupal</option>
-              </select>
+              <div className="relative mt-1">
+                <select className="control w-full appearance-none pr-9" value={automaticStage} onChange={(event) => setAutomaticStage(event.target.value as "GROUP_3" | "GROUP_9")}>
+                  <option value="GROUP_3">Académica / focal</option>
+                  <option value="GROUP_9">Psicomotricidad / grupal</option>
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              </div>
             </label>
             <button className="primary" disabled={props.busy || scheduleBusy || !props.journeys.length} onClick={() => void previewAutomaticSchedule()}>
               {scheduleBusy ? "Calculando…" : "Generar vista previa"}
