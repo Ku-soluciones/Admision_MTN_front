@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FiChevronDown, FiChevronUp, FiLock, FiShield } from 'react-icons/fi';
+import { useEffect, useState, useRef } from 'react';
+import { FiChevronDown, FiChevronUp, FiLock, FiShield, FiAlertCircle } from 'react-icons/fi';
 import {
   guardianPrekinderService,
   type GuardianPrekinderInclusion,
@@ -26,29 +26,37 @@ const interviewLabels: Record<GuardianPrekinderInclusion['specificInterviewStatu
 export default function PrekinderInclusionDeclaration({ applicationId }: { applicationId: string }) {
   const [record, setRecord] = useState<GuardianPrekinderInclusion | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [savedForm, setSavedForm] = useState<FormState>(EMPTY_FORM);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setRecord(null);
     setForm(EMPTY_FORM);
+    setSavedForm(EMPTY_FORM);
     setMessage(null);
     setExpanded(false);
+    setHasChanges(false);
+    initialLoadRef.current = true;
     guardianPrekinderService.inclusion(applicationId)
       .then(value => {
         if (!active) return;
         setRecord(value);
-        setForm({
+        const loaded: FormState = {
           backgroundSummary: value.declaration?.backgroundSummary || '',
           currentSupports: value.declaration?.currentSupports || '',
           relevantDocuments: value.declaration?.relevantDocuments || '',
           consentAccepted: Boolean(value.declaration?.consentAccepted),
-        });
-        setExpanded(value.revisionState === 'DRAFT');
+        };
+        setForm(loaded);
+        setSavedForm(loaded);
+        setExpanded(value.revisionState === 'DRAFT' || (value.allowedFields && value.allowedFields.length > 0));
       })
       .catch(() => {
         if (active) setRecord(null);
@@ -59,9 +67,35 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
     return () => { active = false; };
   }, [applicationId]);
 
+  const handleChange = (field: keyof FormState, value: string | boolean) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleCancel = () => {
+    setForm(savedForm);
+    setHasChanges(false);
+    setMessage(null);
+  };
+
   if (loading || !record?.enabled) return null;
 
   const submitted = record.revisionState === 'SUBMITTED';
+  const hasCorrection = record.allowedFields && record.allowedFields.length > 0;
+  const isEditable = !submitted || hasCorrection;
+
+  const isFieldLocked = (field: keyof FormState) => {
+    if (!isEditable) return true;
+    if (hasCorrection) {
+      const fieldName = field === 'backgroundSummary' ? 'backgroundSummary'
+        : field === 'currentSupports' ? 'currentSupports'
+        : field === 'relevantDocuments' ? 'relevantDocuments'
+        : field === 'consentAccepted' ? 'consentAccepted'
+        : null;
+      return !fieldName || !record.allowedFields?.includes(fieldName);
+    }
+    return false;
+  };
 
   const save = async (isSubmitted: boolean) => {
     if (isSubmitted && (!form.backgroundSummary.trim() || !form.consentAccepted)) {
@@ -79,6 +113,8 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
         isSubmitted,
       });
       setRecord(updated);
+      setSavedForm(form);
+      setHasChanges(false);
       setMessage({
         type: 'success',
         text: isSubmitted
@@ -125,49 +161,73 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
         </p>
       )}
 
+      {hasCorrection && (
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3" role="alert" aria-live="polite">
+          <p className="flex items-center gap-2 text-sm font-medium text-amber-800">
+            <FiAlertCircle className="h-4 w-4 shrink-0" />
+            Corrección solicitada
+          </p>
+          {record.correctionRequestReason && (
+            <p className="mt-1 text-sm text-amber-700">{record.correctionRequestReason}</p>
+          )}
+          <p className="mt-1 text-sm text-amber-700">
+            Campos a corregir: {record.allowedFields?.join(', ')}.
+          </p>
+        </div>
+      )}
+
       {expanded && (
         <div className="mt-4 space-y-4 border-t border-blue-100 pt-4">
           <p className="text-sm text-slate-700">
             Esta información es confidencial y no activa automáticamente una evaluación de Apoyo al Aprendizaje ni DAP.
           </p>
-          <label className="block text-sm font-medium text-slate-800">
+          <label className="block text-sm font-medium text-slate-800" htmlFor="bg-summary">
             Antecedentes relevantes
             <textarea
+              id="bg-summary"
               className="mt-1 min-h-24 w-full rounded-lg border border-slate-300 bg-white p-3 disabled:bg-slate-100"
               value={form.backgroundSummary}
-              onChange={event => setForm(value => ({ ...value, backgroundSummary: event.target.value }))}
-              disabled={submitted || saving}
+              onChange={event => handleChange('backgroundSummary', event.target.value)}
+              disabled={isFieldLocked('backgroundSummary') || saving}
               maxLength={4000}
               required
+              aria-required="true"
             />
+            <span className="mt-1 block text-xs text-slate-500">{form.backgroundSummary.length}/4000 caracteres</span>
           </label>
-          <label className="block text-sm font-medium text-slate-800">
+          <label className="block text-sm font-medium text-slate-800" htmlFor="current-supports">
             Apoyos actuales (opcional)
             <textarea
+              id="current-supports"
               className="mt-1 min-h-20 w-full rounded-lg border border-slate-300 bg-white p-3 disabled:bg-slate-100"
               value={form.currentSupports}
-              onChange={event => setForm(value => ({ ...value, currentSupports: event.target.value }))}
-              disabled={submitted || saving}
+              onChange={event => handleChange('currentSupports', event.target.value)}
+              disabled={isFieldLocked('currentSupports') || saving}
               maxLength={3000}
             />
+            <span className="mt-1 block text-xs text-slate-500">{form.currentSupports.length}/3000 caracteres</span>
           </label>
-          <label className="block text-sm font-medium text-slate-800">
+          <label className="block text-sm font-medium text-slate-800" htmlFor="relevant-docs">
             Documentos o informes disponibles (opcional)
             <textarea
+              id="relevant-docs"
               className="mt-1 min-h-20 w-full rounded-lg border border-slate-300 bg-white p-3 disabled:bg-slate-100"
               value={form.relevantDocuments}
-              onChange={event => setForm(value => ({ ...value, relevantDocuments: event.target.value }))}
-              disabled={submitted || saving}
+              onChange={event => handleChange('relevantDocuments', event.target.value)}
+              disabled={isFieldLocked('relevantDocuments') || saving}
               maxLength={2000}
             />
+            <span className="mt-1 block text-xs text-slate-500">{form.relevantDocuments.length}/2000 caracteres</span>
           </label>
-          <label className="flex items-start gap-3 text-sm text-slate-700">
+          <label className="flex items-start gap-3 text-sm text-slate-700" htmlFor="consent-check">
             <input
+              id="consent-check"
               type="checkbox"
               className="mt-1"
               checked={form.consentAccepted}
-              onChange={event => setForm(value => ({ ...value, consentAccepted: event.target.checked }))}
-              disabled={submitted || saving}
+              onChange={event => handleChange('consentAccepted', event.target.checked)}
+              disabled={isFieldLocked('consentAccepted') || saving}
+              aria-required="true"
             />
             Autorizo el tratamiento restringido de estos antecedentes para el proceso de admisión Prekínder.
           </label>
@@ -178,9 +238,10 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
             </p>
           )}
 
-          {submitted ? (
+          {!isEditable ? (
             <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <FiLock aria-hidden="true" /> La declaración está bloqueada después del envío.
+              <FiLock aria-hidden="true" />
+              <span>La declaración está bloqueada después del envío.</span>
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -190,6 +251,11 @@ export default function PrekinderInclusionDeclaration({ applicationId }: { appli
               <button type="button" className="rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void save(true)} disabled={saving}>
                 Enviar declaración
               </button>
+              {hasChanges && (
+                <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50" onClick={handleCancel} disabled={saving}>
+                  Cancelar
+                </button>
+              )}
             </div>
           )}
         </div>
