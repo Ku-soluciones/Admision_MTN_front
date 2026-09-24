@@ -144,6 +144,7 @@ export function PrekinderGroups(props: Props) {
   const [editor, setEditor] = useState<EditorState>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [automaticStage, setAutomaticStage] = useState<"GROUP_3" | "GROUP_9">("GROUP_3");
@@ -468,7 +469,7 @@ export function PrekinderGroups(props: Props) {
             <option value="DRAFT">En preparación</option>
             <option value="CONFIRMED">Listos</option>
             <option value="COMPLETED">Finalizados</option>
-            <option value="CANCELLED">Eliminados</option>
+            <option value="CANCELLED">Cancelados</option>
             <option value="ALL">Todos los estados</option>
           </select>
           <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
@@ -618,30 +619,54 @@ export function PrekinderGroups(props: Props) {
                               <Pencil className="mr-1 inline" size={14} />Editar
                             </button>
                             {deletingId === group.groupId ? (
-                              <>
+                              <div className="flex min-w-64 flex-col gap-2">
+                                <label className="text-left text-xs font-bold text-slate-700" htmlFor={`cancel-reason-${group.groupId}`}>
+                                  Motivo de cancelación
+                                </label>
+                                <textarea
+                                  id={`cancel-reason-${group.groupId}`}
+                                  className="control min-h-20 w-full text-sm"
+                                  maxLength={2000}
+                                  value={cancellationReason}
+                                  onChange={(event) => setCancellationReason(event.target.value)}
+                                  placeholder="Este motivo se informará a los apoderados"
+                                />
+                                <p className="text-left text-xs text-slate-500">
+                                  {group.status === "CONFIRMED"
+                                    ? "Papá y mamá recibirán copias separadas del aviso."
+                                    : "El grupo aún no fue comunicado; se conservará la trazabilidad."}
+                                </p>
+                                <div className="flex justify-end gap-2">
                                 <button
                                   className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white hover:bg-red-800 disabled:opacity-50"
-                                  disabled={props.busy}
+                                  disabled={props.busy || !cancellationReason.trim()}
                                   onClick={async () => {
                                     const deleted = await props.onAction(
-                                      () => prekinderApi.deleteGroup(group.groupId, group.version),
-                                      `Grupo ${group.code} eliminado. La trazabilidad quedó conservada.`,
+                                      () => prekinderApi.cancelGroup(group.groupId, {
+                                        expectedVersion: group.version,
+                                        reason: cancellationReason.trim(),
+                                      }),
+                                      `Grupo ${group.code} cancelado. La trazabilidad quedó conservada.`,
                                     );
-                                    if (deleted) setDeletingId(null);
+                                    if (deleted) {
+                                      setDeletingId(null);
+                                      setCancellationReason("");
+                                    }
                                   }}
                                 >
                                   Confirmar
                                 </button>
-                                <button className="secondary !px-3 !py-2 text-xs" onClick={() => setDeletingId(null)}>Cancelar</button>
-                              </>
+                                <button className="secondary !px-3 !py-2 text-xs" onClick={() => { setDeletingId(null); setCancellationReason(""); }}>Volver</button>
+                                </div>
+                              </div>
                             ) : (
                               <button
                                 className="min-h-9 rounded-lg px-3 text-xs font-black text-red-700 hover:bg-red-50 disabled:text-red-300 disabled:hover:bg-transparent"
                                 disabled={props.busy || !canModify}
-                                onClick={() => setDeletingId(group.groupId)}
-                                title={canModify ? "Eliminar grupo" : "Este grupo ya no se puede eliminar"}
+                                onClick={() => { setDeletingId(group.groupId); setCancellationReason(""); }}
+                                title={canModify ? "Cancelar grupo" : "Este grupo ya no se puede cancelar"}
                               >
-                                <Trash2 className="mr-1 inline" size={14} />Eliminar
+                                <Trash2 className="mr-1 inline" size={14} />Cancelar
                               </button>
                             )}
                           </div>

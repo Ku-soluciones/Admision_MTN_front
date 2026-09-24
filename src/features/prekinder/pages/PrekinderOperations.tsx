@@ -3789,7 +3789,7 @@ function CommunicationRow({ template, busy, onAction, expanded: expandedProp, on
       {expanded && <div className="mt-5 grid gap-4">
         <Field label="Asunto"><input className="control w-full" maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
         <Field label="Cuerpo HTML"><textarea className="control min-h-32 w-full" maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
-        <p className="text-xs text-slate-500">Variables permitidas: applicantName, processName, portalUrl, deadline.</p>
+        <p className="text-xs text-slate-500">Variables permitidas: applicantName, processName, portalUrl, deadline, scheduleDate, startTime, endTime, modality, location, groupCode, evaluationDetail, reason, institutionalImage e institutionalImageUrl.</p>
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className="secondary" onClick={() => { setSubject(template.subject); setBody(template.bodyHtml); onToggleExpanded(); }}>Cancelar</button>
           <button className="secondary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => void onAction(() => prekinderApi.saveCommunication(template.contentVersionId, subject, body), "Borrador guardado.")}>Guardar borrador</button>

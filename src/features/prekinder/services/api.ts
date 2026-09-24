@@ -1127,6 +1127,11 @@ export const prekinderApi = {
       `/v1/prekinder/groups/${groupId}?expectedVersion=${expectedVersion}`,
       { method: "DELETE" },
     ),
+  cancelGroup: (groupId: string, input: { expectedVersion: number; reason: string }) =>
+    apiRequest<EvaluationGroup>(`/v1/prekinder/groups/${groupId}/cancellation`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
   addMember: (groupId: string, applicationId: string) =>
     apiRequest<EvaluationGroup>(
       `/v1/prekinder/groups/${groupId}/members/${applicationId}`,
