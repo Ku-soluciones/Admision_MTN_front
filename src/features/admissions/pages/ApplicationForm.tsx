@@ -490,6 +490,7 @@ const ApplicationForm: React.FC = () => {
     const [data, setData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
     const [serverDraftVersion, setServerDraftVersion] = useState<number | undefined>();
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const serverDraftRestoredRef = useRef(false);
 
     const activePrekinderOption = prekinderOptions[0] ?? null;
@@ -513,6 +514,19 @@ const ApplicationForm: React.FC = () => {
             serverDraftRestoredRef.current = false;
         });
     }, [isPrekinder, activePrekinderOption?.processId, location.state?.editMode]);
+
+    // Advertir al cerrar/navegar si hay cambios sin guardar
+    useEffect(() => {
+        if (!isPrekinder) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            if (!hasUnsavedChanges) return;
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [isPrekinder, hasUnsavedChanges]);
 
     useEffect(() => {
         if (!isPrekinder) return;
@@ -658,8 +672,12 @@ const ApplicationForm: React.FC = () => {
             if (!activePrekinderOption || !data || Object.keys(data).length === 0) return;
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
             saveTimerRef.current = setTimeout(() => {
+                setHasUnsavedChanges(true);
                 prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
-                    .then((draft) => setServerDraftVersion(draft.version))
+                    .then((draft) => {
+                        setServerDraftVersion(draft.version);
+                        setHasUnsavedChanges(false);
+                    })
                     .catch(() => { /* se reintentará con el siguiente cambio */ });
             }, 650);
             return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
@@ -1616,6 +1634,7 @@ const ApplicationForm: React.FC = () => {
                             folio: prekinderResponse.folio,
                         };
                         setSubmittedPrekinderApplication(prekinderResponse);
+                        setHasUnsavedChanges(false);
                         }
                     } else if (isEditMode) {
                         // Formato anidado para PUT (actualización)
@@ -1825,7 +1844,6 @@ const ApplicationForm: React.FC = () => {
                             // se puede limpiar en una visita posterior sin convertir el cierre en error.
                         });
                     }
-                    
                     // Mensaje final según si se subieron documentos o no
                     const totalDocumentsUploaded = isPrekinder
                         ? uploadedDocumentCount + documentsUploaded
