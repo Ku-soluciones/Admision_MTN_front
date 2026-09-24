@@ -8,12 +8,21 @@ import {
   Plus,
   Save,
   Trash2,
+  UserCheck,
   X,
 } from "lucide-react";
 import type {
   RubricDraftInput,
   RubricVersion,
 } from "../../services/api";
+import { INSTRUMENT_TO_PROFILE, PROFILE_STYLES, type ProfileStyle } from "../evaluator/SpecialtyProfile";
+
+const DEFAULT_PREVIEW_STYLE: ProfileStyle = {
+  gradient: "from-slate-700 to-slate-900",
+  border: "border-slate-200",
+  text: "text-slate-700",
+  badge: "bg-slate-900",
+};
 
 type EditableOption = {
   clientId: string;
@@ -474,6 +483,9 @@ type RubricPreviewModalProps = {
 };
 
 export function RubricPreviewModal({ version, instrumentLabels, onClose }: RubricPreviewModalProps) {
+  const profile = INSTRUMENT_TO_PROFILE[version.instrumentCode];
+  const style = profile ? PROFILE_STYLES[profile] : DEFAULT_PREVIEW_STYLE;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
@@ -514,49 +526,77 @@ export function RubricPreviewModal({ version, instrumentLabels, onClose }: Rubri
           </div>
         </header>
 
-        <div className="px-6 py-7 sm:px-8">
-          {version.criteria.map((criterion, criterionIndex) => (
-            <article key={criterion.criterionId} className="mb-8 border-b border-slate-200 pb-8 last:mb-0 last:border-b-0 last:pb-0">
-              <div className="mb-5">
-                <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                  Criterio {criterionIndex + 1}
-                </p>
-                <h3 className="mt-2 text-lg font-black text-slate-950">{criterion.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{criterion.descriptor}</p>
-              </div>
+        <div className="p-5 sm:p-7">
+          <div className={`flex items-center gap-3 rounded-xl border ${style.border} bg-gradient-to-r ${style.gradient} p-4 text-white`}>
+            <UserCheck size={20} />
+            <div>
+              <p className="text-sm font-black">{instrumentLabels[version.instrumentCode] ?? version.instrumentCode}</p>
+              <p className="text-xs text-white/70">{version.criteria.length} criterios cargados desde pauta</p>
+            </div>
+          </div>
 
-              <div className="flex flex-wrap gap-3">
-                {criterion.options.map((option) => (
-                  <div
-                    key={option.optionId}
-                    className="min-w-[140px] flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 p-3"
-                  >
-                    <div className="mb-3 flex flex-col items-center gap-1">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-azul-monte-tabor text-base font-black text-white">
-                        {option.value}
-                      </span>
-                      <span className="text-center text-sm font-bold text-slate-700">
-                        {option.label}
-                      </span>
+          <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <div className="divide-y divide-slate-100">
+              {version.criteria.map((criterion, criterionIndex) => (
+                <div key={criterion.criterionId} className="p-5">
+                  <div className="mb-4 flex items-start gap-3">
+                    <span className={`grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg ${style.badge} text-sm font-black text-white`}>
+                      {criterionIndex + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-base font-bold leading-snug text-slate-900"
+                        style={{ fontFamily: "Montserrat, system-ui, sans-serif" }}
+                      >
+                        {criterion.name}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{criterion.descriptor}</p>
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-500">{option.descriptor}</p>
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+                    {criterion.options.map((option) => {
+                      const isLogrado = option.value === 3;
+                      const isPorLograr = option.value === 2;
+                      const isNoLogrado = option.value === 0 || option.value === 1;
+                      return (
+                        <div
+                          key={option.optionId}
+                          className={`min-h-16 rounded-xl border-2 p-3 text-left shadow-md ${
+                            isLogrado
+                              ? "border-[#22c55e] bg-[#22c55e] text-white"
+                              : isPorLograr
+                                ? "border-[#f59e0b] bg-[#f59e0b] text-white"
+                                : isNoLogrado
+                                  ? "border-[#ef4444] bg-[#ef4444] text-white"
+                                  : `${style.border} ${style.badge} text-white`
+                          }`}
+                        >
+                          <span className="block text-lg font-black">{option.value}</span>
+                          {option.descriptor && (
+                            <span className="mt-1 block text-xs leading-tight text-white/80">
+                              {option.descriptor}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-              <div className="mt-4">
-                <label className="block">
-                  <span className="text-xs font-bold text-slate-600">Comentarios (opcional)</span>
-                  <textarea
-                    className="control mt-1 w-full resize-y"
-                    rows={2}
-                    placeholder="Observaciones sobre este criterio..."
-                    readOnly
-                  />
-                </label>
-              </div>
-            </article>
-          ))}
+            <div className="border-t border-slate-200 bg-slate-50/50 p-5">
+              <label className="mb-2 block text-sm font-bold text-slate-700">
+                Observaciones cualitativas del postulante
+              </label>
+              <textarea
+                className="w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
+                rows={4}
+                disabled
+                placeholder="Evidencia observable, contexto y comportamientos relevantes..."
+              />
+            </div>
+          </section>
         </div>
 
         <footer className="sticky bottom-0 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:px-8">
