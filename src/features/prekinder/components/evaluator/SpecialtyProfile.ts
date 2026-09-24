@@ -73,3 +73,23 @@ export const PROFILE_TO_SHORT_INSTRUMENT: Record<SpecialtyProfile, string> = {
   LEARNING_SUPPORT: "LEARNING_SUPPORT",
   DAP: "DAP",
 };
+
+export type ProfileStyle = {
+  gradient: string;
+  border: string;
+  text: string;
+  badge: string;
+};
+
+// Mirrors the literal Tailwind classes hardcoded in each pages/evaluator/Connected*Console.tsx
+// so that admin previews render with the exact same colors evaluators see.
+export const PROFILE_STYLES: Record<SpecialtyProfile, ProfileStyle> = {
+  ACADEMIC: { gradient: "from-emerald-800 to-emerald-900", border: "border-emerald-200", text: "text-emerald-700", badge: "bg-emerald-900" },
+  PSYCHOMOTOR: { gradient: "from-[#1e3a5f] to-[#2d5a87]", border: "border-[#2d5a87]", text: "text-cyan-700", badge: "bg-[#1e3a5f]" },
+  PSYCHOLOGY: { gradient: "from-[#1e3a8a] to-[#1e4a9a]", border: "border-blue-200", text: "text-blue-700", badge: "bg-[#1e3a8a]" },
+  INDICATORS: { gradient: "from-teal-800 to-teal-900", border: "border-teal-200", text: "text-teal-700", badge: "bg-teal-900" },
+  GROUP_OBSERVATION: { gradient: "from-amber-800 to-amber-900", border: "border-amber-200", text: "text-amber-700", badge: "bg-amber-900" },
+  FAMILY_INTERVIEW: { gradient: "from-[#1e3a8a] to-[#1e4a9a]", border: "border-blue-200", text: "text-blue-700", badge: "bg-[#1e3a8a]" },
+  LEARNING_SUPPORT: { gradient: "from-blue-800 to-blue-900", border: "border-blue-200", text: "text-blue-700", badge: "bg-blue-900" },
+  DAP: { gradient: "from-violet-800 to-violet-900", border: "border-violet-200", text: "text-violet-700", badge: "bg-violet-900" },
+};
