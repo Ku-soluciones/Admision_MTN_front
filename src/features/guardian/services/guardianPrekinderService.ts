@@ -30,6 +30,7 @@ export type GuardianPrekinderApplication = {
   paymentAmount?: number;
   paymentCurrency?: string;
   isInclusionStudent?: boolean;
+  hasDraft?: boolean;
 };
 
 export type GuardianPrekinderPayment = {

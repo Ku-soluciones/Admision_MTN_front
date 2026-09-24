@@ -558,6 +558,9 @@ const FamilyDashboard: React.FC = () => {
                               <Badge variant={application.paymentStatus === 'PAID' ? 'success' : application.paymentStatus === 'FAILED' ? 'error' : 'warning'} size="sm">
                                 {application.paymentStatus === 'PAID' ? 'Pagada' : application.paymentStatus === 'PAYMENT_PENDING' ? 'Pago pendiente' : application.paymentStatus === 'FAILED' ? 'Pago no completado' : 'Pendiente de pago'}
                               </Badge>
+                              {application.hasDraft && (
+                                <Badge variant="warning" size="sm">Borrador</Badge>
+                              )}
                             </div>
                             {application.paymentStatus !== 'PAID' ? (
                               <Button
