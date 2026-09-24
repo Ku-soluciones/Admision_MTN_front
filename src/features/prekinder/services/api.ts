@@ -124,6 +124,7 @@ export type PrekinderApplicationOption = {
   ageReferenceDate: string | null;
   minimumAgeMonths: number;
   maximumAgeMonths?: number | null;
+  requiredDocuments: string[];
 };
 
 export type InclusionDeclaration = {

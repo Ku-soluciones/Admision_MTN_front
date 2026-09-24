@@ -85,7 +85,10 @@ const getDocumentTypesConfig = () => {
 };
 
 const getDocumentLabel = (documentType: string): string => {
-    return getDocumentTypeLabel(documentType as DocumentType);
+    const label = getDocumentTypeLabel(documentType as DocumentType);
+    return label === documentType
+        ? documentType.toLowerCase().split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+        : label;
 };
 
 
@@ -416,6 +419,7 @@ const ApplicationForm: React.FC = () => {
     const [uploadedDocuments, setUploadedDocuments] = useState<Map<string, File>>(new Map());
     const [uploadFailures, setUploadFailures] = useState<Map<string, string>>(new Map());
     const [uploadedDocumentCount, setUploadedDocumentCount] = useState(0);
+    const [successfullyUploadedDocumentTypes, setSuccessfullyUploadedDocumentTypes] = useState<Set<string>>(new Set());
     const [existingDocuments, setExistingDocuments] = useState<any[]>([]);
     const clientSubmissionIdRef = useRef(crypto.randomUUID());
 
@@ -494,6 +498,21 @@ const ApplicationForm: React.FC = () => {
     const serverDraftRestoredRef = useRef(false);
 
     const activePrekinderOption = prekinderOptions[0] ?? null;
+    const documentTypesConfig = useMemo(() => {
+        if (!isPrekinder) return getDocumentTypesConfig();
+        return (activePrekinderOption?.requiredDocuments || []).map((key) => ({
+            key: key as DocumentType,
+            label: getDocumentLabel(key),
+            required: true,
+            recommended: false,
+        }));
+    }, [isPrekinder, activePrekinderOption]);
+
+    const hasDocument = useCallback((documentType: string) => {
+        if (uploadedDocuments.has(documentType) || successfullyUploadedDocumentTypes.has(documentType)) return true;
+        return existingDocuments.some((document: any) =>
+            (document.document_type || document.documentType || document.category) === documentType);
+    }, [existingDocuments, successfullyUploadedDocumentTypes, uploadedDocuments]);
 
     useEffect(() => {
         if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || location.state?.editMode) return;
@@ -1478,8 +1497,13 @@ const ApplicationForm: React.FC = () => {
                 }
                 return true;
 
-            // Step 7: Documentación (opcional)
+            // Step 7: Documentación
             case 7:
+                if (isPrekinder) {
+                    return documentTypesConfig.length > 0 && documentTypesConfig
+                        .filter((document) => document.required)
+                        .every((document) => hasDocument(document.key));
+                }
                 return true;
 
             // Step 8: Confirmación
@@ -1490,7 +1514,8 @@ const ApplicationForm: React.FC = () => {
                 return true;
         }
     }, [data, currentStep, requiresCurrentSchool, errors, isPrekinder,
-        activePrekinderOption, prekinderOptionsLoading, prekinderOptionsError]);
+        activePrekinderOption, prekinderOptionsLoading, prekinderOptionsError,
+        documentTypesConfig, hasDocument]);
 
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
@@ -1811,6 +1836,7 @@ const ApplicationForm: React.FC = () => {
                             if (result.status === 'fulfilled') {
                                 remaining.delete(docType);
                                 documentsUploaded += 1;
+                                setSuccessfullyUploadedDocumentTypes((current) => new Set(current).add(docType));
                             } else {
                                 const reason = result.reason instanceof Error
                                     ? result.reason.message
@@ -3332,7 +3358,7 @@ const ApplicationForm: React.FC = () => {
                                     <div className="mb-6">
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Obligatorios</h4>
                                         <div className="space-y-3">
-                                            {getDocumentTypesConfig().filter(doc => doc.required && !doc.recommended).map(doc => (
+                                            {documentTypesConfig.filter(doc => doc.required && !doc.recommended).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg bg-red-50">
                                                     <label className="font-medium">
                                                         {doc.label} <span className="text-rojo-sagrado">*</span>
@@ -3356,11 +3382,11 @@ const ApplicationForm: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Documentos recomendados (no obligatorios pero importante tenerlos) */}
-                                    <div className="mb-6">
+                                    {/* El catálogo complementario pertenece sólo al flujo regular. */}
+                                    {!isPrekinder && <div className="mb-6">
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Recomendados</h4>
                                         <div className="space-y-3">
-                                            {getDocumentTypesConfig().filter(doc => doc.recommended).map(doc => (
+                                            {documentTypesConfig.filter(doc => doc.recommended).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg bg-amber-50">
                                                     <label className="font-medium">
                                                         {doc.label} <span className="text-amber-600">*</span>
@@ -3386,13 +3412,13 @@ const ApplicationForm: React.FC = () => {
                                         <p className="text-xs text-gris-piedra mt-2">
                                             Estos documentos son importantes para evaluar al postulante. Si no están disponibles (ej: Kínder o 1 Básico sin historial académico previo), puede omitirlos y completar más tarde desde su dashboard.
                                         </p>
-                                    </div>
+                                    </div>}
 
                                     {/* Documentos opcionales */}
-                                    <div>
+                                    {!isPrekinder && <div>
                                         <h4 className="text-lg font-semibold text-azul-monte-tabor mb-3">Documentos Opcionales</h4>
                                         <div className="space-y-3">
-                                            {getDocumentTypesConfig().filter(doc => !doc.required && !doc.recommended).map(doc => (
+                                            {documentTypesConfig.filter(doc => !doc.required && !doc.recommended).map(doc => (
                                                 <div key={doc.key} className="flex justify-between items-center p-3 border rounded-lg">
                                                     <label className="font-medium">{doc.label}</label>
                                                     <div className="flex items-center gap-2">
@@ -3412,7 +3438,7 @@ const ApplicationForm: React.FC = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
+                                    </div>}
                                     
                                     {/* Resumen de documentos seleccionados */}
                                     {uploadedDocuments.size > 0 && (
