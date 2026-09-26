@@ -562,7 +562,17 @@ const FamilyDashboard: React.FC = () => {
                                 <Badge variant="warning" size="sm">Borrador</Badge>
                               )}
                             </div>
-                            {application.paymentStatus !== 'PAID' ? (
+                            {application.hasDraft ? (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => navigate('/postulacion', { state: { processId: application.applicationId } })}
+                                className="flex items-center gap-2 text-white"
+                              >
+                                <FiEdit className="h-4 w-4" />
+                                Continuar editando
+                              </Button>
+                            ) : application.paymentStatus !== 'PAID' ? (
                               <Button
                                 variant="primary"
                                 size="sm"
