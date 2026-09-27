@@ -603,6 +603,7 @@ export type ProcessConfiguration = {
   inclusionDocumentsRequired: boolean;
   minimumAgeMonths: number;
   maximumAgeMonths: number;
+  noMaxAgeForInclusion: boolean;
   ageReferenceDate: string | null;
   applicantWeight: number;
   familyWeight: number;
