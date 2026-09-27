@@ -2000,8 +2000,8 @@ function Applications({
           const refDate = configuration?.ageReferenceDate
             ? new Date(configuration.ageReferenceDate)
             : new Date();
-          const ageA = Math.floor((refDate.getTime() - new Date(a.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-          const ageB = Math.floor((refDate.getTime() - new Date(b.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+          const ageA = Math.max(0, Math.floor((refDate.getTime() - new Date(a.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          const ageB = Math.max(0, Math.floor((refDate.getTime() - new Date(b.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
           return (ageA - ageB) * factor;
         }
         const value =
@@ -2108,6 +2108,7 @@ function Applications({
               <ApplicationRow
                 key={app.applicationId}
                 app={app}
+                configuration={configuration}
                 busy={busy}
                 onReview={onReview}
                 onOpenInclusion={setSelectedInclusion}
@@ -2157,11 +2158,13 @@ function Applications({
 
 function ApplicationRow({
   app,
+  configuration,
   busy,
   onReview,
   onOpenInclusion,
 }: {
   app: FlowApplication;
+  configuration: ProcessConfiguration | null;
   busy: boolean;
   onReview: (
     app: FlowApplication,
@@ -2192,7 +2195,7 @@ function ApplicationRow({
       <td className="px-5 py-4 text-center">
         {(() => {
           const refDate = configuration?.ageReferenceDate ? new Date(configuration.ageReferenceDate) : new Date();
-          const ageMonths = Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+          const ageMonths = Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
           const years = Math.floor(ageMonths / 12);
           const months = ageMonths % 12;
           return (
