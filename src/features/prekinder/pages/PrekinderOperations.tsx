@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   CalendarDays,
+  Calendar,
   Check,
   ChevronDown,
   ChevronRight,
@@ -61,6 +62,7 @@ import { PrekinderControlTower } from "../components/admin/PrekinderControlTower
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 import { PrekinderInclusionAdminPanel } from "../components/admin/PrekinderInclusionAdminPanel";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
+import AgeRangeEditor from "../components/admin/AgeRangeEditor";
 import {
   journeyErrorMessage,
   journeyFromApi,
@@ -1239,12 +1241,13 @@ function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null 
   );
 }
 
-type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communications";
+type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communications" | "age";
 
 const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
   { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
   { id: "policies", label: "Políticas del proceso", icon: Settings2 },
   { id: "communications", label: "Comunicaciones", icon: Mail },
+  { id: "age", label: "Edad de postulación", icon: Calendar },
 ];
 
 function ConfigurationHub({
@@ -1309,6 +1312,9 @@ function ConfigurationHub({
             expandedDrafts={expandedDrafts}
             onToggleDraftExpanded={onToggleDraftExpanded}
           />
+        )}
+        {view === "age" && configuration && (
+          <AgeRangeEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
         )}
       </div>
     </div>
