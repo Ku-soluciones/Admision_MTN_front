@@ -414,15 +414,15 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                 <p className="mb-2 px-2 text-xs font-black uppercase tracking-widest text-cyan-200">Opciones</p>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#22c55e]"></div>
+                    <div className="h-5 w-5 rounded bg-[#bbf7d0]"></div>
                     <span className="text-xs text-white/80">Logrado (3)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#f59e0b]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fde68a]"></div>
                     <span className="text-xs text-white/80">Por lograr (2)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#ef4444]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fecaca]"></div>
                     <span className="text-xs text-white/80">No logrado (0)</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -478,18 +478,18 @@ export function ConnectedPsychomotorConsole({ profile }: Props) {
                           <button
                             key={String(opt.value)}
                             className={`min-h-16 rounded-xl border-2 p-3 text-left transition-all ${
-                              isSelected && isLogrado ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md" :
-                              isSelected && isPorLograr ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md" :
-                              isSelected && isNoLogrado ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md" :
+                              isSelected && isLogrado ? "border-[#86efac] bg-[#bbf7d0] text-emerald-900 shadow-md" :
+                              isSelected && isPorLograr ? "border-[#fcd34d] bg-[#fde68a] text-amber-900 shadow-md" :
+                              isSelected && isNoLogrado ? "border-[#fca5a5] bg-[#fecaca] text-red-900 shadow-md" :
                               isSelected && isNotObserved ? "border-slate-400 bg-slate-400 text-white shadow-md" :
                               "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm"
                             }`}
                             onClick={() => setScore(activeApplicant.applicationId, cIdx, opt.value)}
                           >
                             <b className="block text-xl font-black leading-none" style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}>{opt.title}</b>
-                            <p className={`mt-1 text-xs font-bold leading-tight ${isSelected ? "text-white/90" : "text-slate-600"}`}>{opt.label}</p>
+                            <p className={`mt-1 text-xs font-bold leading-tight ${isSelected && (isLogrado || isPorLograr || isNoLogrado) ? "opacity-90" : isSelected ? "text-white/90" : "text-slate-600"}`}>{opt.label}</p>
                             {opt.description && (
-                              <p className={`mt-1 text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>{opt.description}</p>
+                              <p className={`mt-1 text-xs leading-tight ${isSelected && (isLogrado || isPorLograr || isNoLogrado) ? "opacity-80" : isSelected ? "text-white/80" : "text-slate-400"}`}>{opt.description}</p>
                             )}
                           </button>
                         );

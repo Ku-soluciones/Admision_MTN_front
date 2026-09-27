@@ -10,6 +10,7 @@ import {
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, prekinderApi, type Report } from "../services/api";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
+import { scoreOptionToneClass } from "../components/evaluator/SpecialtyProfile";
 
 type SaveState =
   "idle" | "saving" | "saved" | "offline" | "conflict" | "closed";
@@ -328,9 +329,6 @@ export function EvaluatorReport() {
               <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-6">
                 {criterion.options.map((option) => {
                   const isSelected = criterion.selectedOptionId === option.optionId && !criterion.notObserved;
-                  const isLogrado = option.value === 3;
-                  const isPorLograr = option.value === 2;
-                  const isNoLogrado = option.value === 0 || option.value === 1;
                   return (
                     <button
                       key={option.optionId}
@@ -348,17 +346,15 @@ export function EvaluatorReport() {
                       aria-pressed={isSelected}
                       aria-label={`${criterion.name}: ${option.value}, ${option.label}`}
                       className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
-                        isSelected && isLogrado ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md" :
-                        isSelected && isPorLograr ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md" :
-                        isSelected && isNoLogrado ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md" :
-                        isSelected ? "border-[#1e3a5f] bg-[#1e3a5f] text-white shadow-md" :
-                        "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
+                        isSelected
+                          ? `${scoreOptionToneClass(option.value)} shadow-md`
+                          : "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
                       }`}
                     >
                       <span className="block text-lg font-black">
                         {option.value}
                       </span>
-                      <span className={`block text-xs font-semibold ${isSelected ? "text-white/90" : ""}`}>
+                      <span className={`block text-xs font-semibold ${isSelected ? "opacity-90" : ""}`}>
                         {option.label}
                       </span>
                     </button>
