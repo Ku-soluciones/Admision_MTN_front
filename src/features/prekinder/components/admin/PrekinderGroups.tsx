@@ -1158,6 +1158,9 @@ function GroupEditor({
         editing?.evaluatorIds.includes(professional.professionalId)) &&
       !bookedEvaluators.has(professional.professionalId),
   );
+  const refDate = props.configuration?.ageReferenceDate ? new Date(props.configuration.ageReferenceDate) : new Date();
+  const ageOf = (app: FlowApplication) =>
+    Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
   const availableMemberKey = eligibleApplications.map((application) => application.applicationId).join("|");
   const availableEvaluatorKey = eligibleProfessionals.map((professional) => professional.professionalId).join("|");
   useEffect(() => {
@@ -1299,11 +1302,19 @@ function GroupEditor({
               title="Postulantes"
               count={`${memberIds.length}/${capacity}`}
               empty="No hay postulantes disponibles en este horario."
-              options={eligibleApplications.map((application) => ({
-                id: application.applicationId,
-                label: fullName(application),
-                detail: `${application.identity.rut}${application.eligibilityStatus === "VERIFIED" ? "" : " · Ya no elegible"}`,
-              }))}
+              options={eligibleApplications.map((application) => {
+                const months = ageOf(application);
+                const years = Math.floor(months / 12);
+                const rem = months % 12;
+                const ageLabel = `${years > 0 ? `${years}a ` : ""}${rem}m`;
+                const inclusionBadge = application.applicationDetails?.inclusionStudent ? " · Inclusión" : "";
+                const statusSuffix = application.eligibilityStatus === "VERIFIED" ? "" : " · Ya no elegible";
+                return {
+                  id: application.applicationId,
+                  label: fullName(application),
+                  detail: `${application.identity.rut} · ${ageLabel}${inclusionBadge}${statusSuffix}`,
+                };
+              })}
               selected={memberIds}
               limit={capacity}
               onChange={setMemberIds}
