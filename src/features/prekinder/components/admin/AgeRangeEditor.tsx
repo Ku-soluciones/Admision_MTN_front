@@ -38,6 +38,7 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
   };
 
   return (
+    // age config v2 — redeploy trigger
     <form
       className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]"
       onSubmit={handleSubmit}
