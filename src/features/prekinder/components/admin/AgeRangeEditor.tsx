@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
-import { AlertTriangle, Calendar, Info } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { AlertTriangle, Calendar, Info, Loader2 } from "lucide-react";
 import type { ProcessConfiguration } from "../../services/api";
+
+const MIN_AGE_MONTHS = 42;
 
 interface AgeRangeEditorProps {
   configuration: ProcessConfiguration;
@@ -11,22 +13,29 @@ interface AgeRangeEditorProps {
 export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRangeEditorProps) {
   const [form, setForm] = useState(configuration);
   const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setForm(configuration);
     setSaved(false);
   }, [configuration]);
 
+  // Auto-clear saved message after 3 seconds
+  const showSaved = () => {
+    setSaved(true);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 3000);
+  };
+
   const update = <K extends keyof ProcessConfiguration>(key: K, value: ProcessConfiguration[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
-    setSaved(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { processId: _processId, ...payload } = form;
     const ok = await onSave(payload);
-    if (ok) setSaved(true);
+    if (ok) showSaved();
   };
 
   return (
@@ -46,30 +55,34 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
       <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {/* Edad mínima */}
         <div>
-          <label className="field-label">
+          <label className="field-label" htmlFor="age-min">
             Edad mínima <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="age-min"
               className="control w-full pl-9"
               type="number"
-              min={42}
+              min={MIN_AGE_MONTHS}
               max={120}
               value={form.minimumAgeMonths}
               onChange={(e) => update("minimumAgeMonths", Number(e.target.value))}
               required
             />
           </div>
-          <p className="mt-1 text-xs text-slate-500">Mínimo 42 meses (3 años y 6 meses).</p>
+          <p className="mt-1 text-xs text-slate-500">Mínimo {MIN_AGE_MONTHS} meses ({Math.floor(MIN_AGE_MONTHS / 12)} años y {MIN_AGE_MONTHS % 12} meses).</p>
         </div>
 
         {/* Edad máxima */}
         <div>
-          <label className="field-label">Edad máxima (meses)</label>
+          <label className="field-label" htmlFor="age-max">
+            Edad máxima (meses)
+          </label>
           <div className="relative">
             <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="age-max"
               className="control w-full pl-9"
               type="number"
               min={form.minimumAgeMonths}
@@ -85,10 +98,13 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
 
         {/* Fecha de referencia */}
         <div>
-          <label className="field-label">Fecha de referencia de edad</label>
+          <label className="field-label" htmlFor="age-ref-date">
+            Fecha de referencia de edad
+          </label>
           <div className="relative">
             <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="age-ref-date"
               className="control w-full pl-9"
               type="date"
               value={form.ageReferenceDate ?? ""}
@@ -138,7 +154,8 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
           <span className="text-sm font-bold text-emerald-600">✓ Cambios guardados</span>
         )}
         {!saved && <span />}
-        <button className="primary" type="submit" disabled={busy}>
+        <button className="primary flex items-center gap-2" type="submit" disabled={busy}>
+          {busy && <Loader2 size={16} className="animate-spin" />}
           {busy ? "Guardando…" : "Guardar cambios"}
         </button>
       </div>
