@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   CalendarDays,
+  Calendar,
   Check,
   ChevronDown,
   ChevronRight,
@@ -24,6 +25,7 @@ import {
   Trash2,
   TriangleAlert,
   UserCog,
+  UserRoundCheck,
   Users,
   UsersRound,
   X,
@@ -61,6 +63,7 @@ import { PrekinderControlTower } from "../components/admin/PrekinderControlTower
 import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 import { PrekinderInclusionAdminPanel } from "../components/admin/PrekinderInclusionAdminPanel";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
+import AgeRangeEditor from "../components/admin/AgeRangeEditor";
 import {
   journeyErrorMessage,
   journeyFromApi,
@@ -841,6 +844,7 @@ export function PrekinderOperations({
           {section === "Postulaciones" && (
             <Applications
               applications={applications}
+              configuration={configuration}
               busy={busy}
               onRefresh={() => void loadBase()}
               onReview={(app, decision, reason) =>
@@ -1239,12 +1243,13 @@ function ReadinessChecklist({ readiness }: { readiness: ProcessReadiness | null 
   );
 }
 
-type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communications";
+type ConfigurationView = "policies" | "questionnaire" | "rubrics" | "communications" | "age";
 
 const configurationViews: Array<{ id: ConfigurationView; label: string; icon: typeof Settings2 }> = [
   { id: "rubrics", label: "Pautas", icon: ClipboardCheck },
   { id: "policies", label: "Políticas del proceso", icon: Settings2 },
   { id: "communications", label: "Comunicaciones", icon: Mail },
+  { id: "age", label: "Edad de postulación", icon: Calendar },
 ];
 
 function ConfigurationHub({
@@ -1309,6 +1314,9 @@ function ConfigurationHub({
             expandedDrafts={expandedDrafts}
             onToggleDraftExpanded={onToggleDraftExpanded}
           />
+        )}
+        {view === "age" && configuration && (
+          <AgeRangeEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
         )}
       </div>
     </div>
@@ -1944,11 +1952,13 @@ const PROFESSIONALS_PAGE_SIZE = 10;
 
 function Applications({
   applications,
+  configuration,
   busy,
   onReview,
   onRefresh,
 }: {
   applications: FlowApplication[];
+  configuration: ProcessConfiguration | null;
   busy: boolean;
   onReview: (
     app: FlowApplication,
@@ -1961,12 +1971,12 @@ function Applications({
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(0);
   const [selectedInclusion, setSelectedInclusion] = useState<FlowApplication | null>(null);
-  const [sort, setSort] = useState<{ key: "name" | "via" | "estado"; dir: "asc" | "desc" }>({
+  const [sort, setSort] = useState<{ key: "name" | "via" | "estado" | "age"; dir: "asc" | "desc" }>({
     key: "name",
     dir: "asc",
   });
 
-  function toggleSort(key: "name" | "via" | "estado") {
+  function toggleSort(key: "name" | "via" | "estado" | "age") {
     setSort((current) =>
       current.key === key
         ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
@@ -1986,6 +1996,14 @@ function Applications({
         return matchesQuery && matchesStatus;
       })
       .sort((a, b) => {
+        if (sort.key === "age") {
+          const refDate = configuration?.ageReferenceDate
+            ? new Date(configuration.ageReferenceDate)
+            : new Date();
+          const ageA = Math.max(0, Math.floor((refDate.getTime() - new Date(a.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          const ageB = Math.max(0, Math.floor((refDate.getTime() - new Date(b.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          return (ageA - ageB) * factor;
+        }
         const value =
           sort.key === "name"
             ? fullName(a).localeCompare(fullName(b), "es")
@@ -2000,7 +2018,7 @@ function Applications({
                 );
         return value * factor;
       });
-  }, [applications, query, statusFilter, sort]);
+  }, [applications, query, statusFilter, sort, configuration]);
 
   useEffect(() => setPage(0), [query, statusFilter]);
 
@@ -2045,9 +2063,10 @@ function Applications({
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[32%]" />
-            <col className="w-[15%]" />
+            <col className="w-[27%]" />
             <col className="w-[13%]" />
+            <col className="w-[8%]" />
+            <col className="w-[12%]" />
             <col className="w-[25%]" />
             <col className="w-[15%]" />
           </colgroup>
@@ -2057,6 +2076,7 @@ function Applications({
                 [
                   ["Postulante", "name"],
                   ["Vía", "via"],
+                  ["Edad", "age"],
                   ["Estado", "estado"],
                 ] as const
               ).map(([label, key]) => (
@@ -2088,6 +2108,7 @@ function Applications({
               <ApplicationRow
                 key={app.applicationId}
                 app={app}
+                configuration={configuration}
                 busy={busy}
                 onReview={onReview}
                 onOpenInclusion={setSelectedInclusion}
@@ -2137,11 +2158,13 @@ function Applications({
 
 function ApplicationRow({
   app,
+  configuration,
   busy,
   onReview,
   onOpenInclusion,
 }: {
   app: FlowApplication;
+  configuration: ProcessConfiguration | null;
   busy: boolean;
   onReview: (
     app: FlowApplication,
@@ -2168,6 +2191,26 @@ function ApplicationRow({
       </td>
       <td className="px-5 py-4 text-sm text-slate-700">
         {waveNames[app.eligibilityCategory] ?? app.eligibilityCategory}
+      </td>
+      <td className="px-5 py-4 text-center">
+        {(() => {
+          const refDate = configuration?.ageReferenceDate ? new Date(configuration.ageReferenceDate) : new Date();
+          const ageMonths = Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          const years = Math.floor(ageMonths / 12);
+          const months = ageMonths % 12;
+          return (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-sm font-bold text-slate-700">
+                {years > 0 ? `${years}a ` : ""}{months}m
+              </span>
+              {app.applicationDetails?.inclusionStudent && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                  <span className="flex items-center gap-0.5"><UserRoundCheck size={10} />Inclusión</span>
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </td>
       <td className="px-5 py-4">
         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${statusTone[app.eligibilityStatus] || statusTone.DRAFT}`}>
@@ -2429,6 +2472,7 @@ function DayCenter({
         rooms={rooms}
         applications={applications}
         professionals={professionals}
+        processConfiguration={configuration}
         busy={busy}
         onAction={onAction}
       />
@@ -2441,6 +2485,7 @@ function GroupInspector({
   rooms,
   applications,
   professionals,
+  processConfiguration,
   busy,
   onAction,
 }: {
@@ -2449,6 +2494,7 @@ function GroupInspector({
   rooms: Room[];
   applications: FlowApplication[];
   professionals: Professional[];
+  processConfiguration: ProcessConfiguration | null;
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
 }) {
@@ -2479,9 +2525,14 @@ function GroupInspector({
         </p>
       </aside>
     );
-  const availableApps = applications.filter(
-    (app) => !group.memberIds.includes(app.applicationId),
-  );
+  const refDate = processConfiguration?.ageReferenceDate
+    ? new Date(processConfiguration.ageReferenceDate)
+    : new Date();
+  const ageOf = (app: FlowApplication) =>
+    Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  const availableApps = applications
+    .filter((app) => !group.memberIds.includes(app.applicationId))
+    .sort((a, b) => ageOf(a) - ageOf(b));
   const availablePeople = professionals.filter(
     (person) =>
       person.active &&
@@ -2566,11 +2617,18 @@ function GroupInspector({
             onChange={(e) => setApplicationId(e.target.value)}
           >
             <option value="">Seleccionar postulante</option>
-            {availableApps.map((app) => (
-              <option key={app.applicationId} value={app.applicationId}>
-                {fullName(app)}
-              </option>
-            ))}
+            {availableApps.map((app) => {
+              const months = ageOf(app);
+              const years = Math.floor(months / 12);
+              const rem = months % 12;
+              const ageLabel = `${years > 0 ? `${years}a ` : ""}${rem}m`;
+              const inclusionBadge = app.applicationDetails?.inclusionStudent ? " [INCLUSIÓN]" : "";
+              return (
+                <option key={app.applicationId} value={app.applicationId}>
+                  {fullName(app)} — {ageLabel}{inclusionBadge}
+                </option>
+              );
+            })}
           </select>
           <button
             className="secondary mt-2 w-full"
