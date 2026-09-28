@@ -21,6 +21,7 @@ const LoadingFallback = () => (
 
 function App() {
   const location = useLocation();
+  const isAdminDashboard = /^\/admin\/?$/.test(location.pathname);
   const hideHeader = location.pathname === '/login'
     || location.pathname === '/admin/login'
     || location.pathname === '/profesor'
@@ -33,9 +34,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
-          <div className="flex min-h-screen flex-col bg-blanco-pureza text-gray-800 font-sans">
+          <div className={`flex flex-col bg-blanco-pureza font-sans text-gray-800 ${isAdminDashboard ? 'h-[100dvh] min-h-0 overflow-hidden' : 'min-h-screen'}`}>
             {!hideHeader && <Header />}
-            <main className="flex-grow overflow-x-hidden">
+            <main className="min-h-0 flex-1 overflow-x-clip">
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
 

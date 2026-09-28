@@ -836,7 +836,7 @@ Esta acción:
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gray-50">
       {/* Overlay global de carga */}
       {isPageLoading && (
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
