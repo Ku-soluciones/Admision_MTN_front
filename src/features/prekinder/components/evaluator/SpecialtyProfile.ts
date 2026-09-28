@@ -98,10 +98,20 @@ export const PROFILE_STYLES: Record<SpecialtyProfile, ProfileStyle> = {
 // scale regardless of which specialty they're evaluating. Only the module's own badge/header color
 // (above) identifies which pauta type it is; this scale never varies by domain.
 export function scoreOptionToneClass(value: number): string {
-  if (value === 0) return "border-[#fee2e2] bg-[#fef2f2] text-red-900";
-  if (value === 1) return "border-[#fecaca] bg-[#fee2e2] text-red-900";
-  if (value === 2) return "border-[#fde68a] bg-[#fef3c7] text-amber-900";
-  if (value === 3) return "border-[#bbf7d0] bg-[#dcfce7] text-emerald-900";
-  if (value === 4) return "border-[#a7f3d0] bg-[#d1fae5] text-emerald-900";
-  return "border-[#6ee7b7] bg-[#a7f3d0] text-emerald-950";
+  if (value === 0)
+    return "border-[#f6c7cb] bg-[#fff8f8] text-[#8a2f35]";
+
+  if (value === 1)
+    return "border-[#f3d0c7] bg-[#fff9f6] text-[#8a4538]";
+
+  if (value === 2)
+    return "border-[#f2dfb4] bg-[#fffdf5] text-[#856621]";
+
+  if (value === 3)
+    return "border-[#d8eee2] bg-[#f9fdfb] text-[#3f725d]";
+
+  if (value === 4)
+    return "border-[#b7dfcc] bg-[#eef9f3] text-[#205b43]";
+
+  return "border-[#9fd2ba] bg-[#e8f6ee] text-[#164c37]";
 }
