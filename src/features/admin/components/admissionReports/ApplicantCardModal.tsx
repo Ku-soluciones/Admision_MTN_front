@@ -18,10 +18,13 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const [cycleDirectorFullReport, setCycleDirectorFullReport] = useState<CycleDirectorFullReport | null>(null);
+  const [examEvaluations, setExamEvaluations] = useState<Record<string, { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string }>>({});
 
-  const fetchCycleDirectorReport = useCallback(async (applicationId: number) => {
+  const fetchAllEvaluations = useCallback(async (applicationId: number) => {
     try {
       const evaluations = await evaluationService.getEvaluationsByApplicationId(applicationId);
+
+      // Cycle Director Report
       const cycleDirectorReport = evaluations.find(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT' && e.interviewData);
       if (cycleDirectorReport?.interviewData) {
         const data = cycleDirectorReport.interviewData;
@@ -38,19 +41,36 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
       } else {
         setCycleDirectorFullReport(null);
       }
+
+      // Exam evaluations (LANGUAGE_EXAM, MATHEMATICS_EXAM, ENGLISH_EXAM)
+      const examTypes = ['LANGUAGE_EXAM', 'MATHEMATICS_EXAM', 'ENGLISH_EXAM'];
+      const examEvals: Record<string, { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string }> = {};
+      evaluations
+        .filter(e => examTypes.includes(e.evaluationType))
+        .forEach(e => {
+          examEvals[e.evaluationType] = {
+            observations: e.observations,
+            strengths: e.strengths,
+            areasForImprovement: e.areasForImprovement,
+            recommendations: e.recommendations
+          };
+        });
+      setExamEvaluations(examEvals);
     } catch (err) {
-      console.error('Error fetching cycle director report:', err);
+      console.error('Error fetching evaluations:', err);
       setCycleDirectorFullReport(null);
+      setExamEvaluations({});
     }
   }, []);
 
   useEffect(() => {
     if (card?.applicationId) {
-      void fetchCycleDirectorReport(card.applicationId);
+      void fetchAllEvaluations(card.applicationId);
     } else {
       setCycleDirectorFullReport(null);
+      setExamEvaluations({});
     }
-  }, [card?.applicationId, fetchCycleDirectorReport]);
+  }, [card?.applicationId, fetchAllEvaluations]);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -199,17 +219,21 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 <CardSection title="Exámenes Kínder–IV" accent="rose">
                   {card.exams.length ? (
                     <div className="divide-y divide-slate-200 border-y border-slate-200">
-                      {card.exams.map((exam) => (
-                        <div key={`${exam.evaluationType}-${exam.subject}`} className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_88px_120px] sm:items-center">
-                          <div>
-                            <p className="font-bold text-slate-900">{exam.subject}</p>
-                            <p className="text-xs text-slate-500 sm:hidden">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
-                          </div>
-                          <p className="hidden text-sm text-slate-600 sm:block">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
-                          <p className="text-sm font-bold tabular-nums text-slate-900">{exam.percentage != null ? `${exam.percentage}%` : 'Sin puntaje'}</p>
-                          <ReportLink href={exam.reportLink} compact />
-                        </div>
-                      ))}
+                      {card.exams.map((exam) => {
+                        const examEval = examEvaluations[exam.evaluationType];
+                        const hasFeedback = examEval && (
+                          examEval.observations || examEval.strengths ||
+                          examEval.areasForImprovement || examEval.recommendations
+                        );
+                        return (
+                          <ExamRowWithTooltip
+                            key={`${exam.evaluationType}-${exam.subject}`}
+                            exam={exam}
+                            feedback={examEval}
+                            hasFeedback={hasFeedback}
+                          />
+                        );
+                      })}
                       <div className="flex items-center justify-between py-3">
                         <span className="text-sm font-bold text-slate-700">Promedio exámenes</span>
                         <strong className="text-lg tabular-nums text-slate-950">{examAverage != null ? `${examAverage}%` : 'Sin registro'}</strong>
@@ -438,6 +462,95 @@ const removeInvalidInterviewer = (content?: string | null): string => {
 };
 
 const booleanLabel = (value?: boolean | null) => value == null ? 'Sin registro' : value ? 'Sí' : 'No';
+
+interface ExamRowProps {
+  exam: ApplicantCard['exams'][number];
+  feedback?: { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string };
+  hasFeedback: boolean;
+}
+
+const ExamRowWithTooltip: React.FC<ExamRowProps> = ({ exam, feedback, hasFeedback }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    if (hasFeedback && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX
+      });
+      setShowTooltip(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_88px_120px] sm:items-center"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div>
+          <p className="font-bold text-slate-900">{exam.subject}</p>
+          <p className="text-xs text-slate-500 sm:hidden">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
+        </div>
+        <p className="hidden text-sm text-slate-600 sm:block">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
+        <p className="text-sm font-bold tabular-nums text-slate-900">{exam.percentage != null ? `${exam.percentage}%` : 'Sin puntaje'}</p>
+        {hasFeedback ? (
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-medium text-amber-600">Con comentarios</span>
+            <FiChevronDown className="h-4 w-4 text-amber-600" />
+          </div>
+        ) : (
+          <ReportLink href={exam.reportLink} compact />
+        )}
+      </div>
+      {showTooltip && feedback && (
+        <div
+          className="fixed z-50 max-w-sm rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+          style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={handleMouseLeave}
+        >
+          <p className="mb-3 text-sm font-bold text-slate-900">{exam.subject}</p>
+          <div className="space-y-3">
+            {feedback.observations && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Observaciones</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.observations}</p>
+              </div>
+            )}
+            {feedback.strengths && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Fortalezas</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.strengths}</p>
+              </div>
+            )}
+            {feedback.areasForImprovement && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Áreas a trabajar</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.areasForImprovement}</p>
+              </div>
+            )}
+            {feedback.recommendations && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Recomendaciones</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.recommendations}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const uniqueValues = (values: Array<string | undefined>) => Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
 const parentNames = (card: ApplicantCard) => uniqueValues([card.family.motherName, card.family.fatherName, card.family.guardianName]).join(' · ') || 'Sin registro';
