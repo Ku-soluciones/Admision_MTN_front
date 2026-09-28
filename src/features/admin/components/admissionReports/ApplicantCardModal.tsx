@@ -1,8 +1,9 @@
-import React, { useEffect, useId, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FiChevronDown, FiExternalLink, FiFileText, FiRefreshCw, FiX } from 'react-icons/fi';
-import type { ApplicantCard } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import type { ApplicantCard, CycleDirectorFullReport } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import { formatAdmissionDate, formatGenderLabel, formatGradeLabel, safeDisplayText, statusTone } from './admissionReportUtils';
 import { FamilyQuestionnaireSection } from './FamilyQuestionnaireSection';
+import { evaluationService } from '../../services/evaluationService';
 
 interface ApplicantCardModalProps {
   card: ApplicantCard | null;
@@ -16,6 +17,40 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const [cycleDirectorFullReport, setCycleDirectorFullReport] = useState<CycleDirectorFullReport | null>(null);
+
+  const fetchCycleDirectorReport = useCallback(async (applicationId: number) => {
+    try {
+      const evaluations = await evaluationService.getEvaluationsByApplicationId(applicationId);
+      const cycleDirectorReport = evaluations.find(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT' && e.interviewData);
+      if (cycleDirectorReport?.interviewData) {
+        const data = cycleDirectorReport.interviewData;
+        setCycleDirectorFullReport({
+          strengths: data.strengths || null,
+          difficulties: data.difficulties || null,
+          interviewAdaptation: data.interviewAdaptation || null,
+          outstandingTraits: data.outstandingTraits || null,
+          familyBackground: data.familyBackground || null,
+          academicBackground: data.academicBackground || null,
+          finalDecision: data.finalDecision || null,
+          entryCourse: data.entryCourse || null
+        });
+      } else {
+        setCycleDirectorFullReport(null);
+      }
+    } catch (err) {
+      console.error('Error fetching cycle director report:', err);
+      setCycleDirectorFullReport(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (card?.applicationId) {
+      void fetchCycleDirectorReport(card.applicationId);
+    } else {
+      setCycleDirectorFullReport(null);
+    }
+  }, [card?.applicationId, fetchCycleDirectorReport]);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -184,11 +219,11 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 </CardSection>
               )}
 
-              <CardSection title="Entrevista director/a de ciclo" accent="blue">
+              <CardSection title={`Entrevista director/a de ciclo${card.cycleDirector.report?.evaluator ? ` — ${card.cycleDirector.report.evaluator}` : ''}`} accent="blue">
                 <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                   <Field label="Fecha entrevista" value={formatAdmissionDate(card.cycleDirector.date, 'Sin registro')} />
                   <Field label="Realizada" value={booleanLabel(card.cycleDirector.done)} />
-                  <Field label="Recomendación del director de ciclo" value={safeDisplayText(card.cycleDirector.decision, 'Pendiente')} />
+                  <Field label="Decisión" value={safeDisplayText(card.cycleDirector.decision, 'Pendiente')} />
                   <Field
                     label="Informe entrevista"
                     value={<CycleDirectorReport report={card.cycleDirector.report} href={card.cycleDirector.reportLink} />}
@@ -196,6 +231,69 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                   />
                 </dl>
               </CardSection>
+
+              {/* Informe Final Director de Ciclo - Antecedentes y Recomendaciones */}
+              {cycleDirectorFullReport && (
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm font-semibold text-indigo-800 hover:text-indigo-700">
+                    <span className="h-2 w-2 rounded-full bg-indigo-600" aria-hidden="true" />
+                    <span className="flex-1">Informe Final Director de Ciclo</span>
+                    <svg className="h-5 w-5 text-indigo-600 transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                    {cycleDirectorFullReport.strengths && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Fortalezas</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.strengths}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.difficulties && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dificultades</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.difficulties}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.interviewAdaptation && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Adaptación a la entrevista</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.interviewAdaptation}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.outstandingTraits && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Traits destacados</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.outstandingTraits}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.familyBackground && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Contexto familiar</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.familyBackground}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.academicBackground && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Antecedentes académicos</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.academicBackground}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.finalDecision && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Recomendación final</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.finalDecision}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.entryCourse && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Curso de ingreso</p>
+                        <p className="mt-1 text-sm text-slate-700">{cycleDirectorFullReport.entryCourse}</p>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
 
               {/* Entrevista Familiar */}
               <CardSection title="Entrevista Familiar" accent="teal">
