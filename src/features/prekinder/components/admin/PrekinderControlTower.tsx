@@ -23,7 +23,6 @@ import {
   Search,
   Trash2,
   Users,
-  UsersRound,
   UserCheck,
   X,
 } from "lucide-react";
@@ -1321,8 +1320,9 @@ function CreateGroupDialog({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-5">
-            <label className="block text-sm font-bold text-slate-700">Fecha de rendición de entrevista
+          <section className="grid gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.2fr_1.2fr_1.2fr_1.2fr_0.7fr]">
+            <label className="block text-sm font-bold text-slate-700">
+              Fecha de rendición
               <input
                 className="control mt-1 w-full"
                 type="date"
@@ -1333,7 +1333,8 @@ function CreateGroupDialog({
                 }}
               />
             </label>
-            <label className="block text-sm font-bold text-slate-700">Sala
+            <label className="block text-sm font-bold text-slate-700">
+              Sala
               <select
                 className="control mt-1 w-full"
                 required
@@ -1351,10 +1352,12 @@ function CreateGroupDialog({
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-bold text-slate-700">Nombre del grupo
+            <label className="block text-sm font-bold text-slate-700">
+              Nombre del grupo
               <input className="control mt-1 w-full" value={code} maxLength={64} onChange={(event) => setCode(event.target.value)} placeholder="Ej. PK-A-0900" autoFocus />
             </label>
-            <label className="block text-sm font-bold text-slate-700">Modalidad
+            <label className="block text-sm font-bold text-slate-700">
+              Modalidad
               <select className="control mt-1 w-full" value={stage} onChange={(event) => {
                 const next = event.target.value as EvaluationGroup["stage"];
                 const nextCapacity = next === "GROUP_3"
@@ -1372,7 +1375,8 @@ function CreateGroupDialog({
                 <option value="GROUP_9" disabled={(room?.capacity ?? 0) < (configuration?.psychomotorGroupSize ?? Number.POSITIVE_INFINITY)}>Interacción grupal · base de {configuration?.psychomotorGroupSize ?? "—"}</option>
               </select>
             </label>
-            <label className="block text-sm font-bold text-slate-700">Cupos para niños
+            <label className="block text-sm font-bold text-slate-700">
+              Cupos para niños
               <input className="control mt-1 w-full" type="number" min={Math.max(1, memberIds.length)} max={Math.min(30, room?.capacity ?? 30)} value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} />
             </label>
           </section>
@@ -1390,7 +1394,7 @@ function CreateGroupDialog({
               {visibleApplications.map((app) => {
                 const selected = memberIds.includes(app.applicationId);
                 const limitReached = memberIds.length >= capacity && !selected;
-                return <SelectionButton key={app.applicationId} selected={selected} disabled={limitReached} onClick={() => toggleMember(app.applicationId)} title={fullName(app)} detail={app.identity.rut} marker={initials(app)} />;
+                return <SelectionButton key={app.applicationId} selected={selected} disabled={limitReached} onClick={() => toggleMember(app.applicationId)} title={fullName(app)} detail={app.identity.rut} />;
               })}
             </SelectionColumn>
 
@@ -1407,7 +1411,7 @@ function CreateGroupDialog({
               {visibleEvaluators.map((person) => {
                 const selected = evaluatorIds.includes(person.professionalId);
                 const limitReached = evaluatorIds.length >= requiredEvaluators && !selected;
-                return <SelectionButton key={person.professionalId} selected={selected} disabled={limitReached} onClick={() => toggleEvaluator(person.professionalId)} title={person.displayName} detail={person.roleLabel || person.specialty} marker={<UsersRound size={16} />} />;
+                return <SelectionButton key={person.professionalId} selected={selected} disabled={limitReached} onClick={() => toggleEvaluator(person.professionalId)} title={person.displayName} detail={person.roleLabel || person.specialty} />;
               })}
             </SelectionColumn>
           </div>
@@ -1453,16 +1457,15 @@ function SelectionColumn({ title, description, count, query, onQueryChange, quer
   </section>;
 }
 
-function SelectionButton({ selected, disabled, onClick, title, detail, marker }: {
+function SelectionButton({ selected, disabled, onClick, title, detail }: {
   selected: boolean;
   disabled: boolean;
   onClick: () => void;
   title: string;
   detail: string;
-  marker: ReactNode;
 }) {
   return <button type="button" aria-pressed={selected} disabled={disabled} onClick={onClick} className={`flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-45 ${selected ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"}`}>
-    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-black ${selected ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"}`}>{selected ? <Check size={16} strokeWidth={3} /> : marker}</span>
+    {selected ? <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-700 text-xs font-black text-white"><Check size={16} strokeWidth={3} /></span> : null}
     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-slate-900">{title}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{detail}</span></span>
   </button>;
 }

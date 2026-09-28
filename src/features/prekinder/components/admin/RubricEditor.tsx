@@ -15,7 +15,7 @@ import type {
   RubricDraftInput,
   RubricVersion,
 } from "../../services/api";
-import { INSTRUMENT_TO_PROFILE, PROFILE_STYLES, type ProfileStyle } from "../evaluator/SpecialtyProfile";
+import { INSTRUMENT_TO_PROFILE, PROFILE_STYLES, scoreOptionToneClass, type ProfileStyle } from "../evaluator/SpecialtyProfile";
 
 const DEFAULT_PREVIEW_STYLE: ProfileStyle = {
   gradient: "from-slate-700 to-slate-900",
@@ -555,25 +555,14 @@ export function RubricPreviewModal({ version, instrumentLabels, onClose }: Rubri
                   </div>
                   <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
                     {criterion.options.map((option) => {
-                      const isLogrado = option.value === 3;
-                      const isPorLograr = option.value === 2;
-                      const isNoLogrado = option.value === 0 || option.value === 1;
                       return (
                         <div
                           key={option.optionId}
-                          className={`min-h-16 rounded-xl border-2 p-3 text-left shadow-md ${
-                            isLogrado
-                              ? "border-[#22c55e] bg-[#22c55e] text-white"
-                              : isPorLograr
-                                ? "border-[#f59e0b] bg-[#f59e0b] text-white"
-                                : isNoLogrado
-                                  ? "border-[#ef4444] bg-[#ef4444] text-white"
-                                  : `${style.border} ${style.badge} text-white`
-                          }`}
+                          className={`min-h-16 rounded-xl border-2 p-3 text-left shadow-md ${scoreOptionToneClass(option.value)}`}
                         >
                           <span className="block text-lg font-black">{option.value}</span>
                           {option.descriptor && (
-                            <span className="mt-1 block text-xs leading-tight text-white/80">
+                            <span className="mt-1 block text-xs leading-tight opacity-80">
                               {option.descriptor}
                             </span>
                           )}

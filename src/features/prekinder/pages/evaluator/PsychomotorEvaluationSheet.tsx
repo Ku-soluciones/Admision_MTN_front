@@ -9,6 +9,7 @@ import {
   type RubricAssignment,
   type Report,
 } from "../../services/api";
+import { scoreOptionToneClass } from "../../components/evaluator/SpecialtyProfile";
 
 type Score = number | null;
 
@@ -685,15 +686,15 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
                 <p className="mb-2 px-2 text-xs font-black uppercase tracking-widest text-cyan-200">Opciones</p>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#22c55e]"></div>
+                    <div className="h-5 w-5 rounded bg-[#bbf7d0]"></div>
                     <span className="text-xs text-white/80">Logrado (3)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#f59e0b]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fde68a]"></div>
                     <span className="text-xs text-white/80">Por lograr (2)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#ef4444]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fecaca]"></div>
                     <span className="text-xs text-white/80">No logrado (0-1)</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -835,19 +836,14 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                         {criterion.options.map((option) => {
                           const isSelected = activeScores[cIdx] === option.value;
-                          const isLogrado = option.value === 3;
-                          const isPorLograr = option.value === 2;
-                          const isNoLogrado = option.value === 0 || option.value === 1;
                           const isNotObserved = option.value < 0;
                           return (
                             <button
                               key={option.optionId}
                               disabled={!editableStatus[activeApplicant.applicationId]}
                               className={`min-h-16 rounded-xl border-2 p-3 text-left transition-all ${
-                                isSelected && isLogrado ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md" :
-                                isSelected && isPorLograr ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md" :
-                                isSelected && isNoLogrado ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md" :
                                 isSelected && isNotObserved ? "border-slate-400 bg-slate-400 text-white shadow-md" :
+                                isSelected ? `${scoreOptionToneClass(option.value)} shadow-md` :
                                 "border-slate-200 bg-white hover:border-[#2d5a87] hover:shadow-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                               }`}
                               onClick={() =>
@@ -870,9 +866,11 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
                               {option.descriptor && (
                                 <p
                                   className={`mt-1 text-xs leading-tight ${
-                                    isSelected
+                                    isSelected && isNotObserved
                                       ? "text-white/80"
-                                      : "text-slate-400"
+                                      : isSelected
+                                        ? "opacity-80"
+                                        : "text-slate-400"
                                   }`}
                                 >
                                   {option.descriptor}

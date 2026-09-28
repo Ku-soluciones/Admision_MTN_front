@@ -17,7 +17,7 @@ import {
   type RubricVersion,
   type Report,
 } from "../../services/api";
-import { PROFILE_TO_SHORT_INSTRUMENT, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_TO_SHORT_INSTRUMENT, scoreOptionToneClass, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 import { isMockMode, buildMockAgenda } from "../dev/mockApi";
 
 type Score = number | null;
@@ -745,29 +745,20 @@ export function ConnectedAcademicConsole({ profile }: Props) {
                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
                       {criterion.options.map((option) => {
                         const isSelected = activeScores[cIdx] === option.value;
-                        const isLogrado = option.value === 3;
-                        const isPorLograr = option.value === 2;
-                        const isNoLogrado = option.value === 0 || option.value === 1;
                         return (
                           <button
                             key={option.optionId}
                             disabled={!editableStatus[activeApplicant.applicationId] || saving}
                             onClick={() => void setScore(activeApplicant.applicationId, cIdx, option.value)}
                             className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
-                              isSelected && isLogrado
-                                ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md"
-                                : isSelected && isPorLograr
-                                  ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md"
-                                  : isSelected && isNoLogrado
-                                    ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md"
-                                    : isSelected
-                                      ? "border-emerald-700 bg-emerald-900 text-white shadow-md"
-                                      : "border-slate-200 bg-white hover:border-emerald-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
+                              isSelected
+                                ? `${scoreOptionToneClass(option.value)} shadow-md`
+                                : "border-slate-200 bg-white hover:border-emerald-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
                             }`}
                           >
                             <span className="block text-lg font-black">{option.value}</span>
                             {option.descriptor && (
-                              <span className={`mt-1 block text-xs leading-tight ${isSelected ? "text-white/80" : "text-slate-400"}`}>
+                              <span className={`mt-1 block text-xs leading-tight ${isSelected ? "opacity-80" : "text-slate-400"}`}>
                                 {option.descriptor}
                               </span>
                             )}

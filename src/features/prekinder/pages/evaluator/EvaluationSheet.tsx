@@ -671,15 +671,15 @@ export function EvaluationSheet({ profile }: EvaluationSheetProps) {
                 </p>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#22c55e]"></div>
+                    <div className="h-5 w-5 rounded bg-[#bbf7d0]"></div>
                     <span className="text-xs text-white/80">Logrado (3)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#f59e0b]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fde68a]"></div>
                     <span className="text-xs text-white/80">Por lograr (2)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded bg-[#ef4444]"></div>
+                    <div className="h-5 w-5 rounded bg-[#fecaca]"></div>
                     <span className="text-xs text-white/80">No logrado (0-1)</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -784,11 +784,11 @@ export function EvaluationSheet({ profile }: EvaluationSheetProps) {
                               }
                               className={`min-h-16 rounded-xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 ${
                                 isSelected && isLogrado
-                                  ? "border-[#22c55e] bg-[#22c55e] text-white shadow-md"
+                                  ? "border-[#86efac] bg-[#bbf7d0] text-emerald-900 shadow-md"
                                   : isSelected && isPorLograr
-                                    ? "border-[#f59e0b] bg-[#f59e0b] text-white shadow-md"
+                                    ? "border-[#fcd34d] bg-[#fde68a] text-amber-900 shadow-md"
                                     : isSelected && isNoLogrado
-                                      ? "border-[#ef4444] bg-[#ef4444] text-white shadow-md"
+                                      ? "border-[#fca5a5] bg-[#fecaca] text-red-900 shadow-md"
                                       : isSelected
                                         ? `border-${colors.bg} bg-${colors.bg} text-white shadow-md`
                                         : `border-slate-200 bg-white hover:border-${colors.primary}-400 hover:shadow-sm disabled:bg-slate-50 disabled:text-slate-400`
@@ -797,7 +797,11 @@ export function EvaluationSheet({ profile }: EvaluationSheetProps) {
                               <span className="block text-lg font-black">{option.value}</span>
                               <span
                                 className={`block text-xs font-semibold ${
-                                  isSelected ? "text-white/90" : ""
+                                  isSelected && (isLogrado || isPorLograr || isNoLogrado)
+                                    ? "opacity-90"
+                                    : isSelected
+                                      ? "text-white/90"
+                                      : ""
                                 }`}
                               >
                                 {option.label}
