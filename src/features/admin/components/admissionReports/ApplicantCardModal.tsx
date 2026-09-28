@@ -60,12 +60,20 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
 
       // Family interview evaluator names
       const familyEvaluations = evaluations.filter(e => e.evaluationType === 'FAMILY_INTERVIEW' || e.evaluationType === 'FAMILY');
-      const names = familyEvaluations
-        .map(e => e.evaluator?.firstName && e.evaluator?.lastName
-          ? `${e.evaluator.firstName} ${e.evaluator.lastName}`
-          : e.evaluatorName
-        )
-        .filter((name): name is string => Boolean(name));
+      const names: string[] = [];
+      familyEvaluations.forEach(e => {
+        // Primary evaluator from evaluator object
+        if (e.evaluator?.firstName && e.evaluator?.lastName) {
+          names.push(`${e.evaluator.firstName} ${e.evaluator.lastName}`);
+        } else if (e.evaluatorName) {
+          names.push(e.evaluatorName);
+        }
+        // Second interviewer from interviewData
+        const interviewData = (e as any).interviewData;
+        if (interviewData?.secondInterviewerName) {
+          names.push(interviewData.secondInterviewerName);
+        }
+      });
       setFamilyInterviewerNames(names);
     } catch (err) {
       console.error('Error fetching evaluations:', err);
