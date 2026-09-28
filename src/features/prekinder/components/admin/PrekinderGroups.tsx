@@ -1173,7 +1173,7 @@ function GroupEditor({
     Boolean(code.trim() && roomId && startsAt) &&
     memberIds.length > 0 &&
     memberIds.length <= capacity &&
-    evaluatorIds.length === requiredEvaluators &&
+    evaluatorIds.length >= requiredEvaluators &&
     capacity <= (room?.capacity ?? 0);
   const canCreate = !editing && validComposition;
   const canEdit = Boolean(editing && validComposition);
@@ -1310,7 +1310,7 @@ function GroupEditor({
             />
             <SelectionList
               title="Equipo evaluador"
-              count={`${evaluatorIds.length}/${requiredEvaluators}`}
+              count={`${evaluatorIds.length} seleccionado${evaluatorIds.length === 1 ? "" : "s"}`}
               empty="No hay evaluadores disponibles en este horario."
               options={eligibleProfessionals.map((professional) => ({
                 id: professional.professionalId,
@@ -1318,7 +1318,7 @@ function GroupEditor({
                 detail: `${professional.roleLabel}${professional.active ? "" : " · Inactivo"}`,
               }))}
               selected={evaluatorIds}
-              limit={requiredEvaluators}
+              limit={eligibleProfessionals.length}
               onChange={setEvaluatorIds}
             />
         </div>

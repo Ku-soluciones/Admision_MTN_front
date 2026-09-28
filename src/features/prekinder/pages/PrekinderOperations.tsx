@@ -2672,8 +2672,7 @@ function GroupInspector({
             disabled={
               busy ||
               !evaluatorId ||
-              ["COMPLETED", "CANCELLED"].includes(group.status) ||
-              group.evaluatorIds.length >= group.requiredEvaluators
+              ["COMPLETED", "CANCELLED"].includes(group.status)
             }
             onClick={() =>
               onAction(
@@ -2742,7 +2741,7 @@ function GroupInspector({
             busy ||
             group.status !== "DRAFT" ||
             !group.memberIds.length ||
-            group.evaluatorIds.length !== group.requiredEvaluators
+            group.evaluatorIds.length < group.requiredEvaluators
           }
           onClick={() =>
             onAction(

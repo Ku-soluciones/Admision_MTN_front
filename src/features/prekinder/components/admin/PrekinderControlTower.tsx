@@ -266,9 +266,7 @@ function groupAlerts(group: EvaluationGroup, towerGroup: TowerGroup | undefined,
   if (group.memberIds.length > group.capacity) {
     alerts.push({ ...base, id: `${group.groupId}-capacity`, severity: "critical", title: "Cupo excedido", detail: `${group.memberIds.length} niños para ${group.capacity} cupos.` });
   }
-  if (group.evaluatorIds.length > group.requiredEvaluators) {
-    alerts.push({ ...base, id: `${group.groupId}-evaluator-overflow`, severity: "critical", title: "Equipo excedido", detail: `${group.evaluatorIds.length} evaluadores para ${group.requiredEvaluators} requeridos.` });
-  } else if (!terminalStatuses.includes(status) && group.evaluatorIds.length < group.requiredEvaluators) {
+  if (!terminalStatuses.includes(status) && group.evaluatorIds.length < group.requiredEvaluators) {
     const missing = group.requiredEvaluators - group.evaluatorIds.length;
     alerts.push({ ...base, id: `${group.groupId}-evaluators`, severity: status === "DRAFT" ? "warning" : "critical", title: "Equipo incompleto", detail: `Falta${missing === 1 ? "" : "n"} ${missing} evaluador${missing === 1 ? "" : "es"}.` });
   }
@@ -1117,7 +1115,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
   const available = applications.filter((app) => !group.memberIds.includes(app.applicationId));
   const availablePeople = professionals.filter((p) => p.active && p.roleGroup === "EVALUACION" && !group.evaluatorIds.includes(p.professionalId));
   const rubricMissing = rubricAssignments.length === 0;
-  const canConfirm = group.status === "DRAFT" && group.memberIds.length > 0 && group.evaluatorIds.length === group.requiredEvaluators && !rubricMissing;
+  const canConfirm = group.status === "DRAFT" && group.memberIds.length > 0 && group.evaluatorIds.length >= group.requiredEvaluators && !rubricMissing;
   const meta = statusMeta[effectiveStatus] ?? statusMeta.DRAFT;
 
   return (
@@ -1142,7 +1140,7 @@ function GroupPanel({ selected: group, date, rooms, applications, professionals,
         <div className="border-t border-slate-200 pt-5">
           <div className="mb-3 flex items-center justify-between"><h3 className="font-black text-slate-900">Profesionales</h3><span className="text-sm font-bold text-slate-500">{group.evaluatorIds.length}/{group.requiredEvaluators}</span></div>
           <select className="control w-full" value={evaluatorId} onChange={(e) => setEvaluatorId(e.target.value)}><option value="">Seleccionar profesional</option>{availablePeople.map((p) => <option key={p.professionalId} value={p.professionalId}>{p.displayName} · {p.specialty}</option>)}</select>
-          <button className="primary mt-2 w-full" disabled={busy || !evaluatorId || group.evaluatorIds.length >= group.requiredEvaluators} onClick={() => { setAssignError(""); onAction(async () => { try { await prekinderApi.assignEvaluator(group.groupId, evaluatorId); } catch (err: any) { setAssignError(err?.message || "No se pudo asignar el profesional. Verifica que tenga un rol evaluador activo para este proceso."); throw err; } }, "Profesional asignado."); }}>Asignar profesional</button>
+          <button className="primary mt-2 w-full" disabled={busy || !evaluatorId} onClick={() => { setAssignError(""); onAction(async () => { try { await prekinderApi.assignEvaluator(group.groupId, evaluatorId); } catch (err: any) { setAssignError(err?.message || "No se pudo asignar el profesional. Verifica que tenga un rol evaluador activo para este proceso."); throw err; } }, "Profesional asignado."); }}>Asignar profesional</button>
           {assignError && <p className="mt-2 text-sm text-red-600">{assignError}</p>}
         </div>
 
@@ -1273,7 +1271,7 @@ function CreateGroupDialog({
     && code.trim()
     && capacityIsValid
     && memberIds.length > 0
-    && evaluatorIds.length === requiredEvaluators,
+    && evaluatorIds.length >= requiredEvaluators,
   );
 
   function toggleMember(applicationId: string) {
@@ -1285,7 +1283,7 @@ function CreateGroupDialog({
   function toggleEvaluator(professionalId: string) {
     setEvaluatorIds((current) => current.includes(professionalId)
       ? current.filter((id) => id !== professionalId)
-      : current.length < requiredEvaluators ? [...current, professionalId] : current);
+      : [...current, professionalId]);
   }
 
   async function createGroup() {
@@ -1400,8 +1398,8 @@ function CreateGroupDialog({
 
             <SelectionColumn
               title="Equipo evaluador"
-              description={`El equipo debe quedar completo con ${requiredEvaluators} evaluadores disponibles.`}
-              count={`${evaluatorIds.length}/${requiredEvaluators}`}
+              description={`El equipo debe tener al menos ${requiredEvaluators} evaluador${requiredEvaluators === 1 ? "" : "es"} disponible${requiredEvaluators === 1 ? "" : "s"}.`}
+              count={`${evaluatorIds.length} seleccionado${evaluatorIds.length === 1 ? "" : "s"}`}
               query={evaluatorQuery}
               onQueryChange={setEvaluatorQuery}
               queryLabel="Buscar evaluador"
@@ -1410,8 +1408,7 @@ function CreateGroupDialog({
             >
               {visibleEvaluators.map((person) => {
                 const selected = evaluatorIds.includes(person.professionalId);
-                const limitReached = evaluatorIds.length >= requiredEvaluators && !selected;
-                return <SelectionButton key={person.professionalId} selected={selected} disabled={limitReached} onClick={() => toggleEvaluator(person.professionalId)} title={person.displayName} detail={person.roleLabel || person.specialty} />;
+                return <SelectionButton key={person.professionalId} selected={selected} disabled={false} onClick={() => toggleEvaluator(person.professionalId)} title={person.displayName} detail={person.roleLabel || person.specialty} />;
               })}
             </SelectionColumn>
           </div>
