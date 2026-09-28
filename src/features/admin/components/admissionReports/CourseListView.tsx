@@ -98,7 +98,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
         'Hijo/a de exalumno': safeDisplayText(row.alumniChild),
         'Hermanos en el colegio': safeDisplayText(row.siblingsInSchool),
         'Promedio exámenes (%)': row.examAverage ?? '',
-        'Recomendación dirección de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
+        'Recomendación del director de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
         Estado: row.statusLabel
       }));
       const worksheet = XLSX.utils.json_to_sheet(data);
@@ -278,7 +278,7 @@ const ApplicantMobileCard: React.FC<{ row: CourseApplicant; onOpenCard: (applica
           <dd className="mt-0.5 font-semibold text-slate-800">{row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</dd>
         </div>
         <div>
-          <dt className="text-xs font-medium text-slate-500">Recomendación de ciclo</dt>
+          <dt className="text-xs font-medium text-slate-500">Recomendación del director de ciclo</dt>
           <dd className="mt-0.5 font-semibold text-slate-800">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</dd>
         </div>
         <div>

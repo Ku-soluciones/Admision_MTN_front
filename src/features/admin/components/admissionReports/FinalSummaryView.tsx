@@ -39,7 +39,8 @@ const needsReview = (row: FinalSummaryApplicant) => (
   row.exams.language == null ||
   row.exams.mathematics == null ||
   row.exams.english == null ||
-  !row.cycleDirector.recommendation
+  !row.cycleDirector.recommendation ||
+  row.cycleDirector.recommendation === 'Pendiente'
 );
 
 export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, onOpenCard }) => {
@@ -101,7 +102,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         Lenguaje: row.exams.language ?? '',
         Matemáticas: row.exams.mathematics ?? '',
         Inglés: row.exams.english ?? '',
-        'Recomendación dirección de ciclo': row.cycleDirector.recommendation ?? '',
+        'Recomendación del director de ciclo': row.cycleDirector.recommendation ?? '',
         'Observaciones dirección de ciclo': row.cycleDirector.observations ?? '',
         'Aspectos a acompañar': row.cycleDirector.areasForImprovement ?? '',
         'Director/a responsable': row.cycleDirector.evaluator ?? '',
@@ -198,7 +199,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                   <tr>
-                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
+                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación del director de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -300,7 +301,7 @@ const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onDecision }: { row: F
   <article className="p-4">
     <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-950">{row.studentName}</h3><p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p></div><FamilyBadge row={row} /></div>
     <div className="mt-4 border-y border-slate-200 py-3"><FamilyScores row={row} /><dl className="mt-3 grid grid-cols-3 gap-2 text-center"><Score label="Leng." value={row.exams.language} /><Score label="Mat." value={row.exams.mathematics} /><Score label="Inglés" value={row.exams.english} /></dl></div>
-    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación de ciclo</strong><CycleDirectorSummary row={row} /></div>
+    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación del director de ciclo</strong><CycleDirectorSummary row={row} /></div>
     <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
   </article>
 );
