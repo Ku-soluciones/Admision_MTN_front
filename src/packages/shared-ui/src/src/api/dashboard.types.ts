@@ -235,6 +235,15 @@ export interface FinalSummaryExamScores {
   english: number | null;
 }
 
+export interface FinalSummaryCycleDirector {
+  recommendation: string | null;
+  observations: string | null;
+  areasForImprovement: string | null;
+  evaluator: string | null;
+  date: string | null;
+  completed: boolean;
+}
+
 export interface FinalSummaryApplicant {
   applicationId: number;
   studentId: number;
@@ -246,6 +255,7 @@ export interface FinalSummaryApplicant {
   familyEvaluation: FinalSummaryFamilyEvaluation;
   exams: FinalSummaryExamScores;
   cycleDirectorDecision: string;
+  cycleDirector: FinalSummaryCycleDirector;
   status: string;
   statusLabel: string;
 }

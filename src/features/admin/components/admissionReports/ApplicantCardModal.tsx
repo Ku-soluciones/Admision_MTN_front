@@ -188,7 +188,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                   <Field label="Fecha entrevista" value={formatAdmissionDate(card.cycleDirector.date, 'Sin registro')} />
                   <Field label="Realizada" value={booleanLabel(card.cycleDirector.done)} />
-                  <Field label="Decisión" value={safeDisplayText(card.cycleDirector.decision, 'Pendiente')} />
+                  <Field label="Recomendación" value={safeDisplayText(card.cycleDirector.decision, 'Pendiente')} />
                   <Field
                     label="Informe entrevista"
                     value={<CycleDirectorReport report={card.cycleDirector.report} href={card.cycleDirector.reportLink} />}

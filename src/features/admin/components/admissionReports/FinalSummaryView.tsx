@@ -39,7 +39,7 @@ const needsReview = (row: FinalSummaryApplicant) => (
   row.exams.language == null ||
   row.exams.mathematics == null ||
   row.exams.english == null ||
-  row.cycleDirectorDecision === 'Pendiente'
+  !row.cycleDirector.recommendation
 );
 
 export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, onOpenCard }) => {
@@ -101,7 +101,10 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         Lenguaje: row.exams.language ?? '',
         Matemáticas: row.exams.mathematics ?? '',
         Inglés: row.exams.english ?? '',
-        'Recomendación dirección de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
+        'Recomendación dirección de ciclo': row.cycleDirector.recommendation ?? '',
+        'Observaciones dirección de ciclo': row.cycleDirector.observations ?? '',
+        'Aspectos a acompañar': row.cycleDirector.areasForImprovement ?? '',
+        'Director/a responsable': row.cycleDirector.evaluator ?? '',
         'Decisión final': row.statusLabel,
         'Comentario familiar': row.familyEvaluation.justification ?? ''
       })));
@@ -195,7 +198,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                   <tr>
-                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Dirección de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
+                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -250,6 +253,26 @@ const ExamScores = ({ row }: { row: FinalSummaryApplicant }) => (
   </dl>
 );
 
+const CycleDirectorSummary = ({ row }: { row: FinalSummaryApplicant }) => {
+  const report = row.cycleDirector;
+  const hasDetail = Boolean(report.observations || report.areasForImprovement || report.evaluator);
+  return (
+    <div className="text-xs leading-5 text-slate-700">
+      <p className="whitespace-pre-line">{safeDisplayText(report.recommendation, 'Sin registro')}</p>
+      {hasDetail && (
+        <details className="mt-1">
+          <summary className="cursor-pointer font-semibold text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Ver informe completo</summary>
+          <dl className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2">
+            {report.observations && <div><dt className="font-semibold text-slate-900">Observaciones</dt><dd className="whitespace-pre-line">{report.observations}</dd></div>}
+            {report.areasForImprovement && <div><dt className="font-semibold text-slate-900">Aspectos a acompañar</dt><dd className="whitespace-pre-line">{report.areasForImprovement}</dd></div>}
+            {report.evaluator && <div><dt className="font-semibold text-slate-900">Responsable</dt><dd>{report.evaluator}</dd></div>}
+          </dl>
+        </details>
+      )}
+    </div>
+  );
+};
+
 const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <label className="block w-full min-w-0">
     <span className="sr-only">Decisión final para {row.studentName}</span>
@@ -265,7 +288,7 @@ const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: 
     <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block break-words text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
     <td className="px-3 py-3.5"><FamilyScores row={row} /></td>
     <td className="px-3 py-3.5"><ExamScores row={row} /></td>
-    <td className="break-words px-3 py-3.5 text-xs leading-5 text-slate-700">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</td>
+    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} /></td>
     <td className="px-3 py-3.5">
       <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
       <button type="button" onClick={() => onOpenCard(row.applicationId)} className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
@@ -277,7 +300,7 @@ const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onDecision }: { row: F
   <article className="p-4">
     <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-950">{row.studentName}</h3><p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p></div><FamilyBadge row={row} /></div>
     <div className="mt-4 border-y border-slate-200 py-3"><FamilyScores row={row} /><dl className="mt-3 grid grid-cols-3 gap-2 text-center"><Score label="Leng." value={row.exams.language} /><Score label="Mat." value={row.exams.mathematics} /><Score label="Inglés" value={row.exams.english} /></dl></div>
-    <p className="mt-3 text-sm text-slate-700"><strong>Dirección de ciclo:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</p>
+    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación de ciclo</strong><CycleDirectorSummary row={row} /></div>
     <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
   </article>
 );

@@ -140,7 +140,7 @@ export const AdmissionReportCharts: React.FC<AdmissionReportChartsProps> = ({
           Calidad de datos
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-amber-900">
-          <span><strong>{invalidDecisions}</strong> decisiones inválidas</span>
+          <span><strong>{invalidDecisions}</strong> recomendaciones inválidas</span>
           <span><strong>{missingGender}</strong> sin género</span>
           <span><strong>{missingExamAverage}</strong> sin promedio</span>
         </div>

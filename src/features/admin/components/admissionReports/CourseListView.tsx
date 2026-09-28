@@ -98,7 +98,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
         'Hijo/a de exalumno': safeDisplayText(row.alumniChild),
         'Hermanos en el colegio': safeDisplayText(row.siblingsInSchool),
         'Promedio exámenes (%)': row.examAverage ?? '',
-        'Decisión dirección de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
+        'Recomendación dirección de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
         Estado: row.statusLabel
       }));
       const worksheet = XLSX.utils.json_to_sheet(data);
@@ -228,7 +228,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
                       </td>
                       <td className="min-w-44 px-3 py-3.5 text-xs leading-5 text-slate-600">
                         <span className="block"><strong className="font-semibold text-slate-700">Promedio:</strong> {row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</span>
-                        <span className="block"><strong className="font-semibold text-slate-700">Decisión:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
+                        <span className="block"><strong className="font-semibold text-slate-700">Recomendación:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-3.5 text-right">
                         <OpenCardButton row={row} onOpenCard={onOpenCard} />
@@ -278,7 +278,7 @@ const ApplicantMobileCard: React.FC<{ row: CourseApplicant; onOpenCard: (applica
           <dd className="mt-0.5 font-semibold text-slate-800">{row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</dd>
         </div>
         <div>
-          <dt className="text-xs font-medium text-slate-500">Decisión</dt>
+          <dt className="text-xs font-medium text-slate-500">Recomendación de ciclo</dt>
           <dd className="mt-0.5 font-semibold text-slate-800">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</dd>
         </div>
         <div>
