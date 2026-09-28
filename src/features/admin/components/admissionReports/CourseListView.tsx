@@ -195,10 +195,10 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
             {paged.map((row) => <ApplicantMobileCard key={row.applicationId} row={row} onOpenCard={onOpenCard} />)}
           </div>
 
-          <div className="hidden overflow-auto md:block md:max-h-[min(68vh,760px)]">
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <caption className="sr-only">Postulantes del proceso de admisión {academicYear}</caption>
-              <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
+              <thead className="bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                 <tr>
                   <TableHeader>Postulante</TableHeader>
                   <TableHeader>Curso</TableHeader>
