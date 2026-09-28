@@ -90,8 +90,8 @@ export const PROFILE_STYLES: Record<SpecialtyProfile, ProfileStyle> = {
   INDICATORS: { gradient: "from-teal-800 to-teal-900", border: "border-teal-200", text: "text-teal-700", badge: "bg-teal-900" },
   GROUP_OBSERVATION: { gradient: "from-amber-800 to-amber-900", border: "border-amber-200", text: "text-amber-700", badge: "bg-amber-900" },
   FAMILY_INTERVIEW: { gradient: "from-[#1e3a8a] to-[#1e4a9a]", border: "border-blue-200", text: "text-blue-700", badge: "bg-[#1e3a8a]" },
-  LEARNING_SUPPORT: { gradient: "from-blue-800 to-blue-900", border: "border-blue-200", text: "text-blue-700", badge: "bg-blue-900" },
-  DAP: { gradient: "from-violet-800 to-violet-900", border: "border-violet-200", text: "text-violet-700", badge: "bg-violet-900" },
+  LEARNING_SUPPORT: { gradient: "from-blue-100 to-blue-200", border: "border-blue-50", text: "text-blue-900", badge: "bg-blue-900" },
+  DAP: { gradient: "from-violet-100 to-violet-200", border: "border-violet-50", text: "text-violet-900", badge: "bg-violet-900" },
 };
 
 // Universal score gradient shared by every pauta so evaluators see the same red -> amber -> green
