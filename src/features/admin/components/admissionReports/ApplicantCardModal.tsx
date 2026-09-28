@@ -19,6 +19,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
   const titleId = useId();
   const [cycleDirectorFullReport, setCycleDirectorFullReport] = useState<CycleDirectorFullReport | null>(null);
   const [examEvaluations, setExamEvaluations] = useState<Record<string, { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string }>>({});
+  const [familyInterviewerNames, setFamilyInterviewerNames] = useState<string[]>([]);
 
   const fetchAllEvaluations = useCallback(async (applicationId: number) => {
     try {
@@ -56,10 +57,21 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
           };
         });
       setExamEvaluations(examEvals);
+
+      // Family interview evaluator names
+      const familyEvaluations = evaluations.filter(e => e.evaluationType === 'FAMILY_INTERVIEW' || e.evaluationType === 'FAMILY');
+      const names = familyEvaluations
+        .map(e => e.evaluator?.firstName && e.evaluator?.lastName
+          ? `${e.evaluator.firstName} ${e.evaluator.lastName}`
+          : e.evaluatorName
+        )
+        .filter((name): name is string => Boolean(name));
+      setFamilyInterviewerNames(names);
     } catch (err) {
       console.error('Error fetching evaluations:', err);
       setCycleDirectorFullReport(null);
       setExamEvaluations({});
+      setFamilyInterviewerNames([]);
     }
   }, []);
 
@@ -69,6 +81,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
     } else {
       setCycleDirectorFullReport(null);
       setExamEvaluations({});
+      setFamilyInterviewerNames([]);
     }
   }, [card?.applicationId, fetchAllEvaluations]);
 
@@ -320,7 +333,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
               )}
 
               {/* Entrevista Familiar */}
-              <CardSection title="Entrevista Familiar" accent="teal">
+              <CardSection title={`Entrevista Familiar${familyInterviewerNames.length > 0 ? ` — ${familyInterviewerNames.join(', ')}` : ''}`} accent="teal">
                 {(() => {
                   const fi = (card as any)?.familyInterview;
                   const hasData = fi?.percentage !== null || (fi?.scores && fi.scores.length > 0);
