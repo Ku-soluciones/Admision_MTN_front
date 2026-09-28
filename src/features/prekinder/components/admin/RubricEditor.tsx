@@ -558,7 +558,7 @@ export function RubricPreviewModal({ version, instrumentLabels, onClose }: Rubri
                       return (
                         <div
                           key={option.optionId}
-                          className={`min-h-16 rounded-xl border-2 p-3 text-left shadow-md ${scoreOptionToneClass(option.value)}`}
+                          className={`min-h-16 rounded-xl p-3 text-left shadow-md ${scoreOptionToneClass(option.value)}`}
                         >
                           <span className="block text-lg font-black">{option.value}</span>
                           {option.descriptor && (
