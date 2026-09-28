@@ -17,7 +17,10 @@ import type {
   ApplicantMetricsFilters,
   ApplicantMetricsResponse,
   CourseApplicantsResponse,
-  ApplicantCardResponse
+  ApplicantCardResponse,
+  FinalDecision,
+  FinalDecisionResponse,
+  FinalSummaryResponse
 } from './dashboard.types';
 
 class DashboardClient {
@@ -383,6 +386,22 @@ class DashboardClient {
   async getApplicantCard(applicationId: number): Promise<ApplicantCardResponse> {
     const response = await httpClient.get<ApplicantCardResponse>(
       `${this.basePath}/applicants/${applicationId}/card`
+    );
+    return response.data;
+  }
+
+  async getFinalSummary(academicYear?: number): Promise<FinalSummaryResponse> {
+    const params = academicYear ? `?academicYear=${academicYear}` : '';
+    const response = await httpClient.get<FinalSummaryResponse>(
+      `${this.basePath}/final-summary${params}`
+    );
+    return response.data;
+  }
+
+  async updateFinalDecision(applicationId: number, decision: FinalDecision): Promise<FinalDecisionResponse> {
+    const response = await httpClient.patch<FinalDecisionResponse>(
+      `${this.basePath}/applicants/${applicationId}/final-decision`,
+      { decision }
     );
     return response.data;
   }

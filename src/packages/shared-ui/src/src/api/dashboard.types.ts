@@ -220,6 +220,58 @@ export interface CourseApplicantsResponse {
   };
 }
 
+export interface FinalSummaryFamilyEvaluation {
+  percentage: number | null;
+  score40: number | null;
+  score11: number | null;
+  rating: number | null;
+  justification: string | null;
+  evaluationId: number | null;
+}
+
+export interface FinalSummaryExamScores {
+  language: number | null;
+  mathematics: number | null;
+  english: number | null;
+}
+
+export interface FinalSummaryApplicant {
+  applicationId: number;
+  studentId: number;
+  studentName: string;
+  gradeApplied: string;
+  familyGroupId: number | null;
+  siblingGroupSize: number;
+  siblingNames: string[];
+  familyEvaluation: FinalSummaryFamilyEvaluation;
+  exams: FinalSummaryExamScores;
+  cycleDirectorDecision: string;
+  status: string;
+  statusLabel: string;
+}
+
+export interface FinalSummaryResponse {
+  success: boolean;
+  data: FinalSummaryApplicant[];
+  meta: {
+    academicYear: number;
+    total: number;
+    siblingFamilies: number;
+  };
+}
+
+export type FinalDecision = 'APPROVED' | 'WAITLIST' | 'REJECTED';
+
+export interface FinalDecisionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    applicationId: number;
+    status: FinalDecision;
+    statusLabel: string;
+  };
+}
+
 export interface ApplicantCardExam {
   evaluationType: string;
   subject: string;

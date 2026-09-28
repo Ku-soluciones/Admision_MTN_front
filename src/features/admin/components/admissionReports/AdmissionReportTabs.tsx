@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiRefreshCw, FiUsers } from 'react-icons/fi';
+import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiClipboard, FiRefreshCw, FiUsers } from 'react-icons/fi';
 import { useAdmissionReports } from './useAdmissionReports';
 import { ApplicantKpiCards } from './ApplicantKpiCards';
 import { AdmissionReportCharts } from './AdmissionReportCharts';
 import { CourseListView } from './CourseListView';
 import { ApplicantCardModal } from './ApplicantCardModal';
+import { FinalSummaryView } from './FinalSummaryView';
 
 const getInitialYear = (searchParams: URLSearchParams) => {
   const candidate = Number(searchParams.get('year'));
@@ -21,6 +22,7 @@ export const AdmissionReportTabs: React.FC = () => {
   const [gradeFilter, setGradeFilter] = useState(() => searchParams.get('grade') || '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [needsActionOnly, setNeedsActionOnly] = useState(() => searchParams.get('action') === 'pending');
+  const [activeView, setActiveView] = useState<'operational' | 'final'>(() => searchParams.get('view') === 'final' ? 'final' : 'operational');
   const {
     academicYear,
     setAcademicYear,
@@ -92,6 +94,11 @@ export const AdmissionReportTabs: React.FC = () => {
     updateUrl({ year, grade: null, status: null, action: null });
   };
 
+  const changeView = (view: 'operational' | 'final') => {
+    setActiveView(view);
+    updateUrl({ view: view === 'final' ? 'final' : null });
+  };
+
   const lastUpdated = refreshedAt
     ? new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(refreshedAt)
     : null;
@@ -119,7 +126,7 @@ export const AdmissionReportTabs: React.FC = () => {
               </select>
             </div>
           </div>
-          <button
+          {activeView === 'operational' && <button
             type="button"
             onClick={refresh}
             disabled={loading}
@@ -128,11 +135,18 @@ export const AdmissionReportTabs: React.FC = () => {
           >
             <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
             {loading && rows.length ? 'Actualizando' : 'Actualizar'}
-          </button>
+          </button>}
         </div>
       </section>
 
-      {loading && !rows.length ? (
+      <nav className="flex gap-1 border-b border-slate-200" aria-label="Vistas de admisión">
+        <ViewTab active={activeView === 'operational'} onClick={() => changeView('operational')} icon={<FiUsers className="h-4 w-4" aria-hidden="true" />}>Seguimiento operativo</ViewTab>
+        <ViewTab active={activeView === 'final'} onClick={() => changeView('final')} icon={<FiClipboard className="h-4 w-4" aria-hidden="true" />}>Resumen final</ViewTab>
+      </nav>
+
+      {activeView === 'final' ? (
+        <FinalSummaryView academicYear={academicYear} onOpenCard={openCard} />
+      ) : loading && !rows.length ? (
         <LoadingState />
       ) : error ? (
         <ErrorState message={error} onRetry={refresh} />
@@ -196,6 +210,17 @@ export const AdmissionReportTabs: React.FC = () => {
     </div>
   );
 };
+
+const ViewTab = ({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={`inline-flex min-h-11 items-center gap-2 border-b-2 px-4 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${active ? 'border-blue-900 text-blue-950' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}
+  >
+    {icon}{children}
+  </button>
+);
 
 const AnalysisDisclosure: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <details className="group rounded-xl border border-slate-200 bg-white">
