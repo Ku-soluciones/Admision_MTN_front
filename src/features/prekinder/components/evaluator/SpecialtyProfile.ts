@@ -99,19 +99,19 @@ export const PROFILE_STYLES: Record<SpecialtyProfile, ProfileStyle> = {
 // (above) identifies which pauta type it is; this scale never varies by domain.
 export function scoreOptionToneClass(value: number): string {
   if (value === 0)
-    return "border-[#f6c7cb] bg-[#fff8f8] text-[#8a2f35]";
+    return "border-[oklch(78%_0.10_20)] bg-[oklch(95.5%_0.045_20)] text-[oklch(34%_0.11_20)]";
 
   if (value === 1)
-    return "border-[#f3d0c7] bg-[#fff9f6] text-[#8a4538]";
+    return "border-[oklch(80%_0.09_35)] bg-[oklch(96%_0.04_35)] text-[oklch(38%_0.09_35)]";
 
   if (value === 2)
-    return "border-[#f2dfb4] bg-[#fffdf5] text-[#856621]";
+    return "border-[oklch(79%_0.11_82)] bg-[oklch(95.5%_0.055_82)] text-[oklch(39%_0.09_72)]";
 
   if (value === 3)
-    return "border-[#d8eee2] bg-[#f9fdfb] text-[#3f725d]";
+    return "border-[oklch(82%_0.075_155)] bg-[oklch(96.5%_0.03_155)] text-[oklch(36%_0.07_158)]";
 
   if (value === 4)
-    return "border-[#b7dfcc] bg-[#eef9f3] text-[#205b43]";
+    return "border-[oklch(74%_0.11_158)] bg-[oklch(93.5%_0.055_158)] text-[oklch(31%_0.08_160)]";
 
-  return "border-[#9fd2ba] bg-[#e8f6ee] text-[#164c37]";
+  return "border-[oklch(70%_0.12_160)] bg-[oklch(91%_0.07_160)] text-[oklch(28%_0.08_160)]";
 }
