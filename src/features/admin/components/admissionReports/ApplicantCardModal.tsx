@@ -64,7 +64,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
       try {
         const interviewsResponse = await interviewService.getInterviewsByApplication(applicationId);
         const familyInterviews = interviewsResponse.interviews.filter(
-          (i: any) => i.interviewType === 'FAMILY'
+          (i: any) => i.type === 'FAMILY'
         );
         familyInterviews.forEach((interview: any) => {
           if (interview.interviewerName) {
