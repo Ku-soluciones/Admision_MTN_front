@@ -135,8 +135,8 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm" aria-labelledby="final-summary-title">
-        <header className="border-b border-slate-200 p-4 sm:p-5">
+      <section className="rounded-2xl border border-slate-300 bg-white shadow-sm" aria-labelledby="final-summary-title">
+        <header className="rounded-t-2xl border-b border-slate-200 p-4 sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h2 id="final-summary-title" className="text-xl font-bold tracking-tight text-slate-950">Resumen para decisión final</h2>
@@ -180,14 +180,22 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
 
         {filteredRows.length ? (
           <>
-            <div className="divide-y divide-slate-200 lg:hidden">
+            <div className="divide-y divide-slate-200 xl:hidden">
               {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onDecision={setPendingDecision} />)}
             </div>
-            <div className="hidden max-h-[min(68vh,760px)] overflow-auto lg:block">
-              <table className="min-w-[1320px] text-sm">
+            <div className="hidden rounded-b-2xl xl:block">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[17%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[20%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[17%]" />
+                </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                   <tr>
-                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell align="center">Entrevista</HeaderCell><HeaderCell align="center">Leng.</HeaderCell><HeaderCell align="center">Mat.</HeaderCell><HeaderCell align="center">Inglés</HeaderCell><HeaderCell>Dirección de ciclo</HeaderCell><HeaderCell>Decisión final</HeaderCell><HeaderCell align="right">Ficha</HeaderCell>
+                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Dirección de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -226,7 +234,7 @@ const FamilyBadge = ({ row }: { row: FinalSummaryApplicant }) => row.siblingGrou
 
 const FamilyScores = ({ row }: { row: FinalSummaryApplicant }) => (
   <div>
-    <div className="flex items-baseline gap-2 tabular-nums">
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
       <strong className="text-base text-slate-950">{formatScore(row.familyEvaluation.percentage)}</strong>
       <span className="text-xs text-slate-500">{formatScore(row.familyEvaluation.score40, '/40')} · {formatScore(row.familyEvaluation.score11, '/11')} · {formatScore(row.familyEvaluation.rating, '/5')}</span>
     </div>
@@ -234,8 +242,16 @@ const FamilyScores = ({ row }: { row: FinalSummaryApplicant }) => (
   </div>
 );
 
+const ExamScores = ({ row }: { row: FinalSummaryApplicant }) => (
+  <dl className="grid grid-cols-3 gap-1.5 text-center">
+    <Score label="Leng." value={row.exams.language} compact />
+    <Score label="Mat." value={row.exams.mathematics} compact />
+    <Score label="Inglés" value={row.exams.english} compact />
+  </dl>
+);
+
 const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
-  <label className="block min-w-40">
+  <label className="block w-full min-w-0">
     <span className="sr-only">Decisión final para {row.studentName}</span>
     <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''} onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })} disabled={saving} className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
       <option value="">Pendiente</option>{DECISIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -245,15 +261,15 @@ const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplican
 
 const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <tr className="bg-white align-top hover:bg-slate-50">
-    <td className="px-3 py-3.5"><strong className="block text-slate-950">{row.studentName}</strong><span className="mt-0.5 block text-xs text-slate-500">{formatGradeLabel(row.gradeApplied)}</span></td>
-    <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block max-w-44 text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
+    <td className="px-3 py-3.5"><strong className="block break-words text-slate-950">{row.studentName}</strong><span className="mt-0.5 block text-xs text-slate-500">{formatGradeLabel(row.gradeApplied)}</span></td>
+    <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block break-words text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
     <td className="px-3 py-3.5"><FamilyScores row={row} /></td>
-    <td className="px-3 py-3.5 text-center font-semibold tabular-nums text-slate-800">{formatScore(row.exams.language)}</td>
-    <td className="px-3 py-3.5 text-center font-semibold tabular-nums text-slate-800">{formatScore(row.exams.mathematics)}</td>
-    <td className="px-3 py-3.5 text-center font-semibold tabular-nums text-slate-800">{formatScore(row.exams.english)}</td>
-    <td className="max-w-52 px-3 py-3.5 text-xs leading-5 text-slate-700">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</td>
-    <td className="px-3 py-3.5"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /></td>
-    <td className="px-3 py-3.5 text-right"><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></td>
+    <td className="px-3 py-3.5"><ExamScores row={row} /></td>
+    <td className="break-words px-3 py-3.5 text-xs leading-5 text-slate-700">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</td>
+    <td className="px-3 py-3.5">
+      <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
+      <button type="button" onClick={() => onOpenCard(row.applicationId)} className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
+    </td>
   </tr>
 );
 
@@ -266,7 +282,7 @@ const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onDecision }: { row: F
   </article>
 );
 
-const Score = ({ label, value }: { label: string; value: number | null }) => <div><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-1 font-bold tabular-nums text-slate-900">{formatScore(value)}</dd></div>;
+const Score = ({ label, value, compact = false }: { label: string; value: number | null; compact?: boolean }) => <div className={compact ? 'min-w-0 rounded-lg bg-slate-50 px-1 py-2' : undefined}><dt className="truncate text-xs font-medium text-slate-500">{label}</dt><dd className="mt-1 font-bold tabular-nums text-slate-900">{formatScore(value)}</dd></div>;
 
 const FinalSummarySkeleton = () => <div className="space-y-4" role="status"><span className="sr-only">Cargando resumen final</span><div className="h-20 animate-pulse rounded-xl bg-slate-100" /><div className="h-96 animate-pulse rounded-2xl bg-slate-100" /></div>;
 const FinalSummaryError = ({ message, onRetry }: { message: string; onRetry: () => void }) => <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6" role="alert"><h2 className="font-bold text-rose-950">No pudimos cargar el resumen final</h2><p className="mt-1 text-sm text-rose-800">{message}</p><button type="button" onClick={onRetry} className="mt-4 min-h-11 rounded-xl bg-rose-700 px-4 text-sm font-semibold text-white">Reintentar</button></div>;
