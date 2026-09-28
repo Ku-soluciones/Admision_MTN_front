@@ -4,6 +4,7 @@ import type { ApplicantCard, CycleDirectorFullReport } from '../../../../package
 import { formatAdmissionDate, formatGenderLabel, formatGradeLabel, safeDisplayText, statusTone } from './admissionReportUtils';
 import { FamilyQuestionnaireSection } from './FamilyQuestionnaireSection';
 import { evaluationService } from '../../services/evaluationService';
+import { interviewService } from '../../../../packages/shared-ui/src/services/interviewService';
 
 interface ApplicantCardModalProps {
   card: ApplicantCard | null;
@@ -58,23 +59,25 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
         });
       setExamEvaluations(examEvals);
 
-      // Family interview evaluator names
-      const familyEvaluations = evaluations.filter(e => e.evaluationType === 'FAMILY_INTERVIEW' || e.evaluationType === 'FAMILY');
-      const names: string[] = [];
-      familyEvaluations.forEach(e => {
-        // Primary evaluator from evaluator object
-        if (e.evaluator?.firstName && e.evaluator?.lastName) {
-          names.push(`${e.evaluator.firstName} ${e.evaluator.lastName}`);
-        } else if (e.evaluatorName) {
-          names.push(e.evaluatorName);
-        }
-        // Second interviewer from interviewData
-        const interviewData = (e as any).interviewData;
-        if (interviewData?.secondInterviewerName) {
-          names.push(interviewData.secondInterviewerName);
-        }
-      });
-      setFamilyInterviewerNames(names);
+      // Family interview evaluator names - get from interviews endpoint which has both interviewers
+      const familyInterviewNames: string[] = [];
+      try {
+        const interviewsResponse = await interviewService.getInterviewsByApplication(applicationId);
+        const familyInterviews = interviewsResponse.interviews.filter(
+          (i: any) => i.interviewType === 'FAMILY'
+        );
+        familyInterviews.forEach((interview: any) => {
+          if (interview.interviewerName) {
+            familyInterviewNames.push(interview.interviewerName);
+          }
+          if (interview.secondInterviewerName) {
+            familyInterviewNames.push(interview.secondInterviewerName);
+          }
+        });
+      } catch (interviewErr) {
+        console.error('Error fetching family interview names:', interviewErr);
+      }
+      setFamilyInterviewerNames(familyInterviewNames);
     } catch (err) {
       console.error('Error fetching evaluations:', err);
       setCycleDirectorFullReport(null);
