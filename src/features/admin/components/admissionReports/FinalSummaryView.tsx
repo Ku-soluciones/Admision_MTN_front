@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import type { FinalDecision, FinalSummaryApplicant } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import ConfirmDialog from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
+import Modal from '../../../../packages/shared-ui/src/components/ui/Modal';
 import { formatGradeLabel, safeDisplayText } from './admissionReportUtils';
 import { useFinalSummary } from './useFinalSummary';
 
@@ -50,6 +51,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
   const [decision, setDecision] = useState('');
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [pendingDecision, setPendingDecision] = useState<{ row: FinalSummaryApplicant; decision: FinalDecision } | null>(null);
+  const [reportApplicant, setReportApplicant] = useState<FinalSummaryApplicant | null>(null);
   const [feedback, setFeedback] = useState('');
   const [exporting, setExporting] = useState(false);
 
@@ -103,8 +105,13 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         Matemáticas: row.exams.mathematics ?? '',
         Inglés: row.exams.english ?? '',
         'Recomendación del director de ciclo': row.cycleDirector.recommendation ?? '',
-        'Observaciones dirección de ciclo': row.cycleDirector.observations ?? '',
-        'Aspectos a acompañar': row.cycleDirector.areasForImprovement ?? '',
+        'Fortalezas': row.cycleDirector.strengths ?? '',
+        'Dificultades': row.cycleDirector.difficulties ?? '',
+        'Adaptación a la entrevista': row.cycleDirector.interviewAdaptation ?? '',
+        'Rasgos destacados': row.cycleDirector.outstandingTraits ?? '',
+        'Contexto familiar': row.cycleDirector.familyBackground ?? '',
+        'Antecedentes académicos': row.cycleDirector.academicBackground ?? '',
+        'Curso de ingreso': row.cycleDirector.entryCourse ?? '',
         'Director/a responsable': row.cycleDirector.evaluator ?? '',
         'Decisión final': row.statusLabel,
         'Comentario familiar': row.familyEvaluation.justification ?? ''
@@ -185,7 +192,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         {filteredRows.length ? (
           <>
             <div className="divide-y divide-slate-200 xl:hidden">
-              {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onDecision={setPendingDecision} />)}
+              {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
             </div>
             <div className="hidden rounded-b-2xl xl:block">
               <table className="w-full table-fixed text-sm">
@@ -203,13 +210,15 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onDecision={setPendingDecision} />)}
+                  {filteredRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
                 </tbody>
               </table>
             </div>
           </>
         ) : <EmptySummary onClear={() => { setSearch(''); setGrade(''); setDecision(''); setIncompleteOnly(false); }} />}
       </section>
+
+      <CycleDirectorReportModal row={reportApplicant} onClose={() => setReportApplicant(null)} />
 
       <ConfirmDialog
         isOpen={Boolean(pendingDecision)}
@@ -254,25 +263,55 @@ const ExamScores = ({ row }: { row: FinalSummaryApplicant }) => (
   </dl>
 );
 
-const CycleDirectorSummary = ({ row }: { row: FinalSummaryApplicant }) => {
+const CycleDirectorSummary = ({ row, onOpenReport }: { row: FinalSummaryApplicant; onOpenReport: (row: FinalSummaryApplicant) => void }) => {
   const report = row.cycleDirector;
-  const hasDetail = Boolean(report.observations || report.areasForImprovement || report.evaluator);
+  const hasDetail = report.completed || Boolean(
+    report.strengths || report.difficulties || report.interviewAdaptation ||
+    report.outstandingTraits || report.familyBackground || report.academicBackground ||
+    report.entryCourse || report.evaluator
+  );
   return (
     <div className="text-xs leading-5 text-slate-700">
       <p className="whitespace-pre-line">{safeDisplayText(report.recommendation, 'Sin registro')}</p>
       {hasDetail && (
-        <details className="mt-1">
-          <summary className="cursor-pointer font-semibold text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Ver informe completo</summary>
-          <dl className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2">
-            {report.observations && <div><dt className="font-semibold text-slate-900">Observaciones</dt><dd className="whitespace-pre-line">{report.observations}</dd></div>}
-            {report.areasForImprovement && <div><dt className="font-semibold text-slate-900">Aspectos a acompañar</dt><dd className="whitespace-pre-line">{report.areasForImprovement}</dd></div>}
-            {report.evaluator && <div><dt className="font-semibold text-slate-900">Responsable</dt><dd>{report.evaluator}</dd></div>}
-          </dl>
-        </details>
+        <button type="button" onClick={() => onOpenReport(row)} className="mt-1 inline-flex min-h-10 items-center font-bold text-blue-800 hover:text-blue-950 hover:underline hover:underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
+          Ver informe completo
+        </button>
       )}
     </div>
   );
 };
+
+const ReportField = ({ label, value }: { label: string; value: string | null }) => value ? (
+  <div>
+    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+    <dd className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-800">{value}</dd>
+  </div>
+) : null;
+
+const CycleDirectorReportModal = ({ row, onClose }: { row: FinalSummaryApplicant | null; onClose: () => void }) => (
+  <Modal isOpen={Boolean(row)} onClose={onClose} title="Informe final del director de ciclo" size="lg" contentClassName="p-5 sm:p-6">
+    {row && (
+      <div>
+        <div className="border-b border-slate-200 pb-4">
+          <p className="font-bold text-slate-950">{row.studentName}</p>
+          <p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p>
+        </div>
+        <dl className="space-y-5 py-5">
+          <ReportField label="Fortalezas" value={row.cycleDirector.strengths} />
+          <ReportField label="Dificultades" value={row.cycleDirector.difficulties} />
+          <ReportField label="Adaptación a la entrevista" value={row.cycleDirector.interviewAdaptation} />
+          <ReportField label="Rasgos destacados" value={row.cycleDirector.outstandingTraits} />
+          <ReportField label="Contexto familiar" value={row.cycleDirector.familyBackground} />
+          <ReportField label="Antecedentes académicos" value={row.cycleDirector.academicBackground} />
+          <ReportField label="Recomendación final" value={row.cycleDirector.recommendation} />
+          <ReportField label="Curso de ingreso" value={row.cycleDirector.entryCourse} />
+        </dl>
+        {row.cycleDirector.evaluator && <p className="border-t border-slate-200 pt-4 text-xs text-slate-500">Informe registrado por <strong className="text-slate-700">{row.cycleDirector.evaluator}</strong></p>}
+      </div>
+    )}
+  </Modal>
+);
 
 const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <label className="block w-full min-w-0">
@@ -283,13 +322,13 @@ const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplican
   </label>
 );
 
-const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
+const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onOpenReport, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onOpenReport: (row: FinalSummaryApplicant) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <tr className="bg-white align-top hover:bg-slate-50">
     <td className="px-3 py-3.5"><strong className="block break-words text-slate-950">{row.studentName}</strong><span className="mt-0.5 block text-xs text-slate-500">{formatGradeLabel(row.gradeApplied)}</span></td>
     <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block break-words text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
     <td className="px-3 py-3.5"><FamilyScores row={row} /></td>
     <td className="px-3 py-3.5"><ExamScores row={row} /></td>
-    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} /></td>
+    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></td>
     <td className="px-3 py-3.5">
       <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
       <button type="button" onClick={() => onOpenCard(row.applicationId)} className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
@@ -297,11 +336,11 @@ const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: 
   </tr>
 );
 
-const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
+const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onOpenReport, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onOpenReport: (row: FinalSummaryApplicant) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <article className="p-4">
     <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-950">{row.studentName}</h3><p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p></div><FamilyBadge row={row} /></div>
     <div className="mt-4 border-y border-slate-200 py-3"><FamilyScores row={row} /><dl className="mt-3 grid grid-cols-3 gap-2 text-center"><Score label="Leng." value={row.exams.language} /><Score label="Mat." value={row.exams.mathematics} /><Score label="Inglés" value={row.exams.english} /></dl></div>
-    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación del director de ciclo</strong><CycleDirectorSummary row={row} /></div>
+    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación del director de ciclo</strong><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></div>
     <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
   </article>
 );

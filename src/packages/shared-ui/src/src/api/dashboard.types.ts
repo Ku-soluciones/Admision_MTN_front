@@ -236,9 +236,14 @@ export interface FinalSummaryExamScores {
 }
 
 export interface FinalSummaryCycleDirector {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
   recommendation: string | null;
-  observations: string | null;
-  areasForImprovement: string | null;
+  entryCourse: string | null;
   evaluator: string | null;
   date: string | null;
   completed: boolean;
