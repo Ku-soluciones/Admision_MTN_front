@@ -506,7 +506,7 @@ const ReportsDashboard: React.FC = () => {
                 <option value="SUBMITTED">Enviada</option>
                 <option value="UNDER_REVIEW">En Revisión</option>
                 <option value="ACCEPTED">Aceptada</option>
-                <option value="REJECTED">Rechazada</option>
+                <option value="REJECTED">No aceptado</option>
               </select>
             </div>
             <div>

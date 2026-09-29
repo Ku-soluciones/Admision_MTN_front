@@ -21,7 +21,7 @@ interface FinalSummaryViewProps {
 const DECISIONS: Array<{ value: FinalDecision; label: string }> = [
   { value: 'APPROVED', label: 'Aceptado' },
   { value: 'WAITLIST', label: 'Lista de espera' },
-  { value: 'REJECTED', label: 'Rechazado' }
+  { value: 'REJECTED', label: 'No aceptado' }
 ];
 
 const FAMILY_TONES = [
@@ -140,7 +140,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
           </div>
           <SummaryMetric label="Aceptados" value={stats.approved} tone="text-emerald-700" />
           <SummaryMetric label="Lista de espera" value={stats.waitlist} tone="text-amber-700" />
-          <SummaryMetric label="Rechazados" value={stats.rejected} tone="text-rose-700" />
+          <SummaryMetric label="No aceptados" value={stats.rejected} tone="text-rose-700" />
           <SummaryMetric label="Pendientes" value={stats.pending} tone="text-blue-800" />
           <SummaryMetric label="Incompletos" value={stats.incomplete} tone="text-slate-900" />
         </div>
@@ -197,11 +197,11 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
             <div className="hidden rounded-b-2xl xl:block">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
-                  <col className="w-[17%]" />
                   <col className="w-[16%]" />
-                  <col className="w-[20%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[21%]" />
                   <col className="w-[17%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
@@ -235,7 +235,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
 };
 
 const SummaryMetric = ({ label, value, tone }: { label: string; value: number; tone: string }) => <div className="border-l border-slate-200 pl-4"><span className={`block text-2xl font-bold tabular-nums ${tone}`}>{value}</span><span className="text-xs font-semibold text-slate-600">{label}</span></div>;
-const HeaderCell = ({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'center' | 'right' }) => <th scope="col" className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>;
+const HeaderCell = ({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'center' | 'right' }) => <th scope="col" className={`break-words px-3 py-3.5 align-bottom text-xs font-bold uppercase leading-4 tracking-wide text-slate-600 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>;
 const formatScore = (value: number | null, suffix = '%') => value == null ? '—' : `${Math.round(value)}${suffix}`;
 const familyTone = (row: FinalSummaryApplicant) => row.siblingGroupSize > 1 && row.familyGroupId != null ? FAMILY_TONES[Math.abs(row.familyGroupId) % FAMILY_TONES.length] : 'bg-slate-100 text-slate-700 ring-slate-200';
 

@@ -850,7 +850,7 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      APPROVED: 'Aceptado', REJECTED: 'Rechazado', UNDER_REVIEW: 'En Revisión',
+      APPROVED: 'Aceptado', REJECTED: 'No aceptado', UNDER_REVIEW: 'En Revisión',
       EXAM_SCHEDULED: 'Examen Agendado', INTERVIEW_SCHEDULED: 'Entrevista Programada', PENDING: 'Pendiente'
     };
     return labels[status?.toUpperCase()] || status;

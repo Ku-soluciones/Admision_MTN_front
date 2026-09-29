@@ -78,7 +78,7 @@ export const ApplicantMetricsView: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { bg: string; text: string; dot: string; label: string }> = {
       APPROVED:     { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Aprobado' },
-      REJECTED:     { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500',     label: 'Rechazado' },
+      REJECTED:     { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500',     label: 'No aceptado' },
       UNDER_REVIEW: { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'En Revisión' },
       SUBMITTED:    { bg: 'bg-sky-50',     text: 'text-sky-700',     dot: 'bg-sky-500',     label: 'Enviado' },
       WAITLIST:     { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Lista de Espera' },
@@ -419,7 +419,7 @@ export const ApplicantMetricsView: React.FC = () => {
                 {uniqueStatuses.map(status => (
                   <option key={status} value={status}>
                     {status === 'APPROVED' ? 'Aprobado' :
-                     status === 'REJECTED' ? 'Rechazado' :
+                     status === 'REJECTED' ? 'No aceptado' :
                      status === 'UNDER_REVIEW' ? 'En Revisión' :
                      status === 'WAITLIST' ? 'Lista de Espera' :
                      status === 'SUBMITTED' ? 'Enviado' : status}
