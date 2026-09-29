@@ -48,7 +48,7 @@ const getStatusLabel = (status: string): string => {
     case 'EXAM_SCHEDULED': return 'Examen Agendado';
     case 'INTERVIEW_SCHEDULED': return 'Entrevista Programada';
     case 'APPROVED': return 'Aceptada';
-    case 'REJECTED': return 'Rechazada';
+    case 'REJECTED': return 'No aceptado';
     case 'WAITLIST': return 'Lista de Espera';
     default: return status || 'Sin Estado';
   }

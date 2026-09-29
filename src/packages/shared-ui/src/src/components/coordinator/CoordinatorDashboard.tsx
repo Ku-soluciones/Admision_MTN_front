@@ -130,7 +130,7 @@ export const CoordinatorDashboard: React.FC = () => {
     { name: 'Enviadas', value: stats.statusBreakdown.submitted, color: statusColors.submitted },
     { name: 'En Revisión', value: stats.statusBreakdown.underReview, color: statusColors.underReview },
     { name: 'Aprobadas', value: stats.statusBreakdown.approved, color: statusColors.approved },
-    { name: 'Rechazadas', value: stats.statusBreakdown.rejected, color: statusColors.rejected },
+    { name: 'No aceptadas', value: stats.statusBreakdown.rejected, color: statusColors.rejected },
     { name: 'Lista Espera', value: stats.statusBreakdown.waitlist, color: statusColors.waitlist }
   ];
 
@@ -446,7 +446,7 @@ export const CoordinatorDashboard: React.FC = () => {
               <span className="font-medium text-green-600">{stats.statusBreakdown.approved}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Rechazadas:</span>
+              <span className="text-gray-600">No aceptadas:</span>
               <span className="font-medium text-red-600">{stats.statusBreakdown.rejected}</span>
             </div>
             <div className="flex justify-between">

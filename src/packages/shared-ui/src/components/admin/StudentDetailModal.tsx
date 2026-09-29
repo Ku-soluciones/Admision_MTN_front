@@ -687,7 +687,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             case 'INTERVIEW_SCHEDULED': return 'Entrevista Programada';
             case 'EXAM_SCHEDULED': return 'Examen Programado';
             case 'APPROVED': return 'Aprobado';
-            case 'REJECTED': return 'Rechazado';
+            case 'REJECTED': return 'No aceptado';
             case 'WAITLIST': return 'Lista de Espera';
             default: return status;
         }

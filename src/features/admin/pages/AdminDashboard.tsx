@@ -671,7 +671,7 @@ Esta acción:
             'EXAM_SCHEDULED': 'Examen Programado',
             'INTERVIEW_SCHEDULED': 'Entrevista Programada',
             'APPROVED': 'Aprobadas',
-            'REJECTED': 'Rechazadas',
+            'REJECTED': 'No aceptadas',
             'WAITLIST': 'Lista de Espera'
           };
           return labels[status] || status;

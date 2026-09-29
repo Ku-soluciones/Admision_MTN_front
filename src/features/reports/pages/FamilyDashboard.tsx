@@ -355,7 +355,7 @@ const FamilyDashboard: React.FC = () => {
                           {app.status === 'PENDING' ? 'Pendiente' :
                            app.status === 'UNDER_REVIEW' ? 'En Revisión' :
                            app.status === 'APPROVED' ? 'Aprobado' :
-                           app.status === 'REJECTED' ? 'Rechazado' :
+                           app.status === 'REJECTED' ? 'No aceptado' :
                            app.status === 'WAITLIST' ? 'Lista de Espera' :
                            app.status}
                         </Badge>
@@ -428,7 +428,7 @@ const FamilyDashboard: React.FC = () => {
                      myApplication.status === 'INTERVIEW_SCHEDULED' ? 'Entrevista Programada' :
                      myApplication.status === 'EXAM_SCHEDULED' ? 'Examen Programado' :
                      myApplication.status === 'APPROVED' ? 'Aprobado' :
-                     myApplication.status === 'REJECTED' ? 'Rechazado' :
+                     myApplication.status === 'REJECTED' ? 'No aceptado' :
                      myApplication.status === 'WAITLIST' ? 'Lista de Espera' :
                      myApplication.status}
                   </Badge>

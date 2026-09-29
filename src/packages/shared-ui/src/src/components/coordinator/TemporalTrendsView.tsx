@@ -131,7 +131,7 @@ export const TemporalTrendsView: React.FC = () => {
     series: [
       { name: 'Total Postulaciones', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.total) },
       { name: 'Aprobadas', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.approved) },
-      { name: 'Rechazadas', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.rejected) },
+      { name: 'No aceptadas', type: 'line', smooth: true, yAxisIndex: 0, data: monthlyTrendsData.map(item => item.rejected) },
       { name: 'Tasa de Crecimiento (%)', type: 'line', smooth: true, yAxisIndex: 1, lineStyle: { type: 'dashed' }, data: monthlyTrendsData.map(item => item.growthRate) }
     ]
   };
@@ -146,7 +146,7 @@ export const TemporalTrendsView: React.FC = () => {
     series: [
       { name: 'Total', type: 'bar', data: comparisonData.map((item: any) => item.total) },
       { name: 'Aprobadas', type: 'bar', data: comparisonData.map((item: any) => item.approved) },
-      { name: 'Rechazadas', type: 'bar', data: comparisonData.map((item: any) => item.rejected) }
+      { name: 'No aceptadas', type: 'bar', data: comparisonData.map((item: any) => item.rejected) }
     ]
   };
 
@@ -257,7 +257,7 @@ export const TemporalTrendsView: React.FC = () => {
                 </tr>
                 <tr>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    Rechazadas
+                    No aceptadas
                   </td>
                   {selectedYears.map(year => (
                     <td key={year} className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
