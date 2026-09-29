@@ -98,7 +98,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
         'Hijo/a de exalumno': safeDisplayText(row.alumniChild),
         'Hermanos en el colegio': safeDisplayText(row.siblingsInSchool),
         'Promedio exámenes (%)': row.examAverage ?? '',
-        'Decisión dirección de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
+        'Recomendación del director de ciclo': safeDisplayText(row.cycleDirectorDecision, 'Pendiente'),
         Estado: row.statusLabel
       }));
       const worksheet = XLSX.utils.json_to_sheet(data);
@@ -195,10 +195,10 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
             {paged.map((row) => <ApplicantMobileCard key={row.applicationId} row={row} onOpenCard={onOpenCard} />)}
           </div>
 
-          <div className="hidden overflow-auto md:block md:max-h-[min(68vh,760px)]">
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <caption className="sr-only">Postulantes del proceso de admisión {academicYear}</caption>
-              <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
+              <thead className="bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                 <tr>
                   <TableHeader>Postulante</TableHeader>
                   <TableHeader>Curso</TableHeader>
@@ -228,7 +228,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
                       </td>
                       <td className="min-w-44 px-3 py-3.5 text-xs leading-5 text-slate-600">
                         <span className="block"><strong className="font-semibold text-slate-700">Promedio:</strong> {row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</span>
-                        <span className="block"><strong className="font-semibold text-slate-700">Decisión:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
+                        <span className="block"><strong className="font-semibold text-slate-700">Recomendación:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-3.5 text-right">
                         <OpenCardButton row={row} onOpenCard={onOpenCard} />
@@ -278,7 +278,7 @@ const ApplicantMobileCard: React.FC<{ row: CourseApplicant; onOpenCard: (applica
           <dd className="mt-0.5 font-semibold text-slate-800">{row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</dd>
         </div>
         <div>
-          <dt className="text-xs font-medium text-slate-500">Decisión</dt>
+          <dt className="text-xs font-medium text-slate-500">Recomendación del director de ciclo</dt>
           <dd className="mt-0.5 font-semibold text-slate-800">{safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</dd>
         </div>
         <div>

@@ -836,7 +836,7 @@ Esta acción:
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
       {/* Overlay global de carga */}
       {isPageLoading && (
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
@@ -893,9 +893,9 @@ Esta acción:
         />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 items-start">
         {/* Desktop Sidebar */}
-        <aside className="w-64 bg-white shadow-md flex-col hidden md:flex overflow-y-auto">
+        <aside className="sticky top-0 hidden h-[100dvh] w-64 flex-col overflow-y-auto bg-white shadow-md md:flex">
           <SidebarContent
             user={user}
             activeSection={activeSection}
@@ -906,7 +906,7 @@ Esta acción:
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard">
+        <main className="min-w-0 flex-1 p-4 sm:p-6" role="main" aria-label="Contenido principal del dashboard">
           {renderSection()}
         </main>
       </div>

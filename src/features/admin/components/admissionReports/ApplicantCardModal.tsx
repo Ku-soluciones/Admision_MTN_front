@@ -1,8 +1,10 @@
-import React, { useEffect, useId, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FiChevronDown, FiExternalLink, FiFileText, FiRefreshCw, FiX } from 'react-icons/fi';
-import type { ApplicantCard } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import type { ApplicantCard, CycleDirectorFullReport } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import { formatAdmissionDate, formatGenderLabel, formatGradeLabel, safeDisplayText, statusTone } from './admissionReportUtils';
 import { FamilyQuestionnaireSection } from './FamilyQuestionnaireSection';
+import { evaluationService } from '../../services/evaluationService';
+import { interviewService } from '../../../../packages/shared-ui/src/services/interviewService';
 
 interface ApplicantCardModalProps {
   card: ApplicantCard | null;
@@ -16,6 +18,83 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const [cycleDirectorFullReport, setCycleDirectorFullReport] = useState<CycleDirectorFullReport | null>(null);
+  const [examEvaluations, setExamEvaluations] = useState<Record<string, { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string }>>({});
+  const [familyInterviewerNames, setFamilyInterviewerNames] = useState<string[]>([]);
+
+  const fetchAllEvaluations = useCallback(async (applicationId: number) => {
+    try {
+      const evaluations = await evaluationService.getEvaluationsByApplicationId(applicationId);
+
+      // Cycle Director Report
+      const cycleDirectorReport = evaluations.find(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT' && e.interviewData);
+      if (cycleDirectorReport?.interviewData) {
+        const data = cycleDirectorReport.interviewData;
+        setCycleDirectorFullReport({
+          strengths: data.strengths || null,
+          difficulties: data.difficulties || null,
+          interviewAdaptation: data.interviewAdaptation || null,
+          outstandingTraits: data.outstandingTraits || null,
+          familyBackground: data.familyBackground || null,
+          academicBackground: data.academicBackground || null,
+          finalDecision: data.finalDecision || null,
+          entryCourse: data.entryCourse || null
+        });
+      } else {
+        setCycleDirectorFullReport(null);
+      }
+
+      // Exam evaluations (LANGUAGE_EXAM, MATHEMATICS_EXAM, ENGLISH_EXAM)
+      const examTypes = ['LANGUAGE_EXAM', 'MATHEMATICS_EXAM', 'ENGLISH_EXAM'];
+      const examEvals: Record<string, { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string }> = {};
+      evaluations
+        .filter(e => examTypes.includes(e.evaluationType))
+        .forEach(e => {
+          examEvals[e.evaluationType] = {
+            observations: e.observations,
+            strengths: e.strengths,
+            areasForImprovement: e.areasForImprovement,
+            recommendations: e.recommendations
+          };
+        });
+      setExamEvaluations(examEvals);
+
+      // Family interview evaluator names - get from interviews endpoint which has both interviewers
+      const familyInterviewNames: string[] = [];
+      try {
+        const interviewsResponse = await interviewService.getInterviewsByApplication(applicationId);
+        const familyInterviews = interviewsResponse.interviews.filter(
+          (i: any) => i.type === 'FAMILY'
+        );
+        familyInterviews.forEach((interview: any) => {
+          if (interview.interviewerName) {
+            familyInterviewNames.push(interview.interviewerName);
+          }
+          if (interview.secondInterviewerName) {
+            familyInterviewNames.push(interview.secondInterviewerName);
+          }
+        });
+      } catch (interviewErr) {
+        console.error('Error fetching family interview names:', interviewErr);
+      }
+      setFamilyInterviewerNames(familyInterviewNames);
+    } catch (err) {
+      console.error('Error fetching evaluations:', err);
+      setCycleDirectorFullReport(null);
+      setExamEvaluations({});
+      setFamilyInterviewerNames([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (card?.applicationId) {
+      void fetchAllEvaluations(card.applicationId);
+    } else {
+      setCycleDirectorFullReport(null);
+      setExamEvaluations({});
+      setFamilyInterviewerNames([]);
+    }
+  }, [card?.applicationId, fetchAllEvaluations]);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -164,17 +243,21 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 <CardSection title="Exámenes Kínder–IV" accent="rose">
                   {card.exams.length ? (
                     <div className="divide-y divide-slate-200 border-y border-slate-200">
-                      {card.exams.map((exam) => (
-                        <div key={`${exam.evaluationType}-${exam.subject}`} className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_88px_120px] sm:items-center">
-                          <div>
-                            <p className="font-bold text-slate-900">{exam.subject}</p>
-                            <p className="text-xs text-slate-500 sm:hidden">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
-                          </div>
-                          <p className="hidden text-sm text-slate-600 sm:block">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
-                          <p className="text-sm font-bold tabular-nums text-slate-900">{exam.percentage != null ? `${exam.percentage}%` : 'Sin puntaje'}</p>
-                          <ReportLink href={exam.reportLink} compact />
-                        </div>
-                      ))}
+                      {card.exams.map((exam) => {
+                        const examEval = examEvaluations[exam.evaluationType];
+                        const hasFeedback = examEval && (
+                          examEval.observations || examEval.strengths ||
+                          examEval.areasForImprovement || examEval.recommendations
+                        );
+                        return (
+                          <ExamRowWithTooltip
+                            key={`${exam.evaluationType}-${exam.subject}`}
+                            exam={exam}
+                            feedback={examEval}
+                            hasFeedback={hasFeedback}
+                          />
+                        );
+                      })}
                       <div className="flex items-center justify-between py-3">
                         <span className="text-sm font-bold text-slate-700">Promedio exámenes</span>
                         <strong className="text-lg tabular-nums text-slate-950">{examAverage != null ? `${examAverage}%` : 'Sin registro'}</strong>
@@ -184,7 +267,7 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 </CardSection>
               )}
 
-              <CardSection title="Entrevista director/a de ciclo" accent="blue">
+              <CardSection title={`Entrevista director/a de ciclo${card.cycleDirector.report?.evaluator ? ` — ${card.cycleDirector.report.evaluator}` : ''}`} accent="blue">
                 <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                   <Field label="Fecha entrevista" value={formatAdmissionDate(card.cycleDirector.date, 'Sin registro')} />
                   <Field label="Realizada" value={booleanLabel(card.cycleDirector.done)} />
@@ -197,8 +280,71 @@ export const ApplicantCardModal: React.FC<ApplicantCardModalProps> = ({ card, lo
                 </dl>
               </CardSection>
 
+              {/* Informe Final Director de Ciclo - Antecedentes y Recomendaciones */}
+              {cycleDirectorFullReport && (
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 py-2 text-sm font-semibold text-indigo-800 hover:text-indigo-700">
+                    <span className="h-2 w-2 rounded-full bg-indigo-600" aria-hidden="true" />
+                    <span className="flex-1">Informe Final Director de Ciclo</span>
+                    <svg className="h-5 w-5 text-indigo-600 transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                    {cycleDirectorFullReport.strengths && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Fortalezas</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.strengths}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.difficulties && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dificultades</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.difficulties}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.interviewAdaptation && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Adaptación a la entrevista</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.interviewAdaptation}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.outstandingTraits && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Traits destacados</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.outstandingTraits}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.familyBackground && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Contexto familiar</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.familyBackground}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.academicBackground && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Antecedentes académicos</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.academicBackground}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.finalDecision && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Recomendación final</p>
+                        <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{cycleDirectorFullReport.finalDecision}</p>
+                      </div>
+                    )}
+                    {cycleDirectorFullReport.entryCourse && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Curso de ingreso</p>
+                        <p className="mt-1 text-sm text-slate-700">{cycleDirectorFullReport.entryCourse}</p>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+
               {/* Entrevista Familiar */}
-              <CardSection title="Entrevista Familiar" accent="teal">
+              <CardSection title={`Entrevista Familiar${familyInterviewerNames.length > 0 ? ` — ${familyInterviewerNames.join(', ')}` : ''}`} accent="teal">
                 {(() => {
                   const fi = (card as any)?.familyInterview;
                   const hasData = fi?.percentage !== null || (fi?.scores && fi.scores.length > 0);
@@ -340,6 +486,95 @@ const removeInvalidInterviewer = (content?: string | null): string => {
 };
 
 const booleanLabel = (value?: boolean | null) => value == null ? 'Sin registro' : value ? 'Sí' : 'No';
+
+interface ExamRowProps {
+  exam: ApplicantCard['exams'][number];
+  feedback?: { observations?: string; strengths?: string; areasForImprovement?: string; recommendations?: string };
+  hasFeedback: boolean;
+}
+
+const ExamRowWithTooltip: React.FC<ExamRowProps> = ({ exam, feedback, hasFeedback }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    if (hasFeedback && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX
+      });
+      setShowTooltip(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_88px_120px] sm:items-center"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div>
+          <p className="font-bold text-slate-900">{exam.subject}</p>
+          <p className="text-xs text-slate-500 sm:hidden">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
+        </div>
+        <p className="hidden text-sm text-slate-600 sm:block">{safeDisplayText(exam.responsible, 'Sin asignar')}</p>
+        <p className="text-sm font-bold tabular-nums text-slate-900">{exam.percentage != null ? `${exam.percentage}%` : 'Sin puntaje'}</p>
+        {hasFeedback ? (
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-medium text-amber-600">Con comentarios</span>
+            <FiChevronDown className="h-4 w-4 text-amber-600" />
+          </div>
+        ) : (
+          <ReportLink href={exam.reportLink} compact />
+        )}
+      </div>
+      {showTooltip && feedback && (
+        <div
+          className="fixed z-50 max-w-sm rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+          style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={handleMouseLeave}
+        >
+          <p className="mb-3 text-sm font-bold text-slate-900">{exam.subject}</p>
+          <div className="space-y-3">
+            {feedback.observations && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Observaciones</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.observations}</p>
+              </div>
+            )}
+            {feedback.strengths && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Fortalezas</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.strengths}</p>
+              </div>
+            )}
+            {feedback.areasForImprovement && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Áreas a trabajar</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.areasForImprovement}</p>
+              </div>
+            )}
+            {feedback.recommendations && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Recomendaciones</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{feedback.recommendations}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const uniqueValues = (values: Array<string | undefined>) => Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
 const parentNames = (card: ApplicantCard) => uniqueValues([card.family.motherName, card.family.fatherName, card.family.guardianName]).join(' · ') || 'Sin registro';

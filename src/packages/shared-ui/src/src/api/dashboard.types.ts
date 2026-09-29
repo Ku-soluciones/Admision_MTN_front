@@ -220,6 +220,72 @@ export interface CourseApplicantsResponse {
   };
 }
 
+<export interface FinalSummaryFamilyEvaluation {
+  percentage: number | null;
+  score40: number | null;
+  score11: number | null;
+  rating: number | null;
+  justification: string | null;
+  evaluationId: number | null;
+}
+
+export interface FinalSummaryExamScores {
+  language: number | null;
+  mathematics: number | null;
+  english: number | null;
+}
+
+export interface FinalSummaryCycleDirector {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
+  recommendation: string | null;
+  entryCourse: string | null;
+  evaluator: string | null;
+  date: string | null;
+  completed: boolean;
+}
+
+export interface FinalSummaryApplicant {
+  applicationId: number;
+  studentId: number;
+  studentName: string;
+  gradeApplied: string;
+  familyGroupId: number | null;
+  siblingGroupSize: number;
+  siblingNames: string[];
+  familyEvaluation: FinalSummaryFamilyEvaluation;
+  exams: FinalSummaryExamScores;
+  cycleDirectorDecision: string;
+  cycleDirector: FinalSummaryCycleDirector;
+  status: string;
+  statusLabel: string;
+}
+
+export interface FinalSummaryResponse {
+  success: boolean;
+  data: FinalSummaryApplicant[];
+  meta: {
+    academicYear: number;
+    total: number;
+    siblingFamilies: number;
+  };
+}
+
+export type FinalDecision = 'APPROVED' | 'WAITLIST' | 'REJECTED';
+
+export interface FinalDecisionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    applicationId: number;
+    status: FinalDecision;
+    statusLabel: string;
+  };
+}
 export interface ApplicantCardExam {
   evaluationType: string;
   subject: string;
@@ -236,12 +302,24 @@ export interface ApplicantCardCycleDirector {
   done: boolean;
   decision: string;
   reportLink: string | null;
+  evaluationId: number | null;
   report: {
     observations: string | null;
     recommendations: string | null;
     areasForImprovement: string | null;
     evaluator: string | null;
   } | null;
+}
+
+export interface CycleDirectorFullReport {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
+  finalDecision: string | null;
+  entryCourse: string | null;
 }
 
 export interface ApplicantCardFamily {
