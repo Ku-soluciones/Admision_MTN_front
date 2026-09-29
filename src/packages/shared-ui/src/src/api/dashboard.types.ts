@@ -220,7 +220,7 @@ export interface CourseApplicantsResponse {
   };
 }
 
-export interface FinalSummaryFamilyEvaluation {
+<export interface FinalSummaryFamilyEvaluation {
   percentage: number | null;
   score40: number | null;
   score11: number | null;
@@ -286,7 +286,6 @@ export interface FinalDecisionResponse {
     statusLabel: string;
   };
 }
-
 export interface ApplicantCardExam {
   evaluationType: string;
   subject: string;
@@ -303,12 +302,24 @@ export interface ApplicantCardCycleDirector {
   done: boolean;
   decision: string;
   reportLink: string | null;
+  evaluationId: number | null;
   report: {
     observations: string | null;
     recommendations: string | null;
     areasForImprovement: string | null;
     evaluator: string | null;
   } | null;
+}
+
+export interface CycleDirectorFullReport {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
+  finalDecision: string | null;
+  entryCourse: string | null;
 }
 
 export interface ApplicantCardFamily {
