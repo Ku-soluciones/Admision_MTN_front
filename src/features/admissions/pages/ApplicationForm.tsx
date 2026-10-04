@@ -495,9 +495,27 @@ const ApplicationForm: React.FC = () => {
     const [errors, setErrors] = useState<any>({});
     const [serverDraftVersion, setServerDraftVersion] = useState<number | undefined>();
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const serverDraftRestoredRef = useRef(false);
 
     const activePrekinderOption = prekinderOptions[0] ?? null;
+
+    // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
+    const scheduleDraftSave = useCallback(() => {
+        if (!isPrekinder || !activePrekinderOption || !data || Object.keys(data).length === 0) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+            setHasUnsavedChanges(true);
+            setIsSaving(true);
+            prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
+                .then((draft) => {
+                    setServerDraftVersion(draft.version);
+                    setHasUnsavedChanges(false);
+                    setIsSaving(false);
+                })
+                .catch(() => { setIsSaving(false); });
+        }, 650);
+    }, [isPrekinder, activePrekinderOption, data, currentStep, serverDraftVersion]);
     const documentTypesConfig = useMemo(() => {
         if (!isPrekinder) return getDocumentTypesConfig();
         return (activePrekinderOption?.requiredDocuments || []).map((key) => ({
@@ -673,8 +691,8 @@ const ApplicationForm: React.FC = () => {
                 return prev;
             });
         }
-    }, []);
-    
+    }, [scheduleDraftSave]);
+
     // Helper function to touch fields (placeholder)
     const touchField = useCallback((name: string) => {
         // Simple placeholder for now
@@ -685,22 +703,8 @@ const ApplicationForm: React.FC = () => {
         touchField('rut');
         const rut = data.rut?.trim();
         if (!rut || !isValidRut(rut)) return; // solo consultar si el formato es válido
-        // Prekínder vive en una base aislada y valida duplicados de forma atómica
-        // al enviar. Consultar aquí la base legacy produciría falsos positivos.
-        if (isPrekinder) {
-            if (!activePrekinderOption || !data || Object.keys(data).length === 0) return;
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-            saveTimerRef.current = setTimeout(() => {
-                setHasUnsavedChanges(true);
-                prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
-                    .then((draft) => {
-                        setServerDraftVersion(draft.version);
-                        setHasUnsavedChanges(false);
-                    })
-                    .catch(() => { /* se reintentará con el siguiente cambio */ });
-            }, 650);
-            return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-        }
+        // Prekínder valida duplicados de forma atómica al enviar; el draft save ya corre en updateField
+        if (isPrekinder) return;
 
         setIsCheckingRut(true);
         try {
@@ -3648,6 +3652,21 @@ const ApplicationForm: React.FC = () => {
                         <span className="text-xs text-gris-piedra tabular-nums whitespace-nowrap lg:hidden">
                             {currentStep + 1} / {steps.length}
                         </span>
+                        {isPrekinder && (
+                            <span className="hidden lg:inline-flex items-center gap-1 text-xs text-gris-piedra" aria-live="polite" aria-atomic="true">
+                                {isSaving ? (
+                                    <span className="inline-flex items-center gap-1 text-amber-600">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current inline-block" aria-hidden="true" />
+                                        Guardando…
+                                    </span>
+                                ) : !hasUnsavedChanges ? (
+                                    <span className="text-emerald-600 flex items-center gap-1">
+                                        <span aria-hidden="true">✓</span>
+                                        Guardado
+                                    </span>
+                                ) : null}
+                            </span>
+                        )}
                     </div>
 
                     {/* Barra de progreso — visible solo en < lg (cuando el stepper no se muestra) */}
