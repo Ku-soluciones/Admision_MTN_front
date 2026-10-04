@@ -513,7 +513,10 @@ const ApplicationForm: React.FC = () => {
                     setHasUnsavedChanges(false);
                     setIsSaving(false);
                 })
-                .catch(() => { setIsSaving(false); });
+                .catch(() => {
+                    setHasUnsavedChanges(false);
+                    setIsSaving(false);
+                });
         }, 650);
     }, [isPrekinder, activePrekinderOption, data, currentStep, serverDraftVersion]);
     const documentTypesConfig = useMemo(() => {
