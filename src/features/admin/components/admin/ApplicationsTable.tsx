@@ -1,3 +1,4 @@
+import { applicationStatusPolicy } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
 import React from 'react';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { Application } from '../../services/applicationService';
@@ -320,10 +321,12 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                       )}
                       {/* Decisión */}
                       {onDecision && (
-                        <Tip label="Decisión final">
+                        <Tip label={applicationStatusPolicy(application).reason || "Decisión final"}>
                           <button
+                            disabled={applicationStatusPolicy(application).locked}
+                            aria-label={applicationStatusPolicy(application).reason || "Decisión final"}
                             onClick={() => onDecision(application)}
-                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-green-400 text-green-600 hover:bg-green-50 transition-colors"
+                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-green-400 text-green-600 hover:bg-green-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <CheckCircleIcon className="w-4 h-4" />
                           </button>
@@ -331,10 +334,12 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                       )}
                       {/* Archivar */}
                       {onArchive && (
-                        <Tip label="Archivar postulación">
+                        <Tip label={!applicationStatusPolicy(application).canChangeTo("ARCHIVED") ? applicationStatusPolicy(application).reason : "Archivar postulación"}>
                           <button
+                            disabled={!applicationStatusPolicy(application).canChangeTo("ARCHIVED")}
+                            aria-label="Archivar postulación"
                             onClick={() => onArchive(application)}
-                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-orange-400 text-orange-500 hover:bg-orange-50 transition-colors"
+                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-orange-400 text-orange-500 hover:bg-orange-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ArchiveIcon className="w-4 h-4" />
                           </button>

@@ -133,6 +133,7 @@ const AdminDataTables: React.FC<AdminDataTablesProps> = ({ className = '' }) => 
                 title: 'Error al actualizar estado',
                 message: error.message || 'No se pudo actualizar el estado del postulante'
             });
+            setRefreshKey(prev => prev + 1);
         } finally {
             setIsSubmitting(false);
         }

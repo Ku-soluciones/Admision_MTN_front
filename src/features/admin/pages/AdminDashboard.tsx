@@ -527,6 +527,7 @@ Esta acción:
       await loadAdminApplications(); // Recargar la lista
     } catch (error: any) {
       showApplicationToast(error.message || 'Error al archivar la postulación', 'error');
+      await loadAdminApplications();
     } finally {
       setArchiveDialog({ show: false, application: null, message: '' });
     }

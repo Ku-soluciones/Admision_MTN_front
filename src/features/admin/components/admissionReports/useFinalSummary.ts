@@ -1,3 +1,4 @@
+import { statusRequestError } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dashboardClient from '../../../../packages/shared-ui/src/src/api/dashboard.client';
 import type {
@@ -37,13 +38,16 @@ export function useFinalSummary(academicYear: number) {
     try {
       const response = await dashboardClient.updateFinalDecision(applicationId, decision);
       setRows((current) => current.map((row) => row.applicationId === applicationId
-        ? { ...row, status: response.data.status, statusLabel: response.data.statusLabel }
+        ? { ...row, status: response.data.status, statusLabel: response.data.statusLabel, allowedStatusTransitions: response.data.allowedStatusTransitions, statusChangeBlockedReason: response.data.statusChangeBlockedReason }
         : row));
       return response.message;
+    } catch (error) {
+      await refresh();
+      throw new Error(statusRequestError(error));
     } finally {
       setSavingId(null);
     }
-  }, []);
+  }, [refresh]);
 
   return useMemo(() => ({ rows, meta, loading, error, savingId, refresh, updateDecision }), [rows, meta, loading, error, savingId, refresh, updateDecision]);
 }
