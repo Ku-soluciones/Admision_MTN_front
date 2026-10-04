@@ -691,7 +691,11 @@ const ApplicationForm: React.FC = () => {
                 return prev;
             });
         }
-    }, [scheduleDraftSave]);
+        // Guardado automático en tiempo real para PK
+        if (isPrekinder) {
+            scheduleDraftSave();
+        }
+    }, [isPrekinder, scheduleDraftSave]);
 
     // Helper function to touch fields (placeholder)
     const touchField = useCallback((name: string) => {
@@ -1224,6 +1228,14 @@ const ApplicationForm: React.FC = () => {
     const didRestoreDraftRef = useRef(false);
     const skipNextSaveRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Limpiar timer pendiente al desmontar el componente
+    useEffect(() => {
+        return () => {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        };
+    }, []);
+
     const [draftRestored, setDraftRestored] = useState(false);
 
     // Restaurar borrador al montar (una sola vez, y solo si NO estamos en edición
