@@ -1,12 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiClipboard, FiRefreshCw, FiUsers } from 'react-icons/fi';
+import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiClipboard, FiDownload, FiRefreshCw, FiUsers } from 'react-icons/fi';
 import { useAdmissionReports } from './useAdmissionReports';
 import { ApplicantKpiCards } from './ApplicantKpiCards';
 import { AdmissionReportCharts } from './AdmissionReportCharts';
 import { CourseListView } from './CourseListView';
 import { ApplicantCardModal } from './ApplicantCardModal';
 import { FinalSummaryView } from './FinalSummaryView';
+import { applicationService } from '../../services/applicationService';
 
 const getInitialYear = (searchParams: URLSearchParams) => {
   const candidate = Number(searchParams.get('year'));
@@ -23,6 +24,8 @@ export const AdmissionReportTabs: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [needsActionOnly, setNeedsActionOnly] = useState(() => searchParams.get('action') === 'pending');
   const [activeView, setActiveView] = useState<'operational' | 'final'>(() => searchParams.get('view') === 'final' ? 'final' : 'operational');
+  const [schoolnetExporting, setSchoolnetExporting] = useState(false);
+  const [schoolnetMessage, setSchoolnetMessage] = useState('');
   const {
     academicYear,
     setAcademicYear,
@@ -99,6 +102,29 @@ export const AdmissionReportTabs: React.FC = () => {
     updateUrl({ view: view === 'final' ? 'final' : null });
   };
 
+  const exportSchoolnet = useCallback(async () => {
+    if (schoolnetExporting) return;
+    setSchoolnetExporting(true);
+    setSchoolnetMessage('');
+    try {
+      const blob = await applicationService.exportSchoolnetAcceptedStudents();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `schoolnet_alumnos_aceptados_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setSchoolnetMessage('Archivo SchoolNet descargado.');
+    } catch (error) {
+      setSchoolnetMessage(error instanceof Error ? error.message : 'No se pudo exportar SchoolNet.');
+    } finally {
+      setSchoolnetExporting(false);
+    }
+  }, [schoolnetExporting]);
+
   const lastUpdated = refreshedAt
     ? new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(refreshedAt)
     : null;
@@ -126,17 +152,30 @@ export const AdmissionReportTabs: React.FC = () => {
               </select>
             </div>
           </div>
-          {activeView === 'operational' && <button
-            type="button"
-            onClick={refresh}
-            disabled={loading}
-            className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Actualizar resumen de admisión"
-          >
-            <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            {loading && rows.length ? 'Actualizando' : 'Actualizar'}
-          </button>}
+          <div className="flex flex-wrap gap-2 self-start">
+            <button
+              type="button"
+              onClick={exportSchoolnet}
+              disabled={schoolnetExporting}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-950 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Exportar alumnos aceptados para SchoolNet"
+            >
+              <FiDownload className="h-4 w-4" aria-hidden="true" />
+              {schoolnetExporting ? 'Generando…' : 'Exportar SchoolNet'}
+            </button>
+            {activeView === 'operational' && <button
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Actualizar resumen de admisión"
+            >
+              <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+              {loading && rows.length ? 'Actualizando' : 'Actualizar'}
+            </button>}
+          </div>
         </div>
+        {schoolnetMessage && <p className="text-sm font-medium text-slate-600" role="status">{schoolnetMessage}</p>}
       </section>
 
       <nav className="flex gap-1 border-b border-slate-200" aria-label="Vistas de admisión">
