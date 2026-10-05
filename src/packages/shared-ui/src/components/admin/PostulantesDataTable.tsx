@@ -611,6 +611,33 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
         });
     };
 
+    const handleSchoolnetExport = async () => {
+        try {
+            const blob = await applicationService.exportSchoolnetAcceptedStudents();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `schoolnet_alumnos_aceptados_${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            addNotification({
+                type: 'success',
+                title: 'Exportación SchoolNet lista',
+                message: 'Se descargó el archivo XLSX con los alumnos aceptados'
+            });
+        } catch (error: any) {
+            addNotification({
+                type: 'error',
+                title: 'No se pudo exportar SchoolNet',
+                message: error.message || 'Intente nuevamente'
+            });
+        }
+    };
+
     // Función de filtrado personalizada para categorías especiales
     const customFilter = (record: Postulante, columnKey: string, filterValue: string): boolean => {
         if (columnKey === 'categoriaEspecial') {
@@ -648,6 +675,17 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                 }}
                 onRefresh={() => loadPostulantes(pagination.current, pagination.pageSize)}
                 onExport={handleExport}
+                actions={
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSchoolnetExport}
+                        className="flex items-center gap-1"
+                    >
+                        <FiDownload size={14} />
+                        Exportar SchoolNet
+                    </Button>
+                }
                 customFilter={customFilter}
                 rowKey="id"
                 className="shadow-sm"

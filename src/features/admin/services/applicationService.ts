@@ -330,6 +330,20 @@ class ApplicationService {
             throw new Error('Error al obtener la postulación');
         }
     }
+
+    async exportSchoolnetAcceptedStudents(): Promise<Blob> {
+        try {
+            const response = await api.get('/v1/applications/export/schoolnet', {
+                responseType: 'blob',
+                headers: {
+                    Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            });
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Error al exportar alumnos aceptados para SchoolNet');
+        }
+    }
     
     async getDashboardData(): Promise<{
         applications: Application[];
