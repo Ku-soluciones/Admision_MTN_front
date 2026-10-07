@@ -749,7 +749,7 @@ export function PrekinderOperations({
               </button>
             </div>
           )}
-          {message && (
+          {message && section !== "Grupos" && (
             <div
               className="mb-5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"
               role="status"
@@ -758,7 +758,6 @@ export function PrekinderOperations({
               {message}
             </div>
           )}
-
           {baseLoading ? (
             <LoadingProcessState />
           ) : !processId ? (
@@ -876,6 +875,7 @@ export function PrekinderOperations({
               journeys={journeys}
               configuration={configuration}
               busy={busy}
+              message={message}
               onDateChange={selectJourneyByDate}
               onAction={action}
               onClusterAction={actionSilent}
