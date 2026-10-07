@@ -7,7 +7,7 @@ import type {
   FinalSummaryResponse
 } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 
-export function useFinalSummary(academicYear: number) {
+export function useFinalSummary(academicYear: number, processCode?: string) {
   const [rows, setRows] = useState<FinalSummaryApplicant[]>([]);
   const [meta, setMeta] = useState<FinalSummaryResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,7 @@ export function useFinalSummary(academicYear: number) {
     setLoading(true);
     setError(null);
     try {
-      const response = await dashboardClient.getFinalSummary(academicYear);
+      const response = await dashboardClient.getFinalSummary(academicYear, processCode);
       setRows(response.data || []);
       setMeta(response.meta || null);
     } catch (err) {
@@ -27,7 +27,7 @@ export function useFinalSummary(academicYear: number) {
     } finally {
       setLoading(false);
     }
-  }, [academicYear]);
+  }, [academicYear, processCode]);
 
   useEffect(() => {
     void refresh();

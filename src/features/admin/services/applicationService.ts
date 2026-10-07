@@ -331,9 +331,14 @@ class ApplicationService {
         }
     }
 
-    async exportSchoolnetAcceptedStudents(): Promise<Blob> {
+    async exportSchoolnetAcceptedStudents(params?: { academicYear?: number; processCode?: string; statuses?: string[] }): Promise<Blob> {
         try {
-            const response = await api.get('/v1/applications/export/schoolnet', {
+            const query = new URLSearchParams();
+            if (params?.academicYear) query.set('academicYear', params.academicYear.toString());
+            if (params?.processCode) query.set('processCode', params.processCode);
+            if (params?.statuses?.length) query.set('statuses', params.statuses.join(','));
+            const suffix = query.toString() ? `?${query.toString()}` : '';
+            const response = await api.get(`/v1/applications/export/schoolnet${suffix}`, {
                 responseType: 'blob',
                 headers: {
                     Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

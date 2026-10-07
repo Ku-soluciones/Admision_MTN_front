@@ -16,6 +16,7 @@ import { useFinalSummary } from './useFinalSummary';
 
 interface FinalSummaryViewProps {
   academicYear: number;
+  processCode?: string;
   onOpenCard: (applicationId: number) => void;
 }
 
@@ -45,8 +46,8 @@ const needsReview = (row: FinalSummaryApplicant) => (
   row.cycleDirector.recommendation === 'Pendiente'
 );
 
-export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, onOpenCard }) => {
-  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear);
+export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, processCode, onOpenCard }) => {
+  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear, processCode);
   const [search, setSearch] = useState('');
   const [grade, setGrade] = useState('');
   const [decision, setDecision] = useState('');

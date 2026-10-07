@@ -9,6 +9,11 @@ import { ApplicantCardModal } from './ApplicantCardModal';
 import { FinalSummaryView } from './FinalSummaryView';
 import { applicationService } from '../../services/applicationService';
 
+const PROCESS_OPTIONS = [
+  { value: 'KIV-2027-01', label: 'K-IV 2027-01' },
+  { value: 'KIV-2027-02', label: 'K-IV 2027-02' }
+];
+
 const getInitialYear = (searchParams: URLSearchParams) => {
   const candidate = Number(searchParams.get('year'));
   const currentYear = new Date().getFullYear();
@@ -17,9 +22,17 @@ const getInitialYear = (searchParams: URLSearchParams) => {
     : currentYear + 1;
 };
 
+const getInitialProcessCode = (searchParams: URLSearchParams) => {
+  const candidate = searchParams.get('process');
+  return PROCESS_OPTIONS.some((option) => option.value === candidate)
+    ? candidate as string
+    : PROCESS_OPTIONS[1].value;
+};
+
 export const AdmissionReportTabs: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [initialYear] = useState(() => getInitialYear(searchParams));
+  const [processCode, setProcessCode] = useState(() => getInitialProcessCode(searchParams));
   const [gradeFilter, setGradeFilter] = useState(() => searchParams.get('grade') || '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [needsActionOnly, setNeedsActionOnly] = useState(() => searchParams.get('action') === 'pending');
@@ -40,7 +53,7 @@ export const AdmissionReportTabs: React.FC = () => {
     closeCard,
     retryCard,
     refreshedAt
-  } = useAdmissionReports(initialYear);
+  } = useAdmissionReports(initialYear, processCode);
 
   const availableYears = useMemo(
     () => Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i - 1),
@@ -97,6 +110,12 @@ export const AdmissionReportTabs: React.FC = () => {
     updateUrl({ year, grade: null, status: null, action: null });
   };
 
+  const handleProcessChange = (nextProcessCode: string) => {
+    setProcessCode(nextProcessCode);
+    clearOperationalFilters();
+    updateUrl({ process: nextProcessCode, grade: null, status: null, action: null });
+  };
+
   const changeView = (view: 'operational' | 'final') => {
     setActiveView(view);
     updateUrl({ view: view === 'final' ? 'final' : null });
@@ -107,11 +126,15 @@ export const AdmissionReportTabs: React.FC = () => {
     setSchoolnetExporting(true);
     setSchoolnetMessage('');
     try {
-      const blob = await applicationService.exportSchoolnetAcceptedStudents();
+      const blob = await applicationService.exportSchoolnetAcceptedStudents({
+        academicYear,
+        processCode,
+        statuses: ['APPROVED', 'WAITLIST']
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `schoolnet_alumnos_aceptados_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.download = `schoolnet_${processCode}_${academicYear}_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -123,7 +146,7 @@ export const AdmissionReportTabs: React.FC = () => {
     } finally {
       setSchoolnetExporting(false);
     }
-  }, [schoolnetExporting]);
+  }, [academicYear, processCode, schoolnetExporting]);
 
   const lastUpdated = refreshedAt
     ? new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(refreshedAt)
@@ -139,17 +162,31 @@ export const AdmissionReportTabs: React.FC = () => {
               Seguimiento de postulantes y decisiones
               {lastUpdated && <span className="text-gray-400"> · actualizado {lastUpdated}</span>}
             </p>
-            <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
-              <FiCalendar className="h-4 w-4 text-gray-500" aria-hidden="true" />
-              <label htmlFor="admissionAcademicYear" className="text-sm text-gray-600">Año</label>
-              <select
-                id="admissionAcademicYear"
-                value={academicYear}
-                onChange={(event) => handleYearChange(Number(event.target.value))}
-                className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
-              >
-                {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
-              </select>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+                <FiCalendar className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <label htmlFor="admissionAcademicYear" className="text-sm text-gray-600">Año</label>
+                <select
+                  id="admissionAcademicYear"
+                  value={academicYear}
+                  onChange={(event) => handleYearChange(Number(event.target.value))}
+                  className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+                >
+                  {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </div>
+              <div className="flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+                <FiClipboard className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <label htmlFor="admissionProcessCode" className="text-sm text-gray-600">Proceso</label>
+                <select
+                  id="admissionProcessCode"
+                  value={processCode}
+                  onChange={(event) => handleProcessChange(event.target.value)}
+                  className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+                >
+                  {PROCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 self-start">
@@ -184,7 +221,7 @@ export const AdmissionReportTabs: React.FC = () => {
       </nav>
 
       {activeView === 'final' ? (
-        <FinalSummaryView academicYear={academicYear} onOpenCard={openCard} />
+        <FinalSummaryView academicYear={academicYear} processCode={processCode} onOpenCard={openCard} />
       ) : loading && !rows.length ? (
         <LoadingState />
       ) : error ? (
