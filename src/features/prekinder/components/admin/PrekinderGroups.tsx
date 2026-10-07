@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronUp,
   Clock3,
@@ -51,6 +52,7 @@ type Props = {
   journeys: EvaluationJourney[];
   configuration: ProcessConfiguration | null;
   busy: boolean;
+  message: string;
   onDateChange: (date: string) => void;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onClusterAction: (work: () => Promise<unknown>, success: string) => Promise<ClusterActionResult>;
@@ -290,6 +292,15 @@ export function PrekinderGroups(props: Props) {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de grupos</p>
           <p className="mt-1 text-sm text-slate-600">Arma grupos individuales o reúnelos en agrupaciones.</p>
         </div>
+        {props.message && (
+          <div
+            className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"
+            role="status"
+          >
+            <Check size={18} />
+            {props.message}
+          </div>
+        )}
         <nav className="mt-3 flex flex-wrap gap-2" aria-label="Vistas de grupos">
           {groupsViews.map(({ id, label, icon: Icon }) => (
             <button
@@ -758,12 +769,12 @@ function GroupClusters({
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null);
 
   const activeGroups = groups.filter((group) => group.status !== "CANCELLED");
   const visibleClusters = clusters.filter(isActiveCluster);
   const sortedJourneys = [...journeys].sort((a, b) => a.date.localeCompare(b.date));
   const journeyId = journeys.find((journey) => journey.date === date)?.id ?? null;
-  const formOpen = editor !== null;
 
   // Un grupo solo puede pertenecer a una agrupación: el backend rechaza el
   // resto por cruce de horarios, así que aquí se bloquean antes de enviar.
@@ -783,6 +794,7 @@ function GroupClusters({
     setFormError("");
     setDeletingId(null);
     setDeleteError("");
+    setExpandedClusterId(null);
   }, [date]);
 
   function toggleGroup(groupId: string) {
@@ -868,6 +880,80 @@ function GroupClusters({
   const canSave = Boolean(name.trim()) && selected.size >= CLUSTER_MIN_GROUPS;
   const canCreate = clustersAvailable && activeGroups.length >= CLUSTER_MIN_GROUPS && Boolean(journeyId);
 
+  function renderClusterFormFields() {
+    return (
+      <>
+        <div className="grid gap-5 p-6 lg:grid-cols-2">
+          <div className="grid content-start gap-4">
+            <Field label="Nombre de la agrupación">
+              <input
+                className="control w-full"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Ej. Bloque mañana - Salas A y B"
+                maxLength={120}
+              />
+            </Field>
+          </div>
+          <fieldset className="min-w-0">
+            <legend className="mb-2 flex w-full items-center justify-between gap-3 text-sm font-black text-slate-900">
+              Grupos a incluir<span className="text-blue-700">{selected.size} seleccionados</span>
+            </legend>
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
+              {!activeGroups.length ? (
+                <p className="p-3 text-sm leading-6 text-slate-500">No hay grupos activos para agrupar.</p>
+              ) : (
+                activeGroups.map((group) => {
+                  const checked = selected.has(group.groupId);
+                  const owner = clusterByGroupId.get(group.groupId);
+                  const takenBy =
+                    owner && owner.clusterId !== (editor?.mode === "edit" ? editor.cluster.clusterId : null)
+                      ? owner
+                      : null;
+                  return (
+                    <label
+                      key={group.groupId}
+                      className={`flex items-start gap-3 rounded-lg p-2.5 ${takenBy ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white"}`}
+                    >
+                      <input
+                        className="mt-1 h-4 w-4 accent-blue-700"
+                        type="checkbox"
+                        checked={checked}
+                        disabled={Boolean(takenBy)}
+                        onChange={() => toggleGroup(group.groupId)}
+                      />
+                      <span className="min-w-0">
+                        <b className="block truncate text-sm text-slate-900">{group.code}</b>
+                        <small className="block truncate text-slate-500">
+                          {group.roomName} · {formatTime(group.startsAt, timeZone)}
+                          {takenBy ? ` · Ya está en ${takenBy.name}` : ""}
+                        </small>
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            {selected.size > 0 && selected.size < CLUSTER_MIN_GROUPS && (
+              <p className="mt-2 text-sm font-semibold text-amber-800">
+                Selecciona al menos {CLUSTER_MIN_GROUPS} grupos.
+              </p>
+            )}
+          </fieldset>
+        </div>
+        {formError && (
+          <p className="px-6 pb-4 text-sm font-semibold text-red-700" role="alert">{formError}</p>
+        )}
+        <div className="flex justify-end gap-2 border-t border-slate-200 p-6">
+          <button className="secondary" onClick={closeForm}>Cancelar</button>
+          <button className="primary" disabled={busy || !canSave} onClick={() => void saveCluster()}>
+            {busy ? "Guardando…" : editor?.mode === "edit" ? "Guardar cambios" : "Crear agrupación"}
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {sortedJourneys.length ? (
@@ -906,16 +992,12 @@ function GroupClusters({
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-start justify-between gap-4 p-6">
           <div>
-            <h2 className="text-lg font-black">
-              {editor?.mode === "edit" ? `Editar ${editor.cluster.name}` : "Crear agrupación"}
-            </h2>
+            <h2 className="text-lg font-black">Crear agrupación</h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
-              {editor?.mode === "edit"
-                ? "Cambia el nombre o los grupos que componen la agrupación."
-                : `Une ${CLUSTER_MIN_GROUPS} o más grupos de evaluación en una sola agrupación.`}
+              {`Une ${CLUSTER_MIN_GROUPS} o más grupos de evaluación en una sola agrupación.`}
             </p>
           </div>
-          {formOpen ? (
+          {editor?.mode === "create" ? (
             <button className="secondary shrink-0 !px-3" onClick={closeForm} aria-label="Cerrar formulario">
               <X size={18} />
             </button>
@@ -931,82 +1013,36 @@ function GroupClusters({
             </button>
           )}
         </div>
-        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${formOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${editor?.mode === "create" ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
           <div className="overflow-hidden">
-            {formOpen && (
-              <div className="border-t border-slate-200">
-                <div className="grid gap-5 p-6 lg:grid-cols-2">
-                  <div className="grid content-start gap-4">
-                    <Field label="Nombre de la agrupación">
-                      <input
-                        className="control w-full"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        placeholder="Ej. Bloque mañana - Salas A y B"
-                        maxLength={120}
-                      />
-                    </Field>
-                  </div>
-                  <fieldset className="min-w-0">
-                    <legend className="mb-2 flex w-full items-center justify-between gap-3 text-sm font-black text-slate-900">
-                      Grupos a incluir<span className="text-blue-700">{selected.size} seleccionados</span>
-                    </legend>
-                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
-                      {!activeGroups.length ? (
-                        <p className="p-3 text-sm leading-6 text-slate-500">No hay grupos activos para agrupar.</p>
-                      ) : (
-                        activeGroups.map((group) => {
-                          const checked = selected.has(group.groupId);
-                          const owner = clusterByGroupId.get(group.groupId);
-                          const takenBy =
-                            owner && owner.clusterId !== (editor?.mode === "edit" ? editor.cluster.clusterId : null)
-                              ? owner
-                              : null;
-                          return (
-                            <label
-                              key={group.groupId}
-                              className={`flex items-start gap-3 rounded-lg p-2.5 ${takenBy ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white"}`}
-                            >
-                              <input
-                                className="mt-1 h-4 w-4 accent-blue-700"
-                                type="checkbox"
-                                checked={checked}
-                                disabled={Boolean(takenBy)}
-                                onChange={() => toggleGroup(group.groupId)}
-                              />
-                              <span className="min-w-0">
-                                <b className="block truncate text-sm text-slate-900">{group.code}</b>
-                                <small className="block truncate text-slate-500">
-                                  {group.roomName} · {formatTime(group.startsAt, timeZone)}
-                                  {takenBy ? ` · Ya está en ${takenBy.name}` : ""}
-                                </small>
-                              </span>
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
-                    {selected.size > 0 && selected.size < CLUSTER_MIN_GROUPS && (
-                      <p className="mt-2 text-sm font-semibold text-amber-800">
-                        Selecciona al menos {CLUSTER_MIN_GROUPS} grupos.
-                      </p>
-                    )}
-                  </fieldset>
-                </div>
-                {formError && (
-                  <p className="px-6 pb-4 text-sm font-semibold text-red-700" role="alert">{formError}</p>
-                )}
-                <div className="flex justify-end gap-2 border-t border-slate-200 p-6">
-                  <button className="secondary" onClick={closeForm}>Cancelar</button>
-                  <button className="primary" disabled={busy || !canSave} onClick={() => void saveCluster()}>
-                    {busy ? "Guardando…" : editor?.mode === "edit" ? "Guardar cambios" : "Crear agrupación"}
-                  </button>
-                </div>
-              </div>
-            )}
+            {editor?.mode === "create" && <div className="border-t border-slate-200">{renderClusterFormFields()}</div>}
           </div>
         </div>
       </section>
+
+      {editor?.mode === "edit" && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-cluster-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="edit-cluster-title" className="text-lg font-black">{`Editar ${editor.cluster.name}`}</h2>
+                <p className="mt-1 text-sm leading-5 text-slate-600">
+                  Cambia el nombre o los grupos que componen la agrupación.
+                </p>
+              </div>
+              <button className="secondary shrink-0 !px-3" onClick={closeForm} aria-label="Cerrar formulario">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="mt-5">{renderClusterFormFields()}</div>
+          </div>
+        </div>
+      )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {!visibleClusters.length ? (
@@ -1020,89 +1056,152 @@ function GroupClusters({
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {visibleClusters.map((cluster) => {
-              const meta = statusMeta[cluster.status] ?? {
-                label: cluster.status,
-                className: "bg-slate-100 text-slate-700",
-              };
-              const members = cluster.groups.filter((group) => group.status !== "CANCELLED");
-              const removed = cluster.groups.length - members.length;
-              const confirming = deletingId === cluster.clusterId;
-              return (
-                <article key={cluster.clusterId} className="p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="flex flex-wrap items-center gap-2 text-base font-black text-slate-950">
-                        {cluster.name}
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-black ${meta.className}`}>{meta.label}</span>
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {cluster.groupCount} grupos · {cluster.memberCount} postulantes · {cluster.evaluatorCount} evaluadores
-                        {cluster.startsAt && cluster.endsAt
-                          ? ` · ${formatTime(cluster.startsAt, timeZone)}–${formatTime(cluster.endsAt, timeZone)}`
-                          : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        className="secondary !px-3 !py-2 text-xs"
-                        disabled={busy || confirming}
-                        onClick={() => openEdit(cluster)}
-                      >
-                        <Pencil className="mr-1 inline" size={14} />Editar
-                      </button>
-                      {confirming ? (
-                        <>
-                          <button
-                            className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white hover:bg-red-800 disabled:opacity-50"
-                            disabled={busy}
-                            onClick={() => void removeCluster(cluster)}
-                          >
-                            Confirmar
-                          </button>
-                          <button
-                            className="secondary !px-3 !py-2 text-xs"
-                            onClick={() => {
-                              setDeletingId(null);
-                              setDeleteError("");
-                            }}
-                          >
-                            Cancelar
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          className="min-h-9 rounded-lg px-3 text-xs font-black text-red-700 hover:bg-red-50 disabled:text-red-300 disabled:hover:bg-transparent"
-                          disabled={busy}
-                          onClick={() => {
-                            setDeletingId(cluster.clusterId);
-                            setDeleteError("");
-                          }}
-                        >
-                          <Trash2 className="mr-1 inline" size={14} />Eliminar
-                        </button>
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse">
+              <colgroup>
+                <col className="w-[22%]" />
+                <col className="w-[9%]" />
+                <col className="w-[12%]" />
+                <col className="w-[17%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Grupos</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Estado</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Observación focal</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Postulantes</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Evaluadores</th>
+                  <th className="px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleClusters.map((cluster) => {
+                  const meta = statusMeta[cluster.status] ?? {
+                    label: cluster.status,
+                    className: "bg-slate-100 text-slate-700",
+                  };
+                  const members = cluster.groups.filter((group) => group.status !== "CANCELLED");
+                  const removed = cluster.groups.length - members.length;
+                  const confirming = deletingId === cluster.clusterId;
+                  const expanded = expandedClusterId === cluster.clusterId;
+                  const totalCapacity = members.reduce((sum, group) => sum + group.capacity, 0);
+                  const totalRequiredEvaluators = members.reduce((sum, group) => sum + group.requiredEvaluators, 0);
+
+                  return (
+                    <Fragment key={cluster.clusterId}>
+                      <tr className="align-middle">
+                        <td className="px-5 py-4">
+                          <p className="font-black text-slate-950">{cluster.name}</p>
+                        </td>
+                        <td className="px-5 py-4 text-center text-sm">
+                          <b className="text-slate-950">{cluster.groupCount}</b>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${meta.className}`}>
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <p className="flex items-center justify-center gap-1.5 text-sm text-slate-700">
+                            <Clock3 size={13} className="text-slate-400" aria-hidden="true" />
+                            {cluster.startsAt && cluster.endsAt
+                              ? `${formatTime(cluster.startsAt, timeZone)}–${formatTime(cluster.endsAt, timeZone)}`
+                              : "—"}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4 text-center text-sm">
+                          <b className="text-slate-950">{cluster.memberCount}/{totalCapacity}</b>
+                        </td>
+                        <td className="px-5 py-4 text-center text-sm">
+                          <b className="text-slate-950">{cluster.evaluatorCount}/{totalRequiredEvaluators}</b>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              className="secondary !px-3 !py-2 text-xs"
+                              onClick={() => setExpandedClusterId(expanded ? null : cluster.clusterId)}
+                              aria-expanded={expanded}
+                            >
+                              Ver
+                              {expanded ? <ChevronUp className="ml-1 inline" size={14} /> : <ChevronDown className="ml-1 inline" size={14} />}
+                            </button>
+                            <button
+                              className="secondary !px-3 !py-2 text-xs"
+                              disabled={busy || confirming}
+                              onClick={() => openEdit(cluster)}
+                            >
+                              <Pencil className="mr-1 inline" size={14} />Editar
+                            </button>
+                            {confirming ? (
+                              <div className="flex flex-col gap-2">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    className="min-h-9 rounded-lg bg-red-700 px-3 text-xs font-black text-white hover:bg-red-800 disabled:opacity-50"
+                                    disabled={busy}
+                                    onClick={() => void removeCluster(cluster)}
+                                  >
+                                    Confirmar
+                                  </button>
+                                  <button
+                                    className="secondary !px-3 !py-2 text-xs"
+                                    onClick={() => {
+                                      setDeletingId(null);
+                                      setDeleteError("");
+                                    }}
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                                {deleteError && (
+                                  <p className="text-left text-xs font-semibold text-red-700" role="alert">{deleteError}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <button
+                                className="min-h-9 rounded-lg px-3 text-xs font-black text-red-700 hover:bg-red-50 disabled:text-red-300 disabled:hover:bg-transparent"
+                                disabled={busy}
+                                onClick={() => {
+                                  setDeletingId(cluster.clusterId);
+                                  setDeleteError("");
+                                }}
+                              >
+                                <Trash2 className="mr-1 inline" size={14} />Eliminar
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr>
+                          <td colSpan={7} className="bg-slate-50 px-5 py-5">
+                            <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">Grupos incluidos</p>
+                            <div className="flex flex-wrap gap-2">
+                              {members.map((group) => (
+                                <span
+                                  key={group.groupId}
+                                  className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200"
+                                >
+                                  {group.code} · {group.roomName} · {formatTime(group.startsAt, timeZone)}
+                                </span>
+                              ))}
+                              {removed > 0 && (
+                                <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-400">
+                                  {removed} grupo{removed === 1 ? "" : "s"} eliminado{removed === 1 ? "" : "s"}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  </div>
-                  {confirming && deleteError && (
-                    <p className="mt-2 text-sm font-semibold text-red-700" role="alert">{deleteError}</p>
-                  )}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {members.map((group) => (
-                      <span key={group.groupId} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                        {group.code} · {group.roomName} · {formatTime(group.startsAt, timeZone)}
-                      </span>
-                    ))}
-                    {removed > 0 && (
-                      <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
-                        {removed} grupo{removed === 1 ? "" : "s"} eliminado{removed === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
