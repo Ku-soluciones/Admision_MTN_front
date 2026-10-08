@@ -35,7 +35,8 @@ import {
   FiCheck,
   FiX,
   FiSearch,
-  FiMessageSquare
+  FiMessageSquare,
+  FiClipboard
 } from 'react-icons/fi';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import { CreateUserRequest, UserRole, User } from '../types/user';
