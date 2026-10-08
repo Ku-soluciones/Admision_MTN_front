@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { applicationStatusPolicy } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
+import React, { useCallback, useId, useMemo, useState } from 'react';
 import {
   FiAlertCircle,
   FiDownload,
@@ -15,13 +16,14 @@ import { useFinalSummary } from './useFinalSummary';
 
 interface FinalSummaryViewProps {
   academicYear: number;
+  processCode?: string;
   onOpenCard: (applicationId: number) => void;
 }
 
 const DECISIONS: Array<{ value: FinalDecision; label: string }> = [
   { value: 'APPROVED', label: 'Aceptado' },
   { value: 'WAITLIST', label: 'Lista de espera' },
-  { value: 'REJECTED', label: 'No aceptado' }
+  { value: 'REJECTED', label: 'No seleccionado' }
 ];
 
 const FAMILY_TONES = [
@@ -44,8 +46,8 @@ const needsReview = (row: FinalSummaryApplicant) => (
   row.cycleDirector.recommendation === 'Pendiente'
 );
 
-export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, onOpenCard }) => {
-  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear);
+export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, processCode, onOpenCard }) => {
+  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear, processCode);
   const [search, setSearch] = useState('');
   const [grade, setGrade] = useState('');
   const [decision, setDecision] = useState('');
@@ -84,6 +86,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
       setFeedback(message);
       setPendingDecision(null);
     } catch (err) {
+      setPendingDecision(null);
       setFeedback(err instanceof Error ? err.message : 'No se pudo actualizar la decisión');
     }
   }, [pendingDecision, updateDecision]);
@@ -313,14 +316,24 @@ const CycleDirectorReportModal = ({ row, onClose }: { row: FinalSummaryApplicant
   </Modal>
 );
 
-const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
-  <label className="block w-full min-w-0">
-    <span className="sr-only">Decisión final para {row.studentName}</span>
-    <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''} onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })} disabled={saving} className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
-      <option value="">Pendiente</option>{DECISIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-    </select>
-  </label>
-);
+const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => {
+  const policy = applicationStatusPolicy(row);
+  const reasonId = useId();
+  return (
+    <label className="block w-full min-w-0">
+      <span className="sr-only">Decisión final para {row.studentName}</span>
+      <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''}
+        onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })}
+        disabled={saving || policy.locked} aria-describedby={reasonId}
+        className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
+        {!DECISIONS.some((item) => item.value === row.status) && <option value="">Pendiente</option>}
+        {DECISIONS.filter((item) => item.value === row.status || policy.canChangeTo(item.value)).map((item) =>
+          <option key={item.value} value={item.value}>{item.label}</option>)}
+      </select>
+      <span id={reasonId} className="mt-1 block text-xs text-slate-600">{policy.reason}</span>
+    </label>
+  );
+};
 
 const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onOpenReport, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onOpenReport: (row: FinalSummaryApplicant) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <tr className="bg-white align-top hover:bg-slate-50">

@@ -1,3 +1,4 @@
+import type { ApplicationStatusMetadata } from '../../utils/applicationStatusPolicy';
 /**
  * Dashboard & Analytics API Types
  * Sistema de Admisión MTN
@@ -249,7 +250,7 @@ export interface FinalSummaryCycleDirector {
   completed: boolean;
 }
 
-export interface FinalSummaryApplicant {
+export interface FinalSummaryApplicant extends ApplicationStatusMetadata {
   applicationId: number;
   studentId: number;
   studentName: string;
@@ -282,6 +283,8 @@ export interface FinalDecisionResponse {
   message: string;
   data: {
     applicationId: number;
+    allowedStatusTransitions?: string[];
+    statusChangeBlockedReason?: string;
     status: FinalDecision;
     statusLabel: string;
   };

@@ -52,9 +52,10 @@ interface InterviewManagementProps {
   className?: string;
   onBack?: () => void;
   initialInterviewId?: number | null;
+  processCode?: string;
 }
 
-const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '', onBack, initialInterviewId }) => {
+const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '', onBack, initialInterviewId, processCode }) => {
   // Estados principales
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
@@ -109,7 +110,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
     loadInterviews();
     loadStats();
     loadEmailTemplates();
-  }, [filters]);
+  }, [filters, processCode]);
 
   useEffect(() => {
     if (!initialInterviewId) return;
@@ -160,12 +161,15 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             mode: filters.mode,
             startDate: filters.dateFrom,
             endDate: filters.dateTo,
-            interviewerId: filters.interviewerId
-          },
+            interviewerId: filters.interviewerId,
+            processCode
+          } as InterviewFilters & { processCode?: string },
           filters.page || 0,
           filters.size || 20,
           'scheduledDate',
-          'desc'
+          'desc',
+          undefined,
+          processCode
         );
         setInterviews(response.interviews);
       } else {
@@ -479,6 +483,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
               onEdit={handleEditFromView}
               isSubmitting={isSubmitting}
               refreshKey={refreshKey}
+              processCode={processCode}
             />
           )}
         </div>
@@ -706,6 +711,7 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
           ) : (
             <StudentListView
               onStudentSelect={handleStudentSelect}
+              processCode={processCode}
             />
           )}
         </>
@@ -791,9 +797,10 @@ const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
 // Componente simple para lista de estudiantes
 interface StudentListViewProps {
   onStudentSelect: (applicationId: number, studentName: string) => void;
+  processCode?: string;
 }
 
-const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) => {
+const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect, processCode }) => {
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -803,12 +810,12 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect }) =>
 
   useEffect(() => {
     loadApplications();
-  }, []);
+  }, [processCode]);
 
   const loadApplications = async () => {
     try {
       setIsLoading(true);
-      const response = await applicationService.getAllApplications();
+      const response = await applicationService.getAllApplications({ processCode });
       const validApplications = response.filter(app =>
         app && app.id && app.student && app.student.firstName && app.student.lastName
       );
