@@ -8,7 +8,7 @@ import {
   FiSearch,
   FiUsers,
 } from 'react-icons/fi';
-import type { FinalDecision, FinalSummaryApplicant } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import type { FinalDecision, FinalSummaryApplicant, FinalSummaryExamDetail } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import ConfirmDialog from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import Modal from '../../../../packages/shared-ui/src/components/ui/Modal';
 import { formatGradeLabel, safeDisplayText } from './admissionReportUtils';
@@ -45,6 +45,30 @@ const needsReview = (row: FinalSummaryApplicant) => (
   !row.cycleDirector.recommendation ||
   row.cycleDirector.recommendation === 'Pendiente'
 );
+
+const formatExportDate = (value?: string | null) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(parsed);
+};
+
+const joinExamComments = (detail?: FinalSummaryExamDetail | null) => {
+  if (!detail) return '';
+  const parts = [
+    detail.observations && `Observaciones: ${detail.observations}`,
+    detail.strengths && `Fortalezas: ${detail.strengths}`,
+    detail.areasForImprovement && `Áreas por mejorar: ${detail.areasForImprovement}`,
+    detail.recommendations && `Recomendaciones: ${detail.recommendations}`
+  ].filter(Boolean);
+  return parts.join('\n');
+};
 
 export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, processCode, onOpenCard }) => {
   const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear, processCode);
@@ -105,8 +129,14 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         'Observación /11': row.familyEvaluation.score11 ?? '',
         'Familia 1–5': row.familyEvaluation.rating ?? '',
         Lenguaje: row.exams.language ?? '',
+        'Fecha examen Lenguaje': formatExportDate(row.examDetails?.language?.date),
+        'Comentarios Lenguaje': joinExamComments(row.examDetails?.language),
         Matemáticas: row.exams.mathematics ?? '',
+        'Fecha examen Matemáticas': formatExportDate(row.examDetails?.mathematics?.date),
+        'Comentarios Matemáticas': joinExamComments(row.examDetails?.mathematics),
         Inglés: row.exams.english ?? '',
+        'Fecha examen Inglés': formatExportDate(row.examDetails?.english?.date),
+        'Comentarios Inglés': joinExamComments(row.examDetails?.english),
         'Recomendación del director de ciclo': row.cycleDirector.recommendation ?? '',
         'Fortalezas': row.cycleDirector.strengths ?? '',
         'Dificultades': row.cycleDirector.difficulties ?? '',
