@@ -8,11 +8,7 @@ import { CourseListView } from './CourseListView';
 import { ApplicantCardModal } from './ApplicantCardModal';
 import { FinalSummaryView } from './FinalSummaryView';
 import { applicationService } from '../../services/applicationService';
-
-const PROCESS_OPTIONS = [
-  { value: 'KIV-2027-01', label: 'K-IV 2027-01' },
-  { value: 'KIV-2027-02', label: 'K-IV 2027-02' }
-];
+import { ADMISSION_PROCESS_OPTIONS } from './admissionProcesses';
 
 const getInitialYear = (searchParams: URLSearchParams) => {
   const candidate = Number(searchParams.get('year'));
@@ -24,21 +20,31 @@ const getInitialYear = (searchParams: URLSearchParams) => {
 
 const getInitialProcessCode = (searchParams: URLSearchParams) => {
   const candidate = searchParams.get('process');
-  return PROCESS_OPTIONS.some((option) => option.value === candidate)
+  return ADMISSION_PROCESS_OPTIONS.some((option) => option.value === candidate)
     ? candidate as string
-    : PROCESS_OPTIONS[1].value;
+    : ADMISSION_PROCESS_OPTIONS[1].value;
 };
 
-export const AdmissionReportTabs: React.FC = () => {
+interface AdmissionReportTabsProps {
+  selectedProcessCode?: string;
+  onProcessChange?: (processCode: string) => void;
+}
+
+export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ selectedProcessCode, onProcessChange }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [initialYear] = useState(() => getInitialYear(searchParams));
-  const [processCode, setProcessCode] = useState(() => getInitialProcessCode(searchParams));
+  const [internalProcessCode, setInternalProcessCode] = useState(() => getInitialProcessCode(searchParams));
   const [gradeFilter, setGradeFilter] = useState(() => searchParams.get('grade') || '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [needsActionOnly, setNeedsActionOnly] = useState(() => searchParams.get('action') === 'pending');
   const [activeView, setActiveView] = useState<'operational' | 'final'>(() => searchParams.get('view') === 'final' ? 'final' : 'operational');
   const [schoolnetExporting, setSchoolnetExporting] = useState(false);
   const [schoolnetMessage, setSchoolnetMessage] = useState('');
+  const processCode = selectedProcessCode || internalProcessCode;
+  const setProcessCode = useCallback((nextProcessCode: string) => {
+    setInternalProcessCode(nextProcessCode);
+    onProcessChange?.(nextProcessCode);
+  }, [onProcessChange]);
   const {
     academicYear,
     setAcademicYear,
@@ -184,7 +190,7 @@ export const AdmissionReportTabs: React.FC = () => {
                   onChange={(event) => handleProcessChange(event.target.value)}
                   className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
                 >
-                  {PROCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {ADMISSION_PROCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </div>
             </div>

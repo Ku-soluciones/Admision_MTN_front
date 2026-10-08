@@ -71,6 +71,7 @@ import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 import InterviewerPairManagement from '../components/users/InterviewerPairManagement';
+import { ADMISSION_PROCESS_OPTIONS, defaultAdmissionProcessCode } from '../components/admissionReports/admissionProcesses';
 
 const AdmissionReportTabs = React.lazy(() =>
   import('../components/admissionReports/AdmissionReportTabs')
@@ -165,6 +166,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState('admissionReports');
+  const [selectedAdmissionProcessCode, setSelectedAdmissionProcessCode] = useState(() => searchParams.get('process') || defaultAdmissionProcessCode);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -268,25 +270,25 @@ const AdminDashboard: React.FC = () => {
 
   // Carga inicial: solo dashboard necesita aplicaciones y usuarios
   useEffect(() => {
-    loadApplications();
+    loadApplications(selectedAdmissionProcessCode);
     loadUsers();
   }, []);
 
   // Carga por sección: cada sección carga lo que necesita al entrar
   useEffect(() => {
     if (activeSection === 'postulaciones') {
-      loadAdminApplications();
+      loadAdminApplications(selectedAdmissionProcessCode);
     } else if (activeSection === 'evaluaciones') {
-      loadApplications();
+      loadApplications(selectedAdmissionProcessCode);
     }
-  }, [activeSection]);
+  }, [activeSection, selectedAdmissionProcessCode]);
 
-  const loadApplications = async () => {
+  const loadApplications = async (processCode = selectedAdmissionProcessCode) => {
     try {
       setIsPageLoading(true);
       dispatch({ type: 'SET_LOADING', payload: true });
       // Use the applicationService which handles the API calls properly
-      const applications = await applicationService.getAllApplications();
+      const applications = await applicationService.getAllApplications({ processCode });
 
       // Load evaluations for each application
       const applicationsWithEvaluations = await Promise.all(
@@ -420,10 +422,10 @@ const AdminDashboard: React.FC = () => {
     };
   };
 
-  const loadAdminApplications = async () => {
+  const loadAdminApplications = async (processCode = selectedAdmissionProcessCode) => {
     try {
       setIsLoadingAdminApplications(true);
-      const appsData = await applicationService.getAllApplications();
+      const appsData = await applicationService.getAllApplications({ processCode });
 
       // Load evaluations for each application
       const appsWithEvaluations = await Promise.all(
@@ -490,7 +492,7 @@ const AdminDashboard: React.FC = () => {
       }
 
       // Recargar aplicaciones para reflejar los cambios
-      await loadApplications();
+      await loadApplications(selectedAdmissionProcessCode);
 
       // No mostrar notificación aquí, el modal ya la muestra
     } catch (error: any) {
@@ -524,10 +526,10 @@ Esta acción:
     try {
       await applicationService.archiveApplication(application.id);
       showApplicationToast(`Postulación de ${application.student.firstName} ${application.student.lastName} archivada exitosamente`, 'success');
-      await loadAdminApplications(); // Recargar la lista
+      await loadAdminApplications(selectedAdmissionProcessCode); // Recargar la lista
     } catch (error: any) {
       showApplicationToast(error.message || 'Error al archivar la postulación', 'error');
-      await loadAdminApplications();
+      await loadAdminApplications(selectedAdmissionProcessCode);
     } finally {
       setArchiveDialog({ show: false, application: null, message: '' });
     }
@@ -565,6 +567,31 @@ Esta acción:
     setSearchParams(next);
   };
 
+  const handleAdmissionProcessChange = (processCode: string) => {
+    setSelectedAdmissionProcessCode(processCode);
+    const next = new URLSearchParams(searchParams);
+    next.set('process', processCode);
+    if (activeSection === 'admissionReports') next.set('section', 'admision');
+    setSearchParams(next, { replace: true });
+  };
+
+  const ProcessScopeBar = () => (
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+      <FiClipboard className="h-4 w-4 text-gray-500" aria-hidden="true" />
+      <label htmlFor="adminAdmissionProcessCode" className="text-sm text-gray-600">Proceso</label>
+      <select
+        id="adminAdmissionProcessCode"
+        value={selectedAdmissionProcessCode}
+        onChange={(event) => handleAdmissionProcessChange(event.target.value)}
+        className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+      >
+        {ADMISSION_PROCESS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   const renderSection = () => {
     switch (activeSection) {
       case 'metricas':
@@ -578,7 +605,10 @@ Esta acción:
         return (
           <React.Suspense fallback={<div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" role="status" aria-label="Cargando Admisión" />}>
             <div className="space-y-6">
-              <AdmissionReportTabs />
+              <AdmissionReportTabs
+                selectedProcessCode={selectedAdmissionProcessCode}
+                onProcessChange={handleAdmissionProcessChange}
+              />
             </div>
           </React.Suspense>
         );
@@ -600,6 +630,7 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
+              processCode={selectedAdmissionProcessCode}
               onNavigateToInterviews={(interviewId) => {
                 setInterviewToOpenId(interviewId ?? null);
                 setActiveSection('entrevistas');
@@ -808,6 +839,7 @@ Esta acción:
             <InterviewManagement
               onBack={() => setActiveSection('dashboard')}
               initialInterviewId={interviewToOpenId}
+              processCode={selectedAdmissionProcessCode}
             />
           </div>
         );
@@ -816,6 +848,7 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
+              processCode={selectedAdmissionProcessCode}
               onNavigateToInterviews={(interviewId) => {
                 setInterviewToOpenId(interviewId ?? null);
                 setActiveSection('entrevistas');
@@ -908,6 +941,7 @@ Esta acción:
 
         {/* Main Content */}
         <main className="min-w-0 flex-1 p-4 sm:p-6" role="main" aria-label="Contenido principal del dashboard">
+          {activeSection !== 'admissionReports' && <ProcessScopeBar />}
           {renderSection()}
         </main>
       </div>
@@ -982,7 +1016,7 @@ Esta acción:
         onClose={() => setDecisionModal({ show: false, application: null })}
         application={decisionModal.application}
         onDecisionMade={() => {
-          loadAdminApplications();
+          loadAdminApplications(selectedAdmissionProcessCode);
           setApplicationToast({
             message: 'Decisión registrada exitosamente',
             type: 'success'
@@ -1022,6 +1056,7 @@ Esta acción:
                 id: 0
               }}
               mode={InterviewFormMode.CREATE}
+              processCode={selectedAdmissionProcessCode}
               onSubmit={async (data) => {
                 try {
                   setIsSchedulingInterview(true);
@@ -1042,7 +1077,7 @@ Esta acción:
                   });
 
                   setScheduleInterviewModal({ show: false, postulante: null, interviewType: undefined });
-                  await loadAdminApplications(); // Reload to show updated interview status
+                  await loadAdminApplications(selectedAdmissionProcessCode); // Reload to show updated interview status
                 } catch (error: any) {
                   setApplicationToast({
                     message: error.message || 'Error al programar la entrevista',

@@ -17,6 +17,7 @@ import { CommandCenterViewMode, QuickScheduleData, SelectedSlot } from './dashbo
 interface InterviewCommandCenterProps {
   initialSurface?: 'operations' | 'calendar';
   onNavigateToInterviews?: (interviewId?: number) => void;
+  processCode?: string;
 }
 
 const addDays = (date: Date, days: number): Date => {
@@ -245,6 +246,7 @@ const BOOKING_DURATION_MINUTES = INTERVIEW_VALIDATION.DURATION.DEFAULT;
 const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
   initialSurface = 'operations',
   onNavigateToInterviews,
+  processCode,
 }) => {
   const [surface, setSurface] = useState<'operations' | 'calendar'>(initialSurface);
   const [viewMode, setViewMode] = useState<CommandCenterViewMode>('week');
@@ -338,7 +340,8 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
       const response = await interviewService.getWeeklyOverview({
         startDate: range.startDate,
         endDate: range.endDate,
-        duration: BOOKING_DURATION_MINUTES
+        duration: BOOKING_DURATION_MINUTES,
+        processCode
       });
       const hourlyOverview = onlyHourlyOverviewSlots(response);
       const enrichedOverview = await enrichScheduledSlots(hourlyOverview);
@@ -351,7 +354,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [enrichScheduledSlots, range.endDate, range.startDate]);
+  }, [enrichScheduledSlots, processCode, range.endDate, range.startDate]);
 
   useEffect(() => {
     void loadOverview();
@@ -590,6 +593,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
           isSubmitting={isScheduling}
           onSchedule={handleSchedule}
           onClose={() => setSelectedSlot(null)}
+          processCode={processCode}
         />
       )}
 
@@ -600,6 +604,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
         <ManualInterviewDialog
           onClose={() => setShowManualEntry(false)}
           onCreated={handleManualInterviewCreated}
+          processCode={processCode}
         />
       )}
     </div>

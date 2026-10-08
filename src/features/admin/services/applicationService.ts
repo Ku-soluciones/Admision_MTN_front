@@ -147,6 +147,7 @@ export interface GetApplicationsFilters {
     status?: string;
     gradeApplying?: string;
     search?: string;
+    processCode?: string;
     /** Reservado: el BFF actual no filtra por año en este endpoint. */
     applicationYear?: number;
     /** Reservado: el BFF actual no filtra por RUT apoderado en este endpoint. */
@@ -179,6 +180,7 @@ class ApplicationService {
         if (filters.status) params.status = filters.status;
         if (filters.gradeApplying) params.gradeApplying = filters.gradeApplying;
         if (filters.search) params.search = filters.search;
+        if (filters.processCode) params.processCode = filters.processCode;
 
         try {
             const response = await api.get('/v1/applications', { params });
@@ -220,7 +222,8 @@ class ApplicationService {
                 size: filters?.size ?? filters?.limit ?? 2000,
                 status: filters?.status,
                 gradeApplying: filters?.gradeApplying,
-                search: filters?.search
+                search: filters?.search,
+                processCode: filters?.processCode
             });
             return applications.filter((app) => app?.id && app?.student);
         } catch (error: any) {

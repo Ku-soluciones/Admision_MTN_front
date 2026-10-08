@@ -325,12 +325,15 @@ class InterviewService {
     size: number = 20,
     sortBy: string = 'scheduledDate',
     sortDir: 'asc' | 'desc' = 'desc',
-    search?: string
+    search?: string,
+    processCode?: string
   ): Promise<{ interviews: Interview[]; totalElements: number; totalPages: number }> {
     try {
 
       // Use correct API instance instead of hardcoded URL
-      const response = await api.get<any>(this.baseUrl);
+      const queryParams = new URLSearchParams();
+      if (processCode) queryParams.set('processCode', processCode);
+      const response = await api.get<any>(queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl);
 
 
       // Backend returns: { success: true, data: [...], count: number }
@@ -404,7 +407,11 @@ class InterviewService {
     try {
 
       // Get all interviews first
-      const response = await api.get<any>(this.baseUrl);
+      const queryParams = new URLSearchParams();
+      if ((filters as InterviewFilters & { processCode?: string }).processCode) {
+        queryParams.set('processCode', (filters as InterviewFilters & { processCode?: string }).processCode!);
+      }
+      const response = await api.get<any>(queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl);
 
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         let interviews = response.data.data;
@@ -994,12 +1001,14 @@ class InterviewService {
     startDate: string;
     endDate: string;
     duration?: number;
+    processCode?: string;
   }): Promise<WeeklyOverviewResponse> {
     const queryParams = new URLSearchParams({
       startDate: params.startDate,
       endDate: params.endDate,
       duration: (params.duration || 30).toString()
     });
+    if (params.processCode) queryParams.set('processCode', params.processCode);
 
     try {
       const response = await api.get<any>(`${this.baseUrl}/weekly-overview?${queryParams}`);
