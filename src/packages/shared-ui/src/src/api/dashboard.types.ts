@@ -236,6 +236,20 @@ export interface FinalSummaryExamScores {
   english: number | null;
 }
 
+export interface FinalSummaryExamDetail {
+  date: string | null;
+  observations: string | null;
+  strengths: string | null;
+  areasForImprovement: string | null;
+  recommendations: string | null;
+}
+
+export interface FinalSummaryExamDetails {
+  language: FinalSummaryExamDetail | null;
+  mathematics: FinalSummaryExamDetail | null;
+  english: FinalSummaryExamDetail | null;
+}
+
 export interface FinalSummaryCycleDirector {
   strengths: string | null;
   difficulties: string | null;
@@ -260,6 +274,7 @@ export interface FinalSummaryApplicant extends ApplicationStatusMetadata {
   siblingNames: string[];
   familyEvaluation: FinalSummaryFamilyEvaluation;
   exams: FinalSummaryExamScores;
+  examDetails?: FinalSummaryExamDetails;
   cycleDirectorDecision: string;
   cycleDirector: FinalSummaryCycleDirector;
   status: string;

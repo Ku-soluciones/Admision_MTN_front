@@ -8,7 +8,7 @@ import {
   FiSearch,
   FiUsers,
 } from 'react-icons/fi';
-import type { FinalDecision, FinalSummaryApplicant } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import type { FinalDecision, FinalSummaryApplicant, FinalSummaryExamDetail } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import ConfirmDialog from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import Modal from '../../../../packages/shared-ui/src/components/ui/Modal';
 import { formatGradeLabel, safeDisplayText } from './admissionReportUtils';
@@ -45,6 +45,61 @@ const needsReview = (row: FinalSummaryApplicant) => (
   !row.cycleDirector.recommendation ||
   row.cycleDirector.recommendation === 'Pendiente'
 );
+
+const formatExportDate = (value?: string | null) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(parsed);
+};
+
+const joinExamComments = (detail?: FinalSummaryExamDetail | null) => {
+  if (!detail) return '';
+  const parts = [
+    detail.observations,
+    detail.strengths,
+    detail.areasForImprovement,
+    detail.recommendations
+  ].filter(Boolean);
+  return parts.join('\n\n');
+};
+
+const commentCount = (detail?: FinalSummaryExamDetail | null) => [
+  detail?.observations,
+  detail?.strengths,
+  detail?.areasForImprovement,
+  detail?.recommendations
+].filter(Boolean).length;
+
+const examDetailRows = (row: FinalSummaryApplicant) => ([
+  { subject: 'Lenguaje', score: row.exams.language, detail: row.examDetails?.language },
+  { subject: 'Matemáticas', score: row.exams.mathematics, detail: row.examDetails?.mathematics },
+  { subject: 'Inglés', score: row.exams.english, detail: row.examDetails?.english }
+].map((exam) => ({
+  Curso: formatGradeLabel(row.gradeApplied),
+  Postulante: row.studentName,
+  Asignatura: exam.subject,
+  'Fecha examen': formatExportDate(exam.detail?.date),
+  'Puntaje (%)': exam.score ?? '',
+  Observaciones: exam.detail?.observations ?? '',
+  Fortalezas: exam.detail?.strengths ?? '',
+  'Áreas por mejorar': exam.detail?.areasForImprovement ?? '',
+  Recomendaciones: exam.detail?.recommendations ?? '',
+  'Total comentarios': commentCount(exam.detail)
+}))).filter((exam) => (
+  exam['Fecha examen'] ||
+  exam['Puntaje (%)'] !== '' ||
+  exam.Observaciones ||
+  exam.Fortalezas ||
+  exam['Áreas por mejorar'] ||
+  exam.Recomendaciones
+));
 
 export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, processCode, onOpenCard }) => {
   const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear, processCode);
@@ -96,7 +151,45 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
     setExporting(true);
     try {
       const XLSX = await import('xlsx');
-      const sheet = XLSX.utils.json_to_sheet(filteredRows.map((row) => ({
+      const generatedAt = new Intl.DateTimeFormat('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date());
+
+      const summaryHeaders = [
+        'Curso',
+        'Postulante',
+        'Hermanos',
+        'Familia (%)',
+        'Familia /40',
+        'Observación /11',
+        'Familia 1–5',
+        'Lenguaje',
+        'Fecha Lenguaje',
+        'Comentarios Lenguaje',
+        'Matemáticas',
+        'Fecha Matemáticas',
+        'Comentarios Matemáticas',
+        'Inglés',
+        'Fecha Inglés',
+        'Comentarios Inglés',
+        'Recomendación del director de ciclo',
+        'Fortalezas',
+        'Dificultades',
+        'Adaptación a la entrevista',
+        'Rasgos destacados',
+        'Contexto familiar',
+        'Antecedentes académicos',
+        'Curso de ingreso',
+        'Director/a responsable',
+        'Decisión final',
+        'Comentario familiar'
+      ];
+
+      const summaryRows = filteredRows.map((row) => ({
         Curso: formatGradeLabel(row.gradeApplied),
         Postulante: row.studentName,
         Hermanos: row.siblingNames.join(', '),
@@ -105,8 +198,14 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         'Observación /11': row.familyEvaluation.score11 ?? '',
         'Familia 1–5': row.familyEvaluation.rating ?? '',
         Lenguaje: row.exams.language ?? '',
+        'Fecha Lenguaje': formatExportDate(row.examDetails?.language?.date),
+        'Comentarios Lenguaje': commentCount(row.examDetails?.language) ? 'Ver comentarios' : '',
         Matemáticas: row.exams.mathematics ?? '',
+        'Fecha Matemáticas': formatExportDate(row.examDetails?.mathematics?.date),
+        'Comentarios Matemáticas': commentCount(row.examDetails?.mathematics) ? 'Ver comentarios' : '',
         Inglés: row.exams.english ?? '',
+        'Fecha Inglés': formatExportDate(row.examDetails?.english?.date),
+        'Comentarios Inglés': commentCount(row.examDetails?.english) ? 'Ver comentarios' : '',
         'Recomendación del director de ciclo': row.cycleDirector.recommendation ?? '',
         'Fortalezas': row.cycleDirector.strengths ?? '',
         'Dificultades': row.cycleDirector.difficulties ?? '',
@@ -118,14 +217,118 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         'Director/a responsable': row.cycleDirector.evaluator ?? '',
         'Decisión final': row.statusLabel,
         'Comentario familiar': row.familyEvaluation.justification ?? ''
+      }));
+
+      const commentHeaders = [
+        'Curso',
+        'Postulante',
+        'Asignatura',
+        'Fecha examen',
+        'Puntaje (%)',
+        'Observaciones',
+        'Fortalezas',
+        'Áreas por mejorar',
+        'Recomendaciones',
+        'Total comentarios',
+        'Volver'
+      ];
+      const commentRows = filteredRows.flatMap((row, index) => examDetailRows(row).map((exam) => ({
+        ...exam,
+        Volver: 'Volver al resumen',
+        __applicationId: row.applicationId,
+        __subject: exam.Asignatura,
+        __summaryRowNumber: index + 5
       })));
+      const commentRowByApplicantAndSubject = new Map<string, number>();
+      commentRows.forEach((row, index) => {
+        commentRowByApplicantAndSubject.set(`${row.__applicationId}-${row.__subject}`, index + 5);
+      });
+
+      const sheet = XLSX.utils.aoa_to_sheet([
+        [`Resumen final admisión ${academicYear}`],
+        [`Proceso: ${processCode || meta?.processCode || 'activo'} · Generado: ${generatedAt} · Postulantes: ${filteredRows.length}`],
+        [],
+        summaryHeaders,
+        ...summaryRows.map((row) => summaryHeaders.map((header) => row[header as keyof typeof row] ?? ''))
+      ]);
+      sheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: summaryHeaders.length - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: summaryHeaders.length - 1 } }
+      ];
+      sheet['!cols'] = [
+        { wch: 16 }, { wch: 32 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
+        { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 24 }, { wch: 12 }, { wch: 18 }, { wch: 20 },
+        { wch: 32 }, { wch: 36 }, { wch: 36 }, { wch: 34 }, { wch: 34 }, { wch: 34 }, { wch: 34 },
+        { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 42 }
+      ];
+      sheet['!autofilter'] = { ref: `A4:${XLSX.utils.encode_col(summaryHeaders.length - 1)}${summaryRows.length + 4}` };
+      sheet['!freeze'] = { xSplit: 0, ySplit: 4 };
+
+      const summaryCommentColumns = [
+        { header: 'Comentarios Lenguaje', subject: 'Lenguaje' },
+        { header: 'Comentarios Matemáticas', subject: 'Matemáticas' },
+        { header: 'Comentarios Inglés', subject: 'Inglés' }
+      ];
+      filteredRows.forEach((row, index) => {
+        summaryCommentColumns.forEach(({ header, subject }) => {
+          const targetRow = commentRowByApplicantAndSubject.get(`${row.applicationId}-${subject}`);
+          if (!targetRow) return;
+          const cellAddress = XLSX.utils.encode_cell({ r: index + 4, c: summaryHeaders.indexOf(header) });
+          const cell = sheet[cellAddress];
+          if (cell) {
+            cell.l = {
+              Target: `#'Comentarios examenes'!A${targetRow}`,
+              Tooltip: `Ir a comentarios de ${subject}`
+            };
+          }
+        });
+      });
+
+      const commentsSheet = XLSX.utils.aoa_to_sheet([
+        [`Comentarios por asignatura ${academicYear}`],
+        ['Una fila por postulante y asignatura. Estos comentarios no se muestran en pantalla; solo se exportan.'],
+        [],
+        commentHeaders,
+        ...commentRows.map((row) => commentHeaders.map((header) => row[header as keyof typeof row] ?? ''))
+      ]);
+      commentsSheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: commentHeaders.length - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: commentHeaders.length - 1 } }
+      ];
+      commentsSheet['!cols'] = [
+        { wch: 16 },
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 16 },
+        { wch: 18 }
+      ];
+      commentsSheet['!autofilter'] = { ref: `A4:${XLSX.utils.encode_col(commentHeaders.length - 1)}${commentRows.length + 4}` };
+      commentsSheet['!freeze'] = { xSplit: 0, ySplit: 4 };
+      commentRows.forEach((row, index) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: index + 4, c: commentHeaders.indexOf('Volver') });
+        const cell = commentsSheet[cellAddress];
+        if (cell) {
+          cell.l = {
+            Target: `#'Resumen final'!A${row.__summaryRowNumber}`,
+            Tooltip: 'Volver a la fila del postulante en el resumen'
+          };
+        }
+      });
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, 'Resumen final');
+      XLSX.utils.book_append_sheet(workbook, commentsSheet, 'Comentarios examenes');
       XLSX.writeFile(workbook, `resumen_final_admision_${academicYear}.xlsx`);
     } finally {
       setExporting(false);
     }
-  }, [academicYear, exporting, filteredRows]);
+  }, [academicYear, exporting, filteredRows, meta?.processCode, processCode]);
 
   if (loading && !rows.length) return <FinalSummarySkeleton />;
   if (error) return <FinalSummaryError message={error} onRetry={refresh} />;
