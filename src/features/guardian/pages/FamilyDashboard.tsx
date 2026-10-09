@@ -45,6 +45,7 @@ import { documentService } from '../../admin/services/documentService';
 import FamilyInterviews from '../../admin/components/family/FamilyInterviews';
 import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
 import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 import {
   formatGuardianDocumentDate,
   loadGuardianDocumentGroups,
@@ -149,6 +150,7 @@ const FamilyDashboard: React.FC = () => {
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
+  const { data: uiFlags } = useAdmissionUIFlags();
 
   // Function to download/view document
   const handleViewDocument = async (documentId: number, documentName: string) => {
@@ -406,6 +408,7 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
+                    {uiFlags?.showPostularOtroHijo !== false && (
                       <Button
                         variant="success"
                         size="sm"
@@ -415,6 +418,7 @@ const FamilyDashboard: React.FC = () => {
                         <FiPlus className="w-4 h-4" />
                         Postular otro hijo
                       </Button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mb-4">

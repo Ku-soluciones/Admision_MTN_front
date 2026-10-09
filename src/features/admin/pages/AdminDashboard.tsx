@@ -73,6 +73,7 @@ import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 import InterviewerPairManagement from '../components/users/InterviewerPairManagement';
 import { ADMISSION_PROCESS_OPTIONS, defaultAdmissionProcessCode } from '../components/admissionReports/admissionProcesses';
+import AdmissionUIToggles from '../components/admin/AdmissionUIToggles';
 
 const AdmissionReportTabs = React.lazy(() =>
   import('../components/admissionReports/AdmissionReportTabs')
@@ -86,6 +87,7 @@ const sections = [
   { key: 'calendario',    label: 'Calendario Global',         icon: FiCalendar },
   { key: 'usuarios',       label: 'Gestión de Usuarios',      icon: UsersIcon },
   { key: 'vacantes',       label: 'Gestión de Vacantes',      icon: FiBookOpen },
+  { key: 'configUI',       label: 'Configuración UI',         icon: FiSettings },
 ];
 
 interface SidebarContentProps {
@@ -855,6 +857,19 @@ Esta acción:
                 setActiveSection('entrevistas');
               }}
             />
+          </div>
+        );
+
+      case 'configUI':
+        return (
+          <div className="space-y-5">
+            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Configuración UI</p>
+                <p className="mt-1 max-w-3xl text-sm text-gray-600">Controla la visibilidad de los botones de postulación para usuarios</p>
+              </div>
+            </section>
+            <AdmissionUIToggles />
           </div>
         );
 
