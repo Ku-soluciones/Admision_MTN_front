@@ -8,6 +8,7 @@ import SimpleToast from '../../admin/components/ui/SimpleToast';
 import { ApplicationStatus, Document } from '../../admin/types';
 import { DOCUMENT_TYPE_LABELS, DocumentType } from '../../admin/types/document';
 import { appUrls } from '../../admin/utils/appUrls';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 import { CheckCircleIcon, ClockIcon, FileTextIcon, XCircleIcon, CalendarIcon, UsersIcon, LogoIcon } from '../../admin/components/icons/Icons';
 import { 
   FiFileText, 
@@ -86,6 +87,7 @@ const FamilyDashboard: React.FC = () => {
   const [selectedApplicationIndex, setSelectedApplicationIndex] = useState(0);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const { data: uiFlags } = useAdmissionUIFlags();
 
   // Function to download/view document
   const handleViewDocument = (documentId: number, documentName: string) => {
@@ -301,22 +303,33 @@ const FamilyDashboard: React.FC = () => {
                 <Card className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis Hijos Postulantes</h2>
-                    <div className="relative group">
+                    {uiFlags?.showPostularOtroHijo !== false ? (
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={(e) => e.preventDefault()}
-                        disabled
-                        className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+                        onClick={(e) => { e.preventDefault(); navigate('/admissions'); }}
+                        className="flex items-center gap-2"
                       >
                         <FiPlus className="w-4 h-4" />
                         Postular Otro Hijo
                       </Button>
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                        El proceso de postulación ha finalizado
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
+                    ) : (
+                      <div className="relative group">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled
+                          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+                        >
+                          <FiPlus className="w-4 h-4" />
+                          Postular Otro Hijo
+                        </Button>
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                          El proceso de postulación ha finalizado
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">

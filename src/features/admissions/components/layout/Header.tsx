@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Button from '../../../admin/components/ui/Button';
 import { appUrls } from '../../../admin/utils/appUrls';
 import { useAuth } from '../../context/AuthContext';
+import { useAdmissionUIFlags } from '../../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ const Header: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const { user, isAuthenticated } = useAuth();
+    const { data: uiFlags } = useAdmissionUIFlags();
 
     const isAdmin = useMemo(() => user?.role === 'ADMIN', [user?.role]);
     const isAnyUserLoggedIn = isAuthenticated;
@@ -45,7 +47,7 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-                        {isHomePage && (
+                        {isHomePage && uiFlags?.showPostularHeader !== false && (
                             <a href={appUrls.guardianRegister}>
                                 <Button variant="primary" size="sm" className="!text-blanco-pureza">
                                     Postular
@@ -114,7 +116,7 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-                        {isHomePage && (
+                        {isHomePage && uiFlags?.showPostularHeader !== false && (
                             <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
                                 <Button variant="primary" className="w-full !text-blanco-pureza">
                                     Postular
