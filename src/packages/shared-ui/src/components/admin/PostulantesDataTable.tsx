@@ -150,24 +150,23 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
         {
             key: 'estudiante',
             title: 'Estudiante',
-            dataIndex: 'nombreCompleto',
+            dataIndex: 'apellidoPaterno',
             sortable: true,
             filterable: true,
             filterType: 'text',
-            width: 250,
+            width: 280,
             render: (_, record) => {
                 if (!record) return <div>-</div>;
                 return (
-                    <div 
+                    <div
                         className="flex flex-col cursor-pointer hover:bg-blue-50 p-2 rounded transition-colors"
                         onClick={() => handleViewPostulanteDetail(record)}
                     >
                         <div className="flex items-center gap-2">
                             <FiUser className="w-4 h-4 text-blue-500" />
-                            <span className="font-semibold text-gray-900 hover:text-blue-600">{record.nombres || '-'}</span>
-                        </div>
-                        <div className="text-sm font-medium text-gray-700">
-                            {record.apellidoPaterno || ''} {record.apellidoMaterno || ''}
+                            <span className="font-semibold text-gray-900 hover:text-blue-600">
+                                {record.apellidoPaterno || ''} {record.apellidoMaterno || ''}, {record.nombres || '-'}
+                            </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <Badge variant="orange" size="xs">{record.edad || 0} años</Badge>

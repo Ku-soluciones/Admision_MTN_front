@@ -311,14 +311,14 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
             // Mapear datos del backend al formato esperado por el componente
             const mappedApplications: Application[] = response.applications.map((app: any) => ({
                 id: app.id,
-                studentName: `${app.student.firstName} ${app.student.lastName}`,
+                studentName: `${app.student.paternalLastName || app.student.lastName || ''} ${app.student.maternalLastName || ''}, ${app.student.firstName || ''}`.trim(),
                 studentRut: app.student.rut,
                 studentBirthDate: app.student.birthDate,
                 gradeApplied: app.student.grade,
                 status: app.status,
                 submissionDate: app.submissionDate || app.createdAt,
-                parentName: `${app.father?.firstName || ''} ${app.father?.lastName || ''}`.trim() || 
-                           `${app.mother?.firstName || ''} ${app.mother?.lastName || ''}`.trim() || 
+                parentName: `${app.father?.paternalLastName || app.father?.lastName || ''} ${app.father?.maternalLastName || ''}`.trim() ||
+                           `${app.mother?.paternalLastName || app.mother?.lastName || ''} ${app.mother?.maternalLastName || ''}`.trim() ||
                            'No especificado',
                 parentEmail: app.father?.email || app.mother?.email || 'No especificado',
                 parentPhone: app.father?.phone || app.mother?.phone || 'No especificado',
