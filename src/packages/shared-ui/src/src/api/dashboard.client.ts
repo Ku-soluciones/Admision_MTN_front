@@ -371,10 +371,13 @@ class DashboardClient {
    * Get applicants grouped by course for the admissions report.
    * Endpoint: GET /v1/dashboard/course-applicants
    */
-  async getCourseApplicants(academicYear?: number): Promise<CourseApplicantsResponse> {
-    const params = academicYear ? `?academicYear=${academicYear}` : '';
+  async getCourseApplicants(academicYear?: number, processCode?: string): Promise<CourseApplicantsResponse> {
+    const params = new URLSearchParams();
+    if (academicYear) params.set('academicYear', academicYear.toString());
+    if (processCode) params.set('processCode', processCode);
+    const query = params.toString() ? `?${params.toString()}` : '';
     const response = await httpClient.get<CourseApplicantsResponse>(
-      `${this.basePath}/course-applicants${params}`
+      `${this.basePath}/course-applicants${query}`
     );
     return response.data;
   }
@@ -390,10 +393,13 @@ class DashboardClient {
     return response.data;
   }
 
-  async getFinalSummary(academicYear?: number): Promise<FinalSummaryResponse> {
-    const params = academicYear ? `?academicYear=${academicYear}` : '';
+  async getFinalSummary(academicYear?: number, processCode?: string): Promise<FinalSummaryResponse> {
+    const params = new URLSearchParams();
+    if (academicYear) params.set('academicYear', academicYear.toString());
+    if (processCode) params.set('processCode', processCode);
+    const query = params.toString() ? `?${params.toString()}` : '';
     const response = await httpClient.get<FinalSummaryResponse>(
-      `${this.basePath}/final-summary${params}`
+      `${this.basePath}/final-summary${query}`
     );
     return response.data;
   }

@@ -241,7 +241,7 @@ const PostulantesDataTable: React.FC<PostulantesDataTableProps> = ({
                         case 'INTERVIEW_SCHEDULED': return 'Entrevista Program.';
                         case 'EXAM_SCHEDULED': return 'Examen Program.';
                         case 'APPROVED': return 'Aprobado';
-                        case 'REJECTED': return 'Rechazado';
+                        case 'REJECTED': return 'No aceptado';
                         case 'WAITLIST': return 'Lista de Espera';
                         default: return status;
                     }

@@ -47,7 +47,7 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-                        {isHomePage && uiFlags?.showPostularHeader !== false && (
+{isHomePage && uiFlags?.showPostularHeader !== false && (
                             <a href={appUrls.guardianRegister}>
                                 <Button variant="primary" size="sm" className="!text-blanco-pureza">
                                     Postular
@@ -116,7 +116,7 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-                        {isHomePage && uiFlags?.showPostularHeader !== false && (
+{isHomePage && uiFlags?.showPostularHeader !== false && (
                             <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
                                 <Button variant="primary" className="w-full !text-blanco-pureza">
                                     Postular

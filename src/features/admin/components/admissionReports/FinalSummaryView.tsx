@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { applicationStatusPolicy } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
+import React, { useCallback, useId, useMemo, useState } from 'react';
 import {
   FiAlertCircle,
   FiDownload,
@@ -7,20 +8,22 @@ import {
   FiSearch,
   FiUsers,
 } from 'react-icons/fi';
-import type { FinalDecision, FinalSummaryApplicant } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
+import type { FinalDecision, FinalSummaryApplicant, FinalSummaryExamDetail } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 import ConfirmDialog from '../../../../packages/shared-ui/src/components/ui/ConfirmDialog';
+import Modal from '../../../../packages/shared-ui/src/components/ui/Modal';
 import { formatGradeLabel, safeDisplayText } from './admissionReportUtils';
 import { useFinalSummary } from './useFinalSummary';
 
 interface FinalSummaryViewProps {
   academicYear: number;
+  processCode?: string;
   onOpenCard: (applicationId: number) => void;
 }
 
 const DECISIONS: Array<{ value: FinalDecision; label: string }> = [
   { value: 'APPROVED', label: 'Aceptado' },
   { value: 'WAITLIST', label: 'Lista de espera' },
-  { value: 'REJECTED', label: 'Rechazado' }
+  { value: 'REJECTED', label: 'No seleccionado' }
 ];
 
 const FAMILY_TONES = [
@@ -39,16 +42,73 @@ const needsReview = (row: FinalSummaryApplicant) => (
   row.exams.language == null ||
   row.exams.mathematics == null ||
   row.exams.english == null ||
-  !row.cycleDirector.recommendation
+  !row.cycleDirector.recommendation ||
+  row.cycleDirector.recommendation === 'Pendiente'
 );
 
-export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, onOpenCard }) => {
-  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear);
+const formatExportDate = (value?: string | null) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(parsed);
+};
+
+const joinExamComments = (detail?: FinalSummaryExamDetail | null) => {
+  if (!detail) return '';
+  const parts = [
+    detail.observations,
+    detail.strengths,
+    detail.areasForImprovement,
+    detail.recommendations
+  ].filter(Boolean);
+  return parts.join('\n\n');
+};
+
+const commentCount = (detail?: FinalSummaryExamDetail | null) => [
+  detail?.observations,
+  detail?.strengths,
+  detail?.areasForImprovement,
+  detail?.recommendations
+].filter(Boolean).length;
+
+const examDetailRows = (row: FinalSummaryApplicant) => ([
+  { subject: 'Lenguaje', score: row.exams.language, detail: row.examDetails?.language },
+  { subject: 'Matemáticas', score: row.exams.mathematics, detail: row.examDetails?.mathematics },
+  { subject: 'Inglés', score: row.exams.english, detail: row.examDetails?.english }
+].map((exam) => ({
+  Curso: formatGradeLabel(row.gradeApplied),
+  Postulante: row.studentName,
+  Asignatura: exam.subject,
+  'Fecha examen': formatExportDate(exam.detail?.date),
+  'Puntaje (%)': exam.score ?? '',
+  Observaciones: exam.detail?.observations ?? '',
+  Fortalezas: exam.detail?.strengths ?? '',
+  'Áreas por mejorar': exam.detail?.areasForImprovement ?? '',
+  Recomendaciones: exam.detail?.recommendations ?? '',
+  'Total comentarios': commentCount(exam.detail)
+}))).filter((exam) => (
+  exam['Fecha examen'] ||
+  exam['Puntaje (%)'] !== '' ||
+  exam.Observaciones ||
+  exam.Fortalezas ||
+  exam['Áreas por mejorar'] ||
+  exam.Recomendaciones
+));
+
+export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear, processCode, onOpenCard }) => {
+  const { rows, meta, loading, error, savingId, refresh, updateDecision } = useFinalSummary(academicYear, processCode);
   const [search, setSearch] = useState('');
   const [grade, setGrade] = useState('');
   const [decision, setDecision] = useState('');
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [pendingDecision, setPendingDecision] = useState<{ row: FinalSummaryApplicant; decision: FinalDecision } | null>(null);
+  const [reportApplicant, setReportApplicant] = useState<FinalSummaryApplicant | null>(null);
   const [feedback, setFeedback] = useState('');
   const [exporting, setExporting] = useState(false);
 
@@ -81,6 +141,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
       setFeedback(message);
       setPendingDecision(null);
     } catch (err) {
+      setPendingDecision(null);
       setFeedback(err instanceof Error ? err.message : 'No se pudo actualizar la decisión');
     }
   }, [pendingDecision, updateDecision]);
@@ -90,7 +151,45 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
     setExporting(true);
     try {
       const XLSX = await import('xlsx');
-      const sheet = XLSX.utils.json_to_sheet(filteredRows.map((row) => ({
+      const generatedAt = new Intl.DateTimeFormat('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date());
+
+      const summaryHeaders = [
+        'Curso',
+        'Postulante',
+        'Hermanos',
+        'Familia (%)',
+        'Familia /40',
+        'Observación /11',
+        'Familia 1–5',
+        'Lenguaje',
+        'Fecha Lenguaje',
+        'Comentarios Lenguaje',
+        'Matemáticas',
+        'Fecha Matemáticas',
+        'Comentarios Matemáticas',
+        'Inglés',
+        'Fecha Inglés',
+        'Comentarios Inglés',
+        'Recomendación del director de ciclo',
+        'Fortalezas',
+        'Dificultades',
+        'Adaptación a la entrevista',
+        'Rasgos destacados',
+        'Contexto familiar',
+        'Antecedentes académicos',
+        'Curso de ingreso',
+        'Director/a responsable',
+        'Decisión final',
+        'Comentario familiar'
+      ];
+
+      const summaryRows = filteredRows.map((row) => ({
         Curso: formatGradeLabel(row.gradeApplied),
         Postulante: row.studentName,
         Hermanos: row.siblingNames.join(', '),
@@ -99,22 +198,137 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         'Observación /11': row.familyEvaluation.score11 ?? '',
         'Familia 1–5': row.familyEvaluation.rating ?? '',
         Lenguaje: row.exams.language ?? '',
+        'Fecha Lenguaje': formatExportDate(row.examDetails?.language?.date),
+        'Comentarios Lenguaje': commentCount(row.examDetails?.language) ? 'Ver comentarios' : '',
         Matemáticas: row.exams.mathematics ?? '',
+        'Fecha Matemáticas': formatExportDate(row.examDetails?.mathematics?.date),
+        'Comentarios Matemáticas': commentCount(row.examDetails?.mathematics) ? 'Ver comentarios' : '',
         Inglés: row.exams.english ?? '',
-        'Recomendación dirección de ciclo': row.cycleDirector.recommendation ?? '',
-        'Observaciones dirección de ciclo': row.cycleDirector.observations ?? '',
-        'Aspectos a acompañar': row.cycleDirector.areasForImprovement ?? '',
+        'Fecha Inglés': formatExportDate(row.examDetails?.english?.date),
+        'Comentarios Inglés': commentCount(row.examDetails?.english) ? 'Ver comentarios' : '',
+        'Recomendación del director de ciclo': row.cycleDirector.recommendation ?? '',
+        'Fortalezas': row.cycleDirector.strengths ?? '',
+        'Dificultades': row.cycleDirector.difficulties ?? '',
+        'Adaptación a la entrevista': row.cycleDirector.interviewAdaptation ?? '',
+        'Rasgos destacados': row.cycleDirector.outstandingTraits ?? '',
+        'Contexto familiar': row.cycleDirector.familyBackground ?? '',
+        'Antecedentes académicos': row.cycleDirector.academicBackground ?? '',
+        'Curso de ingreso': row.cycleDirector.entryCourse ?? '',
         'Director/a responsable': row.cycleDirector.evaluator ?? '',
         'Decisión final': row.statusLabel,
         'Comentario familiar': row.familyEvaluation.justification ?? ''
+      }));
+
+      const commentHeaders = [
+        'Curso',
+        'Postulante',
+        'Asignatura',
+        'Fecha examen',
+        'Puntaje (%)',
+        'Observaciones',
+        'Fortalezas',
+        'Áreas por mejorar',
+        'Recomendaciones',
+        'Total comentarios',
+        'Volver'
+      ];
+      const commentRows = filteredRows.flatMap((row, index) => examDetailRows(row).map((exam) => ({
+        ...exam,
+        Volver: 'Volver al resumen',
+        __applicationId: row.applicationId,
+        __subject: exam.Asignatura,
+        __summaryRowNumber: index + 5
       })));
+      const commentRowByApplicantAndSubject = new Map<string, number>();
+      commentRows.forEach((row, index) => {
+        commentRowByApplicantAndSubject.set(`${row.__applicationId}-${row.__subject}`, index + 5);
+      });
+
+      const sheet = XLSX.utils.aoa_to_sheet([
+        [`Resumen final admisión ${academicYear}`],
+        [`Proceso: ${processCode || meta?.processCode || 'activo'} · Generado: ${generatedAt} · Postulantes: ${filteredRows.length}`],
+        [],
+        summaryHeaders,
+        ...summaryRows.map((row) => summaryHeaders.map((header) => row[header as keyof typeof row] ?? ''))
+      ]);
+      sheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: summaryHeaders.length - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: summaryHeaders.length - 1 } }
+      ];
+      sheet['!cols'] = [
+        { wch: 16 }, { wch: 32 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
+        { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 24 }, { wch: 12 }, { wch: 18 }, { wch: 20 },
+        { wch: 32 }, { wch: 36 }, { wch: 36 }, { wch: 34 }, { wch: 34 }, { wch: 34 }, { wch: 34 },
+        { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 42 }
+      ];
+      sheet['!autofilter'] = { ref: `A4:${XLSX.utils.encode_col(summaryHeaders.length - 1)}${summaryRows.length + 4}` };
+      sheet['!freeze'] = { xSplit: 0, ySplit: 4 };
+
+      const summaryCommentColumns = [
+        { header: 'Comentarios Lenguaje', subject: 'Lenguaje' },
+        { header: 'Comentarios Matemáticas', subject: 'Matemáticas' },
+        { header: 'Comentarios Inglés', subject: 'Inglés' }
+      ];
+      filteredRows.forEach((row, index) => {
+        summaryCommentColumns.forEach(({ header, subject }) => {
+          const targetRow = commentRowByApplicantAndSubject.get(`${row.applicationId}-${subject}`);
+          if (!targetRow) return;
+          const cellAddress = XLSX.utils.encode_cell({ r: index + 4, c: summaryHeaders.indexOf(header) });
+          const cell = sheet[cellAddress];
+          if (cell) {
+            cell.l = {
+              Target: `#'Comentarios examenes'!A${targetRow}`,
+              Tooltip: `Ir a comentarios de ${subject}`
+            };
+          }
+        });
+      });
+
+      const commentsSheet = XLSX.utils.aoa_to_sheet([
+        [`Comentarios por asignatura ${academicYear}`],
+        ['Una fila por postulante y asignatura. Estos comentarios no se muestran en pantalla; solo se exportan.'],
+        [],
+        commentHeaders,
+        ...commentRows.map((row) => commentHeaders.map((header) => row[header as keyof typeof row] ?? ''))
+      ]);
+      commentsSheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: commentHeaders.length - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: commentHeaders.length - 1 } }
+      ];
+      commentsSheet['!cols'] = [
+        { wch: 16 },
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 46 },
+        { wch: 16 },
+        { wch: 18 }
+      ];
+      commentsSheet['!autofilter'] = { ref: `A4:${XLSX.utils.encode_col(commentHeaders.length - 1)}${commentRows.length + 4}` };
+      commentsSheet['!freeze'] = { xSplit: 0, ySplit: 4 };
+      commentRows.forEach((row, index) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: index + 4, c: commentHeaders.indexOf('Volver') });
+        const cell = commentsSheet[cellAddress];
+        if (cell) {
+          cell.l = {
+            Target: `#'Resumen final'!A${row.__summaryRowNumber}`,
+            Tooltip: 'Volver a la fila del postulante en el resumen'
+          };
+        }
+      });
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, 'Resumen final');
+      XLSX.utils.book_append_sheet(workbook, commentsSheet, 'Comentarios examenes');
       XLSX.writeFile(workbook, `resumen_final_admision_${academicYear}.xlsx`);
     } finally {
       setExporting(false);
     }
-  }, [academicYear, exporting, filteredRows]);
+  }, [academicYear, exporting, filteredRows, meta?.processCode, processCode]);
 
   if (loading && !rows.length) return <FinalSummarySkeleton />;
   if (error) return <FinalSummaryError message={error} onRetry={refresh} />;
@@ -132,7 +346,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
           </div>
           <SummaryMetric label="Aceptados" value={stats.approved} tone="text-emerald-700" />
           <SummaryMetric label="Lista de espera" value={stats.waitlist} tone="text-amber-700" />
-          <SummaryMetric label="Rechazados" value={stats.rejected} tone="text-rose-700" />
+          <SummaryMetric label="No aceptados" value={stats.rejected} tone="text-rose-700" />
           <SummaryMetric label="Pendientes" value={stats.pending} tone="text-blue-800" />
           <SummaryMetric label="Incompletos" value={stats.incomplete} tone="text-slate-900" />
         </div>
@@ -184,31 +398,33 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         {filteredRows.length ? (
           <>
             <div className="divide-y divide-slate-200 xl:hidden">
-              {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onDecision={setPendingDecision} />)}
+              {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
             </div>
             <div className="hidden rounded-b-2xl xl:block">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
-                  <col className="w-[17%]" />
                   <col className="w-[16%]" />
-                  <col className="w-[20%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[21%]" />
                   <col className="w-[17%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
                   <tr>
-                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
+                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación del director de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onDecision={setPendingDecision} />)}
+                  {filteredRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
                 </tbody>
               </table>
             </div>
           </>
         ) : <EmptySummary onClear={() => { setSearch(''); setGrade(''); setDecision(''); setIncompleteOnly(false); }} />}
       </section>
+
+      <CycleDirectorReportModal row={reportApplicant} onClose={() => setReportApplicant(null)} />
 
       <ConfirmDialog
         isOpen={Boolean(pendingDecision)}
@@ -225,7 +441,7 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
 };
 
 const SummaryMetric = ({ label, value, tone }: { label: string; value: number; tone: string }) => <div className="border-l border-slate-200 pl-4"><span className={`block text-2xl font-bold tabular-nums ${tone}`}>{value}</span><span className="text-xs font-semibold text-slate-600">{label}</span></div>;
-const HeaderCell = ({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'center' | 'right' }) => <th scope="col" className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>;
+const HeaderCell = ({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'center' | 'right' }) => <th scope="col" className={`break-words px-3 py-3.5 align-bottom text-xs font-bold uppercase leading-4 tracking-wide text-slate-600 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>;
 const formatScore = (value: number | null, suffix = '%') => value == null ? '—' : `${Math.round(value)}${suffix}`;
 const familyTone = (row: FinalSummaryApplicant) => row.siblingGroupSize > 1 && row.familyGroupId != null ? FAMILY_TONES[Math.abs(row.familyGroupId) % FAMILY_TONES.length] : 'bg-slate-100 text-slate-700 ring-slate-200';
 
@@ -253,42 +469,82 @@ const ExamScores = ({ row }: { row: FinalSummaryApplicant }) => (
   </dl>
 );
 
-const CycleDirectorSummary = ({ row }: { row: FinalSummaryApplicant }) => {
+const CycleDirectorSummary = ({ row, onOpenReport }: { row: FinalSummaryApplicant; onOpenReport: (row: FinalSummaryApplicant) => void }) => {
   const report = row.cycleDirector;
-  const hasDetail = Boolean(report.observations || report.areasForImprovement || report.evaluator);
+  const hasDetail = report.completed || Boolean(
+    report.strengths || report.difficulties || report.interviewAdaptation ||
+    report.outstandingTraits || report.familyBackground || report.academicBackground ||
+    report.entryCourse || report.evaluator
+  );
   return (
     <div className="text-xs leading-5 text-slate-700">
       <p className="whitespace-pre-line">{safeDisplayText(report.recommendation, 'Sin registro')}</p>
       {hasDetail && (
-        <details className="mt-1">
-          <summary className="cursor-pointer font-semibold text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Ver informe completo</summary>
-          <dl className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2">
-            {report.observations && <div><dt className="font-semibold text-slate-900">Observaciones</dt><dd className="whitespace-pre-line">{report.observations}</dd></div>}
-            {report.areasForImprovement && <div><dt className="font-semibold text-slate-900">Aspectos a acompañar</dt><dd className="whitespace-pre-line">{report.areasForImprovement}</dd></div>}
-            {report.evaluator && <div><dt className="font-semibold text-slate-900">Responsable</dt><dd>{report.evaluator}</dd></div>}
-          </dl>
-        </details>
+        <button type="button" onClick={() => onOpenReport(row)} className="mt-1 inline-flex min-h-10 items-center font-bold text-blue-800 hover:text-blue-950 hover:underline hover:underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
+          Ver informe completo
+        </button>
       )}
     </div>
   );
 };
 
-const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
-  <label className="block w-full min-w-0">
-    <span className="sr-only">Decisión final para {row.studentName}</span>
-    <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''} onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })} disabled={saving} className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
-      <option value="">Pendiente</option>{DECISIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-    </select>
-  </label>
+const ReportField = ({ label, value }: { label: string; value: string | null }) => value ? (
+  <div>
+    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+    <dd className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-800">{value}</dd>
+  </div>
+) : null;
+
+const CycleDirectorReportModal = ({ row, onClose }: { row: FinalSummaryApplicant | null; onClose: () => void }) => (
+  <Modal isOpen={Boolean(row)} onClose={onClose} title="Informe final del director de ciclo" size="lg" contentClassName="p-5 sm:p-6">
+    {row && (
+      <div>
+        <div className="border-b border-slate-200 pb-4">
+          <p className="font-bold text-slate-950">{row.studentName}</p>
+          <p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p>
+        </div>
+        <dl className="space-y-5 py-5">
+          <ReportField label="Fortalezas" value={row.cycleDirector.strengths} />
+          <ReportField label="Dificultades" value={row.cycleDirector.difficulties} />
+          <ReportField label="Adaptación a la entrevista" value={row.cycleDirector.interviewAdaptation} />
+          <ReportField label="Rasgos destacados" value={row.cycleDirector.outstandingTraits} />
+          <ReportField label="Contexto familiar" value={row.cycleDirector.familyBackground} />
+          <ReportField label="Antecedentes académicos" value={row.cycleDirector.academicBackground} />
+          <ReportField label="Recomendación final" value={row.cycleDirector.recommendation} />
+          <ReportField label="Curso de ingreso" value={row.cycleDirector.entryCourse} />
+        </dl>
+        {row.cycleDirector.evaluator && <p className="border-t border-slate-200 pt-4 text-xs text-slate-500">Informe registrado por <strong className="text-slate-700">{row.cycleDirector.evaluator}</strong></p>}
+      </div>
+    )}
+  </Modal>
 );
 
-const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
+const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => {
+  const policy = applicationStatusPolicy(row);
+  const reasonId = useId();
+  return (
+    <label className="block w-full min-w-0">
+      <span className="sr-only">Decisión final para {row.studentName}</span>
+      <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''}
+        onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })}
+        disabled={saving || policy.locked} aria-describedby={reasonId}
+        className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
+        {!DECISIONS.some((item) => item.value === row.status) && <option value="">Pendiente</option>}
+        {DECISIONS.filter((item) => item.value === row.status || policy.canChangeTo(item.value)).map((item) =>
+          <option key={item.value} value={item.value}>{item.label}</option>)}
+      </select>
+      <span id={reasonId} className="mt-1 block text-xs text-slate-600">{policy.reason}</span>
+    </label>
+  );
+};
+
+const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onOpenReport, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onOpenReport: (row: FinalSummaryApplicant) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <tr className="bg-white align-top hover:bg-slate-50">
     <td className="px-3 py-3.5"><strong className="block break-words text-slate-950">{row.studentName}</strong><span className="mt-0.5 block text-xs text-slate-500">{formatGradeLabel(row.gradeApplied)}</span></td>
     <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block break-words text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
     <td className="px-3 py-3.5"><FamilyScores row={row} /></td>
     <td className="px-3 py-3.5"><ExamScores row={row} /></td>
-    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} /></td>
+    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></td>
     <td className="px-3 py-3.5">
       <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
       <button type="button" onClick={() => onOpenCard(row.applicationId)} className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
@@ -296,11 +552,11 @@ const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onDecision }: { row: 
   </tr>
 );
 
-const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
+const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onOpenReport, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onOpenCard: (id: number) => void; onOpenReport: (row: FinalSummaryApplicant) => void; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => (
   <article className="p-4">
     <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-950">{row.studentName}</h3><p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p></div><FamilyBadge row={row} /></div>
     <div className="mt-4 border-y border-slate-200 py-3"><FamilyScores row={row} /><dl className="mt-3 grid grid-cols-3 gap-2 text-center"><Score label="Leng." value={row.exams.language} /><Score label="Mat." value={row.exams.mathematics} /><Score label="Inglés" value={row.exams.english} /></dl></div>
-    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación de ciclo</strong><CycleDirectorSummary row={row} /></div>
+    <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación del director de ciclo</strong><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></div>
     <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
   </article>
 );

@@ -97,7 +97,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       case 'APPROVED':
         return 'Aceptada';
       case 'REJECTED':
-        return 'Rechazada';
+        return 'No aceptado';
       case 'WAITLIST':
         return 'Lista de Espera';
       default:

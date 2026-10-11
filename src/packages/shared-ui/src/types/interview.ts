@@ -513,6 +513,7 @@ export interface InterviewFormProps {
   isSubmitting?: boolean;
   className?: string;
   refreshKey?: number; // Para refrescar slots disponibles
+  processCode?: string;
 }
 
 export interface InterviewCalendarProps {

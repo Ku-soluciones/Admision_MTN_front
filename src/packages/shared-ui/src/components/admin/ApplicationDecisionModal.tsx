@@ -1,3 +1,4 @@
+import { applicationStatusPolicy, type ApplicationStatusMetadata } from '../../utils/applicationStatusPolicy';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CalendarDays,
@@ -59,7 +60,8 @@ interface ProcessSummary {
   status?: unknown;
 }
 
-interface DecisionApplication {
+interface DecisionApplication extends ApplicationStatusMetadata {
+  status?: string;
   id: number | string;
   student?: StudentSummary | null;
   father?: PersonSummary | null;
@@ -184,6 +186,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   application,
   onDecisionMade
 }) => {
+  const [latestApplication, setLatestApplication] = useState<DecisionApplication | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -199,7 +202,13 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
   }, []);
 
+  useEffect(() => {
+    setLatestApplication(null);
+    setDecision(null);
+  }, [application?.id, isOpen]);
+
   if (!application) return null;
+  const policy = applicationStatusPolicy(latestApplication ?? application);
 
   const interviews = Array.isArray(application.interviews) ? application.interviews : [];
   const evaluations = Array.isArray(application.evaluations) ? application.evaluations : [];
@@ -247,7 +256,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
   const handleSubmitDecision = async () => {
     if (loading) return;
 
-    if (!decision) {
+    if (!decision || !policy.canChangeTo(decision)) {
       setToast({ message: 'Selecciona una decisión para continuar.', type: 'error' });
       return;
     }
@@ -269,6 +278,14 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
       }
     } catch (error) {
       setToast({ message: getRequestErrorMessage(error), type: 'error' });
+      setDecision(null);
+      try {
+        const fresh = await api.get(`/v1/applications/${application.id}`);
+        setLatestApplication(fresh.data?.data ?? fresh.data);
+      } catch {
+        // Impedir reintentos con datos obsoletos si falla la recarga.
+        setLatestApplication({ ...application, allowedStatusTransitions: [], statusChangeBlockedReason: 'No se pudo actualizar la postulación. Cierra y vuelve a abrir para reintentar.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -501,11 +518,11 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
 
               <aside className="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5 lg:sticky lg:top-0" aria-labelledby="decision-heading">
                 <h3 id="decision-heading" className="text-lg font-bold text-gray-950">Tomar decisión</h3>
-                <p className="mt-1 text-sm text-gray-600">Selecciona una opción para continuar.</p>
+                <p className="mt-1 text-sm text-gray-600">{policy.reason || 'Selecciona una opción para continuar.'}</p>
 
                 <fieldset className="mt-4 space-y-2.5">
                   <legend className="sr-only">Decisión final</legend>
-                  {DECISION_OPTIONS.map(({ value, label, description, Icon, selectedClasses, iconClasses }) => {
+                  {DECISION_OPTIONS.filter((option) => policy.canChangeTo(option.value)).map(({ value, label, description, Icon, selectedClasses, iconClasses }) => {
                     const selected = decision === value;
                     return (
                       <label
@@ -575,7 +592,7 @@ const ApplicationDecisionModal: React.FC<ApplicationDecisionModalProps> = ({
                   <button
                     type="button"
                     onClick={handleSubmitDecision}
-                    disabled={!decision || loading}
+                    disabled={!decision || loading || policy.locked}
                     className={`flex min-h-11 flex-1 items-center justify-center rounded-lg px-4 py-2.5 font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 ${
                       decision === 'APPROVED'
                         ? 'bg-emerald-700 hover:bg-emerald-800 focus-visible:ring-emerald-700'

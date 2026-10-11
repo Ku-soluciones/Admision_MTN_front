@@ -24,7 +24,7 @@ interface UseAdmissionReportsResult {
   refreshedAt: Date | null;
 }
 
-export function useAdmissionReports(initialAcademicYear?: number): UseAdmissionReportsResult {
+export function useAdmissionReports(initialAcademicYear?: number, processCode?: string): UseAdmissionReportsResult {
   const defaultYear = initialAcademicYear || new Date().getFullYear() + 1;
   const [academicYear, setAcademicYear] = useState<number>(defaultYear);
   const [rows, setRows] = useState<CourseApplicant[]>([]);
@@ -43,7 +43,7 @@ export function useAdmissionReports(initialAcademicYear?: number): UseAdmissionR
     setLoading(true);
     setError(null);
     try {
-      const response: CourseApplicantsResponse = await dashboardClient.getCourseApplicants(academicYear);
+      const response: CourseApplicantsResponse = await dashboardClient.getCourseApplicants(academicYear, processCode);
       setRows(response.data || []);
       setMeta(response.meta || null);
       setRefreshedAt(new Date());
@@ -54,7 +54,7 @@ export function useAdmissionReports(initialAcademicYear?: number): UseAdmissionR
     } finally {
       setLoading(false);
     }
-  }, [academicYear]);
+  }, [academicYear, processCode]);
 
   useEffect(() => {
     fetchData();

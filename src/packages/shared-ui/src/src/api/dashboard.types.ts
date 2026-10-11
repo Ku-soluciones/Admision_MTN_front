@@ -1,3 +1,4 @@
+import type { ApplicationStatusMetadata } from '../../utils/applicationStatusPolicy';
 /**
  * Dashboard & Analytics API Types
  * Sistema de Admisión MTN
@@ -220,7 +221,7 @@ export interface CourseApplicantsResponse {
   };
 }
 
-export interface FinalSummaryFamilyEvaluation {
+<export interface FinalSummaryFamilyEvaluation {
   percentage: number | null;
   score40: number | null;
   score11: number | null;
@@ -235,16 +236,35 @@ export interface FinalSummaryExamScores {
   english: number | null;
 }
 
-export interface FinalSummaryCycleDirector {
-  recommendation: string | null;
+export interface FinalSummaryExamDetail {
+  date: string | null;
   observations: string | null;
+  strengths: string | null;
   areasForImprovement: string | null;
+  recommendations: string | null;
+}
+
+export interface FinalSummaryExamDetails {
+  language: FinalSummaryExamDetail | null;
+  mathematics: FinalSummaryExamDetail | null;
+  english: FinalSummaryExamDetail | null;
+}
+
+export interface FinalSummaryCycleDirector {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
+  recommendation: string | null;
+  entryCourse: string | null;
   evaluator: string | null;
   date: string | null;
   completed: boolean;
 }
 
-export interface FinalSummaryApplicant {
+export interface FinalSummaryApplicant extends ApplicationStatusMetadata {
   applicationId: number;
   studentId: number;
   studentName: string;
@@ -254,6 +274,7 @@ export interface FinalSummaryApplicant {
   siblingNames: string[];
   familyEvaluation: FinalSummaryFamilyEvaluation;
   exams: FinalSummaryExamScores;
+  examDetails?: FinalSummaryExamDetails;
   cycleDirectorDecision: string;
   cycleDirector: FinalSummaryCycleDirector;
   status: string;
@@ -277,11 +298,12 @@ export interface FinalDecisionResponse {
   message: string;
   data: {
     applicationId: number;
+    allowedStatusTransitions?: string[];
+    statusChangeBlockedReason?: string;
     status: FinalDecision;
     statusLabel: string;
   };
 }
-
 export interface ApplicantCardExam {
   evaluationType: string;
   subject: string;
@@ -298,12 +320,24 @@ export interface ApplicantCardCycleDirector {
   done: boolean;
   decision: string;
   reportLink: string | null;
+  evaluationId: number | null;
   report: {
     observations: string | null;
     recommendations: string | null;
     areasForImprovement: string | null;
     evaluator: string | null;
   } | null;
+}
+
+export interface CycleDirectorFullReport {
+  strengths: string | null;
+  difficulties: string | null;
+  interviewAdaptation: string | null;
+  outstandingTraits: string | null;
+  familyBackground: string | null;
+  academicBackground: string | null;
+  finalDecision: string | null;
+  entryCourse: string | null;
 }
 
 export interface ApplicantCardFamily {

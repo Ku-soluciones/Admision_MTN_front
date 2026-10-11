@@ -1,3 +1,4 @@
+import { statusRequestError } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dashboardClient from '../../../../packages/shared-ui/src/src/api/dashboard.client';
 import type {
@@ -6,7 +7,7 @@ import type {
   FinalSummaryResponse
 } from '../../../../packages/shared-ui/src/src/api/dashboard.types';
 
-export function useFinalSummary(academicYear: number) {
+export function useFinalSummary(academicYear: number, processCode?: string) {
   const [rows, setRows] = useState<FinalSummaryApplicant[]>([]);
   const [meta, setMeta] = useState<FinalSummaryResponse['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,7 +18,7 @@ export function useFinalSummary(academicYear: number) {
     setLoading(true);
     setError(null);
     try {
-      const response = await dashboardClient.getFinalSummary(academicYear);
+      const response = await dashboardClient.getFinalSummary(academicYear, processCode);
       setRows(response.data || []);
       setMeta(response.meta || null);
     } catch (err) {
@@ -26,7 +27,7 @@ export function useFinalSummary(academicYear: number) {
     } finally {
       setLoading(false);
     }
-  }, [academicYear]);
+  }, [academicYear, processCode]);
 
   useEffect(() => {
     void refresh();
@@ -37,13 +38,16 @@ export function useFinalSummary(academicYear: number) {
     try {
       const response = await dashboardClient.updateFinalDecision(applicationId, decision);
       setRows((current) => current.map((row) => row.applicationId === applicationId
-        ? { ...row, status: response.data.status, statusLabel: response.data.statusLabel }
+        ? { ...row, status: response.data.status, statusLabel: response.data.statusLabel, allowedStatusTransitions: response.data.allowedStatusTransitions, statusChangeBlockedReason: response.data.statusChangeBlockedReason }
         : row));
       return response.message;
+    } catch (error) {
+      await refresh();
+      throw new Error(statusRequestError(error));
     } finally {
       setSavingId(null);
     }
-  }, []);
+  }, [refresh]);
 
   return useMemo(() => ({ rows, meta, loading, error, savingId, refresh, updateDecision }), [rows, meta, loading, error, savingId, refresh, updateDecision]);
 }

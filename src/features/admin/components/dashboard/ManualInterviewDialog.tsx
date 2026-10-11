@@ -32,6 +32,7 @@ import {
 interface ManualInterviewDialogProps {
   onClose: () => void;
   onCreated: (result: ManualInterviewCreateResult) => Promise<void> | void;
+  processCode?: string;
 }
 
 type DialogStep = 'EDIT' | 'REVIEW';
@@ -74,7 +75,7 @@ const formatDate = (date: string): string => {
   }).format(new Date(`${date}T00:00:00`));
 };
 
-const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, onCreated }) => {
+const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, onCreated, processCode }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -158,8 +159,8 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     setOptionsError(null);
 
     Promise.all([
-      applicationService.getAllApplications({ size: 2000 }),
-      interviewService.getAllInterviews(0, 2000),
+      applicationService.getAllApplications({ size: 2000, processCode }),
+      interviewService.getAllInterviews(0, 2000, 'scheduledDate', 'desc', undefined, processCode),
       staffService.getStaffUsers({ active: true, page: 0, size: 2000 }),
     ]).then(([applicationRows, interviewRows, staffRows]) => {
       if (cancelled) return;
@@ -182,7 +183,7 @@ const ManualInterviewDialog: React.FC<ManualInterviewDialogProps> = ({ onClose, 
     });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [processCode]);
 
   useEffect(() => {
     searchRef.current?.focus();

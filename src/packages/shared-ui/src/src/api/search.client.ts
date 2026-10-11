@@ -192,7 +192,7 @@ class SearchClient {
         { value: 'SUBMITTED', label: 'Enviada' },
         { value: 'UNDER_REVIEW', label: 'En Revisión' },
         { value: 'APPROVED', label: 'Aprobada' },
-        { value: 'REJECTED', label: 'Rechazada' },
+        { value: 'REJECTED', label: 'No aceptado' },
         { value: 'WAITLIST', label: 'Lista de Espera' },
         { value: 'WITHDRAWN', label: 'Retirada' },
         { value: 'ARCHIVED', label: 'Archivada' }

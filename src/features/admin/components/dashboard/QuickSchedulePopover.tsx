@@ -23,6 +23,7 @@ interface QuickSchedulePopoverProps {
   isSubmitting: boolean;
   onSchedule: (data: QuickScheduleData, bookedInterviewerIds: [number, number]) => Promise<void>;
   onClose: () => void;
+  processCode?: string;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -85,7 +86,8 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
   availablePairs,
   isSubmitting,
   onSchedule,
-  onClose
+  onClose,
+  processCode
 }) => {
   const [remainingInterviewers, setRemainingInterviewers] = useState<InterviewerInfo[]>(availableInterviewers);
   const familyPairs = useMemo(() => buildFamilyInterviewerPairs(remainingInterviewers), [remainingInterviewers]);
@@ -167,8 +169,8 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
 
     // Cargar postulaciones y entrevistas en paralelo
     Promise.all([
-      applicationService.getAllApplications({ size: 2000 }),
-      interviewService.getAllInterviews(0, 1000)
+      applicationService.getAllApplications({ size: 2000, processCode }),
+      interviewService.getAllInterviews(0, 1000, 'scheduledDate', 'desc', undefined, processCode)
     ])
       .then(([applicationsResponse, interviewsResponse]) => {
         if (cancelled) return;
@@ -212,7 +214,7 @@ const QuickSchedulePopover: React.FC<QuickSchedulePopoverProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [applicationsReloadKey]);
+  }, [applicationsReloadKey, processCode]);
 
   useEffect(() => {
     if (!selectedApplication) {

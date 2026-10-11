@@ -408,7 +408,7 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
-                    {uiFlags?.showPostularOtroHijo !== false && (
+{uiFlags?.showPostularOtroHijo !== false && (
                       <Button
                         variant="success"
                         size="sm"
