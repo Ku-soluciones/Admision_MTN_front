@@ -8,10 +8,11 @@ export interface AdmissionUIFlags {
 
 /** Lee valores del entorno, castea a booleano. Defaults a false si no está definido */
 function getEnvFlags(): AdmissionUIFlags {
+  const show = import.meta.env.VITE_SHOW_POSTULACION === 'true';
   return {
-    showIniciarPostulacion: import.meta.env.VITE_SHOW_INICIAR_POSTULACION === 'true',
-    showPostularHeader: import.meta.env.VITE_SHOW_POSTULAR_HEADER === 'true',
-    showPostularOtroHijo: import.meta.env.VITE_SHOW_POSTULAR_OTRO_HIJO === 'true',
+    showIniciarPostulacion: show,
+    showPostularHeader: show,
+    showPostularOtroHijo: show,
   };
 }
 
