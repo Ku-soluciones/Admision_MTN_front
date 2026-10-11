@@ -303,7 +303,7 @@ const FamilyDashboard: React.FC = () => {
                 <Card className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis Hijos Postulantes</h2>
-                    {uiFlags?.showPostularOtroHijo !== false ? (
+                    {uiFlags?.showPostularOtroHijo !== false && (
                       <Button
                         variant="primary"
                         size="sm"
@@ -313,22 +313,6 @@ const FamilyDashboard: React.FC = () => {
                         <FiPlus className="w-4 h-4" />
                         Postular Otro Hijo
                       </Button>
-                    ) : (
-                      <div className="relative group">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled
-                          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
-                        >
-                          <FiPlus className="w-4 h-4" />
-                          Postular Otro Hijo
-                        </Button>
-                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          El proceso de postulación ha finalizado
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
-                        </div>
-                      </div>
                     )}
                   </div>
 
