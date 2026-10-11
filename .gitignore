@@ -173,3 +173,4 @@ vulnerability-report.*
 skills-lock.json
 docs/
 .env*
+.env.development
