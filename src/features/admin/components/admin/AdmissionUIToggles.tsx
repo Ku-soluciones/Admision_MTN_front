@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Button from '../../components/ui/Button';
-import { useAdmissionUIFlags, AdmissionUIFlags, DEFAULT_FLAGS } from '../../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
+import { useAdmissionUIFlags, AdmissionUIFlags } from '../../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
-const STORAGE_KEY = 'admission_ui_flags';
 const TOGGLE_LABELS: Record<keyof AdmissionUIFlags, string> = {
   showIniciarPostulacion: '"Iniciar postulación" (HomePage)',
   showPostularHeader: '"Postular" (Headers)',
-  showCrearCuentaLogin: '"Crear cuenta" (Login familias)',
   showPostularOtroHijo: '"Postular otro hijo" (Dashboard)',
 };
 
@@ -39,40 +37,42 @@ const ToggleRow: React.FC<{
 
 const AdmissionUIToggles: React.FC = () => {
   const { data: flags, isLoading } = useAdmissionUIFlags();
-  const [localFlags, setLocalFlags] = useState<AdmissionUIFlags>(DEFAULT_FLAGS);
+  const [localFlags, setLocalFlags] = useState<AdmissionUIFlags | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load from localStorage on mount, fallback to server flags
+  // Sync local flags when server flags load
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setLocalFlags({ ...DEFAULT_FLAGS, ...JSON.parse(stored) });
-      } else if (flags) {
-        setLocalFlags(flags);
-      }
-    } catch {
-      if (flags) setLocalFlags(flags);
+    if (flags && !localFlags) {
+      setLocalFlags(flags);
     }
-  }, [flags]);
+  }, [flags, localFlags]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (!localFlags) return;
     setSaving(true);
     setError(null);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(localFlags));
+      const res = await fetch('/api/edge-config/admissionUI', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(localFlags),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || `Error ${res.status}`);
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      setError('Error al guardar en localStorage');
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar configuración');
     } finally {
       setSaving(false);
     }
   }, [localFlags]);
 
-  if (isLoading) {
+  if (isLoading || !localFlags) {
     return <div className="p-4 text-sm text-gray-500">Cargando...</div>;
   }
 
@@ -92,8 +92,11 @@ const AdmissionUIToggles: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button onClick={handleSave} className="text-sm font-semibold hover:underline shrink-0">
+            Reintentar
+          </button>
         </div>
       )}
 
