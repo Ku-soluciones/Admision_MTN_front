@@ -8,7 +8,7 @@ import EmailVerification from '../../admissions/components/ui/EmailVerification'
 import { LogoIcon } from '../../admin/components/icons/Icons';
 import { useAuth } from '../../coordinator/context/AuthContext';
 import { useNotifications } from '../../admin/context/AppContext';
-import { useAdmissionUIFlags } from '../../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
