@@ -3,6 +3,7 @@ import Button from '../../admin/components/ui/Button';
 import { FileText, Users, CheckCircle, AlertCircle } from 'lucide-react';
 import { appUrls } from '../../admin/utils/appUrls';
 import { useAdmissionHome } from '../hooks/useAdmissionConfig';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 import type { AdmissionTimelineItem } from '../types/admissionConfig';
 
 /* ────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const TimelineSkeleton: React.FC = () => (
    ──────────────────────────────────────────────────────── */
 const HomePage: React.FC = () => {
     const { data: homeConfig, isLoading: homeLoading, isError: homeError } = useAdmissionHome();
+    const { data: uiFlags } = useAdmissionUIFlags();
 
     const admissionSteps = [
         { title: 'Registro y Postulación', description: 'Complete el formulario en línea con los datos del postulante y la familia.', icon: <FileText className="w-12 h-12 text-dorado-nazaret" /> },
@@ -58,17 +60,13 @@ const HomePage: React.FC = () => {
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Unidos al corazón de Jesús, construimos una comunidad de esperanza</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únanse a una comunidad educativa comprometida con la excelencia académica y formación católica</p>
                     <div className="flex justify-center">
-                        <div className="relative group">
-                            <a href={appUrls.guardianRegister} onClick={(e) => e.preventDefault()} className="pointer-events-none opacity-50 cursor-not-allowed">
+                        {uiFlags?.showIniciarPostulacion !== false && (
+                            <a href={appUrls.guardianRegister}>
                                 <Button size="lg" variant="primary" className="!text-blanco-pureza">
                                     Iniciar postulación
                                 </Button>
                             </a>
-                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                                El proceso de postulación ha finalizado
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </section>

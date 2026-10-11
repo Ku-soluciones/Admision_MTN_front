@@ -15,6 +15,7 @@ import {
 } from '../../../packages/shared-ui/src/services/passwordService';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
 import { authStore } from '../../../packages/backend-sdk/src/index';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
 const blockClipboardProps = {
@@ -114,6 +115,7 @@ const ApoderadoLogin: React.FC = () => {
     const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
     const { isProcessActive: processActive, isLoading: flagLoading } = useProcessActiveGuard();
+    const { data: uiFlags } = useAdmissionUIFlags();
 
     // Campos para registro
     const [registerData, setRegisterData] = useState({
@@ -380,17 +382,17 @@ const ApoderadoLogin: React.FC = () => {
                                 Iniciar Sesión
                             </Button>
 
+                            {uiFlags?.showIniciarPostulacion !== false && (
                             <div className="text-center pt-6 border-t border-gray-200">
-                                <div className="relative inline-block group">
-                                    <span className="text-gray-400 text-sm font-semibold cursor-not-allowed">
-                                        ¿Primera vez? Crear cuenta para postular
-                                    </span>
-                                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                                        El proceso de postulación ha finalizado
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800"></div>
-                                    </div>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRegister(true)}
+                                    className="text-azul-monte-tabor hover:underline text-sm font-semibold"
+                                >
+                                    ¿Primera vez? Crear cuenta para postulate
+                                </button>
                             </div>
+                            )}
                         </form>
                     ) : (
                         // Formulario de Registro (dividido en 2 pasos)

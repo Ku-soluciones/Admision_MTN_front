@@ -45,6 +45,7 @@ import { documentService } from '../../admin/services/documentService';
 import FamilyInterviews from '../../admin/components/family/FamilyInterviews';
 import FamilyCalendar from '../../admin/components/family/FamilyCalendar';
 import ComplementaryApplicationForm from '../../admin/pages/ComplementaryApplicationForm';
+import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 import {
   formatGuardianDocumentDate,
   loadGuardianDocumentGroups,
@@ -149,6 +150,7 @@ const FamilyDashboard: React.FC = () => {
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
+  const { data: uiFlags } = useAdmissionUIFlags();
 
   // Function to download/view document
   const handleViewDocument = async (documentId: number, documentName: string) => {
@@ -406,22 +408,17 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
-                    <div className="relative group">
+                    {uiFlags?.showPostularOtroHijo !== false && (
                       <Button
                         variant="success"
                         size="sm"
-                        onClick={(e) => e.preventDefault()}
-                        disabled
-                        className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+                        className="flex items-center gap-2"
+                        onClick={() => navigate('/admissions')}
                       >
                         <FiPlus className="w-4 h-4" />
                         Postular otro hijo
                       </Button>
-                      <div className="absolute left-0 top-full mt-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 max-w-48">
-                        El proceso de postulación ha finalizado
-                        <div className="absolute bottom-full left-4 border-4 border-transparent border-b-gray-800"></div>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mb-4">
@@ -461,7 +458,7 @@ const FamilyDashboard: React.FC = () => {
                             {app.status === 'PENDING' ? 'Pendiente' :
                              app.status === 'UNDER_REVIEW' ? 'En Revisión' :
                              app.status === 'APPROVED' ? 'Aprobado' :
-                             app.status === 'REJECTED' ? 'Rechazado' :
+                             app.status === 'REJECTED' ? 'No aceptado' :
                              app.status === 'WAITLIST' ? 'Lista de Espera' :
                              app.status}
                           </Badge>
@@ -551,7 +548,7 @@ const FamilyDashboard: React.FC = () => {
                      myApplication.status === 'INTERVIEW_SCHEDULED' ? 'Entrevista Programada' :
                      myApplication.status === 'EXAM_SCHEDULED' ? 'Examen Programado' :
                      myApplication.status === 'APPROVED' ? 'Aprobado' :
-                     myApplication.status === 'REJECTED' ? 'Rechazado' :
+                     myApplication.status === 'REJECTED' ? 'No aceptado' :
                      myApplication.status === 'WAITLIST' ? 'Lista de Espera' :
                      myApplication.status}
                   </Badge>
