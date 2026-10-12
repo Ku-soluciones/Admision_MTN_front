@@ -2021,7 +2021,7 @@ const ApplicationForm: React.FC = () => {
     // Helper function to check if current step can proceed
     const canProceedToNextStep = useMemo((): boolean => {
         return validateCurrentStep();
-    }, [data, currentStep, requiresCurrentSchool, errors]);
+    }, [validateCurrentStep]);
 
     // Helper function to get missing fields for current step
     const getMissingFields = useMemo((): string[] => {
