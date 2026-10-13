@@ -307,7 +307,7 @@ const FamilyDashboard: React.FC = () => {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={(e) => { e.preventDefault(); navigate('/admissions'); }}
+                        onClick={handleAddAnotherChild}
                         className="flex items-center gap-2"
                       >
                         <FiPlus className="w-4 h-4" />
