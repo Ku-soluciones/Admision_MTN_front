@@ -7,7 +7,7 @@ import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertTriangleIc
 import { interviewService } from '../services/interviewService';
 import { documentService } from '../../../packages/shared-ui/src/services/documentService';
 import { useNotifications } from '../../admin/context/AppContext';
-import { professorEvaluationService } from '../../admin/services/professorEvaluationService';
+import { professorEvaluationService, AdmissionProcessOption } from '../../admin/services/professorEvaluationService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -42,6 +42,8 @@ const CycleDirectorDirectory: React.FC = () => {
   const [students, setStudents] = useState<StudentWithDocuments[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [processes, setProcesses] = useState<AdmissionProcessOption[]>([]);
+  const [selectedProcessCode, setSelectedProcessCode] = useState('');
 
   // Obtener el profesor actual del localStorage
   const [currentProfessor] = useState(() => {
@@ -50,6 +52,20 @@ const CycleDirectorDirectory: React.FC = () => {
   });
 
   const currentProfessorId = currentProfessor?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    professorEvaluationService.getAdmissionProcesses()
+      .then(({ processes: availableProcesses, activeProcessCode }) => {
+        if (cancelled) return;
+        setProcesses(availableProcesses);
+        setSelectedProcessCode(activeProcessCode || availableProcesses[0]?.processCode || '');
+      })
+      .catch(() => {
+        if (!cancelled) setProcesses([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const loadStudentsWithDocuments = async () => {
@@ -64,7 +80,7 @@ const CycleDirectorDirectory: React.FC = () => {
         setLoadError(null);
 
         // Obtener entrevistas del director de ciclo
-        const interviews = await interviewService.getInterviewsByInterviewer(currentProfessorId);
+        const interviews = await interviewService.getInterviewsByInterviewer(currentProfessorId, selectedProcessCode || undefined);
 
         // Filtrar solo entrevistas de tipo CYCLE_DIRECTOR
         const cycleDirectorInterviews = interviews.filter(
@@ -126,7 +142,7 @@ const CycleDirectorDirectory: React.FC = () => {
     };
 
     loadStudentsWithDocuments();
-  }, [currentProfessorId, addNotification]);
+  }, [currentProfessorId, selectedProcessCode, addNotification]);
 
   const handleViewInterview = async (interviewId: number) => {
     try {
@@ -208,6 +224,23 @@ const CycleDirectorDirectory: React.FC = () => {
           <p className="text-gray-600 mt-1">
             Documentos de postulación validados para cada estudiante
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label htmlFor="cycleDirectorProcessCode" className="text-sm font-medium text-gray-600">Proceso de admisión</label>
+            <select
+              id="cycleDirectorProcessCode"
+              value={selectedProcessCode}
+              onChange={(event) => setSelectedProcessCode(event.target.value)}
+              disabled={processes.length === 0}
+              className="min-h-10 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-950 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+            >
+              {processes.length === 0 && <option value="">Proceso activo</option>}
+              {processes.map((process) => (
+                <option key={process.processCode} value={process.processCode}>
+                  {process.processCode}{process.active ? ' (activo)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
