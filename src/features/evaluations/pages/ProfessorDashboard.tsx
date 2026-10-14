@@ -31,7 +31,7 @@ import {
 } from '../../admin/services/staticData';
 import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
 import { Link, useNavigate } from 'react-router-dom';
-import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
+import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats, AdmissionProcessOption } from '../../admin/services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
 import { EvaluationStatus, EvaluationType } from '../../admin/types/evaluation';
@@ -179,6 +179,9 @@ const ProfessorDashboard: React.FC = () => {
         averageScore: 0
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [processes, setProcesses] = useState<AdmissionProcessOption[]>([]);
+    const [selectedProcessCode, setSelectedProcessCode] = useState('');
+    const [processesLoading, setProcessesLoading] = useState(true);
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -223,6 +226,23 @@ const ProfessorDashboard: React.FC = () => {
     const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
     const [studentPage, setStudentPage] = useState(1);
     const studentsPerPage = 10;
+
+    useEffect(() => {
+        let cancelled = false;
+        professorEvaluationService.getAdmissionProcesses()
+            .then(({ processes: availableProcesses, activeProcessCode }) => {
+                if (cancelled) return;
+                setProcesses(availableProcesses);
+                setSelectedProcessCode(activeProcessCode || availableProcesses[0]?.processCode || '');
+            })
+            .catch(() => {
+                if (!cancelled) setProcesses([]);
+            })
+            .finally(() => {
+                if (!cancelled) setProcessesLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
 
     // Determinar qué tabs de entrevistas mostrar según las evaluaciones asignadas
     const interviewTabs = useMemo(() => {
@@ -353,9 +373,9 @@ const ProfessorDashboard: React.FC = () => {
                 }
 
                 const [evaluationsData, statsData, interviewsData] = await Promise.all([
-                    professorEvaluationService.getMyEvaluations(),
-                    professorEvaluationService.getMyEvaluationStats(),
-                    interviewService.getInterviewsByInterviewer(freshProfessor.id)
+                    professorEvaluationService.getMyEvaluations(selectedProcessCode || undefined),
+                    professorEvaluationService.getMyEvaluationStats(selectedProcessCode || undefined),
+                    interviewService.getInterviewsByInterviewer(freshProfessor.id, selectedProcessCode || undefined)
                 ]);
 
                 if (isMounted) {
@@ -426,7 +446,7 @@ const ProfessorDashboard: React.FC = () => {
             isMounted = false;
             abortController.abort();
         };
-    }, [refreshKey]); // Re-ejecuta cuando refreshKey cambia (force refresh)
+    }, [refreshKey, selectedProcessCode]); // Re-ejecuta al refrescar o cambiar de proceso
 
 
     // Datos mock para compatibilidad (se pueden eliminar después)
@@ -2362,6 +2382,24 @@ const ProfessorDashboard: React.FC = () => {
 
                 {/* Main Content */}
                 <main className="flex-1 p-4 sm:p-8 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard del profesor">
+                    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                        <label htmlFor="professionalProcessCode" className="text-sm font-medium text-gray-600">Proceso de admisión</label>
+                        <select
+                            id="professionalProcessCode"
+                            value={selectedProcessCode}
+                            onChange={(event) => setSelectedProcessCode(event.target.value)}
+                            disabled={processesLoading || processes.length === 0}
+                            className="min-h-10 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-950 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                        >
+                            {processes.length === 0 && <option value="">Proceso activo</option>}
+                            {processes.map((process) => (
+                                <option key={process.processCode} value={process.processCode}>
+                                    {process.processCode}{process.active ? ' (activo)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="text-xs text-gray-500">La carga muestra solo alumnos asignados en este proceso.</span>
+                    </div>
                     {renderSection()}
                 </main>
             </div>

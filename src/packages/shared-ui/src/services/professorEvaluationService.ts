@@ -88,15 +88,23 @@ export interface ProfessorEvaluationStats {
     averageScore: number;
 }
 
+export interface AdmissionProcessOption {
+    processCode: string;
+    academicYear: number;
+    active: boolean;
+    total: number;
+}
+
 class ProfessorEvaluationService {
     
     /**
      * Obtener todas las evaluaciones asignadas al profesor actual
      */
-    async getMyEvaluations(): Promise<ProfessorEvaluation[]> {
+    async getMyEvaluations(processCode?: string): Promise<ProfessorEvaluation[]> {
         try {
-
-            const response = await api.get('/api/evaluations/my-evaluations');
+            const response = await api.get('/api/evaluations/my-evaluations', {
+                params: processCode ? { processCode } : undefined
+            });
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -121,10 +129,12 @@ class ProfessorEvaluationService {
     /**
      * Obtener solo las evaluaciones pendientes del profesor
      */
-    async getMyPendingEvaluations(): Promise<ProfessorEvaluation[]> {
+    async getMyPendingEvaluations(processCode?: string): Promise<ProfessorEvaluation[]> {
         try {
 
-            const response = await api.get('/api/evaluations/my-pending');
+            const response = await api.get('/api/evaluations/my-pending', {
+                params: processCode ? { processCode } : undefined
+            });
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -147,9 +157,9 @@ class ProfessorEvaluationService {
     /**
      * Obtener estadísticas de evaluaciones del profesor
      */
-    async getMyEvaluationStats(): Promise<ProfessorEvaluationStats> {
+    async getMyEvaluationStats(processCode?: string): Promise<ProfessorEvaluationStats> {
         try {
-            const evaluations = await this.getMyEvaluations();
+            const evaluations = await this.getMyEvaluations(processCode);
             
             const total = evaluations.length;
             const pending = evaluations.filter(e => e.status === EvaluationStatus.PENDING).length;
@@ -177,6 +187,14 @@ class ProfessorEvaluationService {
         } catch (error: any) {
             throw new Error('No se pudieron obtener las estadísticas de evaluaciones.');
         }
+    }
+
+    async getAdmissionProcesses(): Promise<{ processes: AdmissionProcessOption[]; activeProcessCode: string }> {
+        const response = await api.get('/api/applications/processes');
+        return {
+            processes: response.data?.data || [],
+            activeProcessCode: response.data?.activeProcessCode || response.data?.data?.[0]?.processCode || ''
+        };
     }
     
     /**
