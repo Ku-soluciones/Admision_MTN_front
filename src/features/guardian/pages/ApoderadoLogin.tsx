@@ -15,7 +15,6 @@ import {
 } from '../../../packages/shared-ui/src/services/passwordService';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
 import { authStore } from '../../../packages/backend-sdk/src/index';
-import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
 const blockClipboardProps = {
@@ -115,7 +114,6 @@ const ApoderadoLogin: React.FC = () => {
     const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
     const { isProcessActive: processActive, isLoading: flagLoading } = useProcessActiveGuard();
-    const { data: uiFlags } = useAdmissionUIFlags();
 
     // Campos para registro
     const [registerData, setRegisterData] = useState({
@@ -382,7 +380,6 @@ const ApoderadoLogin: React.FC = () => {
                                 Iniciar Sesión
                             </Button>
 
-                            {uiFlags?.showIniciarPostulacion !== false && (
                             <div className="text-center pt-6 border-t border-gray-200">
                                 <button
                                     type="button"
@@ -392,7 +389,6 @@ const ApoderadoLogin: React.FC = () => {
                                     ¿Primera vez? Crear cuenta para postulate
                                 </button>
                             </div>
-                            )}
                         </form>
                     ) : (
                         // Formulario de Registro (dividido en 2 pasos)

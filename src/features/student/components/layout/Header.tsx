@@ -5,14 +5,12 @@ import Button from '../../../admin/components/ui/Button';
 import { appUrls } from '../../../admin/utils/appUrls';
 import { authStore, clearAllSessions } from '../../../../packages/backend-sdk/src/index';
 import { useHeaderAuthState } from '../../../../packages/shared-ui/src/hooks/useHeaderAuthState';
-import { useAdmissionUIFlags } from '../../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
     // Fuente canónica: in-memory authStore (con fallback transicional a
     // localStorage durante bootstrap F5). Ver `useHeaderAuthState`.
     const { isAdmin, isAnyUserLoggedIn } = useHeaderAuthState();
-    const { data: uiFlags } = useAdmissionUIFlags();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const handleLogoutAndGoHome = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -46,13 +44,11 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-{uiFlags?.showPostularHeader !== false && (
-                            <a href={appUrls.guardianRegister}>
-                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
-                        )}
+                        <a href={appUrls.guardianRegister}>
+                            <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                Postular
+                            </Button>
+                        </a>
                     </div>
                     {/* Hamburger button */}
                     <button
@@ -105,13 +101,11 @@ const Header: React.FC = () => {
                                     Iniciar sesión
                                 </Button>
                             </a>
-{uiFlags?.showPostularHeader !== false && (
-                                <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full !text-blanco-pureza">
-                                        Postular
-                                    </Button>
-                                </a>
-                            )}
+                            <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                <Button variant="primary" className="w-full !text-blanco-pureza">
+                                    Postular
+                                </Button>
+                            </a>
                         </div>
                     </nav>
                 </div>
