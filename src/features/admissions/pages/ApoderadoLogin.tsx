@@ -8,7 +8,6 @@ import EmailVerification from '../components/ui/EmailVerification';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../../admin/context/AppContext';
 import { appUrls } from '../../admin/utils/appUrls';
-import { useAdmissionUIFlags } from '../../../packages/shared-utils/src/hooks/useAdmissionUIFlags';
 
 const ApoderadoLogin: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -35,7 +34,6 @@ const ApoderadoLogin: React.FC = () => {
     const { addNotification } = useNotifications();
     
     const redirectTo = searchParams.get('redirect') || '/dashboard-apoderado';
-    const { data: uiFlags } = useAdmissionUIFlags();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -181,17 +179,15 @@ const ApoderadoLogin: React.FC = () => {
                                 Iniciar Sesión
                             </Button>
 
-                            {uiFlags?.showIniciarPostulacion !== false && (
                             <div className="text-center">
                                 <button
                                     type="button"
                                     onClick={() => setShowRegister(true)}
                                     className="text-azul-monte-tabor hover:underline"
                                 >
-                                    ¿Primera vez? Crear cuenta para postulate
+                                    ¿Primera vez? Crear cuenta para postular
                                 </button>
                             </div>
-                            )}
                         </form>
                     ) : (
                         // Formulario de Registro
