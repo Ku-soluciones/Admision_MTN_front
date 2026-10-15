@@ -1,6 +1,4 @@
 import React from 'react';
-import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import {
   User,
@@ -10,22 +8,25 @@ import {
   UserUtils
 } from '../../types/user';
 import {
-  EyeIcon,
-  PencilIcon,
   TrashIcon,
-  KeyIcon,
   CheckCircleIcon,
   XCircleIcon,
-  UserIcon,
-  CalendarIcon
+  UserIcon
 } from '../icons/Icons';
+import { FiEdit2 } from 'react-icons/fi';
 
-const SCHEDULE_ROLES: UserRole[] = [
-  UserRole.PSYCHOLOGIST,
-  UserRole.CYCLE_DIRECTOR,
-  UserRole.COORDINATOR,
-  UserRole.INTERVIEWER
-];
+const getRoleBadgeClasses = (role: UserRole): string => {
+  switch (role) {
+    case UserRole.ADMIN: return 'bg-red-50 text-red-700';
+    case UserRole.CYCLE_DIRECTOR: return 'bg-blue-50 text-blue-700';
+    case UserRole.COORDINATOR: return 'bg-blue-50 text-blue-700';
+    case UserRole.PSYCHOLOGIST: return 'bg-amber-50 text-amber-700';
+    case UserRole.INTERVIEWER: return 'bg-amber-50 text-amber-700';
+    case UserRole.TEACHER: return 'bg-indigo-50 text-indigo-700';
+    case UserRole.APODERADO: return 'bg-emerald-50 text-emerald-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+};
 
 interface ExtendedUserTableProps extends UserTableProps {
   onManageSchedule?: (user: User) => void;
@@ -39,8 +40,10 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
   onToggleStatus,
   onResetPassword,
   onManageSchedule,
-  className = ''
+  className = '',
+  totalCount
 }) => {
+  const displayTotal = totalCount ?? users.length;
   
   if (isLoading) {
     return (
@@ -66,7 +69,23 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
   }
 
   return (
-    <div className={`overflow-x-auto rounded-lg border border-gray-200 ${className}`}>
+    <div>
+      {/* Leyenda */}
+      <div className="flex items-center justify-end gap-4 px-1 pb-2 text-xs text-gray-500">
+        <span>Total: {displayTotal} usuario{displayTotal !== 1 ? 's' : ''}</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-1">
+            <CheckCircleIcon className="w-3 h-3 text-green-500" />
+            <span>Email verificado</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <XCircleIcon className="w-3 h-3 text-red-500" />
+            <span>Email no verificado</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={`overflow-x-auto rounded-lg border border-gray-200 ${className}`}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -95,20 +114,11 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
               <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                 {/* Usuario */}
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <div className="shrink-0 h-8 w-8 rounded-full bg-azul-monte-tabor bg-opacity-10 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-azul-monte-tabor">
-                        {(user.firstName?.charAt(0) || '?')}{(user.lastName?.charAt(0) || '?')}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sin nombre'}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        RUT: {user.rut || 'No especificado'}
-                      </div>
-                    </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Sin nombre'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    RUT: {user.rut || 'No especificado'}
                   </div>
                 </td>
 
@@ -122,17 +132,17 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
 
                 {/* Rol */}
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <Badge variant={UserUtils.getRoleColor(user.role)}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeClasses(user.role)}`}>
                     {USER_ROLE_LABELS[user.role]}
-                  </Badge>
+                  </span>
                 </td>
 
                 {/* Estado */}
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center space-x-2">
-                    <Badge variant={UserUtils.getStatusColor(user.active)}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                       {user.active ? 'Activo' : 'Inactivo'}
-                    </Badge>
+                    </span>
                     {user.emailVerified ? (
                       <CheckCircleIcon className="w-4 h-4 text-green-500" title="Email verificado" />
                     ) : (
@@ -148,104 +158,32 @@ const UserTable: React.FC<ExtendedUserTableProps> = ({
 
                 {/* Acciones */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
-                    {/* Ver */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEdit(user)}
-                      title="Ver detalles"
-                    >
-                      <EyeIcon className="w-4 h-4" />
-                    </Button>
-
+                  <div className="flex items-center justify-end gap-2">
                     {/* Editar */}
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={() => onEdit(user)}
-                      title="Editar usuario"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-gray-300 px-3 font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     >
-                      <PencilIcon className="w-4 h-4" />
-                    </Button>
-
-                    {/* Restablecer contraseña */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onResetPassword(user)}
-                      title="Restablecer contraseña"
-                      disabled={!user.active}
-                    >
-                      <KeyIcon className="w-4 h-4" />
-                    </Button>
-
-                    {/* Gestionar horarios (solo roles que entrevistan) */}
-                    {onManageSchedule && SCHEDULE_ROLES.includes(user.role) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onManageSchedule(user)}
-                        title="Gestionar horarios de entrevistas"
-                        className="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400"
-                      >
-                        <CalendarIcon className="w-4 h-4" />
-                      </Button>
-                    )}
-
-                    {/* Activar/Desactivar */}
-                    <Button
-                      variant={user.active ? "outline" : "primary"}
-                      size="sm"
-                      onClick={() => onToggleStatus(user)}
-                      title={user.active ? "Desactivar usuario" : "Activar usuario"}
-                    >
-                      {user.active ? (
-                        <XCircleIcon className="w-4 h-4" />
-                      ) : (
-                        <CheckCircleIcon className="w-4 h-4" />
-                      )}
-                    </Button>
+                      <FiEdit2 className="w-4 h-4" aria-hidden="true" />
+                      Editar
+                    </button>
 
                     {/* Eliminar */}
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={() => onDelete(user)}
-                      title="Eliminar usuario permanentemente"
-                      className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-gray-300 px-3 font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     >
-                      <TrashIcon className="w-4 h-4" />
-                    </Button>
+                      <TrashIcon className="w-4 h-4" aria-hidden="true" />
+                      Eliminar
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
-      {/* Leyenda */}
-      <div className="px-4 py-3 bg-gray-50 border-t">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-1">
-              <CheckCircleIcon className="w-3 h-3 text-green-500" />
-              <span>Email verificado</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <XCircleIcon className="w-3 h-3 text-red-500" />
-              <span>Email no verificado</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <CalendarIcon className="w-3 h-3 text-blue-500" />
-              <span>Gestionar horarios (solo psicólogos, directores de ciclo, coordinadores y entrevistadores)</span>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <span>Total: {users.length} usuarios</span>
-          </div>
-        </div>
       </div>
     </div>
   );

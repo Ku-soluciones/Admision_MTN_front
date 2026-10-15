@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 // Tipos para gestión de usuarios - sistema simplificado con roles + niveles + asignaturas
 
 // Enum de roles básicos (debe coincidir exactamente con backend)
@@ -180,6 +182,7 @@ export interface UserTableProps {
   onToggleStatus: (user: User) => void;
   onResetPassword: (user: User) => void;
   className?: string;
+  totalCount?: number;
 }
 
 export interface UserFormProps {
@@ -196,6 +199,7 @@ export interface UserFiltersProps {
   onChange: (filters: UserFilters) => void;
   onReset: () => void;
   className?: string;
+  actions?: ReactNode;
 }
 
 export interface UserStatsProps {

@@ -12,12 +12,14 @@ import {
   FunnelIcon,
   XMarkIcon
 } from '../icons/Icons';
+import { FiChevronDown } from 'react-icons/fi';
 
 const UserFilters: React.FC<UserFiltersProps> = ({
   filters,
   onChange,
   onReset,
-  className = ''
+  className = '',
+  actions
 }) => {
 
   const handleSearchChange = (search: string) => {
@@ -40,59 +42,64 @@ const UserFilters: React.FC<UserFiltersProps> = ({
   const hasActiveFilters = filters.search || filters.role || filters.active !== undefined;
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Barra de búsqueda */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+    <div className={`space-y-3 ${className}`}>
+      {/* Búsqueda + filtros + acciones en una sola fila */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[240px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar por nombre, apellido, email o RUT..."
+            value={filters.search || ''}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Buscar por nombre, apellido, email o RUT..."
-          value={filters.search || ''}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
-        />
-      </div>
 
-      {/* Filtros en línea */}
-      <div className="flex flex-wrap items-center gap-4">
         {/* Filtro por rol */}
-        <div className="flex items-center space-x-2">
-          <FunnelIcon className="h-4 w-4 text-gray-500" />
-          <label htmlFor="role-filter" className="text-sm font-medium text-gray-700">
+        <div className="flex items-center gap-2">
+          <FunnelIcon className="h-4 w-4 text-gray-500 shrink-0" />
+          <label htmlFor="role-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
             Rol:
           </label>
-          <select
-            id="role-filter"
-            value={filters.role || ''}
-            onChange={(e) => handleRoleChange(e.target.value)}
-            className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
-          >
-            <option value="">Todos los roles</option>
-            {UserUtils.getSystemRoles().map(role => (
-              <option key={role} value={role}>
-                {USER_ROLE_LABELS[role]}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="role-filter"
+              value={filters.role || ''}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              className="appearance-none text-sm border border-gray-300 rounded-lg py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+            >
+              <option value="">Todos los roles</option>
+              {UserUtils.getSystemRoles().map(role => (
+                <option key={role} value={role}>
+                  {USER_ROLE_LABELS[role]}
+                </option>
+              ))}
+            </select>
+            <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          </div>
         </div>
 
         {/* Filtro por estado */}
-        <div className="flex items-center space-x-2">
-          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+        <div className="flex items-center gap-2">
+          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
             Estado:
           </label>
-          <select
-            id="status-filter"
-            value={filters.active === true ? 'active' : filters.active === false ? 'inactive' : ''}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
-          >
-            <option value="">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-          </select>
+          <div className="relative">
+            <select
+              id="status-filter"
+              value={filters.active === true ? 'active' : filters.active === false ? 'inactive' : ''}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="appearance-none text-sm border border-gray-300 rounded-lg py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+            >
+              <option value="">Todos los estados</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+            <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          </div>
         </div>
 
         {/* Botón limpiar filtros */}
@@ -107,6 +114,8 @@ const UserFilters: React.FC<UserFiltersProps> = ({
             <span>Limpiar filtros</span>
           </Button>
         )}
+
+        {actions}
       </div>
 
       {/* Resumen de filtros activos */}

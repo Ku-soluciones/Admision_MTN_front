@@ -450,7 +450,7 @@ const InterviewCommandCenter: React.FC<InterviewCommandCenterProps> = ({
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-gray-950">Calendario global</h2>
           <p className="mt-1 max-w-3xl text-sm text-gray-600">
