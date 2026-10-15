@@ -3,11 +3,11 @@ import React from 'react';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { Application } from '../../services/applicationService';
 import { buildGradeDisplay, buildStudentDisplayName } from '../../services/applicationTableMapper';
+import { FiRefreshCw, FiSearch, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { ChevronsUpDown } from 'lucide-react';
 import {
   FileTextIcon,
-  EyeIcon,
-  ArchiveIcon,
-  CheckCircleIcon
+  ArchiveIcon
 } from '../icons/Icons';
 
 const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -20,12 +20,47 @@ const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
   </div>
 );
 
+type SortField = 'student' | 'grade' | 'guardian' | 'status' | 'payment' | 'questionnaire' | 'date';
+
+interface SortState {
+  field: SortField;
+  direction: 'asc' | 'desc';
+}
+
+const SortableTh: React.FC<{
+  field: SortField;
+  label: string;
+  sort: SortState;
+  onSort: (field: SortField) => void;
+  className?: string;
+}> = ({ field, label, sort, onSort, className = '' }) => {
+  const isActive = sort.field === field;
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-700"
+      >
+        {label}
+        {isActive ? (
+          sort.direction === 'asc' ? <FiChevronUp className="h-3.5 w-3.5" /> : <FiChevronDown className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronsUpDown className="h-3.5 w-3.5 text-gray-300" />
+        )}
+      </button>
+    </th>
+  );
+};
+
 interface ApplicationsTableProps {
   applications: Application[];
   isLoading?: boolean;
   onView?: (application: Application) => void;
   onArchive?: (application: Application) => void;
   onDecision?: (application: Application) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   className?: string;
 }
 
@@ -88,15 +123,23 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   onView,
   onArchive,
   onDecision,
+  onRefresh,
+  isRefreshing = false,
   className = ''
 }) => {
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
-  const [selectedId, setSelectedId] = React.useState<number | null>(null);
+  const pageSize = 10;
   const [search, setSearch] = React.useState('');
+  const [sort, setSort] = React.useState<SortState>({ field: 'date', direction: 'desc' });
 
-  React.useEffect(() => { setCurrentPage(1); setSelectedId(null); }, [applications]);
+  React.useEffect(() => { setCurrentPage(1); }, [applications]);
   React.useEffect(() => { setCurrentPage(1); }, [search]);
+
+  const handleSort = (field: SortField) => {
+    setSort(prev => prev.field === field
+      ? { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { field, direction: 'asc' });
+  };
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -105,20 +148,46 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       const st = app.student as Record<string, unknown> | undefined;
       const name = buildStudentDisplayName(st).toLowerCase();
       const rut = (app.student?.rut || '').toLowerCase();
-      const guardian = (app.guardian?.fullName ||
-        (app.applicantUser?.firstName ? `${app.applicantUser.firstName} ${app.applicantUser.lastName || ''}` : '')
-      ).toLowerCase();
-      const status = getStatusLabel(app.status).toLowerCase();
-      return name.includes(q) || rut.includes(q) || guardian.includes(q) || status.includes(q);
+      return name.includes(q) || rut.includes(q);
     });
   }, [applications, search]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const sorted = React.useMemo(() => {
+    const getValue = (app: Application): string | number => {
+      const st = app.student as Record<string, unknown> | undefined;
+      switch (sort.field) {
+        case 'student':
+          return buildStudentDisplayName(st);
+        case 'grade':
+          return buildGradeDisplay(st);
+        case 'guardian':
+          return app.guardian?.fullName ||
+            (app.applicantUser?.firstName ? `${app.applicantUser.firstName} ${app.applicantUser.lastName || ''}`.trim() : '');
+        case 'status':
+          return getStatusLabel(app.status);
+        case 'payment':
+          return getPaymentBadge(app.paymentStatus).label;
+        case 'questionnaire':
+          return app.hasComplementaryForm ? 1 : 0;
+        case 'date':
+          return app.submissionDate ? new Date(app.submissionDate).getTime() : 0;
+        default:
+          return '';
+      }
+    };
 
-  const handleRowClick = (app: Application) => {
-    setSelectedId(prev => prev === app.id ? null : app.id);
-  };
+    return [...filtered].sort((a, b) => {
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      const comparison = typeof valueA === 'number' && typeof valueB === 'number'
+        ? valueA - valueB
+        : String(valueA).localeCompare(String(valueB), 'es');
+      return sort.direction === 'asc' ? comparison : -comparison;
+    });
+  }, [filtered, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paged = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (isLoading) {
     return (
@@ -144,124 +213,107 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   return (
     <div className={`overflow-hidden ${className}`}>
 
-      {/* Buscador */}
-      <div className="relative mb-3">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, RUT, apoderado o estado…"
-          className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
-        />
-        {search && (
+      {/* Actualizar + Buscador */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <span className="text-sm text-gray-500">
+          {sorted.length} postulaci{sorted.length === 1 ? 'ón' : 'ones'}
+        </span>
+        <div className="flex flex-wrap items-center gap-2">
+        {onRefresh && (
           <button
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <FiRefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+            Actualizar
           </button>
         )}
+        <div className="relative w-full sm:w-72">
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, RUT"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <FiX className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        </div>
       </div>
 
-      {/* Hint instructivo */}
-      {selectedId === null && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-blue-600 text-xs">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Selecciona una fila para ver las acciones disponibles
-        </div>
-      )}
-
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full table-fixed divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-6 px-3 py-2.5"></th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estudiante</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Grado</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Apoderado</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Pago</th>
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Cuestionario</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ minWidth: 180 }}>Fecha / Acciones</th>
+              <SortableTh field="student" label="Estudiante" sort={sort} onSort={handleSort} className="w-[20%] px-3 py-2.5 text-left" />
+              <SortableTh field="grade" label="Grado" sort={sort} onSort={handleSort} className="w-[7%] px-3 py-2.5 text-left" />
+              <SortableTh field="guardian" label="Apoderado" sort={sort} onSort={handleSort} className="w-[14%] px-3 py-2.5 text-left hidden md:table-cell" />
+              <SortableTh field="status" label="Estado" sort={sort} onSort={handleSort} className="w-[10%] px-3 py-2.5 text-left" />
+              <SortableTh field="payment" label="Pago" sort={sort} onSort={handleSort} className="w-[9%] px-3 py-2.5 text-center" />
+              <SortableTh field="questionnaire" label="Cuestionario" sort={sort} onSort={handleSort} className="w-[10%] px-3 py-2.5 text-center" />
+              <SortableTh field="date" label="Fecha" sort={sort} onSort={handleSort} className="w-[10%] px-3 py-2.5 text-left" />
+              <th className="w-[20%] px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {paged.map((application) => {
-              const isSelected = selectedId === application.id;
               const st = application.student as Record<string, unknown> | undefined;
               const studentLine = buildStudentDisplayName(st);
-              const parts = studentLine.split(/\s+/).filter(Boolean);
-              const initials = parts.length > 1
-                ? `${parts[0]?.charAt(0) || 'N'}${parts[parts.length - 1]?.charAt(0) || ''}`
-                : parts[0]?.slice(0, 2) || 'NN';
 
               return (
                 <tr
                   key={application.id}
-                  onClick={() => handleRowClick(application)}
-                  className={`transition-colors cursor-pointer group ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                  className="group hover:bg-gray-50 transition-colors"
                 >
-                  {/* Indicador lateral */}
-                  <td className="px-3 py-3">
-                    <div className={`w-1.5 h-8 rounded-full transition-all duration-300 ${
-                      isSelected ? 'bg-azul-monte-tabor' : 'bg-transparent group-hover:bg-gray-200'
-                    }`} />
-                  </td>
-
                   {/* Estudiante */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors duration-300 ${
-                        isSelected ? 'bg-azul-monte-tabor text-white' : 'bg-azul-monte-tabor bg-opacity-10 text-azul-monte-tabor'
-                      }`}>
-                        {(initials || 'NN').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className={`text-sm font-medium truncate transition-colors duration-300 ${isSelected ? 'text-azul-monte-tabor' : 'text-gray-900'}`}>
-                          {studentLine}
-                        </div>
-                        <div className="text-xs text-gray-400 truncate">
-                          {application.student?.rut || 'Sin RUT'}
-                        </div>
-                      </div>
+                  <td className="px-3 py-3 overflow-hidden">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {studentLine}
+                    </div>
+                    <div className="text-xs text-gray-400 truncate">
+                      {application.student?.rut || 'Sin RUT'}
                     </div>
                   </td>
 
                   {/* Grado */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span className="text-sm text-gray-700">{buildGradeDisplay(st)}</span>
                   </td>
 
                   {/* Apoderado — oculto en móvil */}
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <div className="text-sm text-gray-700 truncate max-w-[160px]">
+                  <td className="px-3 py-3 overflow-hidden hidden md:table-cell">
+                    <div className="text-sm text-gray-700 truncate">
                       {application.guardian?.fullName ||
                         (application.applicantUser?.firstName
                           ? `${application.applicantUser.firstName} ${application.applicantUser.lastName || ''}`.trim()
                           : '—')}
                     </div>
-                    <div className="text-xs text-gray-400 truncate max-w-[160px]">
+                    <div className="text-xs text-gray-400 truncate">
                       {application.guardian?.email || application.applicantUser?.email || ''}
                     </div>
                   </td>
 
                   {/* Estado */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
                       {getStatusLabel(application.status)}
                     </span>
                   </td>
 
                   {/* Pago */}
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <td className="px-2 py-3 whitespace-nowrap text-center">
                     {(() => {
                       const badge = getPaymentBadge(application.paymentStatus);
                       return (
@@ -273,7 +325,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                   </td>
 
                   {/* Cuestionario */}
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <td className="px-2 py-3 whitespace-nowrap text-center">
                     {(() => {
                       const badge = getComplementaryBadge(application.hasComplementaryForm);
                       return (
@@ -284,83 +336,46 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                     })()}
                   </td>
 
-                  {/* Fecha / Acciones — cross-fade */}
-                  <td className="px-4 py-3 relative" style={{ minWidth: 180 }}>
-                    {/* Fecha — se va al seleccionar */}
-                    <div
-                      className="absolute inset-y-0 left-4 right-4 flex items-center transition-all duration-300"
-                      style={{
-                        opacity: isSelected ? 0 : 1,
-                        transform: isSelected ? 'translateX(-10px)' : 'translateX(0)',
-                        pointerEvents: isSelected ? 'none' : 'auto'
-                      }}
-                    >
-                      <span className="text-sm text-gray-500">{formatDate(application.submissionDate)}</span>
-                    </div>
+                  {/* Fecha */}
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <span className="text-sm text-gray-500">{formatDate(application.submissionDate)}</span>
+                  </td>
 
-                    {/* Acciones — aparecen al seleccionar */}
-                    <div
-                      className="absolute inset-y-0 left-4 right-4 flex items-center gap-2 transition-all duration-300"
-                      style={{
-                        opacity: isSelected ? 1 : 0,
-                        transform: isSelected ? 'translateX(0)' : 'translateX(10px)',
-                        pointerEvents: isSelected ? 'auto' : 'none'
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Ver */}
+                  {/* Acciones */}
+                  <td className="px-3 py-3 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center gap-1.5">
                       {onView && (
-                        <Tip label="Ver detalles">
-                          <button
-                            onClick={() => onView(application)}
-                            className="flex items-center justify-center w-9 h-9 rounded-xl bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm"
-                          >
-                            <EyeIcon className="w-4 h-4" />
-                          </button>
-                        </Tip>
+                        <button
+                          onClick={() => onView(application)}
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          Ver detalles
+                        </button>
                       )}
-                      {/* Decisión */}
                       {onDecision && (
                         <Tip label={applicationStatusPolicy(application).reason || "Decisión final"}>
                           <button
                             disabled={applicationStatusPolicy(application).locked}
                             aria-label={applicationStatusPolicy(application).reason || "Decisión final"}
                             onClick={() => onDecision(application)}
-                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-green-400 text-green-600 hover:bg-green-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            <CheckCircleIcon className="w-4 h-4" />
+                            Decisión final
                           </button>
                         </Tip>
                       )}
-                      {/* Archivar */}
                       {onArchive && (
                         <Tip label={!applicationStatusPolicy(application).canChangeTo("ARCHIVED") ? applicationStatusPolicy(application).reason : "Archivar postulación"}>
                           <button
                             disabled={!applicationStatusPolicy(application).canChangeTo("ARCHIVED")}
                             aria-label="Archivar postulación"
                             onClick={() => onArchive(application)}
-                            className="flex items-center justify-center w-9 h-9 rounded-xl border-2 border-orange-400 text-orange-500 hover:bg-orange-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ArchiveIcon className="w-4 h-4" />
                           </button>
                         </Tip>
                       )}
-                      {/* Deseleccionar */}
-                      <Tip label="Deseleccionar">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(null); }}
-                          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors ml-auto"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </Tip>
-                    </div>
-
-                    {/* Spacer invisible */}
-                    <div className="invisible flex items-center">
-                      <span className="text-sm">00 ene 0000</span>
                     </div>
                   </td>
                 </tr>
@@ -370,36 +385,26 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
         </table>
       </div>
 
-      {/* Footer: contador + selector página + paginación */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
-        <span className="text-xs text-gray-400">
-          {Math.min((currentPage - 1) * pageSize + 1, applications.length)}–{Math.min(currentPage * pageSize, applications.length)} de {applications.length} postulaciones
-        </span>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400">Por página:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
-              <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
-              <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{currentPage} / {totalPages}</span>
-              <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
-              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
-            </div>
-          )}
-        </div>
+      {/* Footer: paginación simple */}
+      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          ← Anterior
+        </button>
+        <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          Siguiente →
+        </button>
+      </div>
       </div>
     </div>
   );

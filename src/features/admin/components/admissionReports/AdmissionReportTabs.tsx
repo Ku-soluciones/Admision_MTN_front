@@ -160,7 +160,7 @@ export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ select
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+      <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Admisión</p>
@@ -221,7 +221,7 @@ export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ select
         {schoolnetMessage && <p className="text-sm font-medium text-slate-600" role="status">{schoolnetMessage}</p>}
       </section>
 
-      <nav className="flex gap-1 border-b border-slate-200" aria-label="Vistas de admisión">
+      <nav className="inline-flex self-start gap-2" aria-label="Vistas de admisión">
         <ViewTab active={activeView === 'operational'} onClick={() => changeView('operational')} icon={<FiUsers className="h-4 w-4" aria-hidden="true" />}>Seguimiento operativo</ViewTab>
         <ViewTab active={activeView === 'final'} onClick={() => changeView('final')} icon={<FiClipboard className="h-4 w-4" aria-hidden="true" />}>Resumen final</ViewTab>
       </nav>
@@ -298,7 +298,9 @@ const ViewTab = ({ active, onClick, icon, children }: { active: boolean; onClick
     type="button"
     onClick={onClick}
     aria-pressed={active}
-    className={`inline-flex min-h-11 items-center gap-2 border-b-2 px-4 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${active ? 'border-blue-900 text-blue-950' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}
+    className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+      active ? 'bg-white text-gray-950 ring-1 ring-gray-200' : 'text-gray-600 hover:text-gray-950'
+    }`}
   >
     {icon}{children}
   </button>

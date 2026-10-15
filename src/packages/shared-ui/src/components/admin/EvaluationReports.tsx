@@ -20,16 +20,18 @@ import PsychologicalInterviewForm from '../evaluations/PsychologicalInterviewFor
 import CycleDirectorForm from '../evaluations/CycleDirectorForm';
 import {
   FileText,
-  Eye,
-  Download,
   Printer,
   Calculator,
   BookOpen,
   Globe,
   User,
   ClipboardList,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown
 } from 'lucide-react';
+import { FiDownload as Download } from 'react-icons/fi';
 
 interface EvaluationReportsProps {
   applications: Application[];
@@ -44,6 +46,33 @@ interface EvaluationWithDetails extends Evaluation {
   };
 }
 
+type ReportSortField = 'evaluation' | 'student' | 'evaluator' | 'date';
+
+interface SortableHeaderProps {
+  field: ReportSortField;
+  label: string;
+  sort: { field: ReportSortField; direction: 'asc' | 'desc' };
+  onSort: (field: ReportSortField) => void;
+}
+
+const SortableHeader: React.FC<SortableHeaderProps> = ({ field, label, sort, onSort }) => {
+  const isActive = sort.field === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-slate-700"
+    >
+      {label}
+      {isActive ? (
+        sort.direction === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />
+      ) : (
+        <ChevronsUpDown className="h-3.5 w-3.5 text-slate-300" />
+      )}
+    </button>
+  );
+};
+
 const EvaluationReports: React.FC<EvaluationReportsProps> = ({
   applications,
   onRefresh
@@ -56,13 +85,24 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 10;
   
   const [filters, setFilters] = useState({
     type: 'all',
     status: 'all',
     search: ''
   });
+
+  const [sort, setSort] = useState<{ field: ReportSortField; direction: 'asc' | 'desc' }>({
+    field: 'date',
+    direction: 'desc'
+  });
+
+  const handleSort = (field: ReportSortField) => {
+    setSort(prev => prev.field === field
+      ? { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { field, direction: 'asc' });
+  };
 
   useEffect(() => { setCurrentPage(1); }, [filters]);
 
@@ -158,6 +198,36 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
       evaluation.evaluator?.lastName.toLowerCase().includes(filters.search.toLowerCase());
     
     return matchesType && matchesStatus && matchesSearch;
+  });
+
+  const sortedEvaluations = [...filteredEvaluations].sort((a, b) => {
+    let valueA: string | number = '';
+    let valueB: string | number = '';
+
+    switch (sort.field) {
+      case 'evaluation':
+        valueA = EVALUATION_TYPE_LABELS[a.evaluationType] || '';
+        valueB = EVALUATION_TYPE_LABELS[b.evaluationType] || '';
+        break;
+      case 'student':
+        valueA = a.applicationDetails?.studentName || '';
+        valueB = b.applicationDetails?.studentName || '';
+        break;
+      case 'evaluator':
+        valueA = `${a.evaluator?.firstName || ''} ${a.evaluator?.lastName || ''}`.trim();
+        valueB = `${b.evaluator?.firstName || ''} ${b.evaluator?.lastName || ''}`.trim();
+        break;
+      case 'date':
+        valueA = new Date(a.createdAt).getTime() || 0;
+        valueB = new Date(b.createdAt).getTime() || 0;
+        break;
+    }
+
+    const comparison = typeof valueA === 'number' && typeof valueB === 'number'
+      ? valueA - valueB
+      : String(valueA).localeCompare(String(valueB), 'es');
+
+    return sort.direction === 'asc' ? comparison : -comparison;
   });
 
   const handleViewEvaluation = (evaluation: EvaluationWithDetails) => {
@@ -334,9 +404,9 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
     );
   }
 
-  const totalPages = Math.ceil(filteredEvaluations.length / PAGE_SIZE);
+  const totalPages = Math.ceil(sortedEvaluations.length / PAGE_SIZE);
   const safeCurrentPage = Math.min(currentPage, totalPages || 1);
-  const pagedEvaluations = filteredEvaluations.slice(
+  const pagedEvaluations = sortedEvaluations.slice(
     (safeCurrentPage - 1) * PAGE_SIZE,
     safeCurrentPage * PAGE_SIZE
   );
@@ -345,35 +415,41 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
     <div className="space-y-5">
       {/* Filtros inline */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-44 flex-1">
+        <div className="w-52">
           <label className="mb-1.5 block text-xs font-medium text-slate-500">Tipo de evaluación</label>
-          <select
-            value={filters.type}
-            onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-            className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-          >
-            <option value="all">Todos los tipos</option>
-            {Object.entries(EVALUATION_TYPE_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+              className="min-h-10 w-full appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            >
+              <option value="all">Todos los tipos</option>
+              {Object.entries(EVALUATION_TYPE_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          </div>
         </div>
 
-        <div className="min-w-40 flex-1">
+        <div className="w-48">
           <label className="mb-1.5 block text-xs font-medium text-slate-500">Estado</label>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-          >
-            <option value="all">Todos los estados</option>
-            {Object.entries(EVALUATION_STATUS_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              className="min-h-10 w-full appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            >
+              <option value="all">Todos los estados</option>
+              {Object.entries(EVALUATION_STATUS_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          </div>
         </div>
 
-        <div className="min-w-56 flex-[2]">
+        <div className="min-w-56 flex-1">
           <label className="mb-1.5 block text-xs font-medium text-slate-500">Buscar</label>
           <input
             type="search"
@@ -398,12 +474,12 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
       {/* Lista de evaluaciones */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {/* Cabecera de tabla */}
-        <div className="hidden grid-cols-[2fr_2fr_2fr_1.5fr_auto] border-b border-slate-200 bg-slate-50 px-5 py-3 md:grid">
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Evaluación</span>
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Estudiante</span>
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Evaluador</span>
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Fechas</span>
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500 text-right">Acciones</span>
+        <div className="hidden grid-cols-[2fr_2fr_2fr_1.5fr_270px] border-b border-slate-200 bg-slate-50 px-5 py-3 md:grid">
+          <SortableHeader field="evaluation" label="Evaluación" sort={sort} onSort={handleSort} />
+          <SortableHeader field="student" label="Estudiante" sort={sort} onSort={handleSort} />
+          <SortableHeader field="evaluator" label="Evaluador" sort={sort} onSort={handleSort} />
+          <SortableHeader field="date" label="Fechas" sort={sort} onSort={handleSort} />
+          <span className="text-center text-xs font-bold uppercase tracking-wide text-slate-500">Acciones</span>
         </div>
 
         {pagedEvaluations.length === 0 ? (
@@ -416,7 +492,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
             {pagedEvaluations.map((evaluation) => {
               const statusBadge = getStatusBadgeClass(evaluation.status);
               return (
-                <div key={evaluation.id} className="grid grid-cols-1 gap-y-3 px-5 py-4 hover:bg-slate-50 md:grid-cols-[2fr_2fr_2fr_1.5fr_auto] md:items-center md:gap-y-0">
+                <div key={evaluation.id} className="grid grid-cols-1 gap-y-3 px-5 py-4 hover:bg-slate-50 md:grid-cols-[2fr_2fr_2fr_1.5fr_270px] md:items-center md:gap-y-0">
                   {/* Tipo + badge */}
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
@@ -436,7 +512,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
                   </div>
 
                   {/* Estudiante */}
-                  <div className="text-sm md:px-4">
+                  <div className="text-sm">
                     <span className="block font-semibold text-slate-900">
                       {evaluation.applicationDetails?.studentName}
                     </span>
@@ -446,7 +522,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
                   </div>
 
                   {/* Evaluador */}
-                  <div className="text-sm md:px-4">
+                  <div className="text-sm">
                     <span className="block font-semibold text-slate-900">
                       {evaluation.evaluator?.firstName} {evaluation.evaluator?.lastName}
                     </span>
@@ -454,7 +530,7 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
                   </div>
 
                   {/* Fechas */}
-                  <div className="text-xs text-slate-600 md:px-4">
+                  <div className="text-xs text-slate-600">
                     <span className="block">Creada: {new Date(evaluation.createdAt).toLocaleDateString('es-CL')}</span>
                     {evaluation.completionDate && (
                       <span className="block text-emerald-700">Completada: {new Date(evaluation.completionDate).toLocaleDateString('es-CL')}</span>
@@ -462,13 +538,12 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
                   </div>
 
                   {/* Acciones */}
-                  <div className="flex items-center gap-2 md:justify-end">
+                  <div className="flex items-center justify-center gap-1.5 md:w-[270px]">
                     <button
                       type="button"
                       onClick={() => handleViewEvaluation(evaluation)}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="inline-flex min-h-9 w-[125px] items-center justify-center whitespace-nowrap rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     >
-                      <Eye className="h-4 w-4" />
                       Ver reporte
                     </button>
 
@@ -476,18 +551,18 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
                       <button
                         type="button"
                         onClick={() => generateReport(evaluation)}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        className="inline-flex min-h-9 w-[125px] items-center justify-center gap-2 text-sm font-normal text-gray-900 hover:text-sky-500 hover:underline focus:outline-none"
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-5 w-5 shrink-0" />
                         Descargar
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleEditEvaluation(evaluation)}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-amber-500 px-3 text-sm font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                        className="inline-flex min-h-9 w-[125px] items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-200"
                       >
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-5 w-5 shrink-0" />
                         {evaluation.status === EvaluationStatus.PENDING ? 'Iniciar' : 'Continuar'}
                       </button>
                     )}
@@ -499,21 +574,25 @@ const EvaluationReports: React.FC<EvaluationReportsProps> = ({
         )}
 
         {/* Paginación */}
-        {totalPages > 1 && (
-          <nav className="flex items-center justify-between border-t border-slate-200 px-5 py-3" aria-label="Paginación">
-            <span className="text-sm text-slate-600">
-              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, filteredEvaluations.length)} de {filteredEvaluations.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-50">
-                Anterior
-              </button>
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-50">
-                Siguiente
-              </button>
-            </div>
-          </nav>
-        )}
+        <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={safeCurrentPage === 1}
+            className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+          >
+            ← Anterior
+          </button>
+          <span className="text-sm text-gray-500">Página {safeCurrentPage} de {Math.max(1, totalPages)}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={safeCurrentPage === totalPages || totalPages === 0}
+            className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+          >
+            Siguiente →
+          </button>
+        </div>
       </section>
 
       {/* Evaluation Form Modal */}

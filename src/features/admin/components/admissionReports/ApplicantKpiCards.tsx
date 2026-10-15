@@ -37,31 +37,18 @@ export const ApplicantKpiCards: React.FC<ApplicantKpiCardsProps> = ({
   }, [rows]);
 
   return (
-    <section aria-label="Resumen operativo y filtro rápido por estado" className="border-y border-slate-200 bg-white px-1 py-3 sm:px-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.9fr)_minmax(320px,1.1fr)_auto] xl:items-center">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <div className="flex items-baseline gap-2">
-            <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">{stats.total}</strong>
-            <span className="text-sm font-semibold text-slate-700">postulantes · {stats.courses} cursos</span>
-          </div>
+    <section aria-label="Resumen operativo y filtro rápido por estado" className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      {/* KPI */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Postulantes" sub={`${stats.courses} cursos`} value={stats.total} tone="blue" />
+        <KpiCard label="Por resolver" value={stats.needsAction} tone="amber" />
+        <KpiCard label="Cerrados" value={stats.resolved} tone="emerald" />
+        <KpiCard label="Incompletos" value={stats.recordsToReview} tone="violet" />
+      </div>
 
-          <dl className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-            <div className="flex items-baseline gap-1.5">
-              <dt className="text-slate-600">Por resolver</dt>
-              <dd className="font-bold tabular-nums text-amber-700">{stats.needsAction}</dd>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <dt className="text-slate-600">Cerrados</dt>
-              <dd className="font-bold tabular-nums text-emerald-700">{stats.resolved}</dd>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <dt className="text-slate-600">Incompletos</dt>
-              <dd className="font-bold tabular-nums text-slate-900">{stats.recordsToReview}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="xl:border-l xl:border-slate-200 xl:pl-5">
+      {/* Barra de progreso */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-center justify-between gap-3">
             <span className="text-xs font-bold text-slate-700">Estado del proceso</span>
             <span className="text-xs tabular-nums text-slate-500">Selecciona para filtrar</span>
@@ -102,7 +89,7 @@ export const ApplicantKpiCards: React.FC<ApplicantKpiCardsProps> = ({
             type="button"
             onClick={onNeedsAction}
             aria-pressed={needsActionSelected}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 xl:justify-self-end ${
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
               needsActionSelected
                 ? 'bg-blue-900 text-white'
                 : 'border border-slate-300 bg-white text-blue-900 hover:bg-slate-50'
@@ -114,5 +101,22 @@ export const ApplicantKpiCards: React.FC<ApplicantKpiCardsProps> = ({
         )}
       </div>
     </section>
+  );
+};
+
+const KPI_TONES = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  violet: { bg: 'bg-violet-50', text: 'text-violet-700' }
+} as const;
+
+const KpiCard: React.FC<{ label: string; value: number; sub?: string; tone: keyof typeof KPI_TONES }> = ({ label, value, sub, tone }) => {
+  const { bg, text } = KPI_TONES[tone];
+  return (
+    <div className={`rounded-lg border border-slate-200 ${bg} px-3 py-2.5 sm:px-4 sm:py-3`}>
+      <span className="block text-xs font-semibold text-slate-600">{label}{sub ? ` · ${sub}` : ''}</span>
+      <strong className={`mt-1 block text-2xl font-bold tabular-nums ${text}`}>{value}</strong>
+    </div>
   );
 };

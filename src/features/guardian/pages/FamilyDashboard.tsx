@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCalendarDate } from '../../../packages/shared-utils/src/calendarDate';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../admin/components/ui/Card';
 import Badge from '../../admin/components/ui/Badge';
@@ -515,7 +516,7 @@ const FamilyDashboard: React.FC = () => {
                   <>
                     <p><strong>Nombre:</strong> {myApplication.student.firstName} {myApplication.student.lastName}</p>
                     <p><strong>RUT:</strong> {myApplication.student.rut}</p>
-                    <p><strong>Fecha de Nacimiento:</strong> {new Date(myApplication.student.birthDate).toLocaleDateString('es-CL')}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.student.birthDate)}</p>
                     <p><strong>Nivel:</strong> {myApplication.student.gradeApplied}</p>
                     <p><strong>Dirección:</strong> {myApplication.student.address}</p>
                     {myApplication.student.currentSchool && (
@@ -525,7 +526,7 @@ const FamilyDashboard: React.FC = () => {
                 ) : (
                   <>
                     <p><strong>Nombre:</strong> {myApplication.applicant?.firstName} {myApplication.applicant?.lastName}</p>
-                    <p><strong>Fecha de Nacimiento:</strong> {myApplication.applicant?.birthDate}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.applicant?.birthDate)}</p>
                     <p><strong>Nivel:</strong> {myApplication.applicant?.grade}</p>
                   </>
                 )}
@@ -601,7 +602,7 @@ const FamilyDashboard: React.FC = () => {
                       <p><strong>Nombres:</strong> {myApplication.student.firstName}</p>
                       <p><strong>Apellidos:</strong> {myApplication.student.lastName}</p>
                       <p><strong>RUT:</strong> {myApplication.student.rut}</p>
-                      <p><strong>Fecha de Nacimiento:</strong> {new Date(myApplication.student.birthDate).toLocaleDateString('es-CL')}</p>
+                      <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.student.birthDate)}</p>
                     </div>
                     <div>
                       <p><strong>Nivel Postulado:</strong> {myApplication.student.gradeApplied}</p>
