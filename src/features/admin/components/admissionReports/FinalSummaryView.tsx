@@ -1,7 +1,9 @@
 import { applicationStatusPolicy } from '../../../../packages/shared-ui/src/utils/applicationStatusPolicy';
-import React, { useCallback, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
   FiAlertCircle,
+  FiChevronDown,
+  FiChevronUp,
   FiDownload,
   FiEye,
   FiRefreshCw,
@@ -111,17 +113,39 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
   const [reportApplicant, setReportApplicant] = useState<FinalSummaryApplicant | null>(null);
   const [feedback, setFeedback] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [nameSort, setNameSort] = useState<'asc' | 'desc' | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const grades = useMemo(() => Array.from(new Set(rows.map((row) => row.gradeApplied))), [rows]);
   const filteredRows = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es');
-    return rows.filter((row) => (
+    const result = rows.filter((row) => (
       (!term || row.studentName.toLocaleLowerCase('es').includes(term) || row.siblingNames.some((name) => name.toLocaleLowerCase('es').includes(term))) &&
       (!grade || row.gradeApplied === grade) &&
       (!decision || (decision === 'PENDING' ? !DECISIONS.some((item) => item.value === row.status) : row.status === decision)) &&
       (!incompleteOnly || needsReview(row))
     ));
-  }, [decision, grade, incompleteOnly, rows, search]);
+    if (nameSort) {
+      result.sort((a, b) => a.studentName.localeCompare(b.studentName, 'es') * (nameSort === 'asc' ? 1 : -1));
+    }
+    return result;
+  }, [decision, grade, incompleteOnly, nameSort, rows, search]);
+
+  const toggleNameSort = useCallback(() => {
+    setNameSort((current) => (current === 'asc' ? 'desc' : current === 'desc' ? null : 'asc'));
+  }, []);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredRows, safePage]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, grade, decision, incompleteOnly, nameSort]);
 
   const stats = useMemo(() => rows.reduce((result, row) => {
     result.total += 1;
@@ -335,90 +359,123 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
 
   return (
     <div className="space-y-5">
-      <section className="border-y border-slate-200 bg-white py-4" aria-label="Indicadores del resumen final">
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.3fr)_repeat(5,minmax(90px,0.55fr))] lg:items-center">
-          <div>
-            <p className="text-sm font-semibold text-slate-600">Proceso {academicYear}</p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <strong className="text-3xl font-bold tracking-[-0.03em] text-slate-950">{stats.total}</strong>
-              <span className="text-sm text-slate-600">postulantes · {meta?.siblingFamilies || 0} familias con hermanos</span>
-            </div>
-          </div>
-          <SummaryMetric label="Aceptados" value={stats.approved} tone="text-emerald-700" />
-          <SummaryMetric label="Lista de espera" value={stats.waitlist} tone="text-amber-700" />
-          <SummaryMetric label="No aceptados" value={stats.rejected} tone="text-rose-700" />
-          <SummaryMetric label="Pendientes" value={stats.pending} tone="text-blue-800" />
-          <SummaryMetric label="Incompletos" value={stats.incomplete} tone="text-slate-900" />
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-label="Indicadores del resumen final">
+        <p className="mb-3 text-sm font-semibold text-slate-600">
+          Proceso {academicYear} · {meta?.siblingFamilies || 0} familias con hermanos
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <SummaryMetric label="Postulantes" value={stats.total} tone="blue" />
+          <SummaryMetric label="Aceptados" value={stats.approved} tone="emerald" />
+          <SummaryMetric label="Lista de espera" value={stats.waitlist} tone="amber" />
+          <SummaryMetric label="No aceptados" value={stats.rejected} tone="rose" />
+          <SummaryMetric label="Pendientes" value={stats.pending} tone="sky" />
+          <SummaryMetric label="Incompletos" value={stats.incomplete} tone="violet" />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-300 bg-white shadow-sm" aria-labelledby="final-summary-title">
-        <header className="rounded-t-2xl border-b border-slate-200 p-4 sm:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h2 id="final-summary-title" className="text-xl font-bold tracking-tight text-slate-950">Resumen para decisión final</h2>
-              <p className="mt-1 text-sm text-slate-600">Los colores identifican postulantes de una misma familia. Las decisiones guardadas aquí no envían correos.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={refresh} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
-                <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-                Actualizar
-              </button>
-              <button type="button" onClick={exportToExcel} disabled={!filteredRows.length || exporting} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-950 px-4 text-sm font-semibold text-white hover:bg-blue-900 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">
-                <FiDownload className="h-4 w-4" aria-hidden="true" />
-                {exporting ? 'Generando…' : `Exportar ${filteredRows.length}`}
-              </button>
-            </div>
-          </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="final-summary-title">
+        <div className="mb-3">
+          <h2 id="final-summary-title" className="text-lg font-semibold text-slate-900">Resumen para decisión final</h2>
+          <p className="mt-1 text-sm text-slate-600">Los colores identifican postulantes de una misma familia. Las decisiones guardadas aquí no envían correos.</p>
+        </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_220px_220px_auto]">
-            <label className="relative">
-              <span className="sr-only">Buscar postulante o hermano</span>
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar postulante o hermano" className="min-h-11 w-full rounded-xl border border-slate-300 pl-9 pr-3 text-sm focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" />
-            </label>
-            <select value={grade} onChange={(event) => setGrade(event.target.value)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" aria-label="Filtrar por curso">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[240px] flex-1">
+            <span className="sr-only">Buscar postulante o hermano</span>
+            <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar postulante o hermano" className="min-h-11 w-full rounded-lg border border-slate-300 pl-9 pr-3 text-sm focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" />
+          </label>
+          <label className="relative">
+            <select value={grade} onChange={(event) => setGrade(event.target.value)} className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" aria-label="Filtrar por curso">
               <option value="">Todos los cursos</option>
               {grades.map((item) => <option key={item} value={item}>{formatGradeLabel(item)}</option>)}
             </select>
-            <select value={decision} onChange={(event) => setDecision(event.target.value)} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" aria-label="Filtrar por decisión final">
+            <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          </label>
+          <label className="relative">
+            <select value={decision} onChange={(event) => setDecision(event.target.value)} className="min-h-11 appearance-none rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20" aria-label="Filtrar por decisión final">
               <option value="">Todas las decisiones</option>
               <option value="PENDING">Pendientes</option>
               {DECISIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
-            <button type="button" onClick={() => setIncompleteOnly((current) => !current)} aria-pressed={incompleteOnly} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${incompleteOnly ? 'bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-300' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
-              <FiAlertCircle className="h-4 w-4" aria-hidden="true" />
-              Solo incompletos
-            </button>
-          </div>
-          <p className="mt-3 text-xs font-medium text-slate-500" aria-live="polite">Mostrando {filteredRows.length} de {rows.length} postulantes</p>
-          {feedback && <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900" role="status">{feedback}</p>}
-        </header>
+            <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          </label>
+          <button type="button" onClick={() => setIncompleteOnly((current) => !current)} aria-pressed={incompleteOnly} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${incompleteOnly ? 'bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-300' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+            <FiAlertCircle className="h-4 w-4" aria-hidden="true" />
+            Solo incompletos
+          </button>
+          <button type="button" onClick={refresh} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
+            <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+            Actualizar
+          </button>
+          <button type="button" onClick={exportToExcel} disabled={!filteredRows.length || exporting} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-900 px-4 text-sm font-semibold text-white hover:bg-blue-950 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">
+            <FiDownload className="h-4 w-4" aria-hidden="true" />
+            {exporting ? 'Generando…' : `Exportar ${filteredRows.length}`}
+          </button>
+        </div>
+
+        {feedback && <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900" role="status">{feedback}</p>}
+
+        {/* Total */}
+        <div className="flex items-center justify-end px-1 pt-2 text-xs text-slate-500" aria-live="polite">
+          <span>Total: {filteredRows.length}{filteredRows.length !== rows.length ? ` de ${rows.length}` : ''} postulante{filteredRows.length !== 1 ? 's' : ''}</span>
+        </div>
 
         {filteredRows.length ? (
           <>
-            <div className="divide-y divide-slate-200 xl:hidden">
-              {filteredRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
+            <div className="mt-2 rounded-lg border border-slate-200 overflow-hidden xl:hidden">
+              <div className="divide-y divide-slate-200">
+                {pagedRows.map((row) => <FinalSummaryMobileRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
+              </div>
+              {totalPages > 1 && (
+                <nav className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3" aria-label="Paginación del listado">
+                  <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={safePage === 1} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                    ← Anterior
+                  </button>
+                  <span className="text-sm text-slate-600">Página {safePage} de {totalPages}</span>
+                  <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={safePage === totalPages} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                    Siguiente →
+                  </button>
+                </nav>
+              )}
             </div>
-            <div className="hidden rounded-b-2xl xl:block">
+            <div className="mt-2 hidden rounded-lg border border-slate-200 overflow-hidden xl:block">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
-                  <col className="w-[16%]" />
+                  <col className="w-[22%]" />
                   <col className="w-[14%]" />
-                  <col className="w-[18%]" />
+                  <col className="w-[12%]" />
                   <col className="w-[14%]" />
                   <col className="w-[21%]" />
                   <col className="w-[17%]" />
                 </colgroup>
-                <thead className="sticky top-0 z-10 bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
+                <thead className="bg-slate-50">
                   <tr>
-                    <HeaderCell>Postulante</HeaderCell><HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell>Pruebas</HeaderCell><HeaderCell>Recomendación del director de ciclo</HeaderCell><HeaderCell>Decisión y ficha</HeaderCell>
+                    <th scope="col" className="break-words px-3 py-3.5 align-bottom text-xs font-bold uppercase leading-4 tracking-wide text-slate-600">
+                      <button type="button" onClick={toggleNameSort} className="inline-flex items-center gap-1 uppercase hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
+                        Postulante
+                        {nameSort === 'asc' ? <FiChevronUp className="h-3.5 w-3.5" aria-hidden="true" /> : <FiChevronDown className={`h-3.5 w-3.5 ${nameSort === 'desc' ? '' : 'opacity-40'}`} aria-hidden="true" />}
+                      </button>
+                    </th>
+                    <HeaderCell>Familia</HeaderCell><HeaderCell>Entrevista</HeaderCell><HeaderCell align="center">Pruebas</HeaderCell><HeaderCell align="center">Recomendación del director de ciclo</HeaderCell><HeaderCell align="center">Decisión y ficha</HeaderCell>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
+                  {pagedRows.map((row) => <FinalSummaryDesktopRow key={row.applicationId} row={row} saving={savingId === row.applicationId} onOpenCard={onOpenCard} onOpenReport={setReportApplicant} onDecision={setPendingDecision} />)}
                 </tbody>
               </table>
+
+              {totalPages > 1 && (
+                <nav className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3" aria-label="Paginación del listado">
+                  <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={safePage === 1} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                    ← Anterior
+                  </button>
+                  <span className="text-sm text-slate-600">Página {safePage} de {totalPages}</span>
+                  <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={safePage === totalPages} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                    Siguiente →
+                  </button>
+                </nav>
+              )}
             </div>
           </>
         ) : <EmptySummary onClear={() => { setSearch(''); setGrade(''); setDecision(''); setIncompleteOnly(false); }} />}
@@ -440,7 +497,24 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
   );
 };
 
-const SummaryMetric = ({ label, value, tone }: { label: string; value: number; tone: string }) => <div className="border-l border-slate-200 pl-4"><span className={`block text-2xl font-bold tabular-nums ${tone}`}>{value}</span><span className="text-xs font-semibold text-slate-600">{label}</span></div>;
+const SUMMARY_METRIC_TONES = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-700' },
+  sky: { bg: 'bg-sky-50', text: 'text-sky-700' },
+  violet: { bg: 'bg-violet-50', text: 'text-violet-700' }
+} as const;
+
+const SummaryMetric = ({ label, value, tone }: { label: string; value: number; tone: keyof typeof SUMMARY_METRIC_TONES }) => {
+  const { bg, text } = SUMMARY_METRIC_TONES[tone];
+  return (
+    <div className={`rounded-lg border border-slate-200 ${bg} px-3 py-2.5 sm:px-4 sm:py-3`}>
+      <span className="block text-xs font-semibold text-slate-600">{label}</span>
+      <strong className={`mt-1 block text-2xl font-bold tabular-nums ${text}`}>{value}</strong>
+    </div>
+  );
+};
 const HeaderCell = ({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'center' | 'right' }) => <th scope="col" className={`break-words px-3 py-3.5 align-bottom text-xs font-bold uppercase leading-4 tracking-wide text-slate-600 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>;
 const formatScore = (value: number | null, suffix = '%') => value == null ? '—' : `${Math.round(value)}${suffix}`;
 const familyTone = (row: FinalSummaryApplicant) => row.siblingGroupSize > 1 && row.familyGroupId != null ? FAMILY_TONES[Math.abs(row.familyGroupId) % FAMILY_TONES.length] : 'bg-slate-100 text-slate-700 ring-slate-200';
@@ -477,7 +551,7 @@ const CycleDirectorSummary = ({ row, onOpenReport }: { row: FinalSummaryApplican
     report.entryCourse || report.evaluator
   );
   return (
-    <div className="text-xs leading-5 text-slate-700">
+    <div className="text-center text-xs leading-5 text-slate-700">
       <p className="whitespace-pre-line">{safeDisplayText(report.recommendation, 'Sin registro')}</p>
       {hasDetail && (
         <button type="button" onClick={() => onOpenReport(row)} className="mt-1 inline-flex min-h-10 items-center font-bold text-blue-800 hover:text-blue-950 hover:underline hover:underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">
@@ -519,20 +593,23 @@ const CycleDirectorReportModal = ({ row, onClose }: { row: FinalSummaryApplicant
   </Modal>
 );
 
-const DecisionSelect = ({ row, saving, onDecision }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void }) => {
+const DecisionSelect = ({ row, saving, onDecision, widthClassName = 'w-40' }: { row: FinalSummaryApplicant; saving: boolean; onDecision: (value: { row: FinalSummaryApplicant; decision: FinalDecision }) => void; widthClassName?: string }) => {
   const policy = applicationStatusPolicy(row);
   const reasonId = useId();
   return (
-    <label className="block w-full min-w-0">
+    <label className={`min-w-0 ${widthClassName}`}>
       <span className="sr-only">Decisión final para {row.studentName}</span>
-      <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''}
-        onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })}
-        disabled={saving || policy.locked} aria-describedby={reasonId}
-        className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
-        {!DECISIONS.some((item) => item.value === row.status) && <option value="">Pendiente</option>}
-        {DECISIONS.filter((item) => item.value === row.status || policy.canChangeTo(item.value)).map((item) =>
-          <option key={item.value} value={item.value}>{item.label}</option>)}
-      </select>
+      <div className="relative">
+        <select value={DECISIONS.some((item) => item.value === row.status) ? row.status : ''}
+          onChange={(event) => event.target.value && onDecision({ row, decision: event.target.value as FinalDecision })}
+          disabled={saving || policy.locked} aria-describedby={reasonId}
+          className="min-h-11 w-full appearance-none rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-800 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/20 disabled:opacity-50">
+          {!DECISIONS.some((item) => item.value === row.status) && <option value="">Pendiente</option>}
+          {DECISIONS.filter((item) => item.value === row.status || policy.canChangeTo(item.value)).map((item) =>
+            <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+        <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+      </div>
       <span id={reasonId} className="mt-1 block text-xs text-slate-600">{policy.reason}</span>
     </label>
   );
@@ -543,11 +620,13 @@ const FinalSummaryDesktopRow = ({ row, saving, onOpenCard, onOpenReport, onDecis
     <td className="px-3 py-3.5"><strong className="block break-words text-slate-950">{row.studentName}</strong><span className="mt-0.5 block text-xs text-slate-500">{formatGradeLabel(row.gradeApplied)}</span></td>
     <td className="px-3 py-3.5"><FamilyBadge row={row} />{row.siblingNames.length > 0 && <span className="mt-1.5 block break-words text-xs leading-4 text-slate-500">Con {row.siblingNames.join(', ')}</span>}</td>
     <td className="px-3 py-3.5"><FamilyScores row={row} /></td>
-    <td className="px-3 py-3.5"><ExamScores row={row} /></td>
-    <td className="break-words px-3 py-3.5"><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></td>
-    <td className="px-3 py-3.5">
-      <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
-      <button type="button" onClick={() => onOpenCard(row.applicationId)} className="mt-1.5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs font-bold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
+    <td className="align-middle px-3 py-3.5"><ExamScores row={row} /></td>
+    <td className="align-middle break-words px-3 py-3.5"><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></td>
+    <td className="align-middle px-3 py-3.5">
+      <div className="flex items-center justify-center gap-2">
+        <DecisionSelect row={row} saving={saving} onDecision={onDecision} />
+        <button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-blue-200 px-3 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button>
+      </div>
     </td>
   </tr>
 );
@@ -557,7 +636,7 @@ const FinalSummaryMobileRow = ({ row, saving, onOpenCard, onOpenReport, onDecisi
     <div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-950">{row.studentName}</h3><p className="mt-1 text-sm text-slate-500">{formatGradeLabel(row.gradeApplied)}</p></div><FamilyBadge row={row} /></div>
     <div className="mt-4 border-y border-slate-200 py-3"><FamilyScores row={row} /><dl className="mt-3 grid grid-cols-3 gap-2 text-center"><Score label="Leng." value={row.exams.language} /><Score label="Mat." value={row.exams.mathematics} /><Score label="Inglés" value={row.exams.english} /></dl></div>
     <div className="mt-3"><strong className="text-sm text-slate-900">Recomendación del director de ciclo</strong><CycleDirectorSummary row={row} onOpenReport={onOpenReport} /></div>
-    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
+    <div className="mt-3 flex flex-col gap-2 sm:flex-row"><DecisionSelect row={row} saving={saving} onDecision={onDecision} widthClassName="w-full flex-1" /><button type="button" onClick={() => onOpenCard(row.applicationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 font-semibold text-blue-800"><FiEye className="h-4 w-4" aria-hidden="true" />Ver ficha</button></div>
   </article>
 );
 

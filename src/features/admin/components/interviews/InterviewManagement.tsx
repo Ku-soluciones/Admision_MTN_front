@@ -12,7 +12,8 @@ import {
   XCircleIcon,
   PlusIcon,
 } from '../icons/Icons';
-import { FiCalendar, FiCheckCircle, FiClock, FiUser, FiUsers, FiStar, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiClock, FiUser, FiUsers, FiMapPin, FiMail, FiFilter, FiEye, FiEdit, FiCheck, FiX, FiRefreshCw, FiArrowLeft, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { ChevronsUpDown as FiChevronsUpDown } from 'lucide-react';
 import {
   Interview,
   InterviewStatus,
@@ -532,79 +533,12 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   return (
     <div className={`space-y-5 ${className}`}>
       {/* Header */}
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+      <section className="flex flex-col gap-4">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Entrevistas</p>
           <p className="mt-1 max-w-3xl text-sm text-gray-600">Centro de evaluación de candidatos</p>
         </div>
       </section>
-
-      {/* Estadísticas rápidas */}
-      {stats && (
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Resumen de entrevistas">
-          <div className="min-w-[148px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
-            <div className="flex items-center gap-2">
-              <FiCalendar className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <p className="min-w-0 truncate text-xs font-semibold">Total Entrevistas</p>
-              <p className="ml-auto text-lg font-bold leading-none">{stats.totalInterviews}</p>
-            </div>
-          </div>
-          <div className="min-w-[132px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-            <div className="flex items-center gap-2">
-              <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <p className="min-w-0 truncate text-xs font-semibold">Pendientes</p>
-              <p className="ml-auto text-lg font-bold leading-none">{stats.pendingInterviews}</p>
-            </div>
-          </div>
-          <div className="min-w-[132px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-            <div className="flex items-center gap-2">
-              <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <p className="min-w-0 truncate text-xs font-semibold">Completadas</p>
-              <p className="ml-auto text-lg font-bold leading-none">{stats.completedInterviews}</p>
-            </div>
-          </div>
-          <div className="min-w-[160px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
-            <div className="flex items-center gap-2">
-              <FiStar className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <p className="min-w-0 truncate text-xs font-semibold">Puntuación Promedio</p>
-              <p className="ml-auto text-lg font-bold leading-none">{(stats.averageScore || 0).toFixed(1)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Acciones */}
-      <div className="flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setShowFilters(!showFilters)}
-          className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-            showFilters
-              ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <FiFilter className="h-4 w-4" aria-hidden="true" />
-          Filtros
-        </button>
-        <button
-          type="button"
-          onClick={loadInterviews}
-          disabled={isLoading}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-        >
-          <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-          Actualizar
-        </button>
-        <button
-          type="button"
-          onClick={handleCreateInterview}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-dorado-nazaret bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-        >
-          <PlusIcon className="h-4 w-4" aria-hidden="true" />
-          Nueva Entrevista
-        </button>
-      </div>
 
       {/* Filtros expansibles */}
       {showFilters && (
@@ -671,13 +605,21 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-4">
-            <Button variant="outline" onClick={resetFilters}>
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
               Limpiar Filtros
-            </Button>
-            <Button variant="primary" onClick={() => setShowFilters(false)}>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFilters(false)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-azul-monte-tabor px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
               Aplicar Filtros
-            </Button>
+            </button>
           </div>
         </Card>
       )}
@@ -712,6 +654,39 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
             <StudentListView
               onStudentSelect={handleStudentSelect}
               processCode={processCode}
+              actions={(
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      showFilters
+                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <FiFilter className="h-4 w-4" aria-hidden="true" />
+                    Filtros
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loadInterviews}
+                    disabled={isLoading}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                  >
+                    <FiRefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+                    Actualizar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateInterview}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-dorado-nazaret bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  >
+                    <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                    Nueva Entrevista
+                  </button>
+                </>
+              )}
             />
           )}
         </>
@@ -784,29 +759,61 @@ const InterviewManagement: React.FC<InterviewManagementProps> = ({ className = '
   );
 };
 
-const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="relative group/tip inline-flex">
-    {children}
-    <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
-      {label}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-800" />
-    </div>
-  </div>
-);
+type StudentSortField = 'student' | 'grade' | 'parents' | 'status';
+
+interface StudentSortState {
+  field: StudentSortField;
+  direction: 'asc' | 'desc';
+}
+
+const StudentSortableTh: React.FC<{
+  field: StudentSortField;
+  label: string;
+  sort: StudentSortState;
+  onSort: (field: StudentSortField) => void;
+  className?: string;
+}> = ({ field, label, sort, onSort, className = '' }) => {
+  const isActive = sort.field === field;
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-700"
+      >
+        {label}
+        {isActive ? (
+          sort.direction === 'asc'
+            ? <FiChevronUp className="h-3.5 w-3.5" />
+            : <FiChevronDown className="h-3.5 w-3.5" />
+        ) : (
+          <FiChevronsUpDown className="h-3.5 w-3.5 text-gray-300" />
+        )}
+      </button>
+    </th>
+  );
+};
 
 // Componente simple para lista de estudiantes
 interface StudentListViewProps {
   onStudentSelect: (applicationId: number, studentName: string) => void;
   processCode?: string;
+  actions?: React.ReactNode;
 }
 
-const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect, processCode }) => {
+const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect, processCode, actions }) => {
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const pageSize = 10;
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<StudentSortState>({ field: 'student', direction: 'asc' });
+
+  const handleSort = (field: StudentSortField) => {
+    setSort(prev => prev.field === field
+      ? { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { field, direction: 'asc' });
+  };
 
   useEffect(() => {
     loadApplications();
@@ -874,8 +881,24 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect, proc
     );
   }, [applications, search]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const sorted = React.useMemo(() => {
+    const getValue = (app: any): string => {
+      switch (sort.field) {
+        case 'student': return app.studentName || '';
+        case 'grade': return app.gradeApplied || '';
+        case 'parents': return app.parentNames || '';
+        case 'status': return getStatusLabel(app.status) || '';
+        default: return '';
+      }
+    };
+    return [...filtered].sort((a, b) => {
+      const comparison = getValue(a).localeCompare(getValue(b), 'es');
+      return sort.direction === 'asc' ? comparison : -comparison;
+    });
+  }, [filtered, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paged = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (isLoading) {
     return (
@@ -892,186 +915,112 @@ const StudentListView: React.FC<StudentListViewProps> = ({ onStudentSelect, proc
         <p className="text-sm text-gray-600">Selecciona un estudiante para gestionar sus entrevistas</p>
       </div>
 
-      {/* Buscador */}
-      <div className="relative mb-3">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-          placeholder="Buscar por nombre, grado, padres o estado…"
-          className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
+      {/* Buscador + Acciones */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="relative flex-1 min-w-[240px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+            placeholder="Buscar por nombre, grado, padres o estado…"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor focus:border-transparent"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {actions}
       </div>
 
-      {/* Hint instructivo */}
-      {selectedId === null && applications.length > 0 && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-blue-600 text-xs">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Selecciona un estudiante para gestionar sus entrevistas
-        </div>
-      )}
+      {/* Total */}
+      <div className="flex items-center justify-end px-1 pb-2 text-xs text-gray-500">
+        <span>Total: {sorted.length} estudiante{sorted.length !== 1 ? 's' : ''}</span>
+      </div>
 
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full table-fixed divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-6 px-3 py-2.5"></th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estudiante</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Grado</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Padres</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ minWidth: 180 }}>Estado / Acción</th>
+              <StudentSortableTh field="student" label="Estudiante" sort={sort} onSort={handleSort} className="w-[28%] px-4 py-2.5 text-left" />
+              <StudentSortableTh field="grade" label="Grado" sort={sort} onSort={handleSort} className="w-[12%] px-4 py-2.5 text-left hidden sm:table-cell" />
+              <StudentSortableTh field="parents" label="Padres" sort={sort} onSort={handleSort} className="w-[28%] px-4 py-2.5 text-left hidden md:table-cell" />
+              <StudentSortableTh field="status" label="Estado" sort={sort} onSort={handleSort} className="w-[12%] px-4 py-2.5 text-left" />
+              <th className="w-[20%] px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {paged.map((app) => {
-              const isSelected = selectedId === app.id;
-              const parts = app.studentName.split(/\s+/).filter(Boolean);
-              const initials = parts.length > 1
-                ? `${parts[0]?.charAt(0) || 'N'}${parts[parts.length - 1]?.charAt(0) || ''}`
-                : parts[0]?.slice(0, 2) || 'NN';
+            {paged.map((app) => (
+              <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                {/* Estudiante */}
+                <td className="px-4 py-3 overflow-hidden">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {app.studentName}
+                  </div>
+                  <div className="text-xs text-gray-400 sm:hidden">{app.gradeApplied}</div>
+                </td>
 
-              return (
-                <tr
-                  key={app.id}
-                  onClick={() => setSelectedId(prev => prev === app.id ? null : app.id)}
-                  className={`transition-colors cursor-pointer group ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                >
-                  {/* Indicador lateral */}
-                  <td className="px-3 py-3">
-                    <div className={`w-1.5 h-8 rounded-full transition-all duration-300 ${
-                      isSelected ? 'bg-azul-monte-tabor' : 'bg-transparent group-hover:bg-gray-200'
-                    }`} />
-                  </td>
+                {/* Grado */}
+                <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+                  <span className="text-sm text-gray-700">{app.gradeApplied}</span>
+                </td>
 
-                  {/* Estudiante */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors duration-300 ${
-                        isSelected ? 'bg-azul-monte-tabor text-white' : 'bg-azul-monte-tabor bg-opacity-10 text-azul-monte-tabor'
-                      }`}>
-                        {initials.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className={`text-sm font-medium truncate transition-colors duration-300 ${isSelected ? 'text-azul-monte-tabor' : 'text-gray-900'}`}>
-                          {app.studentName}
-                        </div>
-                        <div className="text-xs text-gray-400 sm:hidden">{app.gradeApplied}</div>
-                      </div>
-                    </div>
-                  </td>
+                {/* Padres */}
+                <td className="px-4 py-3 overflow-hidden hidden md:table-cell">
+                  <span className="text-sm text-gray-500 truncate block">{app.parentNames}</span>
+                </td>
 
-                  {/* Grado */}
-                  <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
-                    <span className="text-sm text-gray-700">{app.gradeApplied}</span>
-                  </td>
+                {/* Estado */}
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
+                    {getStatusLabel(app.status)}
+                  </span>
+                </td>
 
-                  {/* Padres */}
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-sm text-gray-500 truncate max-w-[200px] block">{app.parentNames}</span>
-                  </td>
-
-                  {/* Estado / Acción — cross-fade */}
-                  <td className="px-4 py-3 relative" style={{ minWidth: 180 }}>
-                    {/* Badge de estado — se va al seleccionar */}
-                    <div
-                      className="absolute inset-y-0 left-4 right-4 flex items-center transition-all duration-300"
-                      style={{
-                        opacity: isSelected ? 0 : 1,
-                        transform: isSelected ? 'translateX(-10px)' : 'translateX(0)',
-                        pointerEvents: isSelected ? 'none' : 'auto'
-                      }}
-                    >
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
-                        {getStatusLabel(app.status)}
-                      </span>
-                    </div>
-
-                    {/* Botón gestionar — aparece al seleccionar */}
-                    <div
-                      className="absolute inset-y-0 left-4 right-4 flex items-center gap-2 transition-all duration-300"
-                      style={{
-                        opacity: isSelected ? 1 : 0,
-                        transform: isSelected ? 'translateX(0)' : 'translateX(10px)',
-                        pointerEvents: isSelected ? 'auto' : 'none'
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Tip label="Ver y gestionar entrevistas del estudiante">
-                        <button
-                          onClick={() => onStudentSelect(app.id, app.studentName)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-azul-monte-tabor text-white hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
-                        >
-                          <FiCalendar className="w-3.5 h-3.5" />
-                          Gestionar entrevistas
-                        </button>
-                      </Tip>
-                      <Tip label="Deseleccionar">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(null); }}
-                          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </Tip>
-                    </div>
-
-                    {/* Spacer invisible */}
-                    <div className="invisible">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs">placeholder</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                {/* Acciones */}
+                <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <button
+                    onClick={() => onStudentSelect(app.id, app.studentName)}
+                    className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg bg-azul-monte-tabor px-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <FiCalendar className="w-4 h-4" />
+                    Gestionar entrevistas
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Footer: contador + selector + paginación */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
-        <span className="text-xs text-gray-400">
-          {Math.min((currentPage - 1) * pageSize + 1, applications.length)}–{Math.min(currentPage * pageSize, applications.length)} de {applications.length} estudiantes
-        </span>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400">Por página:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
-              <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
-              <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{currentPage} / {totalPages}</span>
-              <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
-              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
-            </div>
-          )}
-        </div>
+      {/* Footer: paginación simple */}
+      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          ← Anterior
+        </button>
+        <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>
+        <button
+          type="button"
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          Siguiente →
+        </button>
+      </div>
       </div>
     </Card>
   );

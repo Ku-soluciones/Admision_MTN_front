@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiAlertOctagon, FiAlertTriangle, FiCalendar, FiCheckCircle, FiGrid } from 'react-icons/fi';
+import { FiChevronRight } from 'react-icons/fi';
 import { WeeklyOverviewResponse } from '../../types/interview';
 
 interface SummaryBarProps {
@@ -12,48 +12,39 @@ const SummaryBar: React.FC<SummaryBarProps> = ({ summary, rejectedCount = 0 }) =
     {
       label: 'Agendadas',
       value: summary.scheduledCount,
-      icon: FiCalendar,
-      className: 'border-blue-200 bg-blue-50 text-blue-700'
+      className: 'bg-blue-50 text-blue-600'
     },
     {
       label: 'Completadas',
       value: summary.completedCount,
-      icon: FiCheckCircle,
-      className: 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      className: 'bg-emerald-50 text-emerald-600'
     },
     {
       label: 'Slots libres',
       value: summary.availableSlotsCount,
-      icon: FiGrid,
-      className: 'border-teal-200 bg-teal-50 text-teal-700'
+      className: 'bg-teal-50 text-teal-600'
     },
     {
       label: 'Sin pareja',
       value: summary.singleInterviewerSlotsCount,
-      icon: FiAlertTriangle,
-      className: 'border-amber-200 bg-amber-50 text-amber-700'
+      className: 'bg-amber-50 text-amber-600'
     },
     {
       label: 'Rechazadas',
       value: rejectedCount,
-      icon: FiAlertOctagon,
-      className: rejectedCount > 0
-        ? 'border-red-200 bg-red-50 text-red-700 ring-1 ring-red-100'
-        : 'border-gray-200 bg-gray-50 text-gray-500'
+      className: rejectedCount > 0 ? 'bg-red-50 text-red-600' : 'bg-white text-gray-500'
     }
   ];
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Resumen operativo de entrevistas">
+    <div className="grid grid-cols-2 sm:grid-cols-5 rounded-xl border border-gray-200 divide-x divide-y sm:divide-y-0 divide-gray-200 overflow-hidden" aria-label="Resumen operativo de entrevistas">
       {items.map(item => {
-        const Icon = item.icon;
+        const [bgClass, textClass] = item.className.split(' ');
         return (
-          <div key={item.label} className={`min-w-[132px] rounded-lg border px-3 py-2 ${item.className}`}>
-            <div className="flex items-center gap-2">
-              <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-              <p className="min-w-0 truncate text-xs font-semibold">{item.label}</p>
-              <p className="ml-auto text-lg font-bold leading-none">{item.value}</p>
-            </div>
+          <div key={item.label} className={`relative px-5 py-6 ${bgClass}`}>
+            <p className="text-sm text-gray-600">{item.label}</p>
+            <p className={`mt-3 text-3xl font-bold ${textClass}`}>{item.value}</p>
+            <FiChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" aria-hidden="true" />
           </div>
         );
       })}

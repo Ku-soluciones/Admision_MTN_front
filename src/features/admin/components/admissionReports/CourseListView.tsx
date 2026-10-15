@@ -40,7 +40,7 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
-  const pageSize = 25;
+  const pageSize = 10;
 
   const grades = useMemo(
     () => Array.from(new Set(rows.map((row) => row.gradeApplied))).sort((a, b) => formatGradeLabel(a).localeCompare(formatGradeLabel(b), 'es')),
@@ -114,58 +114,53 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
   }, [academicYear, exporting, filtered]);
 
   return (
-    <section id={id} className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm" aria-labelledby="admission-list-title">
-      <div className="border-b border-slate-200 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <h2 id="admission-list-title" className="text-xl font-bold tracking-tight text-slate-950">Listado por curso</h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold tabular-nums text-slate-700" aria-live="polite">{filtered.length} de {rows.length}</span>
-            </div>
-            <p className="mt-1 text-sm text-slate-600">Busca un postulante, ajusta los filtros o abre su ficha completa.</p>
-          </div>
+    <section id={id} className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="admission-list-title">
+      <div className="mb-4">
+        <div className="mb-3">
+          <h2 id="admission-list-title" className="text-lg font-semibold text-slate-900">Listado por curso</h2>
+          <p className="mt-1 text-sm text-slate-600">Busca un postulante, ajusta los filtros o abre su ficha completa.</p>
+        </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <label className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
-              <span className="sr-only">Buscar postulante</span>
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Nombre, curso o ID"
-                className="min-h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-              />
-            </label>
-            <select
-              value={gradeFilter}
-              onChange={(event) => onGradeFilterChange(event.target.value)}
-              className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-              aria-label="Filtrar por curso"
-            >
-              <option value="">Todos los cursos</option>
-              {grades.map((grade) => <option key={grade} value={grade}>{formatGradeLabel(grade)}</option>)}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(event) => onStatusFilterChange(event.target.value)}
-              className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-              aria-label="Filtrar por estado"
-            >
-              <option value="">Todos los estados</option>
-              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-            <button
-              type="button"
-              onClick={exportToExcel}
-              disabled={!filtered.length || loading || exporting}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-900 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-blue-950 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-              aria-label={`Exportar ${filtered.length} postulantes a Excel`}
-            >
-              <FiDownload className="h-4 w-4" aria-hidden="true" />
-              {exporting ? 'Generando…' : `Exportar ${filtered.length}`}
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[240px] flex-1">
+            <span className="sr-only">Buscar postulante</span>
+            <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Nombre, curso o ID"
+              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            />
+          </label>
+          <select
+            value={gradeFilter}
+            onChange={(event) => onGradeFilterChange(event.target.value)}
+            className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            aria-label="Filtrar por curso"
+          >
+            <option value="">Todos los cursos</option>
+            {grades.map((grade) => <option key={grade} value={grade}>{formatGradeLabel(grade)}</option>)}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(event) => onStatusFilterChange(event.target.value)}
+            className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            aria-label="Filtrar por estado"
+          >
+            <option value="">Todos los estados</option>
+            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={exportToExcel}
+            disabled={!filtered.length || loading || exporting}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-blue-950 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            aria-label={`Exportar ${filtered.length} postulantes a Excel`}
+          >
+            <FiDownload className="h-4 w-4" aria-hidden="true" />
+            {exporting ? 'Generando…' : `Exportar ${filtered.length}`}
+          </button>
         </div>
 
         {hasFilters && (
@@ -183,74 +178,96 @@ export const CourseListView: React.FC<CourseListViewProps> = ({
         <p className="sr-only" aria-live="polite">{exportMessage}</p>
       </div>
 
+      {/* Total */}
+      <div className="flex items-center justify-end px-1 pb-2 text-xs text-slate-500" aria-live="polite">
+        <span>
+          Total: {filtered.length}{hasFilters && filtered.length !== rows.length ? ` de ${rows.length}` : ''} postulante{filtered.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       {loading && rows.length > 0 && (
-        <div className="border-b border-blue-100 bg-blue-50 px-4 py-2 text-xs font-medium text-blue-800" role="status">Actualizando datos…</div>
+        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-medium text-blue-800" role="status">Actualizando datos…</div>
       )}
 
       {filtered.length === 0 ? (
         <EmptyFilteredState hasFilters={hasFilters} onClear={clearAllFilters} />
       ) : (
         <>
-          <div className="divide-y divide-slate-200 md:hidden">
-            {paged.map((row) => <ApplicantMobileCard key={row.applicationId} row={row} onOpenCard={onOpenCard} />)}
+          <div className="rounded-lg border border-slate-200 overflow-hidden md:hidden">
+            <div className="divide-y divide-slate-200">
+              {paged.map((row) => <ApplicantMobileCard key={row.applicationId} row={row} onOpenCard={onOpenCard} />)}
+            </div>
+            {totalPages > 1 && (
+              <nav className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3" aria-label="Paginación del listado">
+                <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={safePage === 1} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                  <FiChevronLeft className="h-4 w-4" aria-hidden="true" />Anterior
+                </button>
+                <span className="text-sm text-slate-600">Página {safePage} de {totalPages}</span>
+                <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={safePage === totalPages} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                  Siguiente<FiChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </nav>
+            )}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
-            <table className="min-w-full text-sm">
-              <caption className="sr-only">Postulantes del proceso de admisión {academicYear}</caption>
-              <thead className="bg-slate-100 shadow-[0_1px_0_0_rgb(203_213_225)]">
-                <tr>
-                  <TableHeader>Postulante</TableHeader>
-                  <TableHeader>Curso</TableHeader>
-                  <TableHeader>Estado</TableHeader>
-                  <TableHeader>Antecedentes</TableHeader>
-                  <TableHeader>Evaluación</TableHeader>
-                  <TableHeader align="right">Acción</TableHeader>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paged.map((row) => {
-                  const tone = statusTone(row.statusLabel);
-                  return (
-                    <tr key={row.applicationId} className="bg-white hover:bg-slate-50">
-                      <td className="px-3 py-3.5">
-                        <span className="block font-semibold text-slate-950">{row.studentName}</span>
-                        <span className="mt-0.5 block text-xs text-slate-500">Género: {formatGenderLabel(row.gender)}</span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3.5 text-slate-700">{formatGradeLabel(row.gradeApplied)}</td>
-                      <td className="whitespace-nowrap px-3 py-3.5">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${tone.badge}`}>{row.statusLabel}</span>
-                      </td>
-                      <td className="min-w-52 px-3 py-3.5 text-xs leading-5 text-slate-600">
-                        <span className="block"><strong className="font-semibold text-slate-700">Vía:</strong> {safeDisplayText(row.admissionPreference)}</span>
-                        <span className="block"><strong className="font-semibold text-slate-700">Exalumno:</strong> {safeDisplayText(row.alumniChild)}</span>
-                        <span className="block"><strong className="font-semibold text-slate-700">Hermanos:</strong> {safeDisplayText(row.siblingsInSchool)}</span>
-                      </td>
-                      <td className="min-w-44 px-3 py-3.5 text-xs leading-5 text-slate-600">
-                        <span className="block"><strong className="font-semibold text-slate-700">Promedio:</strong> {row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</span>
-                        <span className="block"><strong className="font-semibold text-slate-700">Recomendación:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3.5 text-right">
-                        <OpenCardButton row={row} onOpenCard={onOpenCard} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <div className="hidden rounded-lg border border-slate-200 overflow-hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <caption className="sr-only">Postulantes del proceso de admisión {academicYear}</caption>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <TableHeader>Postulante</TableHeader>
+                    <TableHeader>Curso</TableHeader>
+                    <TableHeader>Estado</TableHeader>
+                    <TableHeader>Antecedentes</TableHeader>
+                    <TableHeader>Evaluación</TableHeader>
+                    <TableHeader align="center">Acción</TableHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paged.map((row) => {
+                    const tone = statusTone(row.statusLabel);
+                    return (
+                      <tr key={row.applicationId} className="bg-white hover:bg-slate-50">
+                        <td className="px-3 py-3.5">
+                          <span className="block font-semibold text-slate-950">{row.studentName}</span>
+                          <span className="mt-0.5 block text-xs text-slate-500">Género: {formatGenderLabel(row.gender)}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3.5 text-slate-700">{formatGradeLabel(row.gradeApplied)}</td>
+                        <td className="whitespace-nowrap px-3 py-3.5">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${tone.badge}`}>{row.statusLabel}</span>
+                        </td>
+                        <td className="min-w-52 px-3 py-3.5 text-xs leading-5 text-slate-600">
+                          <span className="block"><strong className="font-semibold text-slate-700">Vía:</strong> {safeDisplayText(row.admissionPreference)}</span>
+                          <span className="block"><strong className="font-semibold text-slate-700">Exalumno:</strong> {safeDisplayText(row.alumniChild)}</span>
+                          <span className="block"><strong className="font-semibold text-slate-700">Hermanos:</strong> {safeDisplayText(row.siblingsInSchool)}</span>
+                        </td>
+                        <td className="min-w-44 px-3 py-3.5 text-xs leading-5 text-slate-600">
+                          <span className="block"><strong className="font-semibold text-slate-700">Promedio:</strong> {row.examAverage != null ? `${row.examAverage}%` : 'Sin registro'}</span>
+                          <span className="block"><strong className="font-semibold text-slate-700">Recomendación:</strong> {safeDisplayText(row.cycleDirectorDecision, 'Pendiente')}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3.5 text-center">
+                          <OpenCardButton row={row} onOpenCard={onOpenCard} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-          {totalPages > 1 && (
-            <nav className="flex items-center justify-between border-t border-slate-200 px-4 py-3" aria-label="Paginación del listado">
-              <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={safePage === 1} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
-                <FiChevronLeft className="h-4 w-4" aria-hidden="true" />Anterior
-              </button>
-              <span className="text-sm text-slate-600">Página {safePage} de {totalPages}</span>
-              <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={safePage === totalPages} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
-                Siguiente<FiChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </nav>
-          )}
+            {totalPages > 1 && (
+              <nav className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3" aria-label="Paginación del listado">
+                <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={safePage === 1} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                  <FiChevronLeft className="h-4 w-4" aria-hidden="true" />Anterior
+                </button>
+                <span className="text-sm text-slate-600">Página {safePage} de {totalPages}</span>
+                <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={safePage === totalPages} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-40">
+                  Siguiente<FiChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </nav>
+            )}
+          </div>
         </>
       )}
     </section>
@@ -299,7 +316,7 @@ const OpenCardButton: React.FC<{ row: CourseApplicant; onOpenCard: (applicationI
   <button
     type="button"
     onClick={() => onOpenCard(row.applicationId)}
-    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg font-semibold text-blue-800 transition-[background-color,transform] duration-150 ease-out hover:bg-blue-50 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${fullWidth ? 'mt-3 w-full border border-blue-200' : 'px-3'}`}
+    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 font-semibold text-blue-800 transition-[background-color,transform] duration-150 ease-out hover:bg-blue-50 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${fullWidth ? 'mt-3 w-full' : ''}`}
     aria-label={`Ver ficha de ${row.studentName}`}
   >
     <FiEye className="h-4 w-4" aria-hidden="true" />
@@ -307,8 +324,8 @@ const OpenCardButton: React.FC<{ row: CourseApplicant; onOpenCard: (applicationI
   </button>
 );
 
-const TableHeader: React.FC<{ children: React.ReactNode; align?: 'left' | 'right' }> = ({ children, align = 'left' }) => (
-  <th scope="col" className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600 ${align === 'right' ? 'text-right' : 'text-left'}`}>{children}</th>
+const TableHeader: React.FC<{ children: React.ReactNode; align?: 'left' | 'right' | 'center' }> = ({ children, align = 'left' }) => (
+  <th scope="col" className={`whitespace-nowrap px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600 ${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'}`}>{children}</th>
 );
 
 const FilterChip: React.FC<{ label: string }> = ({ label }) => (

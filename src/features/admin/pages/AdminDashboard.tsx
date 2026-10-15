@@ -617,7 +617,7 @@ Esta acción:
       case 'vacantes':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Vacantes</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Configura qué niveles tienen vacantes disponibles para los postulantes</p>
@@ -643,7 +643,7 @@ Esta acción:
       case 'evaluaciones':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Evaluaciones</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">
@@ -720,7 +720,7 @@ Esta acción:
         return (
           <div className="space-y-5">
             {/* Encabezado */}
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Postulaciones</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Seguimiento y gestión de las postulaciones del proceso de admisión</p>
@@ -728,59 +728,38 @@ Esta acción:
             </section>
 
             {/* KPIs */}
-            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Resumen de postulaciones">
-              <div className="min-w-[148px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
-                <div className="flex items-center gap-2">
-                  <FiFileText className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Total Activas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.length}</p>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 rounded-xl border border-gray-200 divide-x divide-y sm:divide-y-0 divide-gray-200 overflow-hidden" aria-label="Resumen de postulaciones">
+              <div className="relative bg-blue-50 px-5 py-6">
+                <p className="text-base text-gray-600">Total Activas</p>
+                <p className="mt-3 text-3xl font-bold text-blue-600">{applicationsToFilter.length}</p>
               </div>
-              <div className="min-w-[132px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-                <div className="flex items-center gap-2">
-                  <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Nuevas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
-                </div>
+              <div className="relative bg-amber-50 px-5 py-6">
+                <p className="text-base text-gray-600">Nuevas</p>
+                <p className="mt-3 text-3xl font-bold text-amber-600">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
               </div>
-              <div className="min-w-[132px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Aceptadas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
-                </div>
+              <div className="relative bg-emerald-50 px-5 py-6">
+                <p className="text-base text-gray-600">Aceptadas</p>
+                <p className="mt-3 text-3xl font-bold text-emerald-600">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
               </div>
-              <div className="min-w-[148px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
-                <div className="flex items-center gap-2">
-                  <FiUsers className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">En Revisión</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
-                </div>
+              <div className="relative bg-white px-5 py-6">
+                <p className="text-base text-gray-600">En Revisión</p>
+                <p className="mt-3 text-3xl font-bold text-purple-600">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
               </div>
             </div>
 
             {/* Acciones */}
-            <div className="flex flex-wrap justify-end gap-2">
-              {statusFilter !== 'all' && (
+            {statusFilter !== 'all' && (
+              <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setStatusFilter('all')}
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <FiX className="h-4 w-4" aria-hidden="true" />
-                  Limpiar filtro{statusFilter !== 'all' && `: ${getStatusLabel(statusFilter)}`}
+                  Limpiar filtro: {getStatusLabel(statusFilter)}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={loadAdminApplications}
-                disabled={isLoadingAdminApplications}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-              >
-                <FiRefreshCw className={`h-4 w-4 ${isLoadingAdminApplications ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-                Actualizar
-              </button>
-            </div>
+              </div>
+            )}
 
             <ApplicationsTable
               applications={filteredApplications}
@@ -788,6 +767,8 @@ Esta acción:
               onView={handleViewApplicationDetail}
               onArchive={confirmArchive}
               onDecision={(application) => setDecisionModal({ show: true, application })}
+              onRefresh={loadAdminApplications}
+              isRefreshing={isLoadingAdminApplications}
             />
           </div>
         );
@@ -795,7 +776,7 @@ Esta acción:
       case 'usuarios':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Administra el personal y las parejas de entrevistas.</p>
