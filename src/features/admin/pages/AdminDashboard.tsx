@@ -73,6 +73,7 @@ import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 import InterviewerPairManagement from '../components/users/InterviewerPairManagement';
 import { ADMISSION_PROCESS_OPTIONS, defaultAdmissionProcessCode } from '../components/admissionReports/admissionProcesses';
+import { NEW_APPLICATIONS_OPEN } from '../../../packages/shared-utils/src/admissionAvailability';
 
 const AdmissionReportTabs = React.lazy(() =>
   import('../components/admissionReports/AdmissionReportTabs')
@@ -113,6 +114,15 @@ const SidebarContent = React.memo(function SidebarContent({
         <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
       </div>
       <nav className="px-4" aria-label="Menú de navegación principal del administrador">
+        <div className={`mb-4 rounded-lg border px-3 py-2 ${
+          NEW_APPLICATIONS_OPEN
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-amber-200 bg-amber-50 text-amber-900'
+        }`} role="status">
+          <p className="text-xs font-semibold uppercase tracking-wide">Nuevas postulaciones</p>
+          <p className="mt-1 text-sm font-bold">{NEW_APPLICATIONS_OPEN ? 'Abiertas' : 'Cerradas'}</p>
+          <p className="mt-1 text-xs opacity-80">Configurado por VITE_SHOW_POSTULACION</p>
+        </div>
         <button
           onClick={() => { onSectionChange('admissionReports'); onNavigate?.(); }}
           className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors bg-azul-monte-tabor hover:bg-blue-900 text-white shadow-sm"
