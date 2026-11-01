@@ -239,6 +239,23 @@ class ProfessorEvaluationService {
             throw new Error('Error al obtener la evaluación.');
         }
     }
+
+    /**
+     * Sincroniza las evaluaciones asociadas a una entrevista antigua creada directamente
+     * en base de datos. Es idempotente y el backend no envía correos en esta operación.
+     */
+    async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
+        try {
+            const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
+            const evaluations = response.data?.data || [];
+            return this.mapToProfessorEvaluations(evaluations);
+        } catch (error: any) {
+            if (error.response?.status === 403) {
+                throw new Error('Esta entrevista no está asignada a tu usuario.');
+            }
+            throw new Error(error.response?.data?.error?.message || 'No se pudo preparar la entrevista. Intenta nuevamente.');
+        }
+    }
     
     /**
      * Mapear respuesta de la API a formato del frontend
