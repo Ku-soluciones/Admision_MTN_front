@@ -4,6 +4,10 @@ import { familyInterviewService } from '../services/familyInterviewService';
 import { fullTemplateData } from '@/src/data/minified_template';
 import { notify } from '../../admin/utils/notify';
 import { useAutoSave } from '../../../packages/shared-ui/src/hooks/useAutoSave';
+import {
+  checklistResponseValue,
+  filterTemplateForGrade,
+} from '../services/familyInterviewScoring';
 
 interface FamilyInterviewFormProps {
   evaluation: any; // Evaluation data with gradeApplied
@@ -45,7 +49,8 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         // This ensures it's bundled as native JS and works in Vercel production
 
         // Use the statically imported template
-        const templateData = fullTemplateData as any;
+        const gradeApplied = evaluation.studentGrade || evaluation.gradeApplied || evaluation.student?.gradeApplied;
+        const templateData = filterTemplateForGrade(fullTemplateData as any, gradeApplied);
 
         if (!templateData) {
           notify.error('Error: El template no se pudo cargar. Ver consola para detalles.');
@@ -135,14 +140,14 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
   };
 
   // Handle observation checklist change
-  const handleChecklistChange = (itemKey: string, checked: boolean) => {
+  const handleChecklistChange = (itemKey: string, checked: boolean, score: number) => {
     setInterviewData((prev: any) => ({
       ...prev,
       observations: {
         ...prev.observations,
         checklist: {
           ...prev.observations?.checklist,
-          [itemKey]: checked
+          [itemKey]: checklistResponseValue(checked, score)
         }
       }
     }));
@@ -405,7 +410,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
               <div className="space-y-3">
                 {Array.isArray(template.observations.sections.observations_checklist.items) &&
                   template.observations.sections.observations_checklist.items.map((item: any, index: number) => {
-                    const isChecked = interviewData.observations?.checklist?.[item.id] || false;
+                    const isChecked = Boolean(interviewData.observations?.checklist?.[item.id]);
 
                     return (
                       <div
@@ -418,7 +423,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={(e) => !readonly && handleChecklistChange(item.id, e.target.checked)}
+                              onChange={(e) => !readonly && handleChecklistChange(item.id, e.target.checked, item.score)}
                               disabled={readonly || disabled}
                               className="mr-2"
                             />
