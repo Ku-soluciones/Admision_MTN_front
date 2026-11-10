@@ -21,6 +21,11 @@ import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
+import {
+    APPLICATIONS_CLOSED_MESSAGE,
+    canAccessApplicationForm,
+    NEW_APPLICATIONS_OPEN,
+} from '../../../packages/shared-utils/src/admissionAvailability';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -118,7 +123,7 @@ const validationConfig = {
     guardianRelation: { required: true }
 };
 
-const ApplicationForm: React.FC = () => {
+const ApplicationFormContent: React.FC = () => {
     const location = useLocation();
     const [currentStep, setCurrentStep] = useState(0);
     const [accountCreated, setAccountCreated] = useState(false);
@@ -1124,10 +1129,23 @@ const ApplicationForm: React.FC = () => {
 
             // Si es el paso de documentación (step 7), enviar la postulación
             if (currentStep === 7) {
+                const isEditMode = Boolean(location.state?.editMode && location.state?.applicationId);
+                if (!canAccessApplicationForm({
+                    newApplicationsOpen: NEW_APPLICATIONS_OPEN,
+                    editMode: isEditMode,
+                })) {
+                    setErrorModalData({
+                        title: 'Postulaciones cerradas',
+                        message: APPLICATIONS_CLOSED_MESSAGE,
+                        errors: [],
+                    });
+                    setShowErrorModal(true);
+                    return;
+                }
+
                 setIsSubmitting(true);
                 try {
                     // Determinar si estamos en modo edición o creación
-                    const isEditMode = location.state?.editMode && location.state?.applicationId;
                     let applicationRequest: any;
                     let response;
 
@@ -3045,6 +3063,41 @@ const ApplicationForm: React.FC = () => {
             />
         </div>
     );
+};
+
+const ApplicationForm: React.FC = () => {
+    const location = useLocation();
+    const editMode = Boolean(location.state?.editMode && location.state?.applicationId);
+
+    if (!canAccessApplicationForm({
+        newApplicationsOpen: NEW_APPLICATIONS_OPEN,
+        editMode,
+    })) {
+        return (
+            <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+                <Card className="w-full max-w-xl p-8 text-center">
+                    <LogoIcon />
+                    <h1 className="mt-6 text-3xl font-bold text-azul-monte-tabor">
+                        Postulaciones cerradas
+                    </h1>
+                    <p className="mt-4 text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                    <p className="mt-2 text-sm text-gray-500">
+                        Las familias con una cuenta existente aún pueden ingresar para revisar su proceso.
+                    </p>
+                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                        <a href={appUrls.guardianLogin}>
+                            <Button variant="primary">Ir al Portal de Familias</Button>
+                        </a>
+                        <a href={appUrls.home}>
+                            <Button variant="outline">Volver al inicio</Button>
+                        </a>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    return <ApplicationFormContent />;
 };
 
 export default ApplicationForm;

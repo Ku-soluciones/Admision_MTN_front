@@ -51,6 +51,10 @@ import {
   loadGuardianDocumentGroups,
   type GuardianDocumentGroup,
 } from '../utils/guardianDocuments';
+import {
+  APPLICATIONS_CLOSED_MESSAGE,
+  NEW_APPLICATIONS_OPEN,
+} from '../../../packages/shared-utils/src/admissionAvailability';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -365,10 +369,13 @@ const FamilyDashboard: React.FC = () => {
                       : 'Aún no tiene una postulación registrada. Comience el proceso de admisión para su hijo/a completando el formulario de postulación.'
                     }
                   </p>
-                  {!isLoading && (
+                  {!isLoading && NEW_APPLICATIONS_OPEN && (
                     <Button variant="primary" size="lg" className="w-full" onClick={() => navigateToAdmissions()}>
                       Crear Nueva Postulación
                     </Button>
+                  )}
+                  {!isLoading && !NEW_APPLICATIONS_OPEN && (
+                    <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
                   )}
                   {isLoading && (
                     <div className="flex items-center justify-center gap-2">
@@ -407,15 +414,17 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        className="flex items-center gap-2"
-                        onClick={() => navigate('/postulacion')}
-                      >
-                        <FiPlus className="w-4 h-4" />
-                        Postular otro hijo
-                      </Button>
+                      {NEW_APPLICATIONS_OPEN && (
+                        <Button
+                          variant="success"
+                          size="sm"
+                          className="flex items-center gap-2"
+                          onClick={() => navigate('/postulacion')}
+                        >
+                          <FiPlus className="w-4 h-4" />
+                          Postular otro hijo
+                        </Button>
+                      )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mb-4">
@@ -696,9 +705,13 @@ const FamilyDashboard: React.FC = () => {
                 <p className="text-gris-piedra mb-4">
                   No hay información de postulación disponible
                 </p>
-                <Button variant="primary" onClick={() => navigateToAdmissions()}>
-                  Crear Nueva Postulación
-                </Button>
+                {NEW_APPLICATIONS_OPEN ? (
+                  <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                    Crear Nueva Postulación
+                  </Button>
+                ) : (
+                  <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                )}
               </div>
             )}
           </Card>
@@ -729,9 +742,13 @@ const FamilyDashboard: React.FC = () => {
                   <p className="text-gris-piedra mb-4">
                     Debe completar su postulación primero antes de llenar el formulario complementario
                   </p>
-                  <Button variant="primary" onClick={() => navigateToAdmissions()}>
-                    Crear Nueva Postulación
-                  </Button>
+                  {NEW_APPLICATIONS_OPEN ? (
+                    <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                      Crear Nueva Postulación
+                    </Button>
+                  ) : (
+                    <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                  )}
                 </div>
               </Card>
             )}

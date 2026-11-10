@@ -5,6 +5,7 @@ import Button from '../../../admin/components/ui/Button';
 import { appUrls } from '../../../admin/utils/appUrls';
 import { authStore, clearAllSessions } from '../../../../packages/backend-sdk/src/index';
 import { useHeaderAuthState } from '../../../../packages/shared-ui/src/hooks/useHeaderAuthState';
+import { NEW_APPLICATIONS_OPEN } from '../../../../packages/shared-utils/src/admissionAvailability';
 
 const Header: React.FC = () => {
     const navigate = useNavigate();
@@ -44,11 +45,13 @@ const Header: React.FC = () => {
                                 Iniciar sesión
                             </Button>
                         </a>
-                        <a href={appUrls.guardianRegister}>
-                            <Button variant="primary" size="sm" className="!text-blanco-pureza">
-                                Postular
-                            </Button>
-                        </a>
+                        {NEW_APPLICATIONS_OPEN && (
+                            <a href={appUrls.guardianRegister}>
+                                <Button variant="primary" size="sm" className="!text-blanco-pureza">
+                                    Postular
+                                </Button>
+                            </a>
+                        )}
                     </div>
                     {/* Hamburger button */}
                     <button
@@ -101,11 +104,13 @@ const Header: React.FC = () => {
                                     Iniciar sesión
                                 </Button>
                             </a>
-                            <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
-                                <Button variant="primary" className="w-full !text-blanco-pureza">
-                                    Postular
-                                </Button>
-                            </a>
+                            {NEW_APPLICATIONS_OPEN && (
+                                <a href={appUrls.guardianRegister} onClick={() => setIsMobileMenuOpen(false)}>
+                                    <Button variant="primary" className="w-full !text-blanco-pureza">
+                                        Postular
+                                    </Button>
+                                </a>
+                            )}
                         </div>
                     </nav>
                 </div>
