@@ -38,3 +38,37 @@ export function filterTemplateForGrade(template: any, grade?: string): any {
 export function checklistResponseValue(checked: boolean, score: number): number {
   return checked ? score : 0;
 }
+
+export function calculateFamilyInterviewScores(interviewData: any, template?: any) {
+  let sectionScore = 0;
+  let observationScore = 0;
+
+  for (const [sectionKey, sectionResponses] of Object.entries(interviewData || {})) {
+    if (sectionKey === 'observations' || !sectionResponses || typeof sectionResponses !== 'object') continue;
+    const applicableQuestions = template?.sections?.[sectionKey]?.questions;
+    const allowedKeys = applicableQuestions ? new Set(Object.keys(applicableQuestions)) : null;
+
+    for (const [questionKey, response] of Object.entries(sectionResponses as Record<string, any>)) {
+      if (allowedKeys && !allowedKeys.has(questionKey)) continue;
+      if (response && typeof response.score === 'number') sectionScore += response.score;
+    }
+  }
+
+  const observations = interviewData?.observations;
+  if (observations?.checklist) {
+    for (const value of Object.values(observations.checklist)) {
+      if (typeof value === 'number') observationScore += value;
+      else if (value === true) observationScore += 1;
+    }
+  }
+  if (typeof observations?.overallOpinion?.score === 'number') {
+    observationScore += observations.overallOpinion.score;
+  }
+
+  return { sectionScore, observationScore };
+}
+
+export function calculateFamilyInterviewPercentage(interviewData: any, template?: any): number {
+  const { sectionScore, observationScore } = calculateFamilyInterviewScores(interviewData, template);
+  return Math.round(Math.min(100, Math.max(0, (sectionScore / 20) * 90 + (observationScore / 11) * 10)));
+}

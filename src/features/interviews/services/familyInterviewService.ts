@@ -1,4 +1,8 @@
 import api from '../../admin/services/api';
+import {
+    calculateFamilyInterviewPercentage,
+    calculateFamilyInterviewScores,
+} from './familyInterviewScoring';
 
 /**
  * Family Interview Service
@@ -112,45 +116,8 @@ class FamilyInterviewService {
      * @param interviewData - Interview responses
      * @returns Object with sectionScore and observationScore
      */
-    calculateScores(interviewData: any): { sectionScore: number; observationScore: number } {
-        let sectionScore = 0;
-        let observationScore = 0;
-
-        // Sum scores from all sections (section1, section2, section3, section4)
-        for (const [sectionKey, sectionResponses] of Object.entries(interviewData)) {
-            if (sectionKey === 'observations') continue; // Observations counted separately
-
-            if (sectionResponses && typeof sectionResponses === 'object') {
-                for (const response of Object.values(sectionResponses as any)) {
-                    if (response && typeof response.score === 'number') {
-                        sectionScore += response.score;
-                    }
-                }
-            }
-        }
-
-        // Add observations score if present
-        if (interviewData.observations) {
-            const obsData = interviewData.observations;
-
-            // Checklist items (4 items × 1pt each = 4pt total)
-            if (obsData.checklist) {
-                for (const item of Object.values(obsData.checklist)) {
-                    if (typeof item === 'number') {
-                        observationScore += item;  // Add actual score value (1, 2, etc.)
-                    } else if (item === true) {
-                        observationScore += 1;  // Fallback for boolean checkboxes
-                    }
-                }
-            }
-
-            // Overall opinion (up to 5 points)
-            if (obsData.overallOpinion && typeof obsData.overallOpinion.score === 'number') {
-                observationScore += obsData.overallOpinion.score;
-            }
-        }
-
-        return { sectionScore, observationScore };
+    calculateScores(interviewData: any, template?: any): { sectionScore: number; observationScore: number } {
+        return calculateFamilyInterviewScores(interviewData, template);
     }
 
     /**
@@ -270,19 +237,8 @@ class FamilyInterviewService {
      * @param interviewData - Interview responses object
      * @returns Percentage score (0-100)
      */
-    getScorePercentage(interviewData: any): number {
-        const { sectionScore, observationScore } = this.calculateScores(interviewData);
-
-        // Calculate section percentage (max 20 points = 90%)
-        const sectionPercentage = (sectionScore / 20) * 90;
-
-        // Calculate observation percentage (max 11 points = 10%)
-        const observationPercentage = (observationScore / 11) * 10;
-
-        // Combined percentage (already in 0-100 scale)
-        const totalPercentage = sectionPercentage + observationPercentage;
-
-        return Math.round(Math.min(100, Math.max(0, totalPercentage)));
+    getScorePercentage(interviewData: any, template?: any): number {
+        return calculateFamilyInterviewPercentage(interviewData, template);
     }
 }
 

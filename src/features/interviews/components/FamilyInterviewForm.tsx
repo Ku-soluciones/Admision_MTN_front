@@ -90,7 +90,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
   // Calculate percentage whenever interview data changes
   useEffect(() => {
     if (template && interviewData) {
-      const percentage = familyInterviewService.getScorePercentage(interviewData);
+      const percentage = familyInterviewService.getScorePercentage(interviewData, template);
       setCurrentScore(percentage);
     }
   }, [interviewData, template]);
