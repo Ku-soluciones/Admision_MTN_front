@@ -221,13 +221,17 @@ export interface CourseApplicantsResponse {
   };
 }
 
-<export interface FinalSummaryFamilyEvaluation {
+export interface FinalSummaryFamilyEvaluation {
   percentage: number | null;
   score40: number | null;
   score11: number | null;
   rating: number | null;
   justification: string | null;
   evaluationId: number | null;
+  completedCount?: number;
+  expectedCount?: number;
+  sectionScore?: number | null;
+  sectionMaxScore?: number | null;
 }
 
 export interface FinalSummaryExamScores {
