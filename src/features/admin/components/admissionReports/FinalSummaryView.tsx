@@ -188,7 +188,8 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         'Postulante',
         'Hermanos',
         'Familia (%)',
-        'Familia /40',
+        'Familia puntaje',
+        'Familia máximo',
         'Observación /11',
         'Familia 1–5',
         'Lenguaje',
@@ -218,7 +219,8 @@ export const FinalSummaryView: React.FC<FinalSummaryViewProps> = ({ academicYear
         Postulante: row.studentName,
         Hermanos: row.siblingNames.join(', '),
         'Familia (%)': row.familyEvaluation.percentage ?? '',
-        'Familia /40': row.familyEvaluation.score40 ?? '',
+        'Familia puntaje': row.familyEvaluation.sectionScore ?? row.familyEvaluation.score40 ?? '',
+        'Familia máximo': row.familyEvaluation.sectionMaxScore ?? 40,
         'Observación /11': row.familyEvaluation.score11 ?? '',
         'Familia 1–5': row.familyEvaluation.rating ?? '',
         Lenguaje: row.exams.language ?? '',
@@ -529,8 +531,15 @@ const FamilyScores = ({ row }: { row: FinalSummaryApplicant }) => (
   <div>
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
       <strong className="text-base text-slate-950">{formatScore(row.familyEvaluation.percentage)}</strong>
-      <span className="text-xs text-slate-500">{formatScore(row.familyEvaluation.score40, '/40')} · {formatScore(row.familyEvaluation.score11, '/11')} · {formatScore(row.familyEvaluation.rating, '/5')}</span>
+      <span className="text-xs text-slate-500">
+        {formatScore(row.familyEvaluation.sectionScore ?? row.familyEvaluation.score40, `/${row.familyEvaluation.sectionMaxScore ?? 40}`)} · {formatScore(row.familyEvaluation.score11, '/11')} · {formatScore(row.familyEvaluation.rating, '/5')}
+      </span>
     </div>
+    {(row.familyEvaluation.expectedCount ?? 0) > 0 && (
+      <span className="mt-1 block text-xs font-medium text-slate-500">
+        {row.familyEvaluation.completedCount ?? 0} de {row.familyEvaluation.expectedCount} evaluaciones completadas
+      </span>
+    )}
     {row.familyEvaluation.justification && <details className="mt-1 max-w-72"><summary className="cursor-pointer text-xs font-semibold text-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700">Ver comentario</summary><p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs leading-5 text-slate-700">{row.familyEvaluation.justification}</p></details>}
   </div>
 );
