@@ -132,10 +132,9 @@ export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ select
     setSchoolnetExporting(true);
     setSchoolnetMessage('');
     try {
-      const blob = await applicationService.exportSchoolnetAcceptedStudents({
+      const blob = await applicationService.exportSchoolnetStudents({
         academicYear,
-        processCode,
-        statuses: ['APPROVED', 'WAITLIST']
+        processCode
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -201,7 +200,7 @@ export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ select
               onClick={exportSchoolnet}
               disabled={schoolnetExporting}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-950 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
-              aria-label="Exportar alumnos aceptados para SchoolNet"
+              aria-label="Exportar postulantes del proceso para SchoolNet"
             >
               <FiDownload className="h-4 w-4" aria-hidden="true" />
               {schoolnetExporting ? 'Generando…' : 'Exportar SchoolNet'}
