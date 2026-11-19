@@ -334,7 +334,7 @@ class ApplicationService {
         }
     }
 
-    async exportSchoolnetAcceptedStudents(params?: { academicYear?: number; processCode?: string; statuses?: string[] }): Promise<Blob> {
+    async exportSchoolnetStudents(params?: { academicYear?: number; processCode?: string; statuses?: string[] }): Promise<Blob> {
         try {
             const query = new URLSearchParams();
             if (params?.academicYear) query.set('academicYear', params.academicYear.toString());
@@ -349,7 +349,7 @@ class ApplicationService {
             });
             return response.data;
         } catch (error: any) {
-            throw new Error(error.response?.data?.message || 'Error al exportar alumnos aceptados para SchoolNet');
+            throw new Error(error.response?.data?.message || 'Error al exportar postulantes para SchoolNet');
         }
     }
     
