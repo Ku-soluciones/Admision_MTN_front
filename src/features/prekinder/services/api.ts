@@ -232,6 +232,8 @@ export type FamilyAdultDetails = {
   email: string;
   phone: string;
   address: string;
+  /** YYYY-MM-DD. Opcional al leer: postulaciones anteriores no lo registraron. */
+  birthDate?: string;
   profession?: string;
 };
 
@@ -281,6 +283,7 @@ export type FlowApplication = {
   applicationDetails: PrekinderApplicationDetails | null;
   createdAt: string;
   folio: string | null;
+  isInclusionStudent?: boolean;
 };
 
 export type Professional = {

@@ -21,12 +21,17 @@ function today() {
   }).format(new Date());
 }
 
-function cachedWorkspace(shortInstrument: string): EvaluatorWorkspace | null {
+// La caché es por usuario, instrumento y día: otro evaluador en la misma pestaña o un día distinto no la reutilizan.
+function cacheKey(userId: string | number | undefined, shortInstrument: string): string {
+  return `pk-workspace-cache-${userId ?? "anon"}-${shortInstrument}-${today()}`;
+}
+
+function cachedWorkspace(key: string): EvaluatorWorkspace | null {
   try {
-    const raw = sessionStorage.getItem(`pk-workspace-cache-${shortInstrument}`);
+    const raw = sessionStorage.getItem(key);
     return raw ? JSON.parse(raw) as EvaluatorWorkspace : null;
   } catch {
-    sessionStorage.removeItem(`pk-workspace-cache-${shortInstrument}`);
+    sessionStorage.removeItem(key);
     return null;
   }
 }
@@ -39,7 +44,8 @@ export function PrekinderEvaluatorGuard({
   const session = useAuthStore((state) => state);
   const location = useLocation();
   const requiredShort = PROFILE_TO_SHORT_INSTRUMENT[profile];
-  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(() => cachedWorkspace(requiredShort));
+  const storageKey = cacheKey(session.user?.id, requiredShort);
+  const [workspace, setWorkspace] = useState<EvaluatorWorkspace | null>(() => cachedWorkspace(storageKey));
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -54,7 +60,7 @@ export function PrekinderEvaluatorGuard({
         const nextWorkspace = await prekinderApi.evaluatorWorkspace(today());
         if (cancelled) return;
         setWorkspace(nextWorkspace);
-        sessionStorage.setItem(`pk-workspace-cache-${requiredShort}`, JSON.stringify(nextWorkspace));
+        sessionStorage.setItem(storageKey, JSON.stringify(nextWorkspace));
       } catch {
         // La vista de acceso denegado maneja la recuperación sin exponer datos de sesión.
       } finally {
@@ -65,7 +71,7 @@ export function PrekinderEvaluatorGuard({
     return () => {
       cancelled = true;
     };
-  }, [workspace, requiredShort]);
+  }, [workspace, requiredShort, storageKey]);
 
   if (checking) {
     return (

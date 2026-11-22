@@ -35,7 +35,9 @@ export const mockApplications: FlowApplication[] = Array.from({ length: 210 }, (
     birthDate: "2023-01-15",
     familyEmail: `familia${index + 1}@demo.invalid`, fatherEmail: "", motherEmail: "",
   },
+  applicationDetails: null,
   createdAt: "2026-08-01T12:00:00.000Z",
+  folio: null,
 }));
 
 const times = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00"];

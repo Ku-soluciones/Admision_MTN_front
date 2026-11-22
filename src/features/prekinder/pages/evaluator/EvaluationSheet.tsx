@@ -58,6 +58,7 @@ const PROFILE_COLORS: Record<SpecialtyProfile, { primary: string; light: string;
   PSYCHOLOGY: { primary: "blue", light: "blue-200", bg: "blue-900", gradient: "from-blue-800 to-blue-900" },
   INDICATORS: { primary: "violet", light: "violet-200", bg: "violet-900", gradient: "from-violet-800 to-violet-900" },
   GROUP_OBSERVATION: { primary: "amber", light: "amber-200", bg: "amber-900", gradient: "from-amber-800 to-amber-900" },
+  FAMILY_INTERVIEW: { primary: "blue", light: "blue-200", bg: "blue-900", gradient: "from-blue-800 to-blue-900" },
   LEARNING_SUPPORT: { primary: "indigo", light: "indigo-200", bg: "indigo-900", gradient: "from-indigo-800 to-indigo-900" },
   DAP: { primary: "pink", light: "pink-200", bg: "pink-900", gradient: "from-pink-800 to-pink-900" },
 };
@@ -73,7 +74,7 @@ export function EvaluationSheet({ profile }: EvaluationSheetProps) {
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
-  const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
+  const [rubricCriteria, setRubricCriteria] = useState<Report["criteria"]>([]);
   const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});

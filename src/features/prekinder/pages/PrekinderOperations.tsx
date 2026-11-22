@@ -57,6 +57,7 @@ import {
   type Wave,
 } from "../services/api";
 import { PrekinderBrand } from "../components/PrekinderBrand";
+import { ageInMonths } from "../utils/age";
 import { ArrowLeftIcon, LogoIcon } from "../../admin/components/icons/Icons";
 import { usePrekinderRealtimeSync } from "../hooks/usePrekinderRealtimeSync";
 import { PrekinderControlTower } from "../components/admin/PrekinderControlTower";
@@ -1997,11 +1998,8 @@ function Applications({
       })
       .sort((a, b) => {
         if (sort.key === "age") {
-          const refDate = configuration?.ageReferenceDate
-            ? new Date(configuration.ageReferenceDate)
-            : new Date();
-          const ageA = Math.max(0, Math.floor((refDate.getTime() - new Date(a.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-          const ageB = Math.max(0, Math.floor((refDate.getTime() - new Date(b.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          const ageA = ageInMonths(a.identity.birthDate, configuration?.ageReferenceDate);
+          const ageB = ageInMonths(b.identity.birthDate, configuration?.ageReferenceDate);
           return (ageA - ageB) * factor;
         }
         const value =
@@ -2194,8 +2192,7 @@ function ApplicationRow({
       </td>
       <td className="px-5 py-4 text-center">
         {(() => {
-          const refDate = configuration?.ageReferenceDate ? new Date(configuration.ageReferenceDate) : new Date();
-          const ageMonths = Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+          const ageMonths = ageInMonths(app.identity.birthDate, configuration?.ageReferenceDate);
           const years = Math.floor(ageMonths / 12);
           const months = ageMonths % 12;
           return (
@@ -2203,7 +2200,7 @@ function ApplicationRow({
               <span className="text-sm font-bold text-slate-700">
                 {years > 0 ? `${years}a ` : ""}{months}m
               </span>
-              {app.applicationDetails?.inclusionStudent && (
+              {app.isInclusionStudent && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                   <span className="flex items-center gap-0.5"><UserRoundCheck size={10} />Inclusión</span>
                 </span>
@@ -2261,224 +2258,6 @@ function ApplicationRow({
   );
 }
 
-function DayCenter({
-  processId,
-  date,
-  rooms,
-  groups,
-  applications,
-  professionals,
-  selected,
-  busy,
-  onSelect,
-  onAction,
-}: {
-  processId: string;
-  date: string;
-  rooms: Room[];
-  groups: EvaluationGroup[];
-  applications: FlowApplication[];
-  professionals: Professional[];
-  selected: EvaluationGroup | null;
-  busy: boolean;
-  onSelect: (id: string) => void;
-  onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
-}) {
-  const [roomId, setRoomId] = useState("");
-  const [interviewDate, setInterviewDate] = useState(date);
-  const [stage, setStage] = useState<EvaluationGroup["stage"]>("GROUP_3");
-  const [time, setTime] = useState("09:00");
-  const [code, setCode] = useState("");
-  const [capacity, setCapacity] = useState(3);
-  const [requiredEvaluators, setRequiredEvaluators] = useState(3);
-  const roomColumns = useMemo(
-    () =>
-      rooms.map((room) => ({
-        room,
-        groups: groups.filter((group) => group.roomId === room.roomId),
-      })),
-    [rooms, groups],
-  );
-  return (
-    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_350px]">
-      <section className="pk-panel min-w-0 overflow-hidden">
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-5">
-          <Field label="Fecha de rendición de entrevista">
-            <input
-              className="control"
-              type="date"
-              required
-              value={interviewDate}
-              onChange={(event) => setInterviewDate(event.target.value)}
-            />
-          </Field>
-          <Field label="Sala">
-            <select
-              className="control"
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-            >
-              <option value="">Seleccionar</option>
-              {rooms.map((room) => (
-                <option key={room.roomId} value={room.roomId}>
-                  {room.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Tipo de pauta">
-            <select
-              className="control"
-              value={stage}
-              onChange={(e) => {
-                const next = e.target.value as EvaluationGroup["stage"];
-                setStage(next);
-                setCapacity(next === "GROUP_3" ? 3 : 9);
-                setRequiredEvaluators(next === "GROUP_3" ? 3 : 6);
-              }}
-            >
-              <option value="GROUP_3">Observación focal · base 3</option>
-              <option value="GROUP_9">Interacción grupal · base 9</option>
-            </select>
-          </Field>
-          <Field label="Máximo de niños">
-            <input
-              className="control w-24"
-              type="number"
-              min={1}
-              max={30}
-              value={capacity}
-              onChange={(event) => setCapacity(Number(event.target.value))}
-            />
-          </Field>
-          <Field label="Evaluadores requeridos">
-            <input
-              className="control w-24"
-              type="number"
-              min={1}
-              max={12}
-              value={requiredEvaluators}
-              onChange={(event) =>
-                setRequiredEvaluators(Number(event.target.value))
-              }
-            />
-          </Field>
-          <Field label="Hora">
-            <input
-              className="control"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </Field>
-          <Field label="Código">
-            <input
-              className="control w-28"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="G3-01"
-            />
-          </Field>
-          <button
-            disabled={
-              busy || !interviewDate || !roomId || !code || capacity < 1 || requiredEvaluators < 1
-            }
-            className="primary"
-            onClick={() =>
-              onAction(
-                () =>
-                  prekinderApi.createGroup({
-                    processId,
-                    roomId,
-                    stage,
-                    code,
-                    startsAt: new Date(`${interviewDate}T${time}:00`).toISOString(),
-                    durationMinutes: 30,
-                    capacity,
-                    requiredEvaluators,
-                  }),
-                "Grupo creado sin conflictos.",
-              )
-            }
-          >
-            Crear grupo
-          </button>
-        </div>
-        <div className="overflow-x-auto p-5">
-          <div
-            className="grid min-w-[700px] gap-4"
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(rooms.length, 1)}, minmax(220px, 1fr))`,
-            }}
-          >
-            {roomColumns.map(({ room, groups: roomGroups }) => (
-              <div key={room.roomId}>
-                <div className="mb-3 flex items-center gap-2 border-b border-azul-monte-tabor pb-3">
-                  <DoorOpen size={18} className="text-azul-monte-tabor" />
-                  <span className="font-black">{room.name}</span>
-                  <span className="ml-auto text-xs text-slate-400">
-                    cap. {room.capacity}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {roomGroups.map((group) => (
-                    <button
-                      key={group.groupId}
-                      onClick={() => onSelect(group.groupId)}
-                      aria-pressed={selected?.groupId === group.groupId}
-                      className={`w-full rounded-xl border p-4 text-left transition-[border-color,background-color,box-shadow] ${selected?.groupId === group.groupId ? "border-blue-700 bg-blue-50 shadow-[0_8px_20px_rgba(30,58,138,0.1)]" : "border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-white"}`}
-                    >
-                      <div className="flex justify-between gap-3">
-                        <span className="font-black">
-                          {formatTime(group.startsAt)}
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-black ${statusTone[group.status] || statusTone.DRAFT}`}
-                        >
-                          {statusLabel[group.status] || group.status}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-bold">
-                        {group.code} ·{" "}
-                        {group.stage === "GROUP_3"
-                          ? "Observación focal"
-                          : "Interacción grupal"}
-                      </p>
-                      <div className="mt-3 flex gap-4 text-xs text-slate-500">
-                        <span>
-                          {group.memberIds.length}/{group.capacity} niños
-                        </span>
-                        <span>
-                          {group.evaluatorIds.length}/{group.requiredEvaluators}{" "}
-                          profesionales
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                  {!roomGroups.length && (
-                    <div className="rounded-xl border border-dashed border-slate-300 p-7 text-center text-xs text-slate-400">
-                      Sala disponible
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <GroupInspector
-        group={selected}
-        date={date}
-        rooms={rooms}
-        applications={applications}
-        professionals={professionals}
-        processConfiguration={configuration}
-        busy={busy}
-        onAction={onAction}
-      />
-    </div>
-  );
-}
 function GroupInspector({
   group,
   date,
@@ -2525,11 +2304,8 @@ function GroupInspector({
         </p>
       </aside>
     );
-  const refDate = processConfiguration?.ageReferenceDate
-    ? new Date(processConfiguration.ageReferenceDate)
-    : new Date();
   const ageOf = (app: FlowApplication) =>
-    Math.max(0, Math.floor((refDate.getTime() - new Date(app.identity.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+    ageInMonths(app.identity.birthDate, processConfiguration?.ageReferenceDate);
   const availableApps = applications
     .filter((app) => !group.memberIds.includes(app.applicationId))
     .sort((a, b) => ageOf(a) - ageOf(b));
@@ -2622,7 +2398,7 @@ function GroupInspector({
               const years = Math.floor(months / 12);
               const rem = months % 12;
               const ageLabel = `${years > 0 ? `${years}a ` : ""}${rem}m`;
-              const inclusionBadge = app.applicationDetails?.inclusionStudent ? " [INCLUSIÓN]" : "";
+              const inclusionBadge = app.isInclusionStudent ? " [INCLUSIÓN]" : "";
               return (
                 <option key={app.applicationId} value={app.applicationId}>
                   {fullName(app)} — {ageLabel}{inclusionBadge}

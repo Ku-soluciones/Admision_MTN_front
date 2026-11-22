@@ -27,7 +27,8 @@ const profileLabels: Record<SpecialtyProfile, string> = {
   PSYCHOLOGY: "Psicología",
   INDICATORS: "Indicadores de Ingreso",
   GROUP_OBSERVATION: "Observación Grupal",
-  SUPPORT: "Apoyo al Aprendizaje",
+  LEARNING_SUPPORT: "Apoyo al Aprendizaje",
+  FAMILY_INTERVIEW: "Entrevista Familiar",
   DAP: "DAP",
   ACADEMIC: "Académico",
 };
@@ -37,7 +38,8 @@ const profileIcons: Record<SpecialtyProfile, React.ComponentType<{ className?: s
   PSYCHOLOGY: UsersIcon,
   INDICATORS: ClipboardCheck,
   GROUP_OBSERVATION: UsersIcon,
-  SUPPORT: AcademicCapIcon,
+  LEARNING_SUPPORT: AcademicCapIcon,
+  FAMILY_INTERVIEW: UsersIcon,
   DAP: ClipboardCheck,
   ACADEMIC: AcademicCapIcon,
 };
@@ -58,7 +60,7 @@ export function PrekinderEvaluatorLayout({
 
   const handleLogout = () => {
     localStorage.removeItem("currentProfessor");
-    navigate("/prekinder/login");
+    navigate("/prekinder/evaluador/login");
   };
 
   const profileIcon = profileIcons[profile];

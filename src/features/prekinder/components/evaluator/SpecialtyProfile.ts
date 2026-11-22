@@ -19,6 +19,20 @@ export const PROFILE_LABELS: Record<SpecialtyProfile, string> = {
   DAP: "DAP",
 };
 
+export const PROFILE_PATH_SLUGS: Record<SpecialtyProfile, string> = {
+  ACADEMIC: "academic",
+  PSYCHOMOTOR: "psychomotor",
+  PSYCHOLOGY: "psychology",
+  INDICATORS: "indicators",
+  GROUP_OBSERVATION: "group-observation",
+  FAMILY_INTERVIEW: "family-interview",
+  LEARNING_SUPPORT: "learning-support",
+  DAP: "dap",
+};
+
+export const profileHomePath = (profile: SpecialtyProfile) =>
+  `/prekinder/evaluador/${PROFILE_PATH_SLUGS[profile]}`;
+
 export const PROFILE_ROLES: Record<SpecialtyProfile, string> = {
   ACADEMIC: "PK_EVALUATOR_ACADEMIC",
   PSYCHOMOTOR: "PK_EVALUATOR_PSYCHOMOTOR",

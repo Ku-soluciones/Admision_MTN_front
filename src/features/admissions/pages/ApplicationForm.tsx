@@ -132,6 +132,13 @@ const prekinderWaveLabels: Record<PrekinderApplicationOption['waveType'], string
     NEW_FAMILIES: 'Nuevas familias',
 };
 
+/** Fecha de nacimiento de un adulto: YYYY-MM-DD válida, pasada y razonable (1920 en adelante). */
+function isValidAdultBirthDate(value: unknown): boolean {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00`);
+    return !Number.isNaN(date.getTime()) && value >= '1920-01-01' && date.getTime() <= Date.now();
+}
+
 function prekinderAgeInConfiguredRange(
     birthDate: string,
     option: PrekinderApplicationOption | null,
@@ -429,7 +436,7 @@ const ApplicationForm: React.FC = () => {
     // Estado para disponibilidad de vacantes
     const [gradeOptionsWithAvailability, setGradeOptionsWithAvailability] = useState(educationalLevels.map(level => ({
         value: level.value,
-        label: level.label,
+        label: level.label as string,
         disabled: false,
         vacancyInfo: null as { hasM: boolean; hasF: boolean } | null
     })));
@@ -500,25 +507,47 @@ const ApplicationForm: React.FC = () => {
 
     const activePrekinderOption = prekinderOptions[0] ?? null;
 
-    // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
-    const scheduleDraftSave = useCallback(() => {
-        if (!isPrekinder || !activePrekinderOption || !data || Object.keys(data).length === 0) return;
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-            setHasUnsavedChanges(true);
-            setIsSaving(true);
-            prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
-                .then((draft) => {
+    // Autoguardado del borrador: reacciona a cualquier cambio de `data`/paso (no solo a updateField),
+    // serializa los envíos y usa siempre la última versión conocida del servidor.
+    const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const draftVersionRef = useRef<number | undefined>(undefined);
+    const draftChainRef = useRef<Promise<void>>(Promise.resolve());
+    const draftSeqRef = useRef(0);
+    const userEditedRef = useRef(false);
+    const draftClosedRef = useRef(false);
+    const [draftLoaded, setDraftLoaded] = useState(false);
+
+    useEffect(() => {
+        if (!isPrekinder || !activePrekinderOption || !draftLoaded || draftClosedRef.current) return;
+        if (!data || Object.keys(data).length === 0) return;
+        const processId = activePrekinderOption.processId;
+        const seq = ++draftSeqRef.current;
+        setHasUnsavedChanges(true);
+        if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+        draftTimerRef.current = setTimeout(() => {
+            draftChainRef.current = draftChainRef.current.then(async () => {
+                if (draftClosedRef.current) return;
+                setIsSaving(true);
+                try {
+                    let draft;
+                    try {
+                        draft = await prekinderApi.saveApplicationDraft(processId, currentStep, data, draftVersionRef.current);
+                    } catch (err: any) {
+                        if (err?.status !== 409) throw err;
+                        const latest = await prekinderApi.applicationDraft(processId);
+                        draft = await prekinderApi.saveApplicationDraft(processId, currentStep, data, latest?.version);
+                    }
+                    draftVersionRef.current = draft.version;
                     setServerDraftVersion(draft.version);
-                    setHasUnsavedChanges(false);
+                    if (draftSeqRef.current === seq) setHasUnsavedChanges(false);
+                } catch {
+                    // Se mantiene hasUnsavedChanges=true para advertir al salir; el próximo cambio reintenta.
+                } finally {
                     setIsSaving(false);
-                })
-                .catch(() => {
-                    setHasUnsavedChanges(false);
-                    setIsSaving(false);
-                });
+                }
+            });
         }, 650);
-    }, [isPrekinder, activePrekinderOption, data, currentStep, serverDraftVersion]);
+    }, [isPrekinder, activePrekinderOption?.processId, draftLoaded, data, currentStep]);
     const documentTypesConfig = useMemo(() => {
         if (!isPrekinder) return getDocumentTypesConfig();
         return (activePrekinderOption?.requiredDocuments || []).map((key) => ({
@@ -539,19 +568,23 @@ const ApplicationForm: React.FC = () => {
         if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || location.state?.editMode) return;
         serverDraftRestoredRef.current = true;
         prekinderApi.applicationDraft(activePrekinderOption.processId).then((draft) => {
+            setDraftLoaded(true);
             if (!draft) return;
             const restoredSubmissionId = typeof draft.data.__clientSubmissionId === 'string'
                 ? draft.data.__clientSubmissionId
                 : crypto.randomUUID();
-            clientSubmissionIdRef.current = restoredSubmissionId;
-            setData(draft.data);
+            clientSubmissionIdRef.current = restoredSubmissionId as `${string}-${string}-${string}-${string}-${string}`;
+            // Lo que el usuario alcanzó a escribir antes de que respondiera el servidor tiene prioridad.
+            setData((prev: any) => (userEditedRef.current ? { ...draft.data, ...prev } : draft.data));
             setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
+            draftVersionRef.current = draft.version;
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
             window.setTimeout(() => setDraftRestored(false), 6000);
         }).catch(() => {
             // El formulario sigue disponible aunque la recuperación temporal falle.
             serverDraftRestoredRef.current = false;
+            setDraftLoaded(true);
         });
     }, [isPrekinder, activePrekinderOption?.processId, location.state?.editMode]);
 
@@ -679,6 +712,7 @@ const ApplicationForm: React.FC = () => {
             ? toUpperCase(value)
             : value;
 
+        userEditedRef.current = true;
         setData((prev: any) => {
             const newData = { ...prev, [name]: processedValue };
             return newData;
@@ -694,11 +728,7 @@ const ApplicationForm: React.FC = () => {
                 return prev;
             });
         }
-        // Guardado automático en tiempo real para PK
-        if (isPrekinder) {
-            scheduleDraftSave();
-        }
-    }, [isPrekinder, scheduleDraftSave]);
+    }, []);
 
     // Helper function to touch fields (placeholder)
     const touchField = useCallback((name: string) => {
@@ -1113,6 +1143,7 @@ const ApplicationForm: React.FC = () => {
                     parent1Email: appData.father?.email || '',
                     parent1Phone: appData.father?.phone || '',
                     parent1Rut: appData.father?.rut || '',
+                    parent1BirthDate: appData.father?.birthDate ? String(appData.father.birthDate).split('T')[0] : '',
                     parent1Address: appData.father?.address || '',
 
                     // Mother data (parent2)
@@ -1120,6 +1151,7 @@ const ApplicationForm: React.FC = () => {
                     parent2Email: appData.mother?.email || '',
                     parent2Phone: appData.mother?.phone || '',
                     parent2Rut: appData.mother?.rut || '',
+                    parent2BirthDate: appData.mother?.birthDate ? String(appData.mother.birthDate).split('T')[0] : '',
                     parent2Address: appData.mother?.address || '',
 
                     // Supporter data
@@ -1478,6 +1510,7 @@ const ApplicationForm: React.FC = () => {
                     !data.parent1Rut?.trim() || !data.parent1Address?.trim() ) {
                     return false;
                 }
+                if (isPrekinder && !isValidAdultBirthDate(data.parent1BirthDate)) return false;
                 if (!isValidEmail(data.parent1Email || '') || !isValidPhone(data.parent1Phone || '')) {
                     return false;
                 }
@@ -1489,6 +1522,7 @@ const ApplicationForm: React.FC = () => {
                     !data.parent2Rut?.trim() || !data.parent2Address?.trim()) {
                     return false;
                 }
+                if (isPrekinder && !isValidAdultBirthDate(data.parent2BirthDate)) return false;
                 if (!isValidEmail(data.parent2Email || '') || !isValidPhone(data.parent2Phone || '')) {
                     return false;
                 }
@@ -1539,7 +1573,7 @@ const ApplicationForm: React.FC = () => {
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
             case 0: return ['firstName', 'paternalLastName', 'maternalLastName', 'rut', 'birthDate', 'grade', 'studentAddress'];
-            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address'];
+            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1BirthDate', 'parent1Address', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2BirthDate', 'parent2Address'];
             case 2: return ['supporterName', 'supporterEmail', 'supporterPhone', 'supporterRut', 'supporterRelation'];
             case 3: return ['guardianName', 'guardianEmail', 'guardianPhone', 'guardianRut', 'guardianRelation'];
             case 4: return []; // Document upload step
@@ -1630,6 +1664,7 @@ const ApplicationForm: React.FC = () => {
                                     email: data.parent1Email,
                                     phone: data.parent1Phone,
                                     address: data.parent1Address,
+                                    birthDate: data.parent1BirthDate,
                                     profession: data.parent1Profession || undefined,
                                 },
                                 mother: {
@@ -1638,6 +1673,7 @@ const ApplicationForm: React.FC = () => {
                                     email: data.parent2Email,
                                     phone: data.parent2Phone,
                                     address: data.parent2Address,
+                                    birthDate: data.parent2BirthDate,
                                     profession: data.parent2Profession || undefined,
                                 },
                                 supporter: {
@@ -1678,6 +1714,8 @@ const ApplicationForm: React.FC = () => {
                             folio: prekinderResponse.folio,
                         };
                         setSubmittedPrekinderApplication(prekinderResponse);
+                        draftClosedRef.current = true;
+                        if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
                         setHasUnsavedChanges(false);
                         }
                     } else if (isEditMode) {
@@ -2068,6 +2106,7 @@ const ApplicationForm: React.FC = () => {
             case 3:
                 if (!data.parent1Name?.trim()) missing.push('Nombre');
                 if (!data.parent1Rut?.trim()) missing.push('RUT');
+                if (isPrekinder && !isValidAdultBirthDate(data.parent1BirthDate)) missing.push('Fecha de nacimiento');
                 if (!data.parent1Email?.trim()) missing.push('Email');
                 if (!data.parent1Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent1Address?.trim()) missing.push('Dirección');
@@ -2077,6 +2116,7 @@ const ApplicationForm: React.FC = () => {
             case 4:
                 if (!data.parent2Name?.trim()) missing.push('Nombre');
                 if (!data.parent2Rut?.trim()) missing.push('RUT');
+                if (isPrekinder && !isValidAdultBirthDate(data.parent2BirthDate)) missing.push('Fecha de nacimiento');
                 if (!data.parent2Email?.trim()) missing.push('Email');
                 if (!data.parent2Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent2Address?.trim()) missing.push('Dirección');
@@ -3062,6 +3102,20 @@ const ApplicationForm: React.FC = () => {
                                 onBlur={() => touchField('parent1Rut')}
                                 error={errors.parent1Rut}
                             />
+                            {isPrekinder && (
+                                <Input
+                                    id="parent1-birthDate"
+                                    label="Fecha de Nacimiento"
+                                    type="date"
+                                    isRequired
+                                    max={new Date().toISOString().split('T')[0]}
+                                    min="1920-01-01"
+                                    value={data.parent1BirthDate || ''}
+                                    onChange={(e) => updateField('parent1BirthDate', e.target.value)}
+                                    onBlur={() => touchField('parent1BirthDate')}
+                                    error={errors.parent1BirthDate}
+                                />
+                            )}
                             <Input
                                 id="parent1-email"
                                 label="Email"
@@ -3126,6 +3180,20 @@ const ApplicationForm: React.FC = () => {
                                 onBlur={() => touchField('parent2Rut')}
                                 error={errors.parent2Rut}
                             />
+                            {isPrekinder && (
+                                <Input
+                                    id="parent2-birthDate"
+                                    label="Fecha de Nacimiento"
+                                    type="date"
+                                    isRequired
+                                    max={new Date().toISOString().split('T')[0]}
+                                    min="1920-01-01"
+                                    value={data.parent2BirthDate || ''}
+                                    onChange={(e) => updateField('parent2BirthDate', e.target.value)}
+                                    onBlur={() => touchField('parent2BirthDate')}
+                                    error={errors.parent2BirthDate}
+                                />
+                            )}
                             <Input
                                 id="parent2-email"
                                 label="Email"
@@ -3631,6 +3699,7 @@ const ApplicationForm: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                     clearDraft();
+                                    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
                                     if (isPrekinder && activePrekinderOption) {
                                         void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
                                     }

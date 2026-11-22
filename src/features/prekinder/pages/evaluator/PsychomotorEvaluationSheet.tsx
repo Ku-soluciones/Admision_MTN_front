@@ -72,7 +72,7 @@ export function PsychomotorEvaluationSheet({ profile }: Props) {
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
-  const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
+  const [rubricCriteria, setRubricCriteria] = useState<Report["criteria"]>([]);
   const [responses, setResponses] = useState<{
     [assignId: string]: { [appId: string]: (Score | undefined)[] };
   }>({});

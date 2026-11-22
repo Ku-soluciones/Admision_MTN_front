@@ -53,9 +53,9 @@ export function buildMockAgenda(profile: string): EvaluatorAgenda {
           evaluatorIds: ["mock-eval-1"],
         },
         reports: [
-          { reportId: "r1", applicationId: "mock-app-1", applicantName: "Amalia Rojas Silva", status: "PENDING", scores: [], comment: "" },
-          { reportId: "r2", applicationId: "mock-app-2", applicantName: "Bruno Méndez Leiva", status: "PENDING", scores: [], comment: "" },
-          { reportId: "r3", applicationId: "mock-app-3", applicantName: "Clara Fuentes Pinto", status: "PENDING", scores: [], comment: "" },
+          { reportId: "r1", applicationId: "mock-app-1", applicantName: "Amalia Rojas Silva", status: "PENDING", version: 1, rawScore: null, maximumScore: null },
+          { reportId: "r2", applicationId: "mock-app-2", applicantName: "Bruno Méndez Leiva", status: "PENDING", version: 1, rawScore: null, maximumScore: null },
+          { reportId: "r3", applicationId: "mock-app-3", applicantName: "Clara Fuentes Pinto", status: "PENDING", version: 1, rawScore: null, maximumScore: null },
         ],
       },
     ],

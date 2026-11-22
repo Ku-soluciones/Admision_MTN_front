@@ -17,7 +17,7 @@ import {
   type RubricVersion,
   type Report,
 } from "../../services/api";
-import { PROFILE_TO_SHORT_INSTRUMENT, scoreOptionToneClass, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
+import { PROFILE_TO_SHORT_INSTRUMENT, profileHomePath, scoreOptionToneClass, type SpecialtyProfile } from "../../components/evaluator/SpecialtyProfile";
 
 type Score = number | null;
 
@@ -63,7 +63,7 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
   const [assignments, setAssignments] = useState<EvaluatorAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<EvaluatorAssignment | null>(null);
   const [activeApplicantId, setActiveApplicantId] = useState<string | null>(null);
-  const [rubricCriteria, setRubricCriteria] = useState<RubricVersion["criteria"]>([]);
+  const [rubricCriteria, setRubricCriteria] = useState<Report["criteria"]>([]);
     const [responses, setResponses] = useState<{ [assignId: string]: { [appId: string]: (Score | undefined)[] } }>({});
   const [comments, setComments] = useState<{ [assignId: string]: { [appId: string]: string } }>({});
   const [submitted, setSubmitted] = useState<{ [assignId: string]: boolean }>({});
@@ -73,6 +73,11 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
   const [editableStatus, setEditableStatus] = useState<{ [appId: string]: boolean }>({});
   const [minutesUntilStart, setMinutesUntilStart] = useState<number | null>(null);
   const countdownRef = useRef<number | null>(null);
+  const reportsRef = useRef<{ [appId: string]: Report }>({});
+  const saveQueueRef = useRef<{ [key: string]: Promise<unknown> }>({});
+  const lastScoreRef = useRef<{ [key: string]: number }>({});
+  const noteTimersRef = useRef<{ [appId: string]: number }>({});
+  const pendingNotesRef = useRef<{ [appId: string]: string }>({});
   const [explicitlySelected, setExplicitlySelected] = useState<Set<string>>(new Set());
 
   const shortInstrument = PROFILE_TO_SHORT_INSTRUMENT[profile];
@@ -85,10 +90,59 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
         options: [...c.options].sort((a, b) => a.position - b.position),
       }));
       setRubricCriteria(sorted);
+      reportsRef.current = { ...reportsRef.current, [report.header.applicationId]: report };
       setReportsData((current) => ({ ...current, [report.header.applicationId]: report }));
     } catch (err) {
       console.error("Error loading rubric:", err);
     }
+  }
+
+  function setReport(applicationId: string, report: Report) {
+    reportsRef.current = { ...reportsRef.current, [applicationId]: report };
+    setReportsData((current) => ({ ...current, [applicationId]: report }));
+  }
+
+  // Rellena puntajes y comentarios desde lo ya guardado en el servidor; lo escrito localmente tiene prioridad.
+  function mergeServerState(assignId: string, reportsMap: { [appId: string]: Report }) {
+    setResponses((current) => {
+      const forAssign = { ...(current[assignId] ?? {}) };
+      for (const [appId, report] of Object.entries(reportsMap)) {
+        const local = forAssign[appId];
+        forAssign[appId] = report.criteria.map((c, i) => {
+          const saved = c.options.find((o) => o.optionId === c.selectedOptionId)?.value;
+          return local?.[i] ?? saved;
+        });
+      }
+      return { ...current, [assignId]: forAssign };
+    });
+    setComments((current) => {
+      const forAssign = { ...(current[assignId] ?? {}) };
+      for (const [appId, report] of Object.entries(reportsMap)) {
+        forAssign[appId] = forAssign[appId] ?? report.note.content ?? "";
+      }
+      return { ...current, [assignId]: forAssign };
+    });
+  }
+
+  async function saveNoteNow(applicationId: string, content: string) {
+    const report = reportsRef.current[applicationId];
+    if (!report || !report.editableNow || (report.note.content ?? "") === content) return;
+    try {
+      const updated = await prekinderApi.saveNote(report.header.reportId, content, report.note.version, crypto.randomUUID());
+      setReport(applicationId, updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pudimos guardar el comentario. Reintenta.");
+    }
+  }
+
+  async function flushNotes() {
+    const pending = Object.entries(pendingNotesRef.current);
+    pendingNotesRef.current = {};
+    for (const [appId, content] of pending) {
+      window.clearTimeout(noteTimersRef.current[appId]);
+      await saveNoteNow(appId, content);
+    }
+    await Promise.all(Object.values(saveQueueRef.current));
   }
 
   async function loadAllReports() {
@@ -103,8 +157,10 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
           editableMap[r.applicationId] = report.editableNow;
         })
       );
+      reportsRef.current = reportsMap;
       setReportsData(reportsMap);
       setEditableStatus(editableMap);
+      mergeServerState(selectedAssignment.assignmentId, reportsMap);
       const mins = getMinutesUntil(selectedAssignment.group.startsAt);
       setMinutesUntilStart(mins);
       if (rubricCriteria.length === 0) {
@@ -220,29 +276,45 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
           },
         };
       });
-      const report = reportsData[applicationId];
+      const report = reportsRef.current[applicationId];
       if (!report) return;
       const criterion = report.criteria[criterionIdx];
       if (!criterion) return;
       const option = criterion.options.find((o) => o.value === value);
       const optionId = option?.optionId ?? null;
       const notObserved = value < 0 || optionId === null;
-      void prekinderApi
-        .saveResponse(report.header.reportId, criterion.criterionId, {
-          optionId,
-          notObserved,
-          expectedVersion: criterion.responseVersion,
-          operationId: crypto.randomUUID(),
-        })
-        .then((updatedReport) => {
-          setReportsData((current) => ({
-            ...current,
-            [applicationId]: updatedReport,
-          }));
-        })
-        .catch((err) => {
-          console.error("Error saving response:", err);
-        });
+      const assignId = selectedAssignment.assignmentId;
+      const queueKey = `${report.header.reportId}:${criterion.criterionId}`;
+      lastScoreRef.current[queueKey] = value;
+      const run = async () => {
+        const latest = reportsRef.current[applicationId]?.criteria[criterionIdx] ?? criterion;
+        try {
+          const updatedReport = await prekinderApi.saveResponse(report.header.reportId, criterion.criterionId, {
+            optionId,
+            notObserved,
+            expectedVersion: latest.responseVersion,
+            operationId: crypto.randomUUID(),
+          });
+          setReport(applicationId, updatedReport);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "No pudimos guardar la respuesta. Reintenta.");
+          if (lastScoreRef.current[queueKey] !== value) return;
+          try {
+            const fresh = await prekinderApi.report(report.header.reportId);
+            setReport(applicationId, fresh);
+            const fc = fresh.criteria[criterionIdx];
+            const savedValue = fc?.options.find((o) => o.optionId === fc.selectedOptionId)?.value;
+            setResponses((current) => {
+              const arr = [...(current[assignId]?.[applicationId] ?? [])];
+              arr[criterionIdx] = savedValue;
+              return { ...current, [assignId]: { ...(current[assignId] ?? {}), [applicationId]: arr } };
+            });
+          } catch {
+            /* sin conexión: el error ya se muestra */
+          }
+        }
+      };
+      saveQueueRef.current[queueKey] = (saveQueueRef.current[queueKey] ?? Promise.resolve()).then(run);
     },
     [selectedAssignment, rubricCriteria.length, reportsData, editableStatus],
   );
@@ -257,6 +329,13 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
           [applicationId]: comment,
         },
       }));
+      pendingNotesRef.current[applicationId] = comment;
+      window.clearTimeout(noteTimersRef.current[applicationId]);
+      noteTimersRef.current[applicationId] = window.setTimeout(() => {
+        const pending = pendingNotesRef.current[applicationId];
+        delete pendingNotesRef.current[applicationId];
+        if (pending !== undefined) void saveNoteNow(applicationId, pending);
+      }, 700);
     },
     [selectedAssignment],
   );
@@ -265,12 +344,17 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
     if (!selectedAssignment) return;
     setSaving(true);
     try {
-      await prekinderApi.startEvaluatorAssignment(
+      const next = await prekinderApi.startEvaluatorAssignment(
         selectedAssignment.assignmentId,
         selectedAssignment.version,
       );
+      setSelectedAssignment(next);
       await loadAllReports();
-    } catch { /* continue anyway */ }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No pudimos iniciar la evaluación. Reintenta.");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setScreen("evaluate");
   }, [selectedAssignment]);
@@ -280,8 +364,9 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
     setSaving(true);
     setError("");
     try {
+      await flushNotes();
       const completedStatuses = ["COMPLETED", "SUBMITTED", "VALIDATED", "LOCKED"];
-      const reportsToComplete = Object.values(reportsData).filter(
+      const reportsToComplete = Object.values(reportsRef.current).filter(
         (r) => !completedStatuses.includes(r.header.status),
       );
       for (const report of reportsToComplete) {
@@ -296,7 +381,7 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
         [selectedAssignment.assignmentId]: true,
       }));
       if (assignmentId) {
-        navigate(`/prekinder/evaluador/psychology`);
+        navigate(profileHomePath(profile));
       } else {
         backToAgenda();
       }
@@ -550,7 +635,7 @@ export function ConnectedPsychologyConsole({ profile }: Props) {
                   {formatTime(selectedAssignment.group.startsAt)} — {formatTime(selectedAssignment.group.endsAt)}
                 </p>
                 <button
-                  onClick={() => navigate("/prekinder/evaluador/psychology")}
+                  onClick={() => navigate(profileHomePath(profile))}
                   className="mt-6 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
                 >
                   Volver al dashboard
