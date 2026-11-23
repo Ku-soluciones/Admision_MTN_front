@@ -11,7 +11,7 @@ import {
 import { useNotifications } from '../../context/AppContext';
 import { applicationService, Application } from '../../services/applicationService';
 import interviewService from '../../services/interviewService';
-import { Interview, InterviewStatus, INTERVIEW_TYPE_LABELS } from '../../types/interview';
+import { Interview, InterviewStatus, INTERVIEW_STATUS_LABELS, INTERVIEW_TYPE_LABELS, selectCurrentInterview, selectScheduledInterview } from '../../types/interview';
 import evaluationService from '../../services/evaluationService';
 import { Evaluation, EvaluationType } from '../../types/evaluation';
 import institutionalEmailService from '../../services/institutionalEmailService';
@@ -117,6 +117,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     const [documentBlobLoading, setDocumentBlobLoading] = useState(false);
     const [documentBlobError, setDocumentBlobError] = useState<string | null>(null);
     const { addNotification } = useNotifications();
+    const currentScheduledInterview = selectScheduledInterview(interviews);
+    const visibleInterviewHistory = interviews.filter(interview => interview.status !== InterviewStatus.CANCELLED);
+    const interviewStatusLabel = currentScheduledInterview
+        ? INTERVIEW_STATUS_LABELS[currentScheduledInterview.status as InterviewStatus] || 'Programada'
+        : 'No programada';
 
     // Cargar información completa de la aplicación, entrevistas y evaluaciones
     useEffect(() => {
@@ -682,7 +687,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             case 'INTERVIEW_SCHEDULED': return 'Entrevista Programada';
             case 'EXAM_SCHEDULED': return 'Examen Programado';
             case 'APPROVED': return 'Aprobado';
-            case 'REJECTED': return 'Rechazado';
+            case 'REJECTED': return 'No aceptado';
             case 'WAITLIST': return 'Lista de Espera';
             default: return status;
         }
@@ -760,7 +765,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const formatDate = (dateString: string | undefined) => {
             if (!dateString) return 'No especificado';
             try {
-                const date = new Date(dateString);
+                const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? `${dateString}T00:00:00` : dateString);
                 if (isNaN(date.getTime())) return 'No especificado';
                 return date.toLocaleDateString('es-ES', {
                     year: 'numeric',
@@ -863,11 +868,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                 {formatDate(submissionDate)}
                             </span>
                         </div>
-                        {postulante.fechaEntrevista && (
+                        {currentScheduledInterview?.scheduledDate && (
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Fecha Entrevista:</span>
                                 <span className="font-medium text-purple-600">
-                                    {formatDate(postulante.fechaEntrevista)}
+                                    {formatDate(currentScheduledInterview.scheduledDate)}
                                 </span>
                             </div>
                         )}
@@ -894,8 +899,8 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-gray-600">Entrevista:</span>
-                            <Badge variant={postulante.entrevistaProgramada ? 'purple' : 'gray'} size="sm">
-                                {postulante.entrevistaProgramada ? 'Programada' : 'No programada'}
+                            <Badge variant={currentScheduledInterview ? 'purple' : 'gray'} size="sm">
+                                {interviewsLoading ? 'Cargando…' : interviewStatusLabel}
                             </Badge>
                         </div>
                     </div>
@@ -1077,15 +1082,15 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                            <FiCalendar className={`w-5 h-5 ${postulante.entrevistaProgramada ? 'text-purple-500' : 'text-gray-400'}`} />
+                            <FiCalendar className={`w-5 h-5 ${currentScheduledInterview ? 'text-purple-500' : 'text-gray-400'}`} />
                             <span className="font-medium">Entrevista</span>
                         </div>
-                        <Badge variant={postulante.entrevistaProgramada ? 'purple' : 'gray'} size="sm">
-                            {postulante.entrevistaProgramada ? 'Programada' : 'No programada'}
+                        <Badge variant={currentScheduledInterview ? 'purple' : 'gray'} size="sm">
+                            {interviewsLoading ? 'Cargando…' : interviewStatusLabel}
                         </Badge>
-                        {postulante.fechaEntrevista && (
+                        {currentScheduledInterview?.scheduledDate && (
                             <div className="text-sm text-gray-600 mt-1">
-                                {new Date(postulante.fechaEntrevista).toLocaleDateString('es-ES')}
+                                {new Date(`${currentScheduledInterview.scheduledDate}T00:00:00`).toLocaleDateString('es-ES')}
                             </div>
                         )}
                     </div>
@@ -1182,11 +1187,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 {/* Estado de cada tipo de entrevista */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {REQUIRED_INTERVIEW_TYPES.map(type => {
-                        const interview = interviews.find(i => i.type === type.type);
+                        const interview = selectCurrentInterview(interviews, type.type);
                         const hasInterview = !!interview;
                         const isCompleted = interview?.status === InterviewStatus.COMPLETED;
+                        const isConfirmed = interview?.status === InterviewStatus.CONFIRMED;
                         const isScheduled = interview?.status === InterviewStatus.SCHEDULED ||
-                                          interview?.status === InterviewStatus.CONFIRMED;
+                                          isConfirmed;
 
                         return (
                             <div key={type.type} className={`p-4 rounded-lg border-2 ${
@@ -1211,6 +1217,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         }`}
                                     >
                                         {isCompleted ? 'Completada' :
+                                         isConfirmed ? 'Confirmada' :
                                          isScheduled ? 'Programada' :
                                          type.required ? 'Requerida' : 'Opcional'}
                                     </Badge>
@@ -1218,7 +1225,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
                                 {interview && (
                                     <div className="space-y-1 text-xs text-gray-600">
-                                        <p>{new Date(interview.scheduledDate).toLocaleDateString('es-CL')}</p>
+                                        <p>{new Date(`${interview.scheduledDate}T00:00:00`).toLocaleDateString('es-CL')}</p>
                                         <p>{interview.scheduledTime}</p>
                                         <p>{interview.interviewerName}</p>
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
@@ -1251,11 +1258,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 </div>
 
                 {/* Lista de entrevistas */}
-                {interviews.length > 0 && (
+                {visibleInterviewHistory.length > 0 && (
                     <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Historial de Entrevistas ({interviews.length})</h4>
+                        <h4 className="font-medium text-gray-900 mb-3">Historial de Entrevistas ({visibleInterviewHistory.length})</h4>
                         <div className="space-y-3">
-                            {interviews.map(interview => (
+                            {visibleInterviewHistory.map(interview => (
                                 <div key={interview.id} className="border rounded-lg p-3 bg-white">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2">
@@ -1274,7 +1281,7 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                                         </Badge>
                                     </div>
                                     <div className="mt-2 text-sm text-gray-600">
-                                        {new Date(interview.scheduledDate).toLocaleDateString('es-CL')}
+                                        {new Date(`${interview.scheduledDate}T00:00:00`).toLocaleDateString('es-CL')}
                                         {interview.scheduledTime}
                                         {interview.status === InterviewStatus.COMPLETED && interview.score && (
                                             <span className="ml-2 text-green-600 font-medium">⭐ {interview.score}/10</span>
@@ -1611,13 +1618,13 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     </div>
                 </div>
 
-                {postulante.fechaEntrevista && (
+                {currentScheduledInterview?.scheduledDate && (
                     <div className="flex items-start gap-3 p-3 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
                         <FiCalendar className="w-5 h-5 text-purple-600 mt-0.5" />
                         <div className="flex-1">
                             <h4 className="font-medium text-purple-900">Entrevista Programada</h4>
                             <p className="text-sm text-purple-700">
-                                {new Date(postulante.fechaEntrevista).toLocaleDateString('es-ES')}
+                                {new Date(`${currentScheduledInterview.scheduledDate}T00:00:00`).toLocaleDateString('es-ES')}
                             </p>
                         </div>
                     </div>

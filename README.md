@@ -40,6 +40,10 @@ La app local corre en:
 http://localhost:5200/
 ```
 
+## Disponibilidad de postulaciones
+
+Configura `VITE_SHOW_POSTULACION=true` en el entorno de compilación de Vite para habilitar nuevas postulaciones. La opción cierra por defecto. Las familias con una cuenta existente pueden ingresar y gestionar sus postulaciones. Cuando se habilita la creación, el selector consulta por separado la disponibilidad de Prekínder y de los demás cursos.
+
 ## Rutas Principales
 
 - `/`

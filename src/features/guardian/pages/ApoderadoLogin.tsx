@@ -14,6 +14,10 @@ import {
     evaluatePasswordStrength,
 } from '../../../packages/shared-ui/src/services/passwordService';
 import { authStore } from '../../../packages/backend-sdk/src/index';
+import {
+    APPLICATIONS_CLOSED_MESSAGE,
+    NEW_APPLICATIONS_OPEN,
+} from '../../../packages/shared-utils/src/admissionAvailability';
 
 // Bloquear copiar / pegar / cortar / arrastrar en campos de contraseña
 const blockClipboardProps = {
@@ -106,9 +110,9 @@ const ApoderadoLogin: React.FC = () => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [showRegister, setShowRegister] = useState(
-        new URLSearchParams(window.location.search).get('register') === '1'
-    );
+    // Si el proceso no está activo,forzar showRegister a false
+    const urlRegisterParam = new URLSearchParams(window.location.search).get('register') === '1';
+    const [showRegister, setShowRegister] = useState(NEW_APPLICATIONS_OPEN && urlRegisterParam);
     const [isEmailVerified, setIsEmailVerified] = useState(false);
     const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
@@ -202,6 +206,11 @@ const ApoderadoLogin: React.FC = () => {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!NEW_APPLICATIONS_OPEN) {
+            setShowRegister(false);
+            setError(APPLICATIONS_CLOSED_MESSAGE);
+            return;
+        }
         setIsLoading(true);
         setError('');
 
@@ -340,15 +349,21 @@ const ApoderadoLogin: React.FC = () => {
                                 Iniciar Sesión
                             </Button>
 
-                            <div className="text-center pt-6 border-t border-gray-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegister(true)}
-                                    className="text-azul-monte-tabor hover:underline text-sm font-semibold"
-                                >
-                                    ¿Primera vez? Crear cuenta para postular
-                                </button>
-                            </div>
+                            {NEW_APPLICATIONS_OPEN ? (
+                                <div className="text-center pt-6 border-t border-gray-200">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRegister(true)}
+                                        className="text-azul-monte-tabor hover:underline text-sm font-semibold"
+                                    >
+                                        ¿Primera vez? Crear cuenta para postular
+                                    </button>
+                                </div>
+                            ) : (
+                                <p className="border-t border-gray-200 pt-6 text-center text-sm text-gray-500">
+                                    {APPLICATIONS_CLOSED_MESSAGE}
+                                </p>
+                            )}
                         </form>
                     ) : (
                         // Formulario de Registro (dividido en 2 pasos)

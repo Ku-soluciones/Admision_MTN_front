@@ -25,6 +25,9 @@ const InterviewTooltip: React.FC<InterviewTooltipProps> = ({ interview, classNam
       <div className="mb-3">
         <p className="font-bold text-gray-900">{interview.time} - {interview.endTime || 'fin pendiente'}</p>
         <p className="text-gray-600">{interview.studentName}</p>
+        {interview.entrySource === 'MANUAL' && (
+          <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">Ingreso excepcional</span>
+        )}
       </div>
       <div className="space-y-2 text-gray-600">
         <p className="flex items-center gap-2">

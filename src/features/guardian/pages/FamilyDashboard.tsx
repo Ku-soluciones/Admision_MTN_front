@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCalendarDate } from '../../../packages/shared-utils/src/calendarDate';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../admin/components/ui/Card';
 import Badge from '../../admin/components/ui/Badge';
@@ -55,6 +56,10 @@ import {
   type GuardianPrekinderApplication,
 } from '../services/guardianPrekinderService';
 import PrekinderInclusionDeclaration from '../components/PrekinderInclusionDeclaration';
+import {
+  APPLICATIONS_CLOSED_MESSAGE,
+  NEW_APPLICATIONS_OPEN,
+} from '../../../packages/shared-utils/src/admissionAvailability';
 
 const sections = [
   { key: 'resumen',    label: 'Resumen de Postulación',            icon: CheckCircleIcon },
@@ -603,10 +608,13 @@ const FamilyDashboard: React.FC = () => {
                       : 'Aún no tiene una postulación registrada. Comience el proceso de admisión para su hijo/a completando el formulario de postulación.'
                     }
                   </p>
-                  {!isLoading && (
+                  {!isLoading && NEW_APPLICATIONS_OPEN && (
                     <Button variant="primary" size="lg" className="w-full" onClick={() => navigateToAdmissions()}>
                       Crear Nueva Postulación
                     </Button>
+                  )}
+                  {!isLoading && !NEW_APPLICATIONS_OPEN && (
+                    <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
                   )}
                   {isLoading && (
                     <div className="flex items-center justify-center gap-2">
@@ -645,15 +653,17 @@ const FamilyDashboard: React.FC = () => {
                   <br/>
                   <div className="flex justify-between items-center mb-4  pt-4 border-t border-gray-200">
                     <h2 className="text-xl font-bold text-azul-monte-tabor">Mis postulaciones</h2>
-                    <Button
-                        variant="success"
-                      size="sm"
-                      onClick={handleAddAnotherChild}
-                      className="flex items-center gap-2"
-                    >
-                      <FiPlus className="w-4 h-4" />
-                      Postular otro hijo
-                    </Button>
+                      {NEW_APPLICATIONS_OPEN && (
+                        <Button
+                          variant="success"
+                          size="sm"
+                          className="flex items-center gap-2"
+                          onClick={handleAddAnotherChild}
+                        >
+                          <FiPlus className="w-4 h-4" />
+                          Postular otro hijo
+                        </Button>
+                      )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mb-4">
@@ -693,7 +703,7 @@ const FamilyDashboard: React.FC = () => {
                             {app.status === 'PENDING' ? 'Pendiente' :
                              app.status === 'UNDER_REVIEW' ? 'En Revisión' :
                              app.status === 'APPROVED' ? 'Aprobado' :
-                             app.status === 'REJECTED' ? 'Rechazado' :
+                             app.status === 'REJECTED' ? 'No aceptado' :
                              app.status === 'WAITLIST' ? 'Lista de Espera' :
                              app.status}
                           </Badge>
@@ -769,7 +779,7 @@ const FamilyDashboard: React.FC = () => {
                   <>
                     <p><strong>Nombre:</strong> {myApplication.student.firstName} {myApplication.student.lastName}</p>
                     <p><strong>RUT:</strong> {myApplication.student.rut}</p>
-                    <p><strong>Fecha de Nacimiento:</strong> {new Date(myApplication.student.birthDate).toLocaleDateString('es-CL')}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.student.birthDate)}</p>
                     <p><strong>Nivel:</strong> {myApplication.student.gradeApplied}</p>
                     <p><strong>Dirección:</strong> {myApplication.student.address}</p>
                     {myApplication.student.currentSchool && (
@@ -779,7 +789,7 @@ const FamilyDashboard: React.FC = () => {
                 ) : (
                   <>
                     <p><strong>Nombre:</strong> {myApplication.applicant?.firstName} {myApplication.applicant?.lastName}</p>
-                    <p><strong>Fecha de Nacimiento:</strong> {myApplication.applicant?.birthDate}</p>
+                    <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.applicant?.birthDate)}</p>
                     <p><strong>Nivel:</strong> {myApplication.applicant?.grade}</p>
                   </>
                 )}
@@ -798,7 +808,7 @@ const FamilyDashboard: React.FC = () => {
                      myApplication.status === 'INTERVIEW_SCHEDULED' ? 'Entrevista Programada' :
                      myApplication.status === 'EXAM_SCHEDULED' ? 'Examen Programado' :
                      myApplication.status === 'APPROVED' ? 'Aprobado' :
-                     myApplication.status === 'REJECTED' ? 'Rechazado' :
+                     myApplication.status === 'REJECTED' ? 'No aceptado' :
                      myApplication.status === 'WAITLIST' ? 'Lista de Espera' :
                      myApplication.status}
                   </Badge>
@@ -855,7 +865,7 @@ const FamilyDashboard: React.FC = () => {
                       <p><strong>Nombres:</strong> {myApplication.student.firstName}</p>
                       <p><strong>Apellidos:</strong> {myApplication.student.lastName}</p>
                       <p><strong>RUT:</strong> {myApplication.student.rut}</p>
-                      <p><strong>Fecha de Nacimiento:</strong> {new Date(myApplication.student.birthDate).toLocaleDateString('es-CL')}</p>
+                      <p><strong>Fecha de Nacimiento:</strong> {formatCalendarDate(myApplication.student.birthDate)}</p>
                     </div>
                     <div>
                       <p><strong>Nivel Postulado:</strong> {myApplication.student.gradeApplied}</p>
@@ -997,9 +1007,13 @@ const FamilyDashboard: React.FC = () => {
                 <p className="text-gris-piedra mb-4">
                   No hay información de postulación disponible
                 </p>
-                <Button variant="primary" onClick={() => navigateToAdmissions()}>
-                  Crear Nueva Postulación
-                </Button>
+                {NEW_APPLICATIONS_OPEN ? (
+                  <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                    Crear Nueva Postulación
+                  </Button>
+                ) : (
+                  <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                )}
               </div>
             )}
           </Card>
@@ -1035,9 +1049,13 @@ const FamilyDashboard: React.FC = () => {
                   <p className="text-gris-piedra mb-4">
                     Debe completar su postulación primero antes de llenar el formulario complementario
                   </p>
-                  <Button variant="primary" onClick={() => navigateToAdmissions()}>
-                    Crear Nueva Postulación
-                  </Button>
+                  {NEW_APPLICATIONS_OPEN ? (
+                    <Button variant="primary" onClick={() => navigateToAdmissions()}>
+                      Crear Nueva Postulación
+                    </Button>
+                  ) : (
+                    <p className="text-sm font-medium text-gray-600">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                  )}
                 </div>
               </Card>
             )}

@@ -88,7 +88,7 @@ export const domainCatalog: DomainOwnership[] = [
       '/profesor/evaluacion/:evaluationId',
       '/profesor/informe/:examId',
       '/profesor/informe-director/:evaluationId',
-      '/profesor/entrevista-director/:examId',
+      '/profesor/entrevista-director/:evaluationId',
       '/cycle-director-interview/:evaluationId',
       '/psychological-interview/:evaluationId',
       '/profesor/estudiante/:studentId',

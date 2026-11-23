@@ -1,3 +1,4 @@
+import { statusRequestError } from '../utils/applicationStatusPolicy';
 import api from './api';
 import { DataAdapter } from './dataAdapter';
 import { toBackendGradeLevel } from '../../../shared-utils/src/gradeLevels';
@@ -123,6 +124,8 @@ export interface Application {
         relationship: string;
     };
     status: string;
+    allowedStatusTransitions?: string[];
+    statusChangeBlockedReason?: string;
     paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
     paymentRequired?: boolean;
     paidAt?: string;
@@ -409,7 +412,7 @@ class ApplicationService {
                 throw new Error('No tienes permisos para archivar esta postulación');
             }
 
-            throw new Error('Error al archivar la postulación');
+            throw new Error(statusRequestError(error));
         }
     }
 
@@ -439,7 +442,7 @@ class ApplicationService {
                 throw new Error('No tienes permisos para cambiar el estado');
             }
 
-            throw new Error('Error al actualizar el estado de la postulación');
+            throw new Error(statusRequestError(error));
         }
     }
 

@@ -302,9 +302,9 @@ export const fullTemplateData = {
         ]
       },
       "justification": {
-        "title": "Justifique en máximo 5 líneas la opción que marcó: (Observación cualitativa)",
+        "title": "Justifique la opción que marcó: (Observación cualitativa)",
         "note": "En los casos de los postulantes que vienen por dificultades sociales, explicitar lo que han hecho por el niño, el camino recorrido, si hay aprendizajes, si tienden a culpar al otro, al colegio. Identificar tratamientos requeridos.",
-        "maxLines": 5
+        "maxLines": 200
       }
     }
   },

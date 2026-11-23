@@ -1,3 +1,4 @@
+import type { ApplicationStatusMetadata } from '../../utils/applicationStatusPolicy';
 /**
  * TypeScript types for APPLICATIONS Service
  * Generated for MTN Admission System
@@ -10,7 +11,7 @@ export interface ApplicationsResponse<T = any> {
   timestamp: string;
 }
 
-export interface Application {
+export interface Application extends ApplicationStatusMetadata {
   id: number;
   studentId: number;
   fatherId?: number;

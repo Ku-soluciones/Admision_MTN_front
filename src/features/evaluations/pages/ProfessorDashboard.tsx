@@ -31,7 +31,7 @@ import {
 } from '../../admin/services/staticData';
 import { ExamStatus, StudentExam, StudentProfile } from '../../admin/types';
 import { Link, useNavigate } from 'react-router-dom';
-import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats } from '../../admin/services/professorEvaluationService';
+import { professorEvaluationService, ProfessorEvaluation, ProfessorEvaluationStats, AdmissionProcessOption } from '../../admin/services/professorEvaluationService';
 import { professorAuthService } from '../services/professorAuthService';
 import { notify } from '../../admin/utils/notify';
 import { EvaluationStatus, EvaluationType } from '../../admin/types/evaluation';
@@ -179,9 +179,13 @@ const ProfessorDashboard: React.FC = () => {
         averageScore: 0
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [processes, setProcesses] = useState<AdmissionProcessOption[]>([]);
+    const [selectedProcessCode, setSelectedProcessCode] = useState('');
+    const [processesLoading, setProcessesLoading] = useState(true);
 
     // Estado para las entrevistas
     const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [openingInterviewId, setOpeningInterviewId] = useState<number | null>(null);
 
     // Estado para documentos de estudiantes (mapa por applicationId)
     const [documentsByApplication, setDocumentsByApplication] = useState<Record<number, any[]>>({});
@@ -223,6 +227,23 @@ const ProfessorDashboard: React.FC = () => {
     const [studentPage, setStudentPage] = useState(1);
     const studentsPerPage = 10;
 
+    useEffect(() => {
+        let cancelled = false;
+        professorEvaluationService.getAdmissionProcesses()
+            .then(({ processes: availableProcesses, activeProcessCode }) => {
+                if (cancelled) return;
+                setProcesses(availableProcesses);
+                setSelectedProcessCode(activeProcessCode || availableProcesses[0]?.processCode || '');
+            })
+            .catch(() => {
+                if (!cancelled) setProcesses([]);
+            })
+            .finally(() => {
+                if (!cancelled) setProcessesLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
     // Determinar qué tabs de entrevistas mostrar según las evaluaciones asignadas
     const interviewTabs = useMemo(() => {
         const tabs: { key: string; label: string; count: number }[] = [];
@@ -233,16 +254,12 @@ const ProfessorDashboard: React.FC = () => {
             tabs.push({ key: 'familiares', label: 'Entrevistas Familiares', count: familyCount });
         }
 
-        // Entrevistas Director de Ciclo
+        // La entrevista de Director de Ciclo es la entrevista compartida. El
+        // director y el psicólogo ven esta misma instancia, pero cada uno
+        // completa una evaluación independiente.
         const directorCount = interviews.filter(i => i.type === 'CYCLE_DIRECTOR').length;
-        if (directorCount > 0 || evaluations.some(e => e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
+        if (directorCount > 0) {
             tabs.push({ key: 'director_ciclo', label: 'Entrevistas Director de Ciclo', count: directorCount });
-        }
-
-        // Entrevistas Psicológicas (para psicólogos ven las mismas que DC)
-        const psychoCount = interviews.filter(i => i.type === 'PSYCHOLOGICAL' || i.type === 'CYCLE_DIRECTOR').length;
-        if (psychoCount > 0 || evaluations.some(e => e.evaluationType === 'PSYCHOLOGICAL_INTERVIEW' || e.evaluationType === 'CYCLE_DIRECTOR_INTERVIEW')) {
-            tabs.push({ key: 'psicologicas', label: 'Entrevistas Psicológicas', count: psychoCount });
         }
 
         // Informes Finales (solo para Directores de Ciclo)
@@ -356,9 +373,9 @@ const ProfessorDashboard: React.FC = () => {
                 }
 
                 const [evaluationsData, statsData, interviewsData] = await Promise.all([
-                    professorEvaluationService.getMyEvaluations(),
-                    professorEvaluationService.getMyEvaluationStats(),
-                    interviewService.getInterviewsByInterviewer(freshProfessor.id)
+                    professorEvaluationService.getMyEvaluations(selectedProcessCode || undefined),
+                    professorEvaluationService.getMyEvaluationStats(selectedProcessCode || undefined),
+                    interviewService.getInterviewsByInterviewer(freshProfessor.id, selectedProcessCode || undefined)
                 ]);
 
                 if (isMounted) {
@@ -429,7 +446,7 @@ const ProfessorDashboard: React.FC = () => {
             isMounted = false;
             abortController.abort();
         };
-    }, [refreshKey]); // Re-ejecuta cuando refreshKey cambia (force refresh)
+    }, [refreshKey, selectedProcessCode]); // Re-ejecuta al refrescar o cambiar de proceso
 
 
     // Datos mock para compatibilidad (se pueden eliminar después)
@@ -458,7 +475,7 @@ const ProfessorDashboard: React.FC = () => {
                 contentType: doc.contentType
             });
         } catch (err) {
-            notify('error', 'Error', 'No se pudo visualizar el documento');
+            notify.error('No se pudo visualizar el documento');
         }
     };
 
@@ -539,7 +556,7 @@ const ProfessorDashboard: React.FC = () => {
             [EvaluationType.MATHEMATICS_EXAM]: 'Examen de Matemáticas',
             [EvaluationType.LANGUAGE_EXAM]: 'Examen de Lenguaje',
             [EvaluationType.ENGLISH_EXAM]: 'Examen de Inglés',
-            [EvaluationType.PSYCHOLOGICAL_INTERVIEW]: 'Entrevista Psicológica',
+            [EvaluationType.PSYCHOLOGICAL_INTERVIEW]: 'Entrevista Director de Ciclo',
             [EvaluationType.CYCLE_DIRECTOR_INTERVIEW]: 'Entrevista Director de Ciclo',
             [EvaluationType.CYCLE_DIRECTOR_REPORT]: 'Informe Director de Ciclo',
             [EvaluationType.FAMILY_INTERVIEW]: 'Entrevista Familiar'
@@ -710,9 +727,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/cycle-director-interview/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -749,7 +765,7 @@ const ProfessorDashboard: React.FC = () => {
                 case EvaluationType.MATHEMATICS_EXAM: return 'Matemática';
                 case EvaluationType.LANGUAGE_EXAM: return 'Lenguaje';
                 case EvaluationType.ENGLISH_EXAM: return 'Inglés';
-                case EvaluationType.PSYCHOLOGICAL_INTERVIEW: return 'Psicológica';
+                case EvaluationType.PSYCHOLOGICAL_INTERVIEW: return 'Director de Ciclo';
                 case EvaluationType.CYCLE_DIRECTOR_INTERVIEW: return 'Director de Ciclo';
                 case EvaluationType.CYCLE_DIRECTOR_REPORT: return 'Informe Director';
                 case EvaluationType.FAMILY_INTERVIEW: return 'Familiar';
@@ -801,7 +817,7 @@ const ProfessorDashboard: React.FC = () => {
         const getTabLabel = () => {
             switch (activeEvaluationTab) {
                 case 'academicas': return 'Exámenes';
-                case 'psicologicas': return 'Entrevistas Psicológicas';
+                case 'psicologicas': return 'Entrevistas Director de Ciclo';
                 case 'familiares': return 'Entrevistas Familiares';
                 default: return '';
             }
@@ -917,7 +933,7 @@ const ProfessorDashboard: React.FC = () => {
                                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     >
-                                        Psicológicas/Director <span className="ml-1 opacity-75">{psychologicalEvaluations.length}</span>
+                                        Director de Ciclo <span className="ml-1 opacity-75">{psychologicalEvaluations.length}</span>
                                     </button>
                                 )}
                                 {hasFamilyEvaluations && (
@@ -1061,13 +1077,44 @@ const ProfessorDashboard: React.FC = () => {
         );
     };
 
+    const getEvaluationTypeForInterview = (interview: Interview): EvaluationType => {
+        // En las entrevistas de Director de Ciclo participan dos profesionales.
+        // La asignación efectiva retornada por el BFF prevalece sobre el rol
+        // genérico guardado en el navegador: un psicólogo también puede ser el
+        // entrevistador principal y completar la pauta de Director de Ciclo.
+        if (interview.type === 'CYCLE_DIRECTOR') {
+            const currentProfessorId = Number(currentProfessor?.id);
+            if (Number.isFinite(currentProfessorId)) {
+                if (currentProfessorId === Number(interview.interviewerId)) {
+                    return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+                }
+                if (currentProfessorId === Number(interview.secondInterviewerId)) {
+                    return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+                }
+            }
+
+            const assignedEvaluations = evaluations.filter(e => e.applicationId === interview.applicationId);
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)) {
+                return EvaluationType.CYCLE_DIRECTOR_INTERVIEW;
+            }
+            if (assignedEvaluations.some(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)) {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
+            if (currentProfessor?.role === 'PSYCHOLOGIST') {
+                return EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+            }
+        }
+
+        return interview.type === 'CYCLE_DIRECTOR'
+            ? EvaluationType.CYCLE_DIRECTOR_INTERVIEW
+            : interview.type === 'FAMILY'
+                ? EvaluationType.FAMILY_INTERVIEW
+                : EvaluationType.PSYCHOLOGICAL_INTERVIEW;
+    };
+
     // Helper function to check if an interview has a completed evaluation
     const isInterviewCompleted = (interview: Interview): boolean => {
-        // Map interview type to expected evaluation type
-        const expectedEvalType =
-            interview.type === 'CYCLE_DIRECTOR' ? 'CYCLE_DIRECTOR_INTERVIEW' :
-            interview.type === 'FAMILY' ? 'FAMILY_INTERVIEW' :
-            'PSYCHOLOGICAL_INTERVIEW';
+        const expectedEvalType = getEvaluationTypeForInterview(interview);
 
         // Search for matching evaluation
         const matchingEval = evaluations.find(e =>
@@ -1081,23 +1128,11 @@ const ProfessorDashboard: React.FC = () => {
 
     const renderEntrevistas = () => {
 
-        // Helper function to get the correct evaluation type for a tab
-        const getEvaluationTypeForTab = (tabKey: string): string | null => {
-            switch (tabKey) {
-                case 'familiares': return 'FAMILY_INTERVIEW';
-                case 'director_ciclo': return 'CYCLE_DIRECTOR_INTERVIEW';
-                case 'psicologicas': return 'PSYCHOLOGICAL_INTERVIEW';
-                case 'informes': return 'CYCLE_DIRECTOR_REPORT';
-                default: return null;
-            }
-        };
-
         // Helper function to get the correct interview type for a tab
         const getInterviewTypeForTab = (tabKey: string): string | null => {
             switch (tabKey) {
                 case 'familiares': return 'FAMILY';
                 case 'director_ciclo': return 'CYCLE_DIRECTOR';
-                case 'psicologicas': return 'PSYCHOLOGICAL';
                 default: return null;
             }
         };
@@ -1108,9 +1143,8 @@ const ProfessorDashboard: React.FC = () => {
                 case 'FAMILY_INTERVIEW':
                     return `/profesor/entrevista-familiar/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_INTERVIEW':
-                    return `/cycle-director-interview/${evaluation.id}`;
                 case 'PSYCHOLOGICAL_INTERVIEW':
-                    return `/psychological-interview/${evaluation.id}`;
+                    return `/profesor/entrevista-director/${evaluation.id}`;
                 case 'CYCLE_DIRECTOR_REPORT':
                     return `/profesor/informe-director/${evaluation.id}`;
                 default:
@@ -1139,14 +1173,9 @@ const ProfessorDashboard: React.FC = () => {
 
         // Get data for the current tab
         const getTabData = () => {
-            const evalType = getEvaluationTypeForTab(activeInterviewTab);
-
             if (activeInterviewTab === 'informes') {
                 // For informes, use evaluations directly
                 return evaluations.filter(e => e.evaluationType === 'CYCLE_DIRECTOR_REPORT');
-            } else if (activeInterviewTab === 'psicologicas') {
-                // Psicólogos ven las mismas entrevistas que el director de ciclo (CYCLE_DIRECTOR)
-                return interviews.filter(i => i.type === 'CYCLE_DIRECTOR' || i.type === 'PSYCHOLOGICAL');
             } else {
                 // For other interviews, filter by type
                 const intType = getInterviewTypeForTab(activeInterviewTab);
@@ -1184,28 +1213,31 @@ const ProfessorDashboard: React.FC = () => {
             const getEvaluationToUse = async () => {
                 if (!isInterview) return evaluation;
 
-                // For interviews, find the matching evaluation
-                const expectedEvalType = getEvaluationTypeForTab(activeInterviewTab);
+                // Buscar la pauta correspondiente al rol del usuario, no solo a
+                // la pestaña visible (una entrevista de ciclo también genera la
+                // pauta psicológica del segundo entrevistador).
+                const expectedEvalType = getEvaluationTypeForInterview(interview);
                 const matchingEval = evaluations.find(e =>
                     e.applicationId === interview.applicationId &&
                     e.evaluationType === expectedEvalType
                 );
                 if (matchingEval) return matchingEval;
 
-                // Entrevistas históricas cargadas directamente por SQL pueden no tener
-                // la evaluación asociada que necesita el formulario para abrirse.
-                const repairedEvaluations = await professorEvaluationService.ensureInterviewEvaluations(interview.id);
-                const repairedEvaluation = repairedEvaluations.find(e =>
-                    e.applicationId === interview.applicationId &&
-                    e.evaluationType === expectedEvalType
-                );
-                if (repairedEvaluation) {
+                // Las entrevistas históricas pueden no tener sus pautas creadas.
+                // El BFF devuelve las pautas asignadas al usuario autenticado.
+                const ensuredEvaluations = (await professorEvaluationService.ensureInterviewEvaluations(interview.id))
+                    .filter(e => e.applicationId === interview.applicationId);
+                const ensuredMatch = ensuredEvaluations.find(e => e.evaluationType === expectedEvalType)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.CYCLE_DIRECTOR_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.PSYCHOLOGICAL_INTERVIEW)
+                    || ensuredEvaluations.find(e => e.evaluationType === EvaluationType.FAMILY_INTERVIEW);
+                if (ensuredMatch) {
                     setEvaluations(current => {
-                        const repairedIds = new Set(repairedEvaluations.map(item => item.id));
-                        return [...current.filter(item => !repairedIds.has(item.id)), ...repairedEvaluations];
+                        const repairedIds = new Set(ensuredEvaluations.map(item => item.id));
+                        return [...current.filter(item => !repairedIds.has(item.id)), ...ensuredEvaluations];
                     });
                 }
-                return repairedEvaluation || null;
+                return ensuredMatch || null;
             };
 
             const bgColor = isCompleted ? 'bg-green-50' : 'bg-blue-50';
@@ -1240,7 +1272,7 @@ const ProfessorDashboard: React.FC = () => {
                                     ) : (
                                         <div>Entrevistador: {interview.interviewerName}</div>
                                     )}
-                                    {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && parentContactsByApplication[applicationId] && (
+                                    {activeInterviewTab === 'director_ciclo' && parentContactsByApplication[applicationId] && (
                                         <div className="mt-1 pt-1 border-t border-gray-200 space-y-1">
                                             {(() => {
                                                 const contacts = parentContactsByApplication[applicationId];
@@ -1281,7 +1313,7 @@ const ProfessorDashboard: React.FC = () => {
                             </div>
 
                             {/* Sección de Documentos (solo para entrevistas de Director de Ciclo) */}
-                            {(activeInterviewTab === 'director_ciclo' || activeInterviewTab === 'psicologicas') && (
+                            {activeInterviewTab === 'director_ciclo' && (
                                 <div className="mt-2 pt-2 border-t border-gray-200">
                                     {(() => {
                                         const docs = documentsByApplication[applicationId] || [];
@@ -1352,16 +1384,28 @@ const ProfessorDashboard: React.FC = () => {
                             <Button
                                 variant="primary"
                                 size="sm"
+                                isLoading={openingInterviewId === item.id}
+                                loadingText="Abriendo..."
                                 onClick={async () => {
+                                    if (openingInterviewId !== null) return;
+                                    setOpeningInterviewId(item.id);
                                     try {
                                         const evalToUse = await getEvaluationToUse();
-                                        if (evalToUse) {
-                                            navigate(getEvaluationUrl(evalToUse));
-                                            return;
+                                        if (!evalToUse) {
+                                            throw new Error('No se encontró una evaluación asociada para tu rol');
                                         }
-                                        notify.error('No se encontró una evaluación realizable para esta entrevista.');
-                                    } catch (error) {
-                                        notify.error(error instanceof Error ? error.message : 'No se pudo abrir la entrevista.');
+                                        if (!Number.isFinite(Number(evalToUse.id))) {
+                                            throw new Error('La evaluación asociada no tiene un identificador válido');
+                                        }
+                                        navigate(getEvaluationUrl(evalToUse));
+                                    } catch (error: any) {
+                                        notify.error(
+                                            error.message
+                                                ? `No se pudo abrir la evaluación: ${error.message}`
+                                                : 'No se pudo abrir la evaluación. Intenta actualizar la página y volver a abrirla.'
+                                        );
+                                    } finally {
+                                        setOpeningInterviewId(null);
                                     }
                                 }}
                             >
@@ -2340,6 +2384,24 @@ const ProfessorDashboard: React.FC = () => {
 
                 {/* Main Content */}
                 <main className="flex-1 p-4 sm:p-8 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard del profesor">
+                    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                        <label htmlFor="professionalProcessCode" className="text-sm font-medium text-gray-600">Proceso de admisión</label>
+                        <select
+                            id="professionalProcessCode"
+                            value={selectedProcessCode}
+                            onChange={(event) => setSelectedProcessCode(event.target.value)}
+                            disabled={processesLoading || processes.length === 0}
+                            className="min-h-10 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-950 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+                        >
+                            {processes.length === 0 && <option value="">Proceso activo</option>}
+                            {processes.map((process) => (
+                                <option key={process.processCode} value={process.processCode}>
+                                    {process.processCode}{process.active ? ' (activo)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="text-xs text-gray-500">La carga muestra solo alumnos asignados en este proceso.</span>
+                    </div>
                     {renderSection()}
                 </main>
             </div>

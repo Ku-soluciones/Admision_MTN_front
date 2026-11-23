@@ -260,6 +260,7 @@ export type PrekinderApplicationDetails = {
   additionalNotes?: string;
   admissionPreference: "NINGUNA" | "HIJO_FUNCIONARIO" | "HIJO_EX_ALUMNO";
   hasSiblingsInSchool: boolean;
+  inclusionStudent?: boolean;
   siblingsInSchoolDetails?: string;
   father: FamilyAdultDetails;
   mother: FamilyAdultDetails;

@@ -4,6 +4,10 @@ import { familyInterviewService } from '../services/familyInterviewService';
 import { fullTemplateData } from '@/src/data/minified_template';
 import { notify } from '../../admin/utils/notify';
 import { useAutoSave } from '../../../packages/shared-ui/src/hooks/useAutoSave';
+import {
+  checklistResponseValue,
+  filterTemplateForGrade,
+} from '../services/familyInterviewScoring';
 
 interface FamilyInterviewFormProps {
   evaluation: any; // Evaluation data with gradeApplied
@@ -45,7 +49,8 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         // This ensures it's bundled as native JS and works in Vercel production
 
         // Use the statically imported template
-        const templateData = fullTemplateData as any;
+        const gradeApplied = evaluation.studentGrade || evaluation.gradeApplied || evaluation.student?.gradeApplied;
+        const templateData = filterTemplateForGrade(fullTemplateData as any, gradeApplied);
 
         if (!templateData) {
           notify.error('Error: El template no se pudo cargar. Ver consola para detalles.');
@@ -135,14 +140,14 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
   };
 
   // Handle observation checklist change
-  const handleChecklistChange = (itemKey: string, checked: boolean) => {
+  const handleChecklistChange = (itemKey: string, checked: boolean, score: number) => {
     setInterviewData((prev: any) => ({
       ...prev,
       observations: {
         ...prev.observations,
         checklist: {
           ...prev.observations?.checklist,
-          [itemKey]: checked
+          [itemKey]: checklistResponseValue(checked, score)
         }
       }
     }));
@@ -181,17 +186,12 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
         return;
       }
 
-      // Save to backend
-      const result = await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
-
-      // Actualizar timestamp de guardado
-      setLastSaved(new Date());
-
-      // Call parent onSave callback if provided
-      // Parent will handle navigation and success message
       if (onSave) {
-        await onSave(result.interview_data, result.totalScore);
+        await onSave(interviewData, currentScore);
+      } else {
+        await familyInterviewService.saveInterviewData(evaluation.id, interviewData);
       }
+      setLastSaved(new Date());
     } catch (error: any) {
       notify.error(error.message || 'Error al guardar la entrevista');
     } finally {
@@ -410,7 +410,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
               <div className="space-y-3">
                 {Array.isArray(template.observations.sections.observations_checklist.items) &&
                   template.observations.sections.observations_checklist.items.map((item: any, index: number) => {
-                    const isChecked = interviewData.observations?.checklist?.[item.id] || false;
+                    const isChecked = Boolean(interviewData.observations?.checklist?.[item.id]);
 
                     return (
                       <div
@@ -423,7 +423,7 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={(e) => !readonly && handleChecklistChange(item.id, e.target.checked)}
+                              onChange={(e) => !readonly && handleChecklistChange(item.id, e.target.checked, item.score)}
                               disabled={readonly || disabled}
                               className="mr-2"
                             />
@@ -508,13 +508,12 @@ const FamilyInterviewForm: React.FC<FamilyInterviewFormProps> = ({
                   }
                 }))}
                 disabled={readonly || disabled}
-                rows={5}
-                maxLength={500}
+                maxLength={2000}
                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Escriba su justificación aquí (máximo 5 líneas)..."
+                placeholder="Escriba su justificación aquí"
               />
               <p className="text-xs text-gray-500 mt-1">
-                {interviewData.observations?.justification?.length || 0} / 500 caracteres
+                {interviewData.observations?.justification?.length || 0} / 2000 caracteres
               </p>
             </div>
           )}

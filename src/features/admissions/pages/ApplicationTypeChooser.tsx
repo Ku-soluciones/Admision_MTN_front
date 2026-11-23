@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { ArrowRight, Clock3, GraduationCap, RefreshCw, School } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { prekinderApi, type PrekinderApplicationOption } from '../../prekinder/services/api';
+import { APPLICATIONS_CLOSED_MESSAGE, NEW_APPLICATIONS_OPEN } from '../../../packages/shared-utils/src/admissionAvailability';
 import { appUrls } from '../../admin/utils/appUrls';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
 import { useProcessActivePrekinder } from '../../../packages/shared-utils/src/hooks/useProcessActivePrekinder';
@@ -39,7 +40,7 @@ const ApplicationTypeChooser = () => {
     };
 
     useEffect(() => {
-        if (!isAuthenticated || prekinderFlagLoading) return;
+        if (!NEW_APPLICATIONS_OPEN || !isAuthenticated || prekinderFlagLoading) return;
         if (!prekinderProcessActive) {
             setOptions([]);
             setLoading(false);
@@ -55,6 +56,18 @@ const ApplicationTypeChooser = () => {
                 <RefreshCw className="mr-3 animate-spin text-azul-monte-tabor motion-reduce:animate-none" size={22} />
                 Verificando tu sesión
             </div>
+        );
+    }
+
+    if (!NEW_APPLICATIONS_OPEN) {
+        return (
+            <section className="mx-auto max-w-xl px-4 py-16 text-center">
+                <h1 className="text-2xl font-bold text-azul-monte-tabor">Postulaciones cerradas</h1>
+                <p className="mt-4 text-gris-piedra">{APPLICATIONS_CLOSED_MESSAGE}</p>
+                <Link to="/familia" className="mt-6 inline-block font-semibold text-azul-monte-tabor underline">
+                    Ir al Portal de Familias
+                </Link>
+            </section>
         );
     }
 

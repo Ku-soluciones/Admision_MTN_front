@@ -1,11 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiRefreshCw, FiUsers } from 'react-icons/fi';
+import { FiBarChart2, FiCalendar, FiChevronDown, FiChevronLeft, FiClipboard, FiDownload, FiRefreshCw, FiUsers } from 'react-icons/fi';
 import { useAdmissionReports } from './useAdmissionReports';
 import { ApplicantKpiCards } from './ApplicantKpiCards';
 import { AdmissionReportCharts } from './AdmissionReportCharts';
 import { CourseListView } from './CourseListView';
 import { ApplicantCardModal } from './ApplicantCardModal';
+import { FinalSummaryView } from './FinalSummaryView';
+import { applicationService } from '../../services/applicationService';
+import { ADMISSION_PROCESS_OPTIONS } from './admissionProcesses';
 
 const getInitialYear = (searchParams: URLSearchParams) => {
   const candidate = Number(searchParams.get('year'));
@@ -15,12 +18,33 @@ const getInitialYear = (searchParams: URLSearchParams) => {
     : currentYear + 1;
 };
 
-export const AdmissionReportTabs: React.FC = () => {
+const getInitialProcessCode = (searchParams: URLSearchParams) => {
+  const candidate = searchParams.get('process');
+  return ADMISSION_PROCESS_OPTIONS.some((option) => option.value === candidate)
+    ? candidate as string
+    : ADMISSION_PROCESS_OPTIONS[1].value;
+};
+
+interface AdmissionReportTabsProps {
+  selectedProcessCode?: string;
+  onProcessChange?: (processCode: string) => void;
+}
+
+export const AdmissionReportTabs: React.FC<AdmissionReportTabsProps> = ({ selectedProcessCode, onProcessChange }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [initialYear] = useState(() => getInitialYear(searchParams));
+  const [internalProcessCode, setInternalProcessCode] = useState(() => getInitialProcessCode(searchParams));
   const [gradeFilter, setGradeFilter] = useState(() => searchParams.get('grade') || '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '');
   const [needsActionOnly, setNeedsActionOnly] = useState(() => searchParams.get('action') === 'pending');
+  const [activeView, setActiveView] = useState<'operational' | 'final'>(() => searchParams.get('view') === 'final' ? 'final' : 'operational');
+  const [schoolnetExporting, setSchoolnetExporting] = useState(false);
+  const [schoolnetMessage, setSchoolnetMessage] = useState('');
+  const processCode = selectedProcessCode || internalProcessCode;
+  const setProcessCode = useCallback((nextProcessCode: string) => {
+    setInternalProcessCode(nextProcessCode);
+    onProcessChange?.(nextProcessCode);
+  }, [onProcessChange]);
   const {
     academicYear,
     setAcademicYear,
@@ -35,7 +59,7 @@ export const AdmissionReportTabs: React.FC = () => {
     closeCard,
     retryCard,
     refreshedAt
-  } = useAdmissionReports(initialYear);
+  } = useAdmissionReports(initialYear, processCode);
 
   const availableYears = useMemo(
     () => Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i - 1),
@@ -92,13 +116,50 @@ export const AdmissionReportTabs: React.FC = () => {
     updateUrl({ year, grade: null, status: null, action: null });
   };
 
+  const handleProcessChange = (nextProcessCode: string) => {
+    setProcessCode(nextProcessCode);
+    clearOperationalFilters();
+    updateUrl({ process: nextProcessCode, grade: null, status: null, action: null });
+  };
+
+  const changeView = (view: 'operational' | 'final') => {
+    setActiveView(view);
+    updateUrl({ view: view === 'final' ? 'final' : null });
+  };
+
+  const exportSchoolnet = useCallback(async () => {
+    if (schoolnetExporting) return;
+    setSchoolnetExporting(true);
+    setSchoolnetMessage('');
+    try {
+      const blob = await applicationService.exportSchoolnetStudents({
+        academicYear,
+        processCode
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `schoolnet_${processCode}_${academicYear}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setSchoolnetMessage('Archivo SchoolNet descargado.');
+    } catch (error) {
+      setSchoolnetMessage(error instanceof Error ? error.message : 'No se pudo exportar SchoolNet.');
+    } finally {
+      setSchoolnetExporting(false);
+    }
+  }, [academicYear, processCode, schoolnetExporting]);
+
   const lastUpdated = refreshedAt
     ? new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(refreshedAt)
     : null;
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+      <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Admisión</p>
@@ -106,33 +167,67 @@ export const AdmissionReportTabs: React.FC = () => {
               Seguimiento de postulantes y decisiones
               {lastUpdated && <span className="text-gray-400"> · actualizado {lastUpdated}</span>}
             </p>
-            <div className="mt-2 flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
-              <FiCalendar className="h-4 w-4 text-gray-500" aria-hidden="true" />
-              <label htmlFor="admissionAcademicYear" className="text-sm text-gray-600">Año</label>
-              <select
-                id="admissionAcademicYear"
-                value={academicYear}
-                onChange={(event) => handleYearChange(Number(event.target.value))}
-                className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
-              >
-                {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
-              </select>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+                <FiCalendar className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <label htmlFor="admissionAcademicYear" className="text-sm text-gray-600">Año</label>
+                <select
+                  id="admissionAcademicYear"
+                  value={academicYear}
+                  onChange={(event) => handleYearChange(Number(event.target.value))}
+                  className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+                >
+                  {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </div>
+              <div className="flex min-h-9 items-center gap-2 self-start rounded-lg border border-gray-200 bg-gray-50 px-3">
+                <FiClipboard className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <label htmlFor="admissionProcessCode" className="text-sm text-gray-600">Proceso</label>
+                <select
+                  id="admissionProcessCode"
+                  value={processCode}
+                  onChange={(event) => handleProcessChange(event.target.value)}
+                  className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+                >
+                  {ADMISSION_PROCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={loading}
-            className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Actualizar resumen de admisión"
-          >
-            <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            {loading && rows.length ? 'Actualizando' : 'Actualizar'}
-          </button>
+          <div className="flex flex-wrap gap-2 self-start">
+            <button
+              type="button"
+              onClick={exportSchoolnet}
+              disabled={schoolnetExporting}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-950 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Exportar postulantes del proceso para SchoolNet"
+            >
+              <FiDownload className="h-4 w-4" aria-hidden="true" />
+              {schoolnetExporting ? 'Generando…' : 'Exportar SchoolNet'}
+            </button>
+            {activeView === 'operational' && <button
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Actualizar resumen de admisión"
+            >
+              <FiRefreshCw className={`h-4 w-4 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+              {loading && rows.length ? 'Actualizando' : 'Actualizar'}
+            </button>}
+          </div>
         </div>
+        {schoolnetMessage && <p className="text-sm font-medium text-slate-600" role="status">{schoolnetMessage}</p>}
       </section>
 
-      {loading && !rows.length ? (
+      <nav className="inline-flex self-start gap-2" aria-label="Vistas de admisión">
+        <ViewTab active={activeView === 'operational'} onClick={() => changeView('operational')} icon={<FiUsers className="h-4 w-4" aria-hidden="true" />}>Seguimiento operativo</ViewTab>
+        <ViewTab active={activeView === 'final'} onClick={() => changeView('final')} icon={<FiClipboard className="h-4 w-4" aria-hidden="true" />}>Resumen final</ViewTab>
+      </nav>
+
+      {activeView === 'final' ? (
+        <FinalSummaryView academicYear={academicYear} processCode={processCode} onOpenCard={openCard} />
+      ) : loading && !rows.length ? (
         <LoadingState />
       ) : error ? (
         <ErrorState message={error} onRetry={refresh} />
@@ -196,6 +291,19 @@ export const AdmissionReportTabs: React.FC = () => {
     </div>
   );
 };
+
+const ViewTab = ({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={`inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+      active ? 'bg-white text-gray-950 ring-1 ring-gray-200' : 'text-gray-600 hover:text-gray-950'
+    }`}
+  >
+    {icon}{children}
+  </button>
+);
 
 const AnalysisDisclosure: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <details className="group rounded-xl border border-slate-200 bg-white">

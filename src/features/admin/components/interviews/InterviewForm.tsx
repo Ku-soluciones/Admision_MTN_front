@@ -79,7 +79,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
   onEdit,
   isSubmitting = false,
   className = '',
-  refreshKey = 0
+  refreshKey = 0,
+  processCode
 }) => {
   
   // Estado para entrevistadores del backend
@@ -246,7 +247,7 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     if (mode === InterviewFormMode.CREATE) {
       loadApplications();
     }
-  }, [mode]);
+  }, [mode, processCode]);
 
   // Cargar información del estudiante si viene pre-llenado
   useEffect(() => {
@@ -293,8 +294,8 @@ const InterviewForm: React.FC<InterviewFormProps> = ({
     try {
       // Cargar todas las postulaciones y entrevistas existentes
       const [applicationsResponse, interviewsResponse] = await Promise.all([
-        applicationService.getAllApplications(),
-        interviewService.getAllInterviews(0, 1000) // Cargar todas las entrevistas activas
+        applicationService.getAllApplications({ processCode }),
+        interviewService.getAllInterviews(0, 1000, 'scheduledDate', 'desc', undefined, processCode) // Cargar entrevistas activas del proceso
       ]);
 
       // Separar aplicaciones con entrevistas FAMILY y CYCLE_DIRECTOR ya asignadas

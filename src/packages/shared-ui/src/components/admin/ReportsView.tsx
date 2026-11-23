@@ -140,7 +140,7 @@ export const ReportsView: React.FC = () => {
         series: [
             { name: 'Postulaciones', type: 'line', smooth: true, data: temporalData.map(item => item.applications) },
             { name: 'Aprobadas', type: 'line', smooth: true, data: temporalData.map(item => item.approved) },
-            { name: 'Rechazadas', type: 'line', smooth: true, data: temporalData.map(item => item.rejected) }
+            { name: 'No aceptadas', type: 'line', smooth: true, data: temporalData.map(item => item.rejected) }
         ]
     };
 
@@ -310,7 +310,7 @@ export const ReportsView: React.FC = () => {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mes</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Postulaciones</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aprobadas</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rechazadas</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No aceptadas</th>
                                     </>
                                 )}
                             </tr>

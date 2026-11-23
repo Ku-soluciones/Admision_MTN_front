@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getApiBaseUrl } from '../../config/api.config';
 import Button from '../ui/Button';
+import Card from '../ui/Card';
 import Modal from '../ui/Modal';
 import SimpleToast from '../ui/SimpleToast';
 import Pagination from '../ui/Pagination';
@@ -303,63 +304,23 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
     }
   };
 
-  return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      {hideHeader ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-950">Personal del Colegio</h2>
-            <p className="mt-1 max-w-3xl text-sm text-gray-600">Personal del colegio y administradores del sistema</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openForm(UserFormMode.CREATE)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-          >
-            <PlusIcon className="h-4 w-4" aria-hidden="true" />
-            Nuevo Usuario
-          </button>
-        </div>
-      ) : (
-        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
-              <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
-              <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Personal del colegio y administradores del sistema</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {onBack && (
-                <button
-                  type="button"
-                  onClick={onBack}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
-                  Volver
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => openForm(UserFormMode.CREATE)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-              >
-                <PlusIcon className="h-4 w-4" aria-hidden="true" />
-                Nuevo Usuario
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-
+  const filtersAndTable = (
+    <div className="space-y-4">
       {/* Filtros */}
       <UserFilters
         filters={state.filters}
         onChange={handleFiltersChange}
         onReset={() => handleFiltersChange({ page: 0, size: 10 })}
+        actions={(
+          <button
+            type="button"
+            onClick={() => openForm(UserFormMode.CREATE)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-amber-400 bg-dorado-nazaret px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          >
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            Nuevo Usuario
+          </button>
+        )}
       />
 
       {/* Error */}
@@ -372,47 +333,81 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
         </div>
       )}
 
-      {/* Tabla de usuarios */}
-      <UserTable
-        users={state.users}
-        isLoading={state.isLoading}
-        onEdit={(user) => openForm(UserFormMode.EDIT, user)}
-        onDelete={(user) => confirmAction(user, 'delete')}
-        onToggleStatus={(user) => confirmAction(user, 'toggle')}
-        onResetPassword={(user) => confirmAction(user, 'reset')}
-      />
+      {/* Tabla de usuarios + paginación unidas en un solo bloque */}
+      <div>
+        <UserTable
+          users={state.users}
+          isLoading={state.isLoading}
+          onEdit={(user) => openForm(UserFormMode.EDIT, user)}
+          onDelete={(user) => confirmAction(user, 'delete')}
+          onToggleStatus={(user) => confirmAction(user, 'toggle')}
+          onResetPassword={(user) => confirmAction(user, 'reset')}
+          totalCount={state.pagination.total}
+          className={state.pagination.total > 0 ? 'rounded-b-none' : ''}
+        />
 
-      {/* Paginación */}
-      {state.pagination.total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs text-gray-400">
-            Mostrando {state.pagination.page * state.pagination.size + 1}–{Math.min((state.pagination.page + 1) * state.pagination.size, state.pagination.total)} de {state.pagination.total}
-          </span>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400">Por página:</span>
-              <select
-                value={state.pagination.size}
-                onChange={(e) => handleFiltersChange({ ...state.filters, size: Number(e.target.value), page: 0 })}
-                className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-            {state.pagination.totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                <button onClick={() => handlePageChange(0)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
-                <button onClick={() => handlePageChange(state.pagination.page - 1)} disabled={state.pagination.page === 0} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
-                <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{state.pagination.page + 1} / {state.pagination.totalPages}</span>
-                <button onClick={() => handlePageChange(state.pagination.page + 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
-                <button onClick={() => handlePageChange(state.pagination.totalPages - 1)} disabled={state.pagination.page >= state.pagination.totalPages - 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
-              </div>
-            )}
+        {/* Paginación */}
+        {state.pagination.total > 0 && (
+          <div className="flex items-center justify-between rounded-b-lg border border-t-0 border-gray-200 bg-white px-4 py-3">
+            <button
+              type="button"
+              onClick={() => handlePageChange(state.pagination.page - 1)}
+              disabled={state.pagination.page === 0}
+              className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+            >
+              ← Anterior
+            </button>
+            <span className="text-sm text-gray-500">Página {state.pagination.page + 1} de {Math.max(1, state.pagination.totalPages)}</span>
+            <button
+              type="button"
+              onClick={() => handlePageChange(state.pagination.page + 1)}
+              disabled={state.pagination.page >= state.pagination.totalPages - 1}
+              className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+            >
+              Siguiente →
+            </button>
           </div>
-        </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+
+      {hideHeader ? (
+        <Card className="p-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-gray-950">Personal del Colegio</h2>
+            <p className="mt-1 max-w-3xl text-sm text-gray-600">Personal del colegio y administradores del sistema</p>
+          </div>
+          {filtersAndTable}
+        </Card>
+      ) : (
+        <>
+          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
+                <h1 className="mt-1 text-lg font-bold text-gray-950">Gestión de Usuarios</h1>
+                <p className="mt-0.5 max-w-3xl text-sm text-gray-600">Personal del colegio y administradores del sistema</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {onBack && (
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                    Volver
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+          {filtersAndTable}
+        </>
       )}
 
       {/* Modal del formulario */}
@@ -433,6 +428,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ onBack, hideHeader = 
             closeForm();
             setScheduleUser(u as User);
           }}
+          onResetPassword={(u: any) => confirmAction(u as User, 'reset')}
         />
       </Modal>
 
