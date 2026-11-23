@@ -21,6 +21,7 @@ import profileService from '../../admin/services/profileService';
 import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/src/index';
 import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
+import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import {
     prekinderApi,
     type FlowApplication,
@@ -114,11 +115,13 @@ const validationConfig = {
     parent1Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent1Rut: { required: true, minLength: 9 },
     parent1Address: { required: true, minLength: 5 },
+    parent1BirthDate: { required: true },
     parent2Name: { required: true, minLength: 2 },
     parent2Email: { required: true, email: true },
     parent2Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent2Rut: { required: true, minLength: 9 },
     parent2Address: { required: true, minLength: 5 },
+    parent2BirthDate: { required: true },
     supporterName: { required: true, minLength: 2 },
     supporterEmail: { required: true, email: true },
     supporterPhone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
@@ -1044,6 +1047,7 @@ const ApplicationFormContent: React.FC = () => {
                     parent1Phone: familyData.father?.phone || '',
                     parent1Rut: familyData.father?.rut || '',
                     parent1Address: familyData.father?.address || '',
+                    parent1BirthDate: familyData.father?.birthDate || '',
 
                     // Mother data (parent2)
                     parent2Name: familyData.mother?.fullName || '',
@@ -1051,6 +1055,7 @@ const ApplicationFormContent: React.FC = () => {
                     parent2Phone: familyData.mother?.phone || '',
                     parent2Rut: familyData.mother?.rut || '',
                     parent2Address: familyData.mother?.address || '',
+                    parent2BirthDate: familyData.mother?.birthDate || '',
 
                     // Supporter data
                     supporterName: familyData.supporter?.fullName || '',
@@ -1119,6 +1124,7 @@ const ApplicationFormContent: React.FC = () => {
                     parent1Phone: appData.father?.phone || '',
                     parent1Rut: appData.father?.rut || '',
                     parent1Address: appData.father?.address || '',
+                    parent1BirthDate: appData.father?.birthDate || '',
 
                     // Mother data (parent2)
                     parent2Name: appData.mother?.fullName || '',
@@ -1126,6 +1132,7 @@ const ApplicationFormContent: React.FC = () => {
                     parent2Phone: appData.mother?.phone || '',
                     parent2Rut: appData.mother?.rut || '',
                     parent2Address: appData.mother?.address || '',
+                    parent2BirthDate: appData.mother?.birthDate || '',
 
                     // Supporter data
                     supporterName: appData.supporter?.fullName || '',
@@ -1486,6 +1493,7 @@ const ApplicationFormContent: React.FC = () => {
                 if (!isValidEmail(data.parent1Email || '') || !isValidPhone(data.parent1Phone || '')) {
                     return false;
                 }
+                if (validateAdultBirthDate(data.parent1BirthDate || '')) return false;
                 return true;
 
             // Step 4: Datos de la Madre
@@ -1497,6 +1505,7 @@ const ApplicationFormContent: React.FC = () => {
                 if (!isValidEmail(data.parent2Email || '') || !isValidPhone(data.parent2Phone || '')) {
                     return false;
                 }
+                if (validateAdultBirthDate(data.parent2BirthDate || '')) return false;
                 return true;
 
             // Step 5: Sostenedor
@@ -1544,7 +1553,7 @@ const ApplicationFormContent: React.FC = () => {
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
             case 0: return ['firstName', 'paternalLastName', 'maternalLastName', 'rut', 'birthDate', 'grade', 'studentAddress'];
-            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address'];
+            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent1BirthDate', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address', 'parent2BirthDate'];
             case 2: return ['supporterName', 'supporterEmail', 'supporterPhone', 'supporterRut', 'supporterRelation'];
             case 3: return ['guardianName', 'guardianEmail', 'guardianPhone', 'guardianRut', 'guardianRelation'];
             case 4: return []; // Document upload step
@@ -1649,6 +1658,7 @@ const ApplicationFormContent: React.FC = () => {
                                     phone: data.parent1Phone,
                                     address: data.parent1Address,
                                     profession: data.parent1Profession || undefined,
+                                    birthDate: data.parent1BirthDate,
                                 },
                                 mother: {
                                     fullName: data.parent2Name,
@@ -1657,6 +1667,7 @@ const ApplicationFormContent: React.FC = () => {
                                     phone: data.parent2Phone,
                                     address: data.parent2Address,
                                     profession: data.parent2Profession || undefined,
+                                    birthDate: data.parent2BirthDate,
                                 },
                                 supporter: {
                                     fullName: data.supporterName,
@@ -1724,6 +1735,7 @@ const ApplicationFormContent: React.FC = () => {
                                 email: data.parent1Email,
                                 phone: data.parent1Phone,
                                 address: data.parent1Address,
+                                birthDate: data.parent1BirthDate,
                             },
                             mother: {
                                 fullName: data.parent2Name,
@@ -1731,6 +1743,7 @@ const ApplicationFormContent: React.FC = () => {
                                 email: data.parent2Email,
                                 phone: data.parent2Phone,
                                 address: data.parent2Address,
+                                birthDate: data.parent2BirthDate,
                             },
                             supporter: {
                                 fullName: data.supporterName,
@@ -1782,6 +1795,7 @@ const ApplicationFormContent: React.FC = () => {
                             parent1Email: data.parent1Email,
                             parent1Phone: data.parent1Phone,
                             parent1Address: data.parent1Address,
+                            parent1BirthDate: data.parent1BirthDate,
 
                             // Datos de la madre
                             parent2Name: data.parent2Name,
@@ -1789,6 +1803,7 @@ const ApplicationFormContent: React.FC = () => {
                             parent2Email: data.parent2Email,
                             parent2Phone: data.parent2Phone,
                             parent2Address: data.parent2Address,
+                            parent2BirthDate: data.parent2BirthDate,
 
                             // Datos del sostenedor
                             supporterName: data.supporterName,
@@ -2089,6 +2104,8 @@ const ApplicationFormContent: React.FC = () => {
                 if (!data.parent1Email?.trim()) missing.push('Email');
                 if (!data.parent1Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent1Address?.trim()) missing.push('Dirección');
+                if (!data.parent1BirthDate) missing.push('Fecha de nacimiento');
+                else if (validateAdultBirthDate(data.parent1BirthDate)) missing.push(validateAdultBirthDate(data.parent1BirthDate) as string);
                 break;
 
             // Step 4: Datos de la Madre
@@ -2098,6 +2115,8 @@ const ApplicationFormContent: React.FC = () => {
                 if (!data.parent2Email?.trim()) missing.push('Email');
                 if (!data.parent2Phone?.trim()) missing.push('Teléfono');
                 if (!data.parent2Address?.trim()) missing.push('Dirección');
+                if (!data.parent2BirthDate) missing.push('Fecha de nacimiento');
+                else if (validateAdultBirthDate(data.parent2BirthDate)) missing.push(validateAdultBirthDate(data.parent2BirthDate) as string);
                 break;
 
             // Step 5: Sostenedor
@@ -3105,6 +3124,21 @@ const ApplicationFormContent: React.FC = () => {
                         </div>
                         <div className="mt-4">
                             <Input
+                                id="parent1-birth-date"
+                                label="Fecha de nacimiento"
+                                type="date"
+                                isRequired
+                                value={data.parent1BirthDate || ''}
+                                onChange={(e) => updateField('parent1BirthDate', e.target.value)}
+                                onBlur={() => touchField('parent1BirthDate')}
+                                error={data.parent1BirthDate ? validateAdultBirthDate(data.parent1BirthDate) || undefined : undefined}
+                            />
+                            {isEditMode && !data.parent1BirthDate && (
+                                <p className="mt-1 text-sm text-amber-700">Sin información histórica. Debe completar esta fecha para guardar.</p>
+                            )}
+                        </div>
+                        <div className="mt-4">
+                            <Input
                                 id="parent1-address"
                                 label="Dirección"
                                 placeholder="Los Leones 456, Providencia, Santiago"
@@ -3166,6 +3200,21 @@ const ApplicationFormContent: React.FC = () => {
                                 onBlur={() => touchField('parent2Phone')}
                                 error={errors.parent2Phone}
                             />
+                        </div>
+                        <div className="mt-4">
+                            <Input
+                                id="parent2-birth-date"
+                                label="Fecha de nacimiento"
+                                type="date"
+                                isRequired
+                                value={data.parent2BirthDate || ''}
+                                onChange={(e) => updateField('parent2BirthDate', e.target.value)}
+                                onBlur={() => touchField('parent2BirthDate')}
+                                error={data.parent2BirthDate ? validateAdultBirthDate(data.parent2BirthDate) || undefined : undefined}
+                            />
+                            {isEditMode && !data.parent2BirthDate && (
+                                <p className="mt-1 text-sm text-amber-700">Sin información histórica. Debe completar esta fecha para guardar.</p>
+                            )}
                         </div>
                         <div className="mt-4">
                             <Input

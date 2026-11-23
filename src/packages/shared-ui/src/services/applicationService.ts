@@ -26,6 +26,7 @@ export interface ApplicationRequest {
     parent1Phone: string;
     parent1Address: string;
     parent1Profession: string;
+    parent1BirthDate: string;
 
     // Datos de la madre
     parent2Name: string;
@@ -34,6 +35,7 @@ export interface ApplicationRequest {
     parent2Phone: string;
     parent2Address: string;
     parent2Profession: string;
+    parent2BirthDate: string;
 
     // Datos del sostenedor
     supporterName: string;
@@ -100,6 +102,7 @@ export interface Application {
         phone: string;
         address: string;
         profession: string;
+        birthDate?: string | null;
     };
     mother: {
         fullName: string;
@@ -108,6 +111,7 @@ export interface Application {
         phone: string;
         address: string;
         profession: string;
+        birthDate?: string | null;
     };
     supporter: {
         fullName: string;
@@ -514,6 +518,7 @@ class ApplicationService {
                 parent1Phone: data.parent1Phone || '',
                 parent1Address: data.parent1Address || '',
                 parent1Profession: data.parent1Profession || '',
+                parent1BirthDate: data.parent1BirthDate || '',
 
                 // Mother data (parent2)
                 parent2Name: data.parent2Name || '',
@@ -522,6 +527,7 @@ class ApplicationService {
                 parent2Phone: data.parent2Phone || '',
                 parent2Address: data.parent2Address || '',
                 parent2Profession: data.parent2Profession || '',
+                parent2BirthDate: data.parent2BirthDate || '',
 
                 // Guardian data
                 guardianName: data.guardianName || '',
