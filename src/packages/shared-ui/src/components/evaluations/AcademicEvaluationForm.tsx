@@ -17,17 +17,17 @@ import Badge from '../ui/Badge';
 interface AcademicEvaluationFormProps {
   evaluation: AcademicEvaluation;
   onSave: (data: UpdateEvaluationRequest) => Promise<void>;
-  onCancel: () => void;
+  onComplete: (data: UpdateEvaluationRequest) => Promise<void>;
   isReadOnly?: boolean;
-  isLoading?: boolean;
+  isSubmitting?: boolean;
 }
 
 const AcademicEvaluationForm: React.FC<AcademicEvaluationFormProps> = ({
   evaluation,
   onSave,
-  onCancel,
+  onComplete,
   isReadOnly = false,
-  isLoading = false
+  isSubmitting = false
 }) => {
   const [formData, setFormData] = useState<UpdateEvaluationRequest>({
     score: evaluation.score || 0,

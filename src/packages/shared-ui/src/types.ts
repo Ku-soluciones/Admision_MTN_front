@@ -4,7 +4,7 @@ export enum ApplicationStatus {
     SUBMITTED = 'En Revisión',
     INTERVIEW_SCHEDULED = 'Entrevista Agendada',
     ACCEPTED = 'Aceptado',
-    REJECTED = 'Rechazado',
+    REJECTED = 'No aceptado',
     WAITLIST = 'Lista de Espera'
 }
 

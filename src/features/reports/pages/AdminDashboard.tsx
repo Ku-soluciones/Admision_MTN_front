@@ -584,7 +584,7 @@ Esta acción:
                 <p className="text-2xl font-bold text-red-600">
                   {applications.filter(app => app.status === 'REJECTED').length}
                 </p>
-                <p className="text-sm text-gris-piedra">Rechazadas</p>
+                <p className="text-sm text-gris-piedra">No aceptadas</p>
               </Card>
             </div>
           </div>
@@ -645,7 +645,7 @@ Esta acción:
             'EXAM_SCHEDULED': 'Examen Programado',
             'INTERVIEW_SCHEDULED': 'Entrevista Programada',
             'APPROVED': 'Aprobadas',
-            'REJECTED': 'Rechazadas',
+            'REJECTED': 'No aceptadas',
             'WAITLIST': 'Lista de Espera'
           };
           return labels[status] || status;

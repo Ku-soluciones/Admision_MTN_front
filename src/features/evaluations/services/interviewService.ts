@@ -489,12 +489,12 @@ class InterviewService {
     return response.data.map(item => this.mapInterviewResponse(item));
   }
 
-  async getInterviewsByInterviewer(interviewerId: number): Promise<Interview[]> {
+  async getInterviewsByInterviewer(interviewerId: number, processCode?: string): Promise<Interview[]> {
     try {
       const timestamp = Date.now();
 
       const response = await api.get<any>(
-        `${this.baseUrl}/interviewer/${interviewerId}?_t=${timestamp}`
+        `${this.baseUrl}/interviewer/${interviewerId}?_t=${timestamp}${processCode ? `&processCode=${encodeURIComponent(processCode)}` : ''}`
       );
 
       // Backend returns { success: true, data: [...], count: n }

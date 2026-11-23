@@ -40,7 +40,8 @@ import {
   Plus, 
   Eye,
   X,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react';
 
 interface EvaluationManagementProps {
@@ -324,41 +325,40 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Estado:</label>
-            <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white">
-              <option value="HIDE_APPROVED">Ocultar Aprobados</option>
-              <option value="ALL">Todos</option>
-              <option value="PENDING">Pendiente</option>
-              <option value="IN_PROGRESS">En Progreso</option>
-              <option value="APPROVED">Aprobado</option>
-              <option value="REJECTED">Rechazado</option>
-            </select>
+            <div className="relative">
+              <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="appearance-none text-sm border border-gray-300 rounded-md py-1.5 pl-2 pr-7 bg-white">
+                <option value="HIDE_APPROVED">Ocultar Aprobados</option>
+                <option value="ALL">Todos</option>
+                <option value="PENDING">Pendiente</option>
+                <option value="IN_PROGRESS">En Progreso</option>
+                <option value="APPROVED">Aprobado</option>
+                <option value="REJECTED">Rechazado</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Curso:</label>
-            <select value={filterGrade} onChange={(e) => { setFilterGrade(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white">
-              <option value="">Todos</option>
-              {uniqueGrades.map(grade => (
-                <option key={grade} value={grade}>{grade}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select value={filterGrade} onChange={(e) => { setFilterGrade(e.target.value); setCurrentPage(1); }} className="appearance-none text-sm border border-gray-300 rounded-md py-1.5 pl-2 pr-7 bg-white">
+                <option value="">Todos</option>
+                {uniqueGrades.map(grade => (
+                  <option key={grade} value={grade}>{grade}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            </div>
           </div>
-          <span className="text-sm text-gray-500 ml-auto">
-            {filteredApplications.length} registro{filteredApplications.length !== 1 ? 's' : ''}
-          </span>
         </div>
 
-        {/* Hint instructivo */}
-        {!selectedApplication && filteredApplications.length > 0 && (
-          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-blue-600 text-xs">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Selecciona una fila para gestionar sus evaluadores
-          </div>
-        )}
+        {/* Total */}
+        <div className="flex items-center justify-end px-1 pb-2 text-xs text-gray-500">
+          <span>Total: {filteredApplications.length} registro{filteredApplications.length !== 1 ? 's' : ''}</span>
+        </div>
 
         {/* Tabla */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <div className="rounded-lg border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
             <thead className="bg-gray-50">
               <tr className="border-b border-gray-200">
@@ -515,38 +515,26 @@ const EvaluationManagement: React.FC<EvaluationManagementProps> = ({
           </table>
         </div>
 
-        {/* Paginación + limitador */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
-          <span className="text-xs text-gray-400">
-            Mostrando {Math.min((currentPage - 1) * pageSize + 1, filteredApplications.length)}–{Math.min(currentPage * pageSize, filteredApplications.length)} de {filteredApplications.length}
-          </span>
-          <div className="flex items-center gap-3">
-            {/* Selector de registros por página */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400">Por página:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-            {/* Controles de página */}
-            {totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">«</button>
-                <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">‹</button>
-                <span className="px-3 py-1 rounded border text-xs bg-azul-monte-tabor text-white">{currentPage} / {totalPages}</span>
-                <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">›</button>
-                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">»</button>
-              </div>
-            )}
-          </div>
+        {/* Footer: paginación simple */}
+        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+          >
+            ← Anterior
+          </button>
+          <span className="text-sm text-gray-500">Página {currentPage} de {Math.max(1, totalPages)}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white"
+          >
+            Siguiente →
+          </button>
+        </div>
         </div>
 
       </Card>

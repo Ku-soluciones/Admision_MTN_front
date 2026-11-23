@@ -99,7 +99,7 @@ const ApplicationsDataTable: React.FC<ApplicationsDataTableProps> = ({
                     'UNDER_REVIEW': { color: 'yellow', label: 'En Revisión' },
                     'INTERVIEW_SCHEDULED': { color: 'purple', label: 'Entrevista Programada' },
                     'ACCEPTED': { color: 'green', label: 'Aceptada' },
-                    'REJECTED': { color: 'red', label: 'Rechazada' },
+                    'REJECTED': { color: 'red', label: 'No aceptado' },
                     'WAITLIST': { color: 'orange', label: 'Lista de Espera' }
                 };
                 const config = statusConfig[record.status] || { color: 'gray', label: record.status };

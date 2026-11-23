@@ -21,6 +21,7 @@ export interface ProfessorEvaluation {
     strengths?: string;
     areasForImprovement?: string;
     recommendations?: string;
+    interviewData?: Record<string, any>;
     requiresFollowUp?: boolean;
     followUpNotes?: string;
     evaluatorName?: string;
@@ -87,15 +88,23 @@ export interface ProfessorEvaluationStats {
     averageScore: number;
 }
 
+export interface AdmissionProcessOption {
+    processCode: string;
+    academicYear: number;
+    active: boolean;
+    total: number;
+}
+
 class ProfessorEvaluationService {
     
     /**
      * Obtener todas las evaluaciones asignadas al profesor actual
      */
-    async getMyEvaluations(): Promise<ProfessorEvaluation[]> {
+    async getMyEvaluations(processCode?: string): Promise<ProfessorEvaluation[]> {
         try {
-
-            const response = await api.get('/api/evaluations/my-evaluations');
+            const response = await api.get('/api/evaluations/my-evaluations', {
+                params: processCode ? { processCode } : undefined
+            });
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -120,10 +129,12 @@ class ProfessorEvaluationService {
     /**
      * Obtener solo las evaluaciones pendientes del profesor
      */
-    async getMyPendingEvaluations(): Promise<ProfessorEvaluation[]> {
+    async getMyPendingEvaluations(processCode?: string): Promise<ProfessorEvaluation[]> {
         try {
 
-            const response = await api.get('/api/evaluations/my-pending');
+            const response = await api.get('/api/evaluations/my-pending', {
+                params: processCode ? { processCode } : undefined
+            });
             // Handle response wrapper: {success, data}
             const evaluations = response.data?.data || response.data;
 
@@ -144,21 +155,11 @@ class ProfessorEvaluationService {
     }
 
     /**
-     * Repara/crea las evaluaciones vinculadas a una entrevista (idempotente en el BFF).
-     * Cubre entrevistas históricas o agendadas manualmente cuyas evaluaciones no existen.
-     */
-    async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
-        const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
-        const evaluations = response.data?.data || response.data || [];
-        return this.mapToProfessorEvaluations(Array.isArray(evaluations) ? evaluations : []);
-    }
-    
-    /**
      * Obtener estadísticas de evaluaciones del profesor
      */
-    async getMyEvaluationStats(): Promise<ProfessorEvaluationStats> {
+    async getMyEvaluationStats(processCode?: string): Promise<ProfessorEvaluationStats> {
         try {
-            const evaluations = await this.getMyEvaluations();
+            const evaluations = await this.getMyEvaluations(processCode);
             
             const total = evaluations.length;
             const pending = evaluations.filter(e => e.status === EvaluationStatus.PENDING).length;
@@ -186,6 +187,14 @@ class ProfessorEvaluationService {
         } catch (error: any) {
             throw new Error('No se pudieron obtener las estadísticas de evaluaciones.');
         }
+    }
+
+    async getAdmissionProcesses(): Promise<{ processes: AdmissionProcessOption[]; activeProcessCode: string }> {
+        const response = await api.get('/api/applications/processes');
+        return {
+            processes: response.data?.data || [],
+            activeProcessCode: response.data?.activeProcessCode || response.data?.data?.[0]?.processCode || ''
+        };
     }
     
     /**
@@ -247,7 +256,8 @@ class ProfessorEvaluationService {
     async ensureInterviewEvaluations(interviewId: number): Promise<ProfessorEvaluation[]> {
         try {
             const response = await api.post(`/api/evaluations/interview/${interviewId}/ensure`);
-            const evaluations = response.data?.data || [];
+            const payload = response.data?.data ?? response.data;
+            const evaluations = Array.isArray(payload) ? payload : payload ? [payload] : [];
             return this.mapToProfessorEvaluations(evaluations);
         } catch (error: any) {
             if (error.response?.status === 403) {
@@ -261,7 +271,9 @@ class ProfessorEvaluationService {
      * Mapear respuesta de la API a formato del frontend
      */
     private mapToProfessorEvaluations(apiEvaluations: any[]): ProfessorEvaluation[] {
-        return apiEvaluations.map((evaluation) => this.mapToProfessorEvaluation(evaluation));
+        return apiEvaluations
+            .filter((evaluation) => evaluation && typeof evaluation === 'object')
+            .map((evaluation) => this.mapToProfessorEvaluation(evaluation));
     }
     
     private mapToProfessorEvaluation(apiEvaluation: any): ProfessorEvaluation {
@@ -286,6 +298,7 @@ class ProfessorEvaluationService {
             strengths: apiEvaluation.strengths,
             areasForImprovement: apiEvaluation.areasForImprovement || apiEvaluation.areas_for_improvement,
             recommendations: apiEvaluation.recommendations,
+            interviewData: apiEvaluation.interviewData || apiEvaluation.interview_data || {},
             requiresFollowUp: apiEvaluation.requiresFollowUp,
             followUpNotes: apiEvaluation.followUpNotes,
             evaluatorName: this.getEvaluatorName(apiEvaluation),
@@ -355,10 +368,8 @@ class ProfessorEvaluationService {
     }
     
     private getStudentGrade(apiEvaluation: any): string {
-        // Primero intentar obtener del campo directo grade (lo que retorna /my-evaluations)
-        if (apiEvaluation.grade) return apiEvaluation.grade;
-
-        // Luego intentar student_grade (snake_case del backend)
+        // La calificación de la evaluación también se llama "grade"; el curso del
+        // estudiante debe salir primero de la postulación para no confundir ambos datos.
         if (apiEvaluation.student_grade) return apiEvaluation.student_grade;
         if (apiEvaluation.studentGrade) return apiEvaluation.studentGrade;
 
@@ -372,8 +383,9 @@ class ProfessorEvaluationService {
         if (apiEvaluation.application?.student?.grade_applied) return apiEvaluation.application.student.grade_applied;
         if (apiEvaluation.application?.student?.grade) return apiEvaluation.application.student.grade;
 
-        // Finalmente intentar de otros campos
+        // Compatibilidad con respuestas legacy que usaban grade como curso.
         if (apiEvaluation.gradeLevel) return apiEvaluation.gradeLevel;
+        if (apiEvaluation.grade) return apiEvaluation.grade;
 
         return 'Grado no especificado';
     }

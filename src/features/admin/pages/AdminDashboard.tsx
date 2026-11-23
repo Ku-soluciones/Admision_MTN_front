@@ -35,7 +35,8 @@ import {
   FiCheck,
   FiX,
   FiSearch,
-  FiMessageSquare
+  FiMessageSquare,
+  FiClipboard
 } from 'react-icons/fi';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import { CreateUserRequest, UserRole, User } from '../types/user';
@@ -71,6 +72,8 @@ import { InterviewFormMode, InterviewType } from '../types/interview';
 import interviewService from '../services/interviewService';
 import InterviewCommandCenter from '../components/dashboard/InterviewCommandCenter';
 import InterviewerPairManagement from '../components/users/InterviewerPairManagement';
+import { ADMISSION_PROCESS_OPTIONS, defaultAdmissionProcessCode } from '../components/admissionReports/admissionProcesses';
+import { NEW_APPLICATIONS_OPEN } from '../../../packages/shared-utils/src/admissionAvailability';
 
 const AdmissionReportTabs = React.lazy(() =>
   import('../components/admissionReports/AdmissionReportTabs')
@@ -111,6 +114,15 @@ const SidebarContent = React.memo(function SidebarContent({
         <p className="text-sm text-gris-piedra mt-1">{user?.firstName} {user?.lastName}</p>
       </div>
       <nav className="px-4" aria-label="Menú de navegación principal del administrador">
+        <div className={`mb-4 rounded-lg border px-3 py-2 ${
+          NEW_APPLICATIONS_OPEN
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-amber-200 bg-amber-50 text-amber-900'
+        }`} role="status">
+          <p className="text-xs font-semibold uppercase tracking-wide">Nuevas postulaciones</p>
+          <p className="mt-1 text-sm font-bold">{NEW_APPLICATIONS_OPEN ? 'Abiertas' : 'Cerradas'}</p>
+          <p className="mt-1 text-xs opacity-80">Configurado por VITE_SHOW_POSTULACION</p>
+        </div>
         <button
           onClick={() => { onSectionChange('admissionReports'); onNavigate?.(); }}
           className="w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors bg-azul-monte-tabor hover:bg-blue-900 text-white shadow-sm"
@@ -190,6 +202,7 @@ const AdminDashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState(
     () => searchParams.get('section') === 'prekinder' ? 'prekinder' : 'admissionReports'
   );
+  const [selectedAdmissionProcessCode, setSelectedAdmissionProcessCode] = useState(() => searchParams.get('process') || defaultAdmissionProcessCode);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -294,7 +307,7 @@ const AdminDashboard: React.FC = () => {
   // Carga inicial: solo dashboard necesita aplicaciones y usuarios
   useEffect(() => {
     if (activeSection !== 'prekinder') {
-      loadApplications();
+      loadApplications(selectedAdmissionProcessCode);
       loadUsers();
     }
   }, []);
@@ -302,20 +315,20 @@ const AdminDashboard: React.FC = () => {
   // Carga por sección: cada sección carga lo que necesita al entrar
   useEffect(() => {
     if (activeSection === 'postulaciones') {
-      loadAdminApplications();
+      loadAdminApplications(selectedAdmissionProcessCode);
     } else if (activeSection === 'evaluaciones') {
-      loadApplications();
+      loadApplications(selectedAdmissionProcessCode);
     } else if (activeSection === 'usuarios') {
       loadUsers();
     }
-  }, [activeSection]);
+  }, [activeSection, selectedAdmissionProcessCode]);
 
-  const loadApplications = async () => {
+  const loadApplications = async (processCode = selectedAdmissionProcessCode) => {
     try {
       setIsPageLoading(true);
       dispatch({ type: 'SET_LOADING', payload: true });
       // Use the applicationService which handles the API calls properly
-      const applications = await applicationService.getAllApplications();
+      const applications = await applicationService.getAllApplications({ processCode });
 
       // Load evaluations for each application
       const applicationsWithEvaluations = await Promise.all(
@@ -449,10 +462,10 @@ const AdminDashboard: React.FC = () => {
     };
   };
 
-  const loadAdminApplications = async () => {
+  const loadAdminApplications = async (processCode = selectedAdmissionProcessCode) => {
     try {
       setIsLoadingAdminApplications(true);
-      const appsData = await applicationService.getAllApplications();
+      const appsData = await applicationService.getAllApplications({ processCode });
 
       // Load evaluations for each application
       const appsWithEvaluations = await Promise.all(
@@ -519,7 +532,7 @@ const AdminDashboard: React.FC = () => {
       }
 
       // Recargar aplicaciones para reflejar los cambios
-      await loadApplications();
+      await loadApplications(selectedAdmissionProcessCode);
 
       // No mostrar notificación aquí, el modal ya la muestra
     } catch (error: any) {
@@ -553,9 +566,10 @@ Esta acción:
     try {
       await applicationService.archiveApplication(application.id);
       showApplicationToast(`Postulación de ${application.student.firstName} ${application.student.lastName} archivada exitosamente`, 'success');
-      await loadAdminApplications(); // Recargar la lista
+      await loadAdminApplications(selectedAdmissionProcessCode); // Recargar la lista
     } catch (error: any) {
       showApplicationToast(error.message || 'Error al archivar la postulación', 'error');
+      await loadAdminApplications(selectedAdmissionProcessCode);
     } finally {
       setArchiveDialog({ show: false, application: null, message: '' });
     }
@@ -603,6 +617,31 @@ Esta acción:
     setSearchParams(next);
   };
 
+  const handleAdmissionProcessChange = (processCode: string) => {
+    setSelectedAdmissionProcessCode(processCode);
+    const next = new URLSearchParams(searchParams);
+    next.set('process', processCode);
+    if (activeSection === 'admissionReports') next.set('section', 'admision');
+    setSearchParams(next, { replace: true });
+  };
+
+  const ProcessScopeBar = () => (
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+      <FiClipboard className="h-4 w-4 text-gray-500" aria-hidden="true" />
+      <label htmlFor="adminAdmissionProcessCode" className="text-sm text-gray-600">Proceso</label>
+      <select
+        id="adminAdmissionProcessCode"
+        value={selectedAdmissionProcessCode}
+        onChange={(event) => handleAdmissionProcessChange(event.target.value)}
+        className="cursor-pointer border-none bg-transparent py-1 text-sm font-semibold text-gray-950 focus:ring-0"
+      >
+        {ADMISSION_PROCESS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   const renderSection = () => {
     switch (activeSection) {
       case 'metricas':
@@ -616,7 +655,10 @@ Esta acción:
         return (
           <React.Suspense fallback={<div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" role="status" aria-label="Cargando Admisión" />}>
             <div className="space-y-6">
-              <AdmissionReportTabs />
+              <AdmissionReportTabs
+                selectedProcessCode={selectedAdmissionProcessCode}
+                onProcessChange={handleAdmissionProcessChange}
+              />
             </div>
           </React.Suspense>
         );
@@ -624,7 +666,7 @@ Esta acción:
       case 'vacantes':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Vacantes</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Configura qué niveles tienen vacantes disponibles para los postulantes</p>
@@ -638,6 +680,7 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
+              processCode={selectedAdmissionProcessCode}
               onNavigateToInterviews={(interviewId) => {
                 setInterviewToOpenId(interviewId ?? null);
                 setActiveSection('entrevistas');
@@ -649,7 +692,7 @@ Esta acción:
       case 'evaluaciones':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Evaluaciones</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">
@@ -710,7 +753,7 @@ Esta acción:
             'EXAM_SCHEDULED': 'Examen Programado',
             'INTERVIEW_SCHEDULED': 'Entrevista Programada',
             'APPROVED': 'Aprobadas',
-            'REJECTED': 'Rechazadas',
+            'REJECTED': 'No aceptadas',
             'WAITLIST': 'Lista de Espera'
           };
           return labels[status] || status;
@@ -726,7 +769,7 @@ Esta acción:
         return (
           <div className="space-y-5">
             {/* Encabezado */}
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Postulaciones</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Seguimiento y gestión de las postulaciones del proceso de admisión</p>
@@ -734,59 +777,38 @@ Esta acción:
             </section>
 
             {/* KPIs */}
-            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Resumen de postulaciones">
-              <div className="min-w-[148px] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700">
-                <div className="flex items-center gap-2">
-                  <FiFileText className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Total Activas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.length}</p>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 rounded-xl border border-gray-200 divide-x divide-y sm:divide-y-0 divide-gray-200 overflow-hidden" aria-label="Resumen de postulaciones">
+              <div className="relative bg-blue-50 px-5 py-6">
+                <p className="text-base text-gray-600">Total Activas</p>
+                <p className="mt-3 text-3xl font-bold text-blue-600">{applicationsToFilter.length}</p>
               </div>
-              <div className="min-w-[132px] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-                <div className="flex items-center gap-2">
-                  <FiClock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Nuevas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
-                </div>
+              <div className="relative bg-amber-50 px-5 py-6">
+                <p className="text-base text-gray-600">Nuevas</p>
+                <p className="mt-3 text-3xl font-bold text-amber-600">{applicationsToFilter.filter(app => app.status === 'PENDING').length}</p>
               </div>
-              <div className="min-w-[132px] rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">Aceptadas</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
-                </div>
+              <div className="relative bg-emerald-50 px-5 py-6">
+                <p className="text-base text-gray-600">Aceptadas</p>
+                <p className="mt-3 text-3xl font-bold text-emerald-600">{applicationsToFilter.filter(app => app.status === 'APPROVED').length}</p>
               </div>
-              <div className="min-w-[148px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-purple-700">
-                <div className="flex items-center gap-2">
-                  <FiUsers className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 truncate text-xs font-semibold">En Revisión</p>
-                  <p className="ml-auto text-lg font-bold leading-none">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
-                </div>
+              <div className="relative bg-white px-5 py-6">
+                <p className="text-base text-gray-600">En Revisión</p>
+                <p className="mt-3 text-3xl font-bold text-purple-600">{applicationsToFilter.filter(app => app.status === 'UNDER_REVIEW').length}</p>
               </div>
             </div>
 
             {/* Acciones */}
-            <div className="flex flex-wrap justify-end gap-2">
-              {statusFilter !== 'all' && (
+            {statusFilter !== 'all' && (
+              <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setStatusFilter('all')}
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <FiX className="h-4 w-4" aria-hidden="true" />
-                  Limpiar filtro{statusFilter !== 'all' && `: ${getStatusLabel(statusFilter)}`}
+                  Limpiar filtro: {getStatusLabel(statusFilter)}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={loadAdminApplications}
-                disabled={isLoadingAdminApplications}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
-              >
-                <FiRefreshCw className={`h-4 w-4 ${isLoadingAdminApplications ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-                Actualizar
-              </button>
-            </div>
+              </div>
+            )}
 
             <ApplicationsTable
               applications={filteredApplications}
@@ -794,6 +816,8 @@ Esta acción:
               onView={handleViewApplicationDetail}
               onArchive={confirmArchive}
               onDecision={(application) => setDecisionModal({ show: true, application })}
+              onRefresh={loadAdminApplications}
+              isRefreshing={isLoadingAdminApplications}
             />
           </div>
         );
@@ -801,7 +825,7 @@ Esta acción:
       case 'usuarios':
         return (
           <div className="space-y-5">
-            <section className="flex flex-col gap-4 border-b border-gray-200 pb-5">
+            <section className="flex flex-col gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Gestión de Usuarios</p>
                 <p className="mt-1 max-w-3xl text-sm text-gray-600">Administra el personal y las parejas de entrevistas.</p>
@@ -846,6 +870,7 @@ Esta acción:
             <InterviewManagement
               onBack={() => setActiveSection('dashboard')}
               initialInterviewId={interviewToOpenId}
+              processCode={selectedAdmissionProcessCode}
             />
           </div>
         );
@@ -854,6 +879,7 @@ Esta acción:
         return (
           <div className="space-y-6">
             <InterviewCommandCenter
+              processCode={selectedAdmissionProcessCode}
               onNavigateToInterviews={(interviewId) => {
                 setInterviewToOpenId(interviewId ?? null);
                 setActiveSection('entrevistas');
@@ -875,7 +901,7 @@ Esta acción:
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
       {/* Overlay global de carga */}
       {isPageLoading && (
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
@@ -932,9 +958,9 @@ Esta acción:
         />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 items-start">
         {/* Desktop Sidebar */}
-        <aside className="w-64 bg-white shadow-md flex-col hidden md:flex overflow-y-auto">
+        <aside className="sticky top-0 hidden h-[100dvh] w-64 flex-col overflow-y-auto bg-white shadow-md md:flex">
           <SidebarContent
             user={user}
             activeSection={activeSection}
@@ -945,7 +971,8 @@ Esta acción:
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 min-w-0 overflow-y-auto" role="main" aria-label="Contenido principal del dashboard">
+        <main className="min-w-0 flex-1 p-4 sm:p-6" role="main" aria-label="Contenido principal del dashboard">
+          {activeSection !== 'admissionReports' && <ProcessScopeBar />}
           {renderSection()}
         </main>
       </div>
@@ -1020,7 +1047,7 @@ Esta acción:
         onClose={() => setDecisionModal({ show: false, application: null })}
         application={decisionModal.application}
         onDecisionMade={() => {
-          loadAdminApplications();
+          loadAdminApplications(selectedAdmissionProcessCode);
           setApplicationToast({
             message: 'Decisión registrada exitosamente',
             type: 'success'
@@ -1060,6 +1087,7 @@ Esta acción:
                 id: 0
               }}
               mode={InterviewFormMode.CREATE}
+              processCode={selectedAdmissionProcessCode}
               onSubmit={async (data) => {
                 try {
                   setIsSchedulingInterview(true);
@@ -1080,7 +1108,7 @@ Esta acción:
                   });
 
                   setScheduleInterviewModal({ show: false, postulante: null, interviewType: undefined });
-                  await loadAdminApplications(); // Reload to show updated interview status
+                  await loadAdminApplications(selectedAdmissionProcessCode); // Reload to show updated interview status
                 } catch (error: any) {
                   setApplicationToast({
                     message: error.message || 'Error al programar la entrevista',

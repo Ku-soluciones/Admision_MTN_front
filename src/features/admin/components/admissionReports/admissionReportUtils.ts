@@ -53,6 +53,9 @@ export const hasDataQualityIssue = (row: CourseApplicant) =>
 
 export const statusTone = (status: string) => {
   const token = normalizeToken(status);
+  if (token.includes('no aceptado')) {
+    return { badge: 'bg-rose-50 text-rose-700 ring-rose-600/20', bar: 'bg-rose-500' };
+  }
   if (token.includes('acept') || token.includes('approv')) {
     return { badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', bar: 'bg-emerald-500' };
   }

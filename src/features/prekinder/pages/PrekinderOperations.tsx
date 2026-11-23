@@ -2268,6 +2268,7 @@ function DayCenter({
   groups,
   applications,
   professionals,
+  configuration,
   selected,
   busy,
   onSelect,
@@ -2279,6 +2280,7 @@ function DayCenter({
   groups: EvaluationGroup[];
   applications: FlowApplication[];
   professionals: Professional[];
+  configuration: ProcessConfiguration | null;
   selected: EvaluationGroup | null;
   busy: boolean;
   onSelect: (id: string) => void;

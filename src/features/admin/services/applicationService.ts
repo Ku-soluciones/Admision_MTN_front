@@ -1,3 +1,4 @@
+import { statusRequestError } from '../../../packages/shared-ui/src/utils/applicationStatusPolicy';
 import api from './api';
 import { DataAdapter } from './dataAdapter';
 import { extractBffList } from '../src/api/bffResponse';
@@ -123,6 +124,8 @@ export interface Application {
         relationship: string;
     };
     status: string;
+    allowedStatusTransitions?: string[];
+    statusChangeBlockedReason?: string;
     paymentStatus?: 'UNPAID' | 'PAYMENT_PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
     paymentRequired?: boolean;
     paidAt?: string;
@@ -143,6 +146,7 @@ export interface GetApplicationsFilters {
     status?: string;
     gradeApplying?: string;
     search?: string;
+    processCode?: string;
     /** Reservado: el BFF actual no filtra por año en este endpoint. */
     applicationYear?: number;
     /** Reservado: el BFF actual no filtra por RUT apoderado en este endpoint. */
@@ -175,6 +179,7 @@ class ApplicationService {
         if (filters.status) params.status = filters.status;
         if (filters.gradeApplying) params.gradeApplying = filters.gradeApplying;
         if (filters.search) params.search = filters.search;
+        if (filters.processCode) params.processCode = filters.processCode;
 
         try {
             const response = await api.get('/v1/applications', { params });
@@ -216,7 +221,8 @@ class ApplicationService {
                 size: filters?.size ?? filters?.limit ?? 2000,
                 status: filters?.status,
                 gradeApplying: filters?.gradeApplying,
-                search: filters?.search
+                search: filters?.search,
+                processCode: filters?.processCode
             });
             return applications.filter((app) => app?.id && app?.student);
         } catch (error: any) {
@@ -326,6 +332,25 @@ class ApplicationService {
             throw new Error('Error al obtener la postulación');
         }
     }
+
+    async exportSchoolnetStudents(params?: { academicYear?: number; processCode?: string; statuses?: string[] }): Promise<Blob> {
+        try {
+            const query = new URLSearchParams();
+            if (params?.academicYear) query.set('academicYear', params.academicYear.toString());
+            if (params?.processCode) query.set('processCode', params.processCode);
+            if (params?.statuses?.length) query.set('statuses', params.statuses.join(','));
+            const suffix = query.toString() ? `?${query.toString()}` : '';
+            const response = await api.get(`/v1/applications/export/schoolnet${suffix}`, {
+                responseType: 'blob',
+                headers: {
+                    Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            });
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Error al exportar postulantes para SchoolNet');
+        }
+    }
     
     async getDashboardData(): Promise<{
         applications: Application[];
@@ -394,7 +419,7 @@ class ApplicationService {
                 throw new Error('No tienes permisos para archivar esta postulación');
             }
 
-            throw new Error('Error al archivar la postulación');
+            throw new Error(statusRequestError(error));
         }
     }
 
@@ -424,7 +449,7 @@ class ApplicationService {
                 throw new Error('No tienes permisos para cambiar el estado');
             }
 
-            throw new Error('Error al actualizar el estado de la postulación');
+            throw new Error(statusRequestError(error));
         }
     }
 

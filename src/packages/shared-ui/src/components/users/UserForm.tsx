@@ -32,6 +32,7 @@ import {
 import AvailabilitySchedulePreview from '../schedule/AvailabilitySchedulePreview';
 interface UserFormExtraProps {
   onManageSchedule?: (user: any) => void;
+  onResetPassword?: (user: any) => void;
 }
 
 const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
@@ -41,7 +42,8 @@ const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
   onCancel,
   isSubmitting = false,
   className = '',
-  onManageSchedule
+  onManageSchedule,
+  onResetPassword
 }) => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -660,7 +662,20 @@ const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
 
           {/* Botones de Acción */}
           {!isViewMode && (
-            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <div className="flex items-center justify-between gap-3 pt-4 border-t">
+              {mode === UserFormMode.EDIT && user && onResetPassword ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onResetPassword(user)}
+                  disabled={isSubmitting || !user.active}
+                  title={!user.active ? 'El usuario debe estar activo' : undefined}
+                >
+                  <KeyIcon className="w-4 h-4 mr-1" />
+                  Restablecer contraseña
+                </Button>
+              ) : <span />}
+              <div className="flex items-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -669,7 +684,7 @@ const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
               >
                 Cancelar
               </Button>
-              
+
               <Button
                 type="submit"
                 disabled={isSubmitting || (!isDirty && mode === UserFormMode.EDIT)}
@@ -688,6 +703,7 @@ const UserForm: React.FC<UserFormProps & UserFormExtraProps> = ({
                   </>
                 )}
               </Button>
+              </div>
             </div>
           )}
 

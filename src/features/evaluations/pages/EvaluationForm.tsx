@@ -145,6 +145,7 @@ const EvaluationForm: React.FC = () => {
       setLoading(true);
       const data = await professorEvaluationService.getEvaluationById(parseInt(evaluationId));
       setEvaluation(data);
+      const structured = data.interviewData || {};
 
       // Populate form fields
       setScore(data.score || '');
@@ -152,17 +153,17 @@ const EvaluationForm: React.FC = () => {
       setObservations(data.observations || '');
 
       // Populate qualitative observations
-      setAcademicReadiness(data.academic_readiness || '');
-      setBehavioralAssessment(data.behavioral_assessment || '');
-      setEmotionalMaturity(data.emotional_maturity || '');
-      setSocialSkills(data.social_skills_assessment || '');
-      setMotivationAssessment(data.motivation_assessment || '');
-      setFamilySupport(data.family_support_assessment || '');
-      setIntegrationPotential(data.integration_potential || '');
+      setAcademicReadiness(structured.academicReadiness || '');
+      setBehavioralAssessment(structured.behavioralAssessment || '');
+      setEmotionalMaturity(structured.emotionalMaturity || '');
+      setSocialSkills(structured.socialSkillsAssessment || '');
+      setMotivationAssessment(structured.motivationAssessment || '');
+      setFamilySupport(structured.familySupportAssessment || '');
+      setIntegrationPotential(structured.integrationPotential || '');
       setStrengths(data.strengths || '');
-      setAreasForImprovement(data.areas_for_improvement || '');
+      setAreasForImprovement(data.areasForImprovement || '');
       setRecommendations(data.recommendations || '');
-      setFinalRecommendation(data.final_recommendation);
+      setFinalRecommendation(structured.finalRecommendation ?? null);
 
       setError(null);
     } catch (err: any) {
@@ -192,17 +193,14 @@ const EvaluationForm: React.FC = () => {
         grade,
         observations,
         status: 'COMPLETED',
-        academic_readiness: academicReadiness,
-        behavioral_assessment: behavioralAssessment,
-        emotional_maturity: emotionalMaturity,
-        social_skills_assessment: socialSkills,
-        motivation_assessment: motivationAssessment,
-        family_support_assessment: familySupport,
-        integration_potential: integrationPotential,
         strengths,
-        areas_for_improvement: areasForImprovement,
+        areasForImprovement,
         recommendations,
-        final_recommendation: finalRecommendation
+        interviewData: {
+          formType: 'GENERAL_EVALUATION', academicReadiness, behavioralAssessment,
+          emotionalMaturity, socialSkillsAssessment: socialSkills, motivationAssessment,
+          familySupportAssessment: familySupport, integrationPotential, finalRecommendation
+        }
       };
 
       await professorEvaluationService.updateEvaluation(parseInt(evaluationId), updateData);
@@ -230,17 +228,14 @@ const EvaluationForm: React.FC = () => {
         grade,
         observations,
         status: 'IN_PROGRESS',
-        academic_readiness: academicReadiness,
-        behavioral_assessment: behavioralAssessment,
-        emotional_maturity: emotionalMaturity,
-        social_skills_assessment: socialSkills,
-        motivation_assessment: motivationAssessment,
-        family_support_assessment: familySupport,
-        integration_potential: integrationPotential,
         strengths,
-        areas_for_improvement: areasForImprovement,
+        areasForImprovement,
         recommendations,
-        final_recommendation: finalRecommendation
+        interviewData: {
+          formType: 'GENERAL_EVALUATION', academicReadiness, behavioralAssessment,
+          emotionalMaturity, socialSkillsAssessment: socialSkills, motivationAssessment,
+          familySupportAssessment: familySupport, integrationPotential, finalRecommendation
+        }
       };
 
       await professorEvaluationService.updateEvaluation(parseInt(evaluationId), updateData);

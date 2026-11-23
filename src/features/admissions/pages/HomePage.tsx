@@ -4,6 +4,7 @@ import { FileText, Users, CheckCircle, AlertCircle } from 'lucide-react';
 import { appUrls } from '../../admin/utils/appUrls';
 import { useAdmissionHome } from '../hooks/useAdmissionConfig';
 import type { AdmissionTimelineItem } from '../types/admissionConfig';
+import { NEW_APPLICATIONS_OPEN } from '../../../packages/shared-utils/src/admissionAvailability';
 
 /* ────────────────────────────────────────────────────────
    Helpers para el timeline
@@ -57,16 +58,20 @@ const HomePage: React.FC = () => {
                 <div className="relative container mx-auto px-4 sm:px-6">
                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-serif mb-4 animate-fade-in-down">Unidos al corazón de Jesús, construimos una comunidad de esperanza</h1>
                     <p className="text-base sm:text-xl text-gray-200 mb-8 max-w-3xl mx-auto">Únanse a una comunidad educativa comprometida con la excelencia académica y formación católica</p>
-                    <div className="flex justify-center">
-                        <a href={appUrls.guardianApplicationEntry}>
-                            <Button size="lg" variant="primary" className="!text-blanco-pureza">
-                                Iniciar postulación
-                            </Button>
-                        </a>
-                    </div>
-                    <p className="mx-auto mt-4 max-w-2xl text-sm text-blue-100">
-                        Después de ingresar podrás elegir Prekínder u otro curso disponible.
-                    </p>
+                    {NEW_APPLICATIONS_OPEN && (
+                        <>
+                            <div className="flex justify-center">
+                                <a href={appUrls.guardianApplicationEntry}>
+                                    <Button size="lg" variant="primary" className="!text-blanco-pureza">
+                                        Iniciar postulación
+                                    </Button>
+                                </a>
+                            </div>
+                            <p className="mx-auto mt-4 max-w-2xl text-sm text-blue-100">
+                                Después de ingresar podrás elegir Prekínder u otro curso disponible.
+                            </p>
+                        </>
+                    )}
                 </div>
             </section>
 

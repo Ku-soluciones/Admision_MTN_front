@@ -20,6 +20,9 @@ import {
   CreateInterviewRequest,
   UpdateInterviewRequest,
   CompleteInterviewRequest,
+  ManualInterviewCreateRequest,
+  ManualInterviewCreateResult,
+  ManualInterviewWarning,
   NextAvailableSlotsResponse,
   WeeklyOverviewResponse,
   WeeklyOverviewDay,
@@ -62,6 +65,17 @@ export interface InterviewResponse {
   canBeCompleted: boolean;
   canBeEdited: boolean;
   canBeCancelled: boolean;
+  entrySource?: 'STANDARD' | 'MANUAL';
+}
+
+export class ManualInterviewConfirmationError extends Error {
+  readonly warnings: ManualInterviewWarning[];
+
+  constructor(message: string, warnings: ManualInterviewWarning[]) {
+    super(message);
+    this.name = 'ManualInterviewConfirmationError';
+    this.warnings = warnings;
+  }
 }
 
 export interface PaginatedInterviewResponse {
@@ -113,7 +127,8 @@ class InterviewService {
       isOverdue: response.isOverdue,
       canBeCompleted: response.canBeCompleted,
       canBeEdited: response.canBeEdited,
-      canBeCancelled: response.canBeCancelled
+      canBeCancelled: response.canBeCancelled,
+      entrySource: response.entrySource
     };
   }
 
@@ -166,7 +181,8 @@ class InterviewService {
       isOverdue: this.isOverdueInterview(backendData.scheduledDate, backendData.status),
       canBeCompleted: this.canBeCompleted(backendData.status),
       canBeEdited: this.canBeEdited(backendData.status),
-      canBeCancelled: this.canBeCancelled(backendData.status)
+      canBeCancelled: this.canBeCancelled(backendData.status),
+      entrySource: backendData.entrySource || 'STANDARD'
     };
   }
 
@@ -249,6 +265,31 @@ class InterviewService {
     return this.mapBackendResponse(interviewData);
   }
 
+  async createManualInterview(request: ManualInterviewCreateRequest): Promise<ManualInterviewCreateResult> {
+    try {
+      const response = await api.post<any>(`${this.baseUrl}/manual`, request);
+      const interviewData = response.data?.data ?? response.data;
+      if (!interviewData || typeof interviewData !== 'object') {
+        throw new Error('Respuesta inválida del servidor al guardar la entrevista excepcional');
+      }
+      return {
+        interview: this.mapBackendResponse(interviewData),
+        emailRequested: Boolean(interviewData.emailRequested),
+        emailSent: Boolean(interviewData.emailSent),
+        emailMessage: typeof interviewData.emailMessage === 'string' ? interviewData.emailMessage : undefined,
+      };
+    } catch (error: any) {
+      const apiError = error.response?.data?.error;
+      if (error.response?.status === 409 && apiError?.code === 'MANUAL_CONFIRMATION_REQUIRED') {
+        throw new ManualInterviewConfirmationError(
+          apiError.message || 'Revisa las advertencias antes de guardar',
+          apiError.details?.warnings || []
+        );
+      }
+      throw new Error(apiError?.message || error.message || 'No se pudo guardar la entrevista excepcional');
+    }
+  }
+
   // Enviar invitación con botones de confirmación (patrón pasarela)
   async sendInterviewInvitation(id: number): Promise<{ success: boolean; message: string; data?: Interview }> {
     try {
@@ -284,12 +325,15 @@ class InterviewService {
     size: number = 20,
     sortBy: string = 'scheduledDate',
     sortDir: 'asc' | 'desc' = 'desc',
-    search?: string
+    search?: string,
+    processCode?: string
   ): Promise<{ interviews: Interview[]; totalElements: number; totalPages: number }> {
     try {
 
       // Use correct API instance instead of hardcoded URL
-      const response = await api.get<any>(this.baseUrl);
+      const queryParams = new URLSearchParams();
+      if (processCode) queryParams.set('processCode', processCode);
+      const response = await api.get<any>(queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl);
 
 
       // Backend returns: { success: true, data: [...], count: number }
@@ -363,7 +407,11 @@ class InterviewService {
     try {
 
       // Get all interviews first
-      const response = await api.get<any>(this.baseUrl);
+      const queryParams = new URLSearchParams();
+      if ((filters as InterviewFilters & { processCode?: string }).processCode) {
+        queryParams.set('processCode', (filters as InterviewFilters & { processCode?: string }).processCode!);
+      }
+      const response = await api.get<any>(queryParams.toString() ? `${this.baseUrl}?${queryParams}` : this.baseUrl);
 
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         let interviews = response.data.data;
@@ -953,12 +1001,14 @@ class InterviewService {
     startDate: string;
     endDate: string;
     duration?: number;
+    processCode?: string;
   }): Promise<WeeklyOverviewResponse> {
     const queryParams = new URLSearchParams({
       startDate: params.startDate,
       endDate: params.endDate,
       duration: (params.duration || 30).toString()
     });
+    if (params.processCode) queryParams.set('processCode', params.processCode);
 
     try {
       const response = await api.get<any>(`${this.baseUrl}/weekly-overview?${queryParams}`);
