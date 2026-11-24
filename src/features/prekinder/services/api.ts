@@ -233,6 +233,7 @@ export type FamilyAdultDetails = {
   phone: string;
   address: string;
   profession?: string;
+  birthDate: string;
 };
 
 export type ResponsibleAdultDetails = {
