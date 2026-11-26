@@ -38,9 +38,11 @@ type AgeDocumentDraft = {
 
 export function validateAgeDocumentDraft(input: AgeDocumentDraft): DraftValidation {
   const errors: string[] = [];
-  const informed = [input.minimumAgeMonths, input.maximumAgeMonths].filter((value) => value !== 0);
-  if (informed.some((value) => !Number.isInteger(value) || value < 36 || value > 96)) {
-    errors.push('Las edades informadas deben estar entre 36 y 96 meses.');
+  if (input.minimumAgeMonths !== 0 && (!Number.isInteger(input.minimumAgeMonths) || input.minimumAgeMonths < 36 || input.minimumAgeMonths > 84)) {
+    errors.push('La edad mínima debe estar entre 36 y 84 meses.');
+  }
+  if (input.maximumAgeMonths !== 0 && (!Number.isInteger(input.maximumAgeMonths) || input.maximumAgeMonths < 36 || input.maximumAgeMonths > 96)) {
+    errors.push('La edad máxima debe estar entre 36 y 96 meses.');
   }
   if (input.minimumAgeMonths > 0 && input.maximumAgeMonths > 0 && input.minimumAgeMonths > input.maximumAgeMonths) {
     errors.push('La edad mínima no puede superar la edad máxima.');
@@ -53,6 +55,16 @@ export function validateAgeDocumentDraft(input: AgeDocumentDraft): DraftValidati
     complete: errors.length === 0 && hasRange && hasBirthCertificate && hasReferenceDate,
     errors,
   };
+}
+
+export function validatePublishedAgeDocuments(input: AgeDocumentDraft): string[] {
+  const validation = validateAgeDocumentDraft(input);
+  const errors = [...validation.errors];
+  if (input.minimumAgeMonths === 0) errors.push('La edad mínima es obligatoria.');
+  if (input.maximumAgeMonths === 0) errors.push('La edad máxima es obligatoria.');
+  if (!input.ageReferenceDate) errors.push('La fecha de referencia de edad es obligatoria.');
+  if (!input.requiredDocuments.includes('BIRTH_CERTIFICATE')) errors.push('El Certificado de Nacimiento es obligatorio.');
+  return errors;
 }
 
 export function validateOptionalIncorporationFee(
@@ -89,6 +101,13 @@ export type SetupStepStatus = 'SAVED' | 'PENDING' | 'REQUIRED' | 'INVALID';
 
 export function canAccessDraftProcessSection(section: string): boolean {
   return ['Resumen', 'Salas', 'Profesionales'].includes(section);
+}
+
+export function belongsToSelectedProcess(
+  resource: { processId: string } | null,
+  selectedProcessId: string,
+): boolean {
+  return Boolean(resource && selectedProcessId && resource.processId === selectedProcessId);
 }
 
 export function getSetupStepStatus(input: {

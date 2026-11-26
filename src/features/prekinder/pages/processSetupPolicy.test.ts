@@ -4,7 +4,9 @@ import {
   getSetupStepStatus,
   toIsoPublicationWindow,
   canAccessDraftProcessSection,
+  belongsToSelectedProcess,
   validateAgeDocumentDraft,
+  validatePublishedAgeDocuments,
   validateOptionalIncorporationFee,
   validateSeatDraft,
 } from './processSetupPolicy.ts';
@@ -31,6 +33,7 @@ test('permite edad y documentos pendientes pero valida el rango informado', () =
     valid: true, complete: false, errors: [],
   });
   assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 60, maximumAgeMonths: 48, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }).valid, false);
+  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 85, maximumAgeMonths: 96, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }).valid, false);
   assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: '2029-03-31', requiredDocuments: [] }).complete, false);
   assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: null, requiredDocuments: ['BIRTH_CERTIFICATE'] }).complete, false);
   assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }).complete, true);
@@ -41,6 +44,16 @@ test('acepta arancel vacío y exige monto positivo con glosa cuando se informa',
   assert.equal(validateOptionalIncorporationFee(0, 'Matrícula').valid, false);
   assert.equal(validateOptionalIncorporationFee(150000, '').valid, false);
   assert.deepEqual(validateOptionalIncorporationFee(150000, 'Arancel de incorporación'), { valid: true, errors: [] });
+});
+
+test('exige política de edad completa al editar un proceso publicado', () => {
+  assert.deepEqual(validatePublishedAgeDocuments({ minimumAgeMonths: 0, maximumAgeMonths: 0, ageReferenceDate: null, requiredDocuments: [] }), [
+    'La edad mínima es obligatoria.',
+    'La edad máxima es obligatoria.',
+    'La fecha de referencia de edad es obligatoria.',
+    'El Certificado de Nacimiento es obligatorio.',
+  ]);
+  assert.deepEqual(validatePublishedAgeDocuments({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }), []);
 });
 
 test('convierte la ventana del proceso seleccionado a ISO sin depender del año académico', () => {
@@ -63,4 +76,10 @@ test('mantiene accesibles el asistente, salas y profesionales durante el borrado
   assert.equal(canAccessDraftProcessSection('Salas'), true);
   assert.equal(canAccessDraftProcessSection('Profesionales'), true);
   assert.equal(canAccessDraftProcessSection('Postulaciones'), false);
+});
+
+test('impide reutilizar recursos cargados para otro proceso', () => {
+  assert.equal(belongsToSelectedProcess({ processId: 'process-a' }, 'process-a'), true);
+  assert.equal(belongsToSelectedProcess({ processId: 'process-a' }, 'process-b'), false);
+  assert.equal(belongsToSelectedProcess(null, 'process-b'), false);
 });

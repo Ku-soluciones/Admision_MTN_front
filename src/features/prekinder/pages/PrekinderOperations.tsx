@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ArrowDown,
@@ -66,10 +66,12 @@ import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEdit
 import AgeRangeEditor from "../components/admin/AgeRangeEditor";
 import ProcessSetupStepper, { type ProcessSetupStep } from "../components/admin/ProcessSetupStepper";
 import {
+  belongsToSelectedProcess,
   canAccessDraftProcessSection,
   getSetupStepStatus,
   toIsoPublicationWindow,
   validateAgeDocumentDraft,
+  validatePublishedAgeDocuments,
   validateOptionalIncorporationFee,
   validateSeatDraft,
 } from "./processSetupPolicy";
@@ -200,6 +202,11 @@ export function PrekinderOperations({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const selectedProcessRef = useRef(processId);
+  const processLoadSequence = useRef(0);
+  const processLoadOwnsBusy = useRef(false);
+  const pendingSilentRefresh = useRef<{ processId: string; day: string } | null>(null);
+  selectedProcessRef.current = processId;
 
   useEffect(() => {
     setMessage("");
@@ -209,6 +216,32 @@ export function PrekinderOperations({
   useEffect(() => {
     if (processId) localStorage.setItem(SELECTED_PROCESS_STORAGE_KEY, processId);
     else localStorage.removeItem(SELECTED_PROCESS_STORAGE_KEY);
+  }, [processId]);
+
+  useEffect(() => {
+    processLoadSequence.current += 1;
+    pendingSilentRefresh.current = null;
+    if (processLoadOwnsBusy.current) {
+      processLoadOwnsBusy.current = false;
+      setBusy(false);
+    }
+    setConfiguration(null);
+    setReadiness(null);
+    setWaves([]);
+    setRooms([]);
+    setProcessProfessionals([]);
+    setMetrics(null);
+    setApplications([]);
+    setGroups([]);
+    setGroupClusters([]);
+    setControlTower(null);
+    setCommunicationTemplates([]);
+    setQuestionnaire(null);
+    setPublicationBatches([]);
+    setJourneys([]);
+    setSelectedJourneyId(null);
+    setSelectedGroup(null);
+    setExpandedDrafts(new Set());
   }, [processId]);
 
   useEffect(() => {
@@ -256,8 +289,18 @@ export function PrekinderOperations({
   }
 
   async function loadProcess(id = processId, day = date, silent = false) {
-    if (!id) return;
-    if (!silent) setBusy(true);
+    if (!id) return false;
+    if (selectedProcessRef.current !== id) return false;
+    if (silent && processLoadOwnsBusy.current) {
+      pendingSilentRefresh.current = { processId: id, day };
+      return true;
+    }
+    const requestSequence = ++processLoadSequence.current;
+    if (!silent) {
+      pendingSilentRefresh.current = null;
+      processLoadOwnsBusy.current = true;
+      setBusy(true);
+    }
     setError("");
     try {
       const [nextMetrics, nextWaves, nextApplications, nextRooms, nextGroups, nextControlTower,
@@ -281,6 +324,7 @@ export function PrekinderOperations({
           // desplegado, la jornada completa debe seguir cargando.
           prekinderApi.groupClusters(id, day).catch(() => null),
         ]);
+      if (requestSequence !== processLoadSequence.current || selectedProcessRef.current !== id) return false;
       setMetrics(nextMetrics);
       setWaves(nextWaves);
       setApplications(nextApplications);
@@ -306,14 +350,25 @@ export function PrekinderOperations({
         return sorted[0]?.id ?? null;
       });
       setLastLoaded(new Date());
+      return true;
     } catch (reason) {
+      if (requestSequence !== processLoadSequence.current || selectedProcessRef.current !== id) return false;
       setError(
         reason instanceof Error
           ? reason.message
           : "No pudimos actualizar la jornada.",
       );
+      return false;
     } finally {
-      if (!silent) setBusy(false);
+      if (requestSequence === processLoadSequence.current && processLoadOwnsBusy.current) {
+        processLoadOwnsBusy.current = false;
+        setBusy(false);
+        const pending = pendingSilentRefresh.current;
+        pendingSilentRefresh.current = null;
+        if (pending && selectedProcessRef.current === pending.processId) {
+          void loadProcess(pending.processId, pending.day, true);
+        }
+      }
     }
   }
 
@@ -413,13 +468,17 @@ export function PrekinderOperations({
   }, [mobileNav]);
 
   async function action(work: () => Promise<unknown>, success: string) {
+    const actionProcessId = processId;
     setBusy(true);
     setError("");
     setMessage("");
     try {
       await work();
+      if (selectedProcessRef.current !== actionProcessId) return false;
+      setReadiness(null);
+      const reloaded = await loadProcess();
+      if (!reloaded) return false;
       setMessage(success);
-      await loadProcess();
       return true;
     } catch (reason) {
       setError(
@@ -433,13 +492,45 @@ export function PrekinderOperations({
     }
   }
 
+  async function saveCurrentProcessConfiguration(
+    input: Omit<ProcessConfiguration, "processId">,
+  ): Promise<boolean> {
+    if (!belongsToSelectedProcess(configuration, processId)) {
+      setReadiness(null);
+      setError("La configuración visible no corresponde al proceso seleccionado. Recarga el proceso antes de guardar.");
+      return false;
+    }
+    if (currentProcess?.status !== "DRAFT") {
+      const errors = validatePublishedAgeDocuments(input);
+      if (errors.length > 0) {
+        setError(errors.join(" "));
+        return false;
+      }
+    }
+    return action(
+      () => prekinderApi.saveProcessConfiguration(processId, input),
+      "Configuración guardada.",
+    );
+  }
+
+  async function reloadSelectedProcess(): Promise<void> {
+    if (selectedProcessRef.current !== processId) return;
+    setReadiness(null);
+    const reloaded = await loadProcess(processId);
+    if (!reloaded) throw new Error("El cambio se guardó, pero no pudimos recargar la configuración del proceso.");
+  }
+
   async function actionSilent(work: () => Promise<unknown>, success: string) {
+    const actionProcessId = processId;
     setBusy(true);
     setMessage("");
     try {
       await work();
+      if (selectedProcessRef.current !== actionProcessId) return { ok: false as const, error: "El proceso seleccionado cambió antes de completar la operación." };
+      setReadiness(null);
+      const reloaded = await loadProcess();
+      if (!reloaded) return { ok: false as const, error: "El cambio se guardó, pero no pudimos actualizar la checklist. Reintenta la carga." };
       setMessage(success);
-      await loadProcess();
       return { ok: true as const };
     } catch (reason) {
       return {
@@ -455,10 +546,14 @@ export function PrekinderOperations({
   }
 
   async function actionQuiet(work: () => Promise<unknown>, success: string) {
+    const actionProcessId = processId;
     setBusy(true);
     try {
       await work();
-      await loadProcess();
+      if (selectedProcessRef.current !== actionProcessId) return { ok: false as const, error: "El proceso seleccionado cambió antes de completar la operación." };
+      setReadiness(null);
+      const reloaded = await loadProcess();
+      if (!reloaded) return { ok: false as const, error: "El cambio se guardó, pero no pudimos actualizar la checklist. Reintenta la carga." };
       return { ok: true as const };
     } catch (reason) {
       return {
@@ -493,6 +588,8 @@ export function PrekinderOperations({
         status,
         expectedVersion: wave.version,
       });
+      if (selectedProcessRef.current !== wave.processId) return;
+      setReadiness(null);
       const persistedStages = await prekinderApi.waves(wave.processId);
       const persisted = persistedStages.find((item) => item.waveId === wave.waveId);
       const sameInstant = (left: string | null, right: string) =>
@@ -508,8 +605,11 @@ export function PrekinderOperations({
           "El servidor respondió, pero la etapa no quedó persistida. No se confirmó el cambio.",
         );
       }
+      if (selectedProcessRef.current !== wave.processId) return;
       setWaves(persistedStages);
-      setReadiness(await prekinderApi.readiness(wave.processId));
+      const nextReadiness = await prekinderApi.readiness(wave.processId);
+      if (selectedProcessRef.current !== wave.processId) return;
+      setReadiness(nextReadiness);
       setMessage("Etapa guardada y verificada en la base de datos.");
     } catch (reason) {
       setError(
@@ -791,6 +891,7 @@ export function PrekinderOperations({
             />
           ) : currentProcess?.status === "DRAFT" && section !== "Salas" && section !== "Profesionales" ? (
             <ProcessSetup
+              key={processId}
               process={currentProcess}
               configuration={configuration}
               readiness={readiness}
@@ -798,12 +899,9 @@ export function PrekinderOperations({
               communications={communicationTemplates}
               questionnaire={questionnaire}
               busy={busy}
-              onSaveConfiguration={(input) => action(
-                () => prekinderApi.saveProcessConfiguration(processId, input),
-                "Configuración guardada.",
-              )}
+              onSaveConfiguration={saveCurrentProcessConfiguration}
               onSaveWave={saveStage}
-              onChanged={() => loadProcess(processId)}
+              onChanged={reloadSelectedProcess}
               onQuestionnaireAction={action}
               onPublish={publishAdmissionProcess}
               onOpenSection={setSection}
@@ -848,8 +946,8 @@ export function PrekinderOperations({
               processId={processId}
               configuration={configuration}
               busy={busy}
-              onSaveConfiguration={(input) => action(() => prekinderApi.saveProcessConfiguration(processId, input), "Configuración guardada.")}
-              onChangedRubrics={() => loadProcess(processId)}
+              onSaveConfiguration={saveCurrentProcessConfiguration}
+              onChangedRubrics={reloadSelectedProcess}
               communicationTemplates={communicationTemplates}
               questionnaire={questionnaire}
               onCommunicationAction={action}
@@ -953,8 +1051,17 @@ export function PrekinderOperations({
                 setError("");
                 try {
                   await prekinderApi.saveProfessional(input);
-                  setProfessionals(await prekinderApi.professionals());
-                  setReadiness(await prekinderApi.readiness(processId));
+                  if (selectedProcessRef.current !== processId) return false;
+                  setReadiness(null);
+                  const [nextProfessionals, nextProcessProfessionals, nextReadiness] = await Promise.all([
+                    prekinderApi.professionals(),
+                    prekinderApi.professionals(processId),
+                    prekinderApi.readiness(processId),
+                  ]);
+                  if (selectedProcessRef.current !== processId) return false;
+                  setProfessionals(nextProfessionals);
+                  setProcessProfessionals(nextProcessProfessionals);
+                  setReadiness(nextReadiness);
                   setMessage("Perfil profesional guardado.");
                   return true;
                 } catch (requestError) {
@@ -983,8 +1090,17 @@ export function PrekinderOperations({
                 setError("");
                 try {
                   const result = await prekinderApi.deleteProfessional(person.professionalId, person.version);
-                  setProfessionals(await prekinderApi.professionals());
-                  setReadiness(await prekinderApi.readiness(processId));
+                  if (selectedProcessRef.current !== processId) return false;
+                  setReadiness(null);
+                  const [nextProfessionals, nextProcessProfessionals, nextReadiness] = await Promise.all([
+                    prekinderApi.professionals(),
+                    prekinderApi.professionals(processId),
+                    prekinderApi.readiness(processId),
+                  ]);
+                  if (selectedProcessRef.current !== processId) return false;
+                  setProfessionals(nextProfessionals);
+                  setProcessProfessionals(nextProcessProfessionals);
+                  setReadiness(nextReadiness);
                   setMessage(result.firebaseAccountDeleted
                     ? "Profesional y cuenta Firebase eliminados."
                     : "Perfil Prekínder eliminado; la cuenta compartida de otros cursos se conservó.");
@@ -1181,11 +1297,13 @@ function ProcessSetup({
   const seats = configuration ? validateSeatDraft(configuration) : { valid: true, complete: false, errors: [] };
   const ageDocuments = configuration ? validateAgeDocumentDraft(configuration) : { valid: true, complete: false, errors: [] };
   const calendarComplete = waves.length > 0 && waves.every((wave) => Boolean(wave.opensAt && wave.closesAt));
+  const preparationItems = openPhase?.items.filter((item) => item.code === "ROOMS" || item.code === "TEAM") ?? [];
+  const preparationComplete = preparationItems.length === 2 && preparationItems.every((item) => item.complete);
   const statuses = {
     seats: getSetupStepStatus({ ...seats, saved: seats.complete || savedSteps.has("seats"), blocking: true }),
     ageDocuments: getSetupStepStatus({ ...ageDocuments, saved: ageDocuments.complete || savedSteps.has("ageDocuments"), blocking: true }),
     calendar: getSetupStepStatus({ valid: true, complete: calendarComplete, saved: calendarComplete, blocking: true }),
-    preparation: getSetupStepStatus({ valid: true, complete: true, saved: true, blocking: false }),
+    preparation: getSetupStepStatus({ valid: true, complete: preparationComplete, saved: preparationComplete, blocking: true }),
     review: getSetupStepStatus({ valid: true, complete: Boolean(openPhase?.ready), saved: Boolean(openPhase?.ready), blocking: true }),
   } as const;
 
@@ -1243,7 +1361,7 @@ function ProcessSetup({
               <button type="button" className="secondary min-h-14" onClick={() => onOpenSection("Salas")}>Configurar salas</button>
               <button type="button" className="secondary min-h-14" onClick={() => onOpenSection("Profesionales")}>Configurar profesionales</button>
             </section>
-            <section><h2 className="text-xl font-black text-slate-950">Cuestionario de postulación</h2><div className="mt-5"><QuestionnaireEditor processId={process.processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChanged} /></div></section>
+            <section><h2 className="text-xl font-black text-slate-950">Cuestionario de postulación</h2><div className="mt-5"><QuestionnaireEditor processId={process.processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} /></div></section>
             <section><h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2><div className="mt-5"><Rubrics processId={process.processId} busy={busy} onChanged={onChanged} /></div></section>
             <section><h2 className="text-xl font-black text-slate-950">Comunicaciones</h2><div className="mt-5"><Communications templates={communications} busy={busy} onAction={async (work) => { try { await work(); await onChanged(); return true; } catch { return false; } }} expandedDrafts={expandedDrafts} onToggleDraftExpanded={(contentVersionId) => setExpandedDrafts((current) => { const next = new Set(current); if (next.has(contentVersionId)) next.delete(contentVersionId); else next.add(contentVersionId); return next; })} /></div></section>
           </div>
@@ -1354,7 +1472,7 @@ function ConfigurationHub({
         )}
         {view === "rubrics" && <Rubrics processId={processId} busy={busy} onChanged={onChangedRubrics} />}
         {view === "questionnaire" && (
-          <QuestionnaireEditor processId={processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChangedRubrics} />
+          <QuestionnaireEditor processId={processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} />
         )}
         {view === "communications" && (
           <Communications
@@ -1378,13 +1496,11 @@ function QuestionnaireEditor({
   questionnaire,
   busy,
   onAction,
-  onChanged,
 }: {
   processId: string;
   questionnaire: Questionnaire | null;
   busy: boolean;
   onAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
-  onChanged: () => Promise<void>;
 }) {
   const preferred = questionnaire?.versions.find((version) => version.status === "DRAFT")
     ?? questionnaire?.versions.find((version) => version.status === "PUBLISHED")
@@ -1408,8 +1524,7 @@ function QuestionnaireEditor({
   }
 
   const run = async (work: () => Promise<unknown>, success: string) => {
-    const ok = await onAction(work, success);
-    if (ok) await onChanged();
+    await onAction(work, success);
   };
 
   const save = async () => {
@@ -1496,7 +1611,7 @@ function ConfigurationEditor({ mode, configuration, busy, onSave }: {
         : mode === "ageDocuments"
           ? [...validateAgeDocumentDraft(form).errors, ...validateOptionalIncorporationFee(form.incorporationFeeAmount, form.incorporationFeeGlosa).errors]
           : mode === "all"
-            ? [...validateSeatDraft(form).errors, ...validateAgeDocumentDraft(form).errors, ...validateOptionalIncorporationFee(form.incorporationFeeAmount, form.incorporationFeeGlosa).errors]
+            ? [...validateSeatDraft(form).errors, ...validateAgeDocumentDraft(form).errors, ...validateOptionalIncorporationFee(form.incorporationFeeAmount, form.incorporationFeeGlosa).errors, ...(!form.ageReferenceDate ? ["La fecha de referencia de edad es obligatoria en un proceso publicado."] : [])]
             : [];
       setValidationErrors(errors);
       if (errors.length) return;
@@ -1513,9 +1628,9 @@ function ConfigurationEditor({ mode, configuration, busy, onSave }: {
         <Field label="Umbral orientativo (%)"><input className="control w-full" type="number" min="0" max="100" step="0.1" value={form.advisoryThreshold || ""} onChange={(e) => update("advisoryThreshold", Number(e.target.value))} /></Field>
       </div>}
       {(mode === "ageDocuments" || mode === "all") && <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.minimumAgeMonths || ""} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="84" value={form.minimumAgeMonths || ""} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
         <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths || ""} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
-        <Field label="Fecha de referencia de edad"><input className="control w-full" type="date" value={form.ageReferenceDate ?? ""} onChange={(e) => update("ageReferenceDate", e.target.value || null)} /></Field>
+        <Field label="Fecha de referencia de edad"><input className="control w-full" type="date" value={form.ageReferenceDate ?? ""} onChange={(e) => update("ageReferenceDate", e.target.value || null)} required={mode === "all"} /></Field>
         <Field label="Documentos obligatorios"><input className="control w-full" value={form.requiredDocuments.join(", ")} onChange={(e) => update("requiredDocuments", e.target.value.toUpperCase().split(",").map((value) => value.trim()).filter(Boolean))} placeholder="BIRTH_CERTIFICATE" /></Field>
         <Field label="Arancel de incorporación (opcional)"><input className="control w-full" type="number" min="0.01" step="0.01" value={form.incorporationFeeAmount ?? ""} onChange={(e) => update("incorporationFeeAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
         <Field label="Moneda incorporación"><select className="control w-full" value={form.incorporationFeeCurrency} onChange={(e) => update("incorporationFeeCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
