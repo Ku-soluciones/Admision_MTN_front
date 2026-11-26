@@ -9,6 +9,20 @@ export type PrekinderWindowOption = PrekinderAcademicOption & {
   closesAt: string;
 };
 
+export function formatDateInTimeZone(
+  date = new Date(),
+  timeZone = 'America/Santiago',
+): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 export function resolvePrekinderAcademicContext(option: PrekinderAcademicOption) {
   return {
     applicationYear: String(option.academicYear),
@@ -34,17 +48,20 @@ export function resolveApplicationYearForFlow(
 
 export function selectAvailablePrekinderOptions<T extends PrekinderWindowOption>(
   options: T[],
-  now = new Date(),
 ): T[] {
-  const instant = now.getTime();
-  return options.filter((option) => {
-    const opensAt = new Date(option.opensAt).getTime();
-    const closesAt = new Date(option.closesAt).getTime();
-    return Boolean(option.processId)
-      && Number.isInteger(option.academicYear)
-      && Number.isFinite(opensAt)
-      && Number.isFinite(closesAt)
-      && opensAt <= instant
-      && instant <= closesAt;
-  });
+  // application-options ya contiene únicamente las etapas habilitadas por el
+  // backend. El navegador no debe reinterpretar su vigencia con su propio reloj.
+  return options.filter((option) => Boolean(option.processId) && Number.isInteger(option.academicYear));
+}
+
+export function pickPrekinderOption<T extends PrekinderWindowOption>(options: T[]): T | null {
+  return [...options].sort((left, right) => {
+    const yearDifference = right.academicYear - left.academicYear;
+    if (yearDifference !== 0) return yearDifference;
+
+    const openingDifference = Date.parse(right.opensAt) - Date.parse(left.opensAt);
+    if (Number.isFinite(openingDifference) && openingDifference !== 0) return openingDifference;
+
+    return left.processId.localeCompare(right.processId);
+  })[0] ?? null;
 }

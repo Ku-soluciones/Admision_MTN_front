@@ -34,7 +34,9 @@ import {
 } from '../../../packages/shared-utils/src/admissionAvailability';
 import { validatePrekinderBirthDate } from './prekinderAgeValidation';
 import {
+    formatDateInTimeZone,
     normalizePrekinderDraftYear,
+    pickPrekinderOption,
     resolveApplicationYearForFlow,
     resolvePrekinderAcademicContext,
     selectAvailablePrekinderOptions,
@@ -155,7 +157,7 @@ function prekinderAgeInConfiguredRange(
     return validatePrekinderBirthDate(
         birthDate,
         option,
-        new Date().toISOString().slice(0, 10),
+        formatDateInTimeZone(),
     ).valid;
 }
  
@@ -434,7 +436,7 @@ const ApplicationFormContent: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const serverDraftRestoredRef = useRef(false);
 
-    const activePrekinderOption = prekinderOptions[0] ?? null;
+    const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
     // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
     const scheduleDraftSave = useCallback(() => {
@@ -518,7 +520,8 @@ const ApplicationFormContent: React.FC = () => {
                     setPrekinderOptionsError('En este momento no existe una etapa de postulación Prekínder abierta.');
                     return;
                 }
-                const option = options[0];
+                const option = pickPrekinderOption(options);
+                if (!option) return;
                 setData((current: any) => ({
                     ...current,
                     __clientSubmissionId: current.__clientSubmissionId || clientSubmissionIdRef.current,
@@ -1138,7 +1141,7 @@ const ApplicationFormContent: React.FC = () => {
                 const result = validatePrekinderBirthDate(
                     birthDate,
                     activePrekinderOption,
-                    new Date().toISOString().slice(0, 10),
+                    formatDateInTimeZone(),
                 );
                 return { valid: result.valid, message: result.message };
             }
@@ -1296,7 +1299,7 @@ const ApplicationFormContent: React.FC = () => {
             const result = validatePrekinderBirthDate(
                 birthDate,
                 activePrekinderOption,
-                new Date().toISOString().slice(0, 10),
+                formatDateInTimeZone(),
             );
             return { valid: result.valid, message: result.message };
         }
@@ -2458,7 +2461,7 @@ const ApplicationFormContent: React.FC = () => {
                                     type="date"
                                     isRequired
                                     autoComplete="bday"
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={formatDateInTimeZone()}
                                     min="1995-01-01"
                                     value={data.birthDate || ''}
                                     onChange={(e) => {
