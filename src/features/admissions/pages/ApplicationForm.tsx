@@ -22,6 +22,7 @@ import { getStorageKey, BASE_STORAGE_KEYS } from '../../../packages/backend-sdk/
 import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../packages/shared-ui/src/types/document';
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
+import { resolveApplicationEditMode } from './applicationFormMode';
 import {
     prekinderApi,
     type FlowApplication,
@@ -393,6 +394,7 @@ function PrekinderEligibilityFields({
 
 const ApplicationFormContent: React.FC = () => {
     const location = useLocation();
+    const isEditMode = resolveApplicationEditMode(location.state);
     const isPrekinder = useMemo(
         () => new URLSearchParams(location.search).get('proceso') === 'prekinder',
         [location.search],
@@ -544,7 +546,7 @@ const ApplicationFormContent: React.FC = () => {
     }, [existingDocuments, successfullyUploadedDocumentTypes, uploadedDocuments]);
 
     useEffect(() => {
-        if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || location.state?.editMode) return;
+        if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || isEditMode) return;
         serverDraftRestoredRef.current = true;
         prekinderApi.applicationDraft(activePrekinderOption.processId).then((draft) => {
             if (!draft) return;
@@ -561,7 +563,7 @@ const ApplicationFormContent: React.FC = () => {
             // El formulario sigue disponible aunque la recuperación temporal falle.
             serverDraftRestoredRef.current = false;
         });
-    }, [isPrekinder, activePrekinderOption?.processId, location.state?.editMode]);
+    }, [isPrekinder, activePrekinderOption?.processId, isEditMode]);
 
     // Advertir al cerrar/navegar si hay cambios sin guardar
     useEffect(() => {
@@ -1076,7 +1078,7 @@ const ApplicationFormContent: React.FC = () => {
             }
 
             // CASO 2: Modo edición - pre-llenar toda la postulación existente
-            if (location.state?.editMode && location.state?.applicationData) {
+            if (isEditMode && location.state?.applicationData) {
                 const appData = location.state.applicationData;
 
                 // Hide auth form when in edit mode
@@ -1264,7 +1266,7 @@ const ApplicationFormContent: React.FC = () => {
             didRestoreDraftRef.current = true;
             return;
         }
-        if (location.state?.editMode) {
+        if (isEditMode) {
             didRestoreDraftRef.current = true;
             return;
         }
@@ -1291,13 +1293,13 @@ const ApplicationFormContent: React.FC = () => {
         } finally {
             didRestoreDraftRef.current = true;
         }
-    }, [draftKey, location.state?.editMode, isPrekinder]);
+    }, [draftKey, isEditMode, isPrekinder]);
 
     // Guardado debounced (400ms) ante cualquier cambio en data/currentStep.
     useEffect(() => {
         if (!didRestoreDraftRef.current) return;
         if (isPrekinder) return;
-        if (location.state?.editMode) return;
+        if (isEditMode) return;
         if (skipNextSaveRef.current) {
             skipNextSaveRef.current = false;
             return;
@@ -1323,7 +1325,7 @@ const ApplicationFormContent: React.FC = () => {
         return () => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         };
-    }, [data, currentStep, draftKey, location.state?.editMode, isPrekinder,
+    }, [data, currentStep, draftKey, isEditMode, isPrekinder,
         activePrekinderOption?.processId]);
 
     const clearDraft = useCallback(() => {
@@ -1567,7 +1569,7 @@ const ApplicationFormContent: React.FC = () => {
             let nextStepIndex = currentStep + 1;
 
             // Guardar borrador inmediatamente al avanzar de paso (sin debounce)
-            if (!isPrekinder && !location.state?.editMode && data && Object.keys(data).length > 0) {
+            if (!isPrekinder && !isEditMode && data && Object.keys(data).length > 0) {
                 try {
                     localStorage.setItem(
                         draftKey,
@@ -1582,7 +1584,6 @@ const ApplicationFormContent: React.FC = () => {
 
             // Si es el paso de documentación (step 7), enviar la postulación
             if (currentStep === 7) {
-                const isEditMode = Boolean(location.state?.editMode && location.state?.applicationId);
                 if (!canAccessApplicationForm({
                     newApplicationsOpen: NEW_APPLICATIONS_OPEN,
                     editMode: isEditMode,
@@ -2006,7 +2007,7 @@ const ApplicationFormContent: React.FC = () => {
     const prevStep = () => {
         const prevStepIndex = Math.max(currentStep - 1, 0);
         // Guardar borrador inmediatamente al retroceder
-        if (!isPrekinder && !location.state?.editMode && data && Object.keys(data).length > 0) {
+        if (!isPrekinder && !isEditMode && data && Object.keys(data).length > 0) {
             try {
                 localStorage.setItem(
                     draftKey,
@@ -3870,13 +3871,13 @@ const ApplicationFormContent: React.FC = () => {
                             variant="primary"
                             onClick={nextStep}
                             isLoading={isSubmitting}
-                            loadingText={location.state?.editMode ? "Guardando cambios..." : "Enviando tu postulación..."}
+                            loadingText={isEditMode ? "Guardando cambios..." : "Enviando tu postulación..."}
                             disabled={!canProceedToNextStep || isSubmitting || isCheckingRut}
                             className={!canProceedToNextStep || isCheckingRut ? 'cursor-not-allowed opacity-60' : ''}
                         >
                             <span className="inline-flex items-center gap-1.5">
                                 {currentStep === 7
-                                    ? (location.state?.editMode
+                                    ? (isEditMode
                                         ? 'Guardar Cambios'
                                         : submittedApplicationId && uploadFailures.size > 0
                                             ? 'Reintentar adjuntos pendientes'
@@ -3933,7 +3934,7 @@ const ApplicationFormContent: React.FC = () => {
 
 const ApplicationForm: React.FC = () => {
     const location = useLocation();
-    const editMode = Boolean(location.state?.editMode && location.state?.applicationId);
+    const editMode = resolveApplicationEditMode(location.state);
 
     if (!canAccessApplicationForm({
         newApplicationsOpen: NEW_APPLICATIONS_OPEN,
