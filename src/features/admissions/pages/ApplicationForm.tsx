@@ -7,7 +7,7 @@ import Button from '../../admin/components/ui/Button';
 import Card from '../../admin/components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import ErrorModal from '../components/ui/ErrorModal';
-import { ConfirmDialog, PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
+import { PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { CheckCircleIcon, LogoIcon, UploadIcon } from '../../admin/components/icons/Icons';
 import { useApplications, useNotifications } from '../../admin/context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,7 @@ import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLev
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
 import { commitSupporterSelection } from './supporterSelection';
+import SupporterRelationSelector from './SupporterRelationSelector';
 import {
     prekinderApi,
     type FlowApplication,
@@ -491,7 +492,6 @@ const ApplicationFormContent: React.FC = () => {
 
     // Estado para el modal de errores
     const [showErrorModal, setShowErrorModal] = useState(false);
-    const [pendingSupporterRelation, setPendingSupporterRelation] = useState<string | null>(null);
     const [errorModalData, setErrorModalData] = useState({
         title: '',
         message: '',
@@ -1408,22 +1408,16 @@ const ApplicationFormContent: React.FC = () => {
         }
     }, [data.parent1Name, data.parent1Email, data.parent1Phone, data.parent1Rut, data.parent2Name, data.parent2Email, data.parent2Phone, data.parent2Rut, updateField]);
 
-    const confirmSupporterSelection = useCallback(() => {
-        if (!pendingSupporterRelation) return;
-        commitSupporterSelection(data, pendingSupporterRelation, (snapshot) => {
-            setData(snapshot);
-            scheduleDraftSave(snapshot);
-        });
-        setPendingSupporterRelation(null);
-    }, [data, pendingSupporterRelation, scheduleDraftSave]);
-
-    const handleSupporterRelationChange = useCallback((value: string) => {
+    const handleSupporterRelationCommit = useCallback((value: string) => {
         if (isPrekinder) {
-            setPendingSupporterRelation(value || null);
+            commitSupporterSelection(data, value, (snapshot) => {
+                setData(snapshot);
+                scheduleDraftSave(snapshot);
+            });
             return;
         }
         handleParentRelationChange('supporterRelation', value, 'supporter');
-    }, [handleParentRelationChange, isPrekinder]);
+    }, [data, handleParentRelationChange, isPrekinder, scheduleDraftSave]);
 
     const validateCurrentStep = useCallback((): boolean => {
         const isValidEmail = (email: string): boolean => {
@@ -3258,21 +3252,10 @@ const ApplicationFormContent: React.FC = () => {
                         <h3 className="text-xl font-bold text-azul-monte-tabor">Información del Sostenedor</h3>
                         <p className="text-gris-piedra mb-4">Persona responsable del pago de mensualidades y compromisos económicos.</p>
 
-                        <Select
-                            id="supporter-relation"
-                            label="Parentesco con el postulante"
-                            options={[
-                                { value: 'padre', label: 'Padre' },
-                                { value: 'madre', label: 'Madre' },
-                                { value: 'abuelo', label: 'Abuelo/a' },
-                                { value: 'tio', label: 'Tío/a' },
-                                { value: 'hermano', label: 'Hermano/a' },
-                                { value: 'tutor', label: 'Tutor Legal' },
-                                { value: 'otro', label: 'Otro' }
-                            ]}
-                            isRequired
+                        <SupporterRelationSelector
+                            isPrekinder={isPrekinder}
                             value={data.supporterRelation || ''}
-                            onChange={(e) => handleSupporterRelationChange(e.target.value)}
+                            onCommit={handleSupporterRelationCommit}
                             onBlur={() => touchField('supporterRelation')}
                             error={errors.supporterRelation}
                         />
@@ -3921,17 +3904,6 @@ const ApplicationFormContent: React.FC = () => {
                 title={errorModalData.title}
                 message={errorModalData.message}
                 errors={errorModalData.errors}
-            />
-
-            <ConfirmDialog
-                isOpen={pendingSupporterRelation !== null}
-                title="Confirmar sostenedor económico"
-                message="¿Estás seguro de que esta persona será el sostenedor económico? Será responsable del pago de las colegiaturas durante todo el tiempo que el alumno permanezca en el colegio."
-                confirmText="Sí, confirmar"
-                cancelText="Cancelar"
-                variant="warning"
-                onConfirm={confirmSupporterSelection}
-                onClose={() => setPendingSupporterRelation(null)}
             />
 
             <PromptDialog
