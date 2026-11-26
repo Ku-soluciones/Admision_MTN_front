@@ -1,23 +1,14 @@
 import { authStore } from "../../../packages/backend-sdk/src/auth/store";
 import { runSharedRefresh } from "../../../packages/backend-sdk/src/auth/sharedRefreshQueue";
 import { auth } from "../../admin/src/lib/firebase";
-
-const LOCAL_GATEWAY = "http://localhost:8081";
+import { configuredApiBaseUrl } from "../../../packages/backend-sdk/src/runtimeApiBaseUrl";
 
 export function scheduledDurationMinutes(startsAt: string, endsAt: string): number {
   return Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000));
 }
 
 function baseUrl(): string {
-  const configured = (import.meta as any).env?.VITE_API_BASE_URL as
-    string | undefined;
-  if (configured) return configured.replace(/\/+$/, "");
-  if (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  )
-    return LOCAL_GATEWAY;
-  return window.location.origin;
+  return configuredApiBaseUrl();
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
@@ -1421,7 +1412,7 @@ export const prekinderApi = {
 };
 
 export function websocketUrl(): string {
-  const url = new URL(baseUrl());
+  const url = new URL(baseUrl() || window.location.origin);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/v1/prekinder/realtime";
   url.search = "";

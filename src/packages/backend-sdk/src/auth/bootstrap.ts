@@ -9,6 +9,7 @@
 import { authStore } from './store';
 import { scheduleRefresh } from './scheduleRefresh';
 import { clearRefreshTokenFallback, persistRefreshTokenFallback } from './refreshTokenFallback';
+import { shouldApplyBootstrapResult, shouldClearAfterBootstrapFailure } from './bootstrapRacePolicy';
 
 export interface BootstrapOptions {
   /**
@@ -34,12 +35,24 @@ export interface BootstrapOptions {
 }
 
 export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean> {
+  const stateAtStart = authStore.getState();
+  const clearIfStillOwner = () => {
+    if (!shouldClearAfterBootstrapFailure(stateAtStart, authStore.getState())) return false;
+    authStore.clear();
+    clearRefreshTokenFallback();
+    return true;
+  };
   try {
     const data = await options.refresh();
     if (!data || !data.token) {
-      authStore.clear();
-      clearRefreshTokenFallback();
+      clearIfStillOwner();
       return false;
+    }
+    // Firebase puede completar su intercambio mientras el refresh está en
+    // vuelo. En ese caso la sesión más reciente gana y descartamos esta
+    // respuesta tardía, incluido su fallback y su timer.
+    if (!shouldApplyBootstrapResult(stateAtStart, authStore.getState())) {
+      return Boolean(authStore.getValidAccessToken());
     }
     authStore.setSession({
       token: data.token,
@@ -59,9 +72,9 @@ export async function bootstrapAuth(options: BootstrapOptions): Promise<boolean>
     }
     return true;
   } catch (err) {
-    authStore.clear();
-    clearRefreshTokenFallback();
-    options.onRefreshFailure?.(err);
+    // El callback también puede limpiar persistencia. Sólo debe ejecutarse si
+    // este bootstrap sigue siendo dueño del estado que observó al comenzar.
+    if (clearIfStillOwner()) options.onRefreshFailure?.(err);
     return false;
   }
 }

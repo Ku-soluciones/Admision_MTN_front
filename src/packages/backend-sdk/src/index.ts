@@ -1,14 +1,15 @@
 import type { AuthSession, BackendEndpointMap, UserRole } from '../../contracts/src/index';
+import { resolveRuntimeApiBaseUrl } from './runtimeApiBaseUrl';
 
 // Reexport del subpaquete `auth`: store en memoria, refresh, broadcast,
 // bootstrap, hard-cap, manejo de errores. Ver `./auth/index.ts`.
 export * from './auth';
 
 const DEFAULT_ENDPOINTS: BackendEndpointMap = {
-  bff: 'http://localhost:8081',
-  auth: 'http://localhost:8081',
-  documents: 'http://localhost:8081',
-  notifications: 'http://localhost:8081',
+  bff: '',
+  auth: '',
+  documents: '',
+  notifications: '',
 };
 
 const roleFallback: UserRole = 'TEACHER';
@@ -82,11 +83,12 @@ export const AUTH_STORAGE_KEYS = [
 ] as const;
 
 export function resolveBackendEndpoints(env: Record<string, string | undefined> = {}): BackendEndpointMap {
+  const configured = (value?: string) => resolveRuntimeApiBaseUrl({ configuredBaseUrl: value });
   return {
-    bff: env.VITE_API_BASE_URL || env.VITE_API_URL || DEFAULT_ENDPOINTS.bff,
-    auth: env.VITE_AUTH_BASE_URL || env.VITE_API_BASE_URL || DEFAULT_ENDPOINTS.auth,
-    documents: env.VITE_DOCUMENTS_BASE_URL || env.VITE_API_BASE_URL || DEFAULT_ENDPOINTS.documents,
-    notifications: env.VITE_NOTIFICATIONS_BASE_URL || env.VITE_API_BASE_URL || DEFAULT_ENDPOINTS.notifications,
+    bff: configured(env.VITE_API_BASE_URL || env.VITE_API_URL) || DEFAULT_ENDPOINTS.bff,
+    auth: configured(env.VITE_AUTH_BASE_URL || env.VITE_API_BASE_URL) || DEFAULT_ENDPOINTS.auth,
+    documents: configured(env.VITE_DOCUMENTS_BASE_URL || env.VITE_API_BASE_URL) || DEFAULT_ENDPOINTS.documents,
+    notifications: configured(env.VITE_NOTIFICATIONS_BASE_URL || env.VITE_API_BASE_URL) || DEFAULT_ENDPOINTS.notifications,
   };
 }
 
