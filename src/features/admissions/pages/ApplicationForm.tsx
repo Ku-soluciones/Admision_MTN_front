@@ -1415,6 +1415,14 @@ const ApplicationFormContent: React.FC = () => {
         setPendingSupporterRelation(null);
     }, [data, pendingSupporterRelation, updateField]);
 
+    const handleSupporterRelationChange = useCallback((value: string) => {
+        if (isPrekinder) {
+            setPendingSupporterRelation(value || null);
+            return;
+        }
+        handleParentRelationChange('supporterRelation', value, 'supporter');
+    }, [handleParentRelationChange, isPrekinder]);
+
     const validateCurrentStep = useCallback((): boolean => {
         const isValidEmail = (email: string): boolean => {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -3262,7 +3270,7 @@ const ApplicationFormContent: React.FC = () => {
                             ]}
                             isRequired
                             value={data.supporterRelation || ''}
-                            onChange={(e) => setPendingSupporterRelation(e.target.value || null)}
+                            onChange={(e) => handleSupporterRelationChange(e.target.value)}
                             onBlur={() => touchField('supporterRelation')}
                             error={errors.supporterRelation}
                         />
