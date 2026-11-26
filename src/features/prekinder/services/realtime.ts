@@ -37,9 +37,17 @@ export class PrekinderRealtimeClient {
       connectionTimeout: 8_000,
       debug: () => undefined,
       beforeConnect: async () => {
-        await refreshAccessToken();
-        const issued = await prekinderApi.ticket();
-        client.connectHeaders = { 'X-Prekinder-Ticket': issued.ticket };
+        try {
+          await refreshAccessToken();
+          const issued = await prekinderApi.ticket();
+          client.connectHeaders = { 'X-Prekinder-Ticket': issued.ticket };
+        } catch {
+          // Realtime complementa las operaciones; REST sigue siendo la fuente
+          // de verdad y debe continuar disponible si el ticket falla.
+          this.onState('degraded');
+          client.reconnectDelay = 0;
+          void client.deactivate();
+        }
       },
       onConnect: () => {
         this.subscriptions.forEach((subscription) => subscription.unsubscribe());

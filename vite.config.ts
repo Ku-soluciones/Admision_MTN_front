@@ -65,10 +65,11 @@ function flagsDevMiddleware(env: Record<string, string>): Connect.NextHandleFunc
 export default defineConfig(({ mode }) => {
   const envRoot = __dirname;
   const env = loadEnv(mode, envRoot, '');
-  const devApiProxyTarget = env.DEV_API_PROXY_TARGET;
+  const devApiProxyTarget = env.DEV_API_PROXY_TARGET
+    || env.VITE_API_BASE_URL
+    || 'https://admitia-nginx-staging.up.railway.app';
   const devApiProxyOrigin = env.DEV_API_PROXY_ORIGIN || 'https://admisiones.dev.admitia.dedyn.io';
-  const railwayProxy = devApiProxyTarget
-    ? {
+  const railwayProxy = {
         target: devApiProxyTarget,
         changeOrigin: true,
         secure: true,
@@ -79,8 +80,7 @@ export default defineConfig(({ mode }) => {
           // existe entre el proxy local de Vite y NGINX/BFF.
           Origin: devApiProxyOrigin,
         },
-      }
-    : undefined;
+      };
 
   return {
     root: __dirname,
@@ -103,12 +103,10 @@ export default defineConfig(({ mode }) => {
       port: 5200,
       host: true,
       strictPort: true,
-      proxy: railwayProxy
-        ? {
-            '/v1': railwayProxy,
-            '/api': railwayProxy,
-          }
-        : undefined,
+      proxy: {
+        '/v1': railwayProxy,
+        '/api': railwayProxy,
+      },
     },
     preview: {
       port: 5300,

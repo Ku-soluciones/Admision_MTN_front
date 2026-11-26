@@ -17,11 +17,9 @@ import {
   persistRefreshTokenFallback,
   readRefreshTokenFallback,
 } from './refreshTokenFallback';
+import { configuredApiBaseUrl } from '../runtimeApiBaseUrl';
 
-const DEFAULT_AUTH_BASE_URL = 'http://localhost:8081';
 const REFRESH_PATH = '/v1/auth/refresh';
-const STAGING_AUTH_BASE_URL = 'https://admitia-nginx-staging.up.railway.app';
-const PRODUCTION_AUTH_BASE_URL = 'https://admitia-nginx.up.railway.app';
 
 function readEnv(key: string): string | undefined {
   return (import.meta as any).env?.[key];
@@ -32,31 +30,11 @@ function trimTrailingSlash(value: string): string {
 }
 
 function resolveRefreshUrl(): string {
-  const runtimeBaseUrl = resolveRuntimeAuthBaseUrl();
-  const baseUrl =
-    shouldForceRuntimeAuthBaseUrl() ? runtimeBaseUrl :
-    readEnv('VITE_AUTH_BASE_URL') ||
-    readEnv('VITE_API_BASE_URL') ||
-    readEnv('VITE_API_URL') ||
-    runtimeBaseUrl;
+  const baseUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? ''
+    : readEnv('VITE_AUTH_BASE_URL') || configuredApiBaseUrl();
 
   return `${trimTrailingSlash(baseUrl)}${REFRESH_PATH}`;
-}
-
-function shouldForceRuntimeAuthBaseUrl(): boolean {
-  if (typeof window === 'undefined') return false;
-
-  const host = window.location.hostname;
-  return host.includes('staging') || host.includes('dev.') || host.includes('.dev.');
-}
-
-function resolveRuntimeAuthBaseUrl(): string {
-  if (typeof window === 'undefined') return DEFAULT_AUTH_BASE_URL;
-
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') return DEFAULT_AUTH_BASE_URL;
-  if (host.includes('staging') || host.includes('dev.') || host.includes('.dev.')) return STAGING_AUTH_BASE_URL;
-  return PRODUCTION_AUTH_BASE_URL;
 }
 
 function resolveEnvironmentFromHost(): string {

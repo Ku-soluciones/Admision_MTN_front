@@ -6,9 +6,8 @@
  *     localStorage, store) y fuerza login limpio. Detectado en una IIFE
  *     antes de que React monte, para que el módulo de Firebase no
  *     restaure sesión vieja por su `onAuthStateChanged` automático.
- *   - `legacyIdTokenExchange='firebase-login'`: intercambio directo del
- *     idToken legacy vía `/api/auth/firebase-login` (manteniendo el
- *     comportamiento previo).
+ *   - `legacyIdTokenExchange='none'`: AUTH_TOKEN contiene el JWT del BFF;
+ *     Firebase sólo se intercambia desde `onAuthStateChanged`.
  *   - Logout y cross-tab redirigen a `/apoderado-login`.
  *
  * Antes este archivo tenía 518 líneas; ahora ~190 (incluyendo IIFE de
@@ -105,7 +104,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasFirebaseConfig,
     respectFreshSession: true,
     isFreshSessionRequested: wasFreshSessionRequested,
-    legacyIdTokenExchange: 'firebase-login',
+    // AUTH_TOKEN contiene el JWT corto del BFF, no un ID token de Firebase.
+    // El listener de Firebase hace el único intercambio necesario.
+    legacyIdTokenExchange: 'none',
     portalType: 'GUARDIAN',
     crossTabLogoutRedirectUrl: (reason) => `/apoderado-login?reason=${reason}`,
   });

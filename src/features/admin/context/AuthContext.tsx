@@ -9,8 +9,8 @@
  * Modo `clearStoreOnRefreshFailure=false`: no limpiamos el store si el
  * refresh falla, porque Firebase puede rehidratar después.
  *
- * Modo `legacyIdTokenExchange='sdk-helper'`: si hay un idToken legacy
- * persistido en AUTH_TOKEN, lo intercambia vía `exchangeFirebaseToken()`.
+ * Modo `legacyIdTokenExchange='none'`: AUTH_TOKEN contiene el JWT del BFF;
+ * Firebase sólo se intercambia desde `onAuthStateChanged`.
  *
  * Logout redirige a `appUrls.home`.
  *
@@ -54,8 +54,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     waitForFirebase: true,
     // Si el refresh falla, NO limpiamos: damos chance a Firebase de rehidratar.
     clearStoreOnRefreshFailure: false,
-    // Si hay idToken legacy en AUTH_TOKEN, lo intercambia via SDK helper.
-    legacyIdTokenExchange: 'sdk-helper',
+    // AUTH_TOKEN ya almacena el JWT corto del BFF. Reintentar su intercambio
+    // como token de Firebase provoca dos firebase-login durante el bootstrap.
+    legacyIdTokenExchange: 'none',
     portalType: 'ADMIN',
     crossTabLogoutRedirectUrl: (reason) => `${appUrls.home}?reason=${reason}`,
   });
