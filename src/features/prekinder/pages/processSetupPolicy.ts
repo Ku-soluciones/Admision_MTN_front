@@ -32,6 +32,7 @@ export function validateSeatDraft(input: SeatDraft): DraftValidation {
 type AgeDocumentDraft = {
   minimumAgeMonths: number;
   maximumAgeMonths: number;
+  ageReferenceDate: string | null;
   requiredDocuments: string[];
 };
 
@@ -46,9 +47,10 @@ export function validateAgeDocumentDraft(input: AgeDocumentDraft): DraftValidati
   }
   const hasRange = input.minimumAgeMonths > 0 && input.maximumAgeMonths > 0;
   const hasBirthCertificate = input.requiredDocuments.includes('BIRTH_CERTIFICATE');
+  const hasReferenceDate = Boolean(input.ageReferenceDate);
   return {
     valid: errors.length === 0,
-    complete: errors.length === 0 && hasRange && hasBirthCertificate,
+    complete: errors.length === 0 && hasRange && hasBirthCertificate && hasReferenceDate,
     errors,
   };
 }
@@ -84,6 +86,10 @@ export function toIsoPublicationWindow(startsAt: string, endsAt: string): Public
 }
 
 export type SetupStepStatus = 'SAVED' | 'PENDING' | 'REQUIRED' | 'INVALID';
+
+export function canAccessDraftProcessSection(section: string): boolean {
+  return ['Resumen', 'Salas', 'Profesionales'].includes(section);
+}
 
 export function getSetupStepStatus(input: {
   valid: boolean;

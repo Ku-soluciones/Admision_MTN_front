@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   getSetupStepStatus,
   toIsoPublicationWindow,
+  canAccessDraftProcessSection,
   validateAgeDocumentDraft,
   validateOptionalIncorporationFee,
   validateSeatDraft,
@@ -26,12 +27,13 @@ test('rechaza cupos negativos y una distribución informada que no coincide con 
 });
 
 test('permite edad y documentos pendientes pero valida el rango informado', () => {
-  assert.deepEqual(validateAgeDocumentDraft({ minimumAgeMonths: 0, maximumAgeMonths: 0, requiredDocuments: [] }), {
+  assert.deepEqual(validateAgeDocumentDraft({ minimumAgeMonths: 0, maximumAgeMonths: 0, ageReferenceDate: null, requiredDocuments: [] }), {
     valid: true, complete: false, errors: [],
   });
-  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 60, maximumAgeMonths: 48, requiredDocuments: ['BIRTH_CERTIFICATE'] }).valid, false);
-  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, requiredDocuments: [] }).complete, false);
-  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, requiredDocuments: ['BIRTH_CERTIFICATE'] }).complete, true);
+  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 60, maximumAgeMonths: 48, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }).valid, false);
+  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: '2029-03-31', requiredDocuments: [] }).complete, false);
+  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: null, requiredDocuments: ['BIRTH_CERTIFICATE'] }).complete, false);
+  assert.equal(validateAgeDocumentDraft({ minimumAgeMonths: 48, maximumAgeMonths: 59, ageReferenceDate: '2029-03-31', requiredDocuments: ['BIRTH_CERTIFICATE'] }).complete, true);
 });
 
 test('acepta arancel vacío y exige monto positivo con glosa cuando se informa', () => {
@@ -54,4 +56,11 @@ test('distingue guardado, pendiente, requerido e inválido', () => {
   assert.equal(getSetupStepStatus({ valid: true, complete: false, saved: false, blocking: false }), 'PENDING');
   assert.equal(getSetupStepStatus({ valid: true, complete: false, saved: false, blocking: true }), 'REQUIRED');
   assert.equal(getSetupStepStatus({ valid: false, complete: false, saved: false, blocking: true }), 'INVALID');
+});
+
+test('mantiene accesibles el asistente, salas y profesionales durante el borrador', () => {
+  assert.equal(canAccessDraftProcessSection('Resumen'), true);
+  assert.equal(canAccessDraftProcessSection('Salas'), true);
+  assert.equal(canAccessDraftProcessSection('Profesionales'), true);
+  assert.equal(canAccessDraftProcessSection('Postulaciones'), false);
 });

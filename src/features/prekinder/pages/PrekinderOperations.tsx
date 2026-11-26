@@ -64,6 +64,15 @@ import { PrekinderGroups } from "../components/admin/PrekinderGroups";
 import { PrekinderInclusionAdminPanel } from "../components/admin/PrekinderInclusionAdminPanel";
 import { RubricEditor, RubricPreviewModal } from "../components/admin/RubricEditor";
 import AgeRangeEditor from "../components/admin/AgeRangeEditor";
+import ProcessSetupStepper, { type ProcessSetupStep } from "../components/admin/ProcessSetupStepper";
+import {
+  canAccessDraftProcessSection,
+  getSetupStepStatus,
+  toIsoPublicationWindow,
+  validateAgeDocumentDraft,
+  validateOptionalIncorporationFee,
+  validateSeatDraft,
+} from "./processSetupPolicy";
 import {
   journeyErrorMessage,
   journeyFromApi,
@@ -88,6 +97,8 @@ const waveNames: Record<string, string> = {
   STAFF_OR_ALUMNI: "Funcionarios y exalumnos",
   NEW_FAMILIES: "Nuevas familias",
 };
+
+const SELECTED_PROCESS_STORAGE_KEY = "admitia:prekinder:selected-process";
 
 const statusTone: Record<string, string> = {
   VERIFIED: "bg-emerald-50 text-emerald-800",
@@ -161,7 +172,7 @@ export function PrekinderOperations({
   const [mobileNav, setMobileNav] = useState(false);
   const [baseLoading, setBaseLoading] = useState(true);
   const [processes, setProcesses] = useState<AdmissionProcess[]>([]);
-  const [processId, setProcessId] = useState("");
+  const [processId, setProcessId] = useState(() => localStorage.getItem(SELECTED_PROCESS_STORAGE_KEY) ?? "");
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [waves, setWaves] = useState<Wave[]>([]);
   const [applications, setApplications] = useState<FlowApplication[]>([]);
@@ -194,6 +205,11 @@ export function PrekinderOperations({
     setMessage("");
     setError("");
   }, [section]);
+
+  useEffect(() => {
+    if (processId) localStorage.setItem(SELECTED_PROCESS_STORAGE_KEY, processId);
+    else localStorage.removeItem(SELECTED_PROCESS_STORAGE_KEY);
+  }, [processId]);
 
   useEffect(() => {
     if (!message) return;
@@ -467,9 +483,13 @@ export function PrekinderOperations({
     setError("");
     setMessage("");
     try {
+      const publicationWindow = toIsoPublicationWindow(opensAt, closesAt);
+      if (!publicationWindow.valid || !publicationWindow.startsAt || !publicationWindow.endsAt) {
+        throw new Error(publicationWindow.error ?? "Indica fechas válidas para la etapa.");
+      }
       const updated = await prekinderApi.configureWave(wave.waveId, {
-        opensAt,
-        closesAt,
+        opensAt: publicationWindow.startsAt,
+        closesAt: publicationWindow.endsAt,
         status,
         expectedVersion: wave.version,
       });
@@ -481,14 +501,15 @@ export function PrekinderOperations({
         !persisted ||
         persisted.version !== updated.version ||
         persisted.status !== status ||
-        !sameInstant(persisted.opensAt, opensAt) ||
-        !sameInstant(persisted.closesAt, closesAt)
+        !sameInstant(persisted.opensAt, publicationWindow.startsAt) ||
+        !sameInstant(persisted.closesAt, publicationWindow.endsAt)
       ) {
         throw new Error(
           "El servidor respondió, pero la etapa no quedó persistida. No se confirmó el cambio.",
         );
       }
       setWaves(persistedStages);
+      setReadiness(await prekinderApi.readiness(wave.processId));
       setMessage("Etapa guardada y verificada en la base de datos.");
     } catch (reason) {
       setError(
@@ -609,7 +630,8 @@ export function PrekinderOperations({
             section={section}
             onSelect={setSection}
             compact
-            disabled={!processId || currentProcess?.status === "DRAFT"}
+            disabled={!processId}
+            draftMode={currentProcess?.status === "DRAFT"}
           />
         </section>
       )}
@@ -624,7 +646,8 @@ export function PrekinderOperations({
           <Navigation
             section={section}
             onSelect={setSection}
-            disabled={!processId || currentProcess?.status === "DRAFT"}
+            disabled={!processId}
+            draftMode={currentProcess?.status === "DRAFT"}
           />
           <div className="mt-auto px-4 pb-6">
             <a
@@ -667,7 +690,8 @@ export function PrekinderOperations({
               <div className="px-4 pt-2">
                 <Navigation
                   section={section}
-                  disabled={!processId || currentProcess?.status === "DRAFT"}
+                  disabled={!processId}
+                  draftMode={currentProcess?.status === "DRAFT"}
                   onSelect={(next) => {
                     setSection(next);
                     setMobileNav(false);
@@ -765,7 +789,7 @@ export function PrekinderOperations({
               busy={busy}
               onCreate={createAdmissionProcess}
             />
-          ) : currentProcess?.status === "DRAFT" ? (
+          ) : currentProcess?.status === "DRAFT" && section !== "Salas" && section !== "Profesionales" ? (
             <ProcessSetup
               process={currentProcess}
               configuration={configuration}
@@ -782,6 +806,7 @@ export function PrekinderOperations({
               onChanged={() => loadProcess(processId)}
               onQuestionnaireAction={action}
               onPublish={publishAdmissionProcess}
+              onOpenSection={setSection}
             />
           ) : (
             <>
@@ -929,6 +954,7 @@ export function PrekinderOperations({
                 try {
                   await prekinderApi.saveProfessional(input);
                   setProfessionals(await prekinderApi.professionals());
+                  setReadiness(await prekinderApi.readiness(processId));
                   setMessage("Perfil profesional guardado.");
                   return true;
                 } catch (requestError) {
@@ -958,6 +984,7 @@ export function PrekinderOperations({
                 try {
                   const result = await prekinderApi.deleteProfessional(person.professionalId, person.version);
                   setProfessionals(await prekinderApi.professionals());
+                  setReadiness(await prekinderApi.readiness(processId));
                   setMessage(result.firebaseAccountDeleted
                     ? "Profesional y cuenta Firebase eliminados."
                     : "Perfil Prekínder eliminado; la cuenta compartida de otros cursos se conservó.");
@@ -1131,6 +1158,7 @@ function ProcessSetup({
   onChanged,
   onQuestionnaireAction,
   onPublish,
+  onOpenSection,
 }: {
   process: AdmissionProcess;
   configuration: ProcessConfiguration | null;
@@ -1144,9 +1172,32 @@ function ProcessSetup({
   onChanged: () => Promise<void>;
   onQuestionnaireAction: (work: () => Promise<unknown>, success: string) => Promise<boolean>;
   onPublish: (startsAt: string, endsAt: string) => Promise<void>;
+  onOpenSection: (section: "Salas" | "Profesionales") => void;
 }) {
   const openPhase = readiness?.phases.OPEN_APPLICATIONS;
   const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(new Set());
+  const [activeStep, setActiveStep] = useState<ProcessSetupStep>("seats");
+  const [savedSteps, setSavedSteps] = useState<Set<ProcessSetupStep>>(new Set());
+  const seats = configuration ? validateSeatDraft(configuration) : { valid: true, complete: false, errors: [] };
+  const ageDocuments = configuration ? validateAgeDocumentDraft(configuration) : { valid: true, complete: false, errors: [] };
+  const calendarComplete = waves.length > 0 && waves.every((wave) => Boolean(wave.opensAt && wave.closesAt));
+  const statuses = {
+    seats: getSetupStepStatus({ ...seats, saved: seats.complete || savedSteps.has("seats"), blocking: true }),
+    ageDocuments: getSetupStepStatus({ ...ageDocuments, saved: ageDocuments.complete || savedSteps.has("ageDocuments"), blocking: true }),
+    calendar: getSetupStepStatus({ valid: true, complete: calendarComplete, saved: calendarComplete, blocking: true }),
+    preparation: getSetupStepStatus({ valid: true, complete: true, saved: true, blocking: false }),
+    review: getSetupStepStatus({ valid: true, complete: Boolean(openPhase?.ready), saved: Boolean(openPhase?.ready), blocking: true }),
+  } as const;
+
+  const saveConfigurationStep = async (
+    step: ProcessSetupStep,
+    input: Omit<ProcessConfiguration, "processId">,
+  ) => {
+    const saved = await onSaveConfiguration(input);
+    if (saved) setSavedSteps((current) => new Set(current).add(step));
+    return saved;
+  };
+
   return (
     <div className="space-y-7">
       <section className="overflow-hidden rounded-2xl bg-azul-monte-tabor text-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
@@ -1171,46 +1222,45 @@ function ProcessSetup({
         </div>
       </section>
 
-      {openPhase && <ReadinessChecklist readiness={readiness} />}
-      {configuration && (
-        <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
-      )}
-      <section>
-        <h2 className="text-xl font-black text-slate-950">Calendario de postulación</h2>
-        <p className="mt-2 text-sm text-slate-600">Las tres ventanas deben tener inicio y cierre antes de abrir el proceso.</p>
-        <div className="mt-5"><Waves waves={waves} busy={busy} onSave={onSaveWave} /></div>
-      </section>
-      <section>
-        <h2 className="text-xl font-black text-slate-950">Cuestionario de postulación</h2>
-        <p className="mt-2 text-sm text-slate-600">Publica la versión que quedará congelada al iniciar cada formulario.</p>
-        <div className="mt-5"><QuestionnaireEditor processId={process.processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChanged} /></div>
-      </section>
-      <section>
-        <h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2>
-        <p className="mt-2 text-sm text-slate-600">Asocia una versión publicada para cada instrumento. Las evaluaciones conservarán esta versión.</p>
-        <div className="mt-5"><Rubrics processId={process.processId} busy={busy} onChanged={onChanged} /></div>
-      </section>
-      <section>
-        <h2 className="text-xl font-black text-slate-950">Comunicaciones</h2>
-        <p className="mt-2 text-sm text-slate-600">Revisa las versiones que recibirán las familias durante el ciclo.</p>
-        <div className="mt-5"><Communications
-          templates={communications}
-          busy={busy}
-          onAction={async (work) => {
-            try { await work(); await onChanged(); return true; } catch { return false; }
-          }}
-          expandedDrafts={expandedDrafts}
-          onToggleDraftExpanded={(contentVersionId) =>
-            setExpandedDrafts((current) => {
-              const next = new Set(current);
-              if (next.has(contentVersionId)) next.delete(contentVersionId);
-              else next.add(contentVersionId);
-              return next;
-            })
-          }
-        /></div>
-      </section>
-      <ProcessActivation process={process} busy={busy} ready={Boolean(openPhase?.ready)} onPublish={onPublish} />
+      <ProcessSetupStepper activeStep={activeStep} statuses={statuses} onStepChange={setActiveStep}>
+        {configuration && activeStep === "seats" && (
+          <ConfigurationEditor mode="seats" configuration={configuration} busy={busy} onSave={(input) => saveConfigurationStep("seats", input)} />
+        )}
+        {configuration && activeStep === "ageDocuments" && (
+          <ConfigurationEditor mode="ageDocuments" configuration={configuration} busy={busy} onSave={(input) => saveConfigurationStep("ageDocuments", input)} />
+        )}
+        {activeStep === "calendar" && (
+          <section>
+            <h2 className="text-xl font-black text-slate-950">Calendario de postulación</h2>
+            <p className="mt-2 text-sm text-slate-600">Guarda cada etapa cuando dispongas de sus fechas. Puedes volver a editarlas antes de abrir.</p>
+            <div className="mt-5"><Waves waves={waves} busy={busy} onSave={onSaveWave} /></div>
+          </section>
+        )}
+        {activeStep === "preparation" && (
+          <div className="space-y-7">
+            {configuration && <ConfigurationEditor mode="preparation" configuration={configuration} busy={busy} onSave={(input) => saveConfigurationStep("preparation", input)} />}
+            <section className="grid gap-4 rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)] sm:grid-cols-2">
+              <button type="button" className="secondary min-h-14" onClick={() => onOpenSection("Salas")}>Configurar salas</button>
+              <button type="button" className="secondary min-h-14" onClick={() => onOpenSection("Profesionales")}>Configurar profesionales</button>
+            </section>
+            <section><h2 className="text-xl font-black text-slate-950">Cuestionario de postulación</h2><div className="mt-5"><QuestionnaireEditor processId={process.processId} questionnaire={questionnaire} busy={busy} onAction={onQuestionnaireAction} onChanged={onChanged} /></div></section>
+            <section><h2 className="text-xl font-black text-slate-950">Pautas del proceso</h2><div className="mt-5"><Rubrics processId={process.processId} busy={busy} onChanged={onChanged} /></div></section>
+            <section><h2 className="text-xl font-black text-slate-950">Comunicaciones</h2><div className="mt-5"><Communications templates={communications} busy={busy} onAction={async (work) => { try { await work(); await onChanged(); return true; } catch { return false; } }} expandedDrafts={expandedDrafts} onToggleDraftExpanded={(contentVersionId) => setExpandedDrafts((current) => { const next = new Set(current); if (next.has(contentVersionId)) next.delete(contentVersionId); else next.add(contentVersionId); return next; })} /></div></section>
+          </div>
+        )}
+        {activeStep === "review" && (
+          <div className="space-y-7">
+            <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700">Revisión del proceso</p>
+              <h2 className="mt-2 text-xl font-black text-slate-950">{process.name}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-600">Año académico {process.academicYear}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">La checklist y las fechas corresponden siempre al proceso seleccionado. Podrás usar este mismo flujo para 2029 y los años siguientes.</p>
+            </section>
+            {openPhase && <ReadinessChecklist readiness={readiness} />}
+            <ProcessActivation process={process} busy={busy} ready={Boolean(openPhase?.ready)} onPublish={onPublish} />
+          </div>
+        )}
+      </ProcessSetupStepper>
     </div>
   );
 }
@@ -1300,7 +1350,7 @@ function ConfigurationHub({
       </aside>
       <div className="min-w-0">
         {view === "policies" && configuration && (
-          <ConfigurationEditor configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
+          <ConfigurationEditor mode="all" configuration={configuration} busy={busy} onSave={onSaveConfiguration} />
         )}
         {view === "rubrics" && <Rubrics processId={processId} busy={busy} onChanged={onChangedRubrics} />}
         {view === "questionnaire" && (
@@ -1426,54 +1476,60 @@ function QuestionnaireEditor({
   );
 }
 
-function ConfigurationEditor({ configuration, busy, onSave }: {
+function ConfigurationEditor({ mode, configuration, busy, onSave }: {
+  mode: "seats" | "ageDocuments" | "preparation" | "all";
   configuration: ProcessConfiguration;
   busy: boolean;
   onSave: (input: Omit<ProcessConfiguration, "processId">) => Promise<boolean>;
 }) {
   const [form, setForm] = useState(configuration);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   useEffect(() => setForm(configuration), [configuration]);
   const update = <K extends keyof ProcessConfiguration>(key: K, value: ProcessConfiguration[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const title = mode === "seats" ? "Cupos" : mode === "ageDocuments" ? "Edad y documentos" : mode === "all" ? "Políticas del proceso" : "Preparación operativa";
   return (
     <form className="rounded-2xl bg-white p-6 shadow-[0_14px_34px_rgba(15,23,42,0.07)]" onSubmit={(event) => {
       event.preventDefault();
+      const errors = mode === "seats"
+        ? validateSeatDraft(form).errors
+        : mode === "ageDocuments"
+          ? [...validateAgeDocumentDraft(form).errors, ...validateOptionalIncorporationFee(form.incorporationFeeAmount, form.incorporationFeeGlosa).errors]
+          : mode === "all"
+            ? [...validateSeatDraft(form).errors, ...validateAgeDocumentDraft(form).errors, ...validateOptionalIncorporationFee(form.incorporationFeeAmount, form.incorporationFeeGlosa).errors]
+            : [];
+      setValidationErrors(errors);
+      if (errors.length) return;
       const { processId: _processId, ...payload } = form;
       void onSave(payload);
     }}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h2 className="text-lg font-black text-slate-950">Políticas del proceso</h2><p className="mt-1 text-sm text-slate-600">Los valores operativos quedan versionados y no alteran otros cursos.</p></div>
-        <label className="flex min-h-11 items-center gap-3 rounded-lg bg-slate-50 px-4 text-sm font-bold text-slate-700">
-          <input type="checkbox" checked={form.paymentEnabled} onChange={(event) => update("paymentEnabled", event.target.checked)} /> Cobro obligatorio
-        </label>
+        <div><h2 className="text-lg font-black text-slate-950">{title}</h2><p className="mt-1 text-sm text-slate-600">Guarda lo que conozcas ahora. Podrás corregirlo antes de abrir postulaciones.</p></div>
       </div>
-      <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-slate-500">Pagos y requisitos</h3>
-      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Field label="Monto"><input className="control w-full" type="number" min="1" disabled={!form.paymentEnabled} value={form.paymentAmount ?? ""} onChange={(e) => update("paymentAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
-        <Field label="Moneda"><select className="control w-full" value={form.paymentCurrency} onChange={(e) => update("paymentCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
-        <Field label="Vencimiento (días)"><input className="control w-full" type="number" min="1" max="30" value={form.paymentDueDays} onChange={(e) => update("paymentDueDays", Number(e.target.value))} /></Field>
-        <Field label="Glosa"><input className="control w-full" maxLength={180} value={form.paymentGlosa} onChange={(e) => update("paymentGlosa", e.target.value)} /></Field>
-        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="84" value={form.minimumAgeMonths} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
-        <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
-        <Field label="Fecha de referencia de edad"><input className="control w-full" type="date" required value={form.ageReferenceDate ?? ""} onChange={(e) => update("ageReferenceDate", e.target.value || null)} /></Field>
-        <Field label="Arancel de incorporación"><input className="control w-full" type="number" min="1" required value={form.incorporationFeeAmount ?? ""} onChange={(e) => update("incorporationFeeAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
+      {(mode === "seats" || mode === "all") && <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Cupos totales"><input className="control w-full" type="number" min="0" value={form.totalSeats || ""} onChange={(e) => update("totalSeats", Number(e.target.value))} /></Field>
+        <Field label="Cupos masculinos"><input className="control w-full" type="number" min="0" value={form.maleSeats || ""} onChange={(e) => update("maleSeats", Number(e.target.value))} /></Field>
+        <Field label="Cupos femeninos"><input className="control w-full" type="number" min="0" value={form.femaleSeats || ""} onChange={(e) => update("femaleSeats", Number(e.target.value))} /></Field>
+        <Field label="Umbral orientativo (%)"><input className="control w-full" type="number" min="0" max="100" step="0.1" value={form.advisoryThreshold || ""} onChange={(e) => update("advisoryThreshold", Number(e.target.value))} /></Field>
+      </div>}
+      {(mode === "ageDocuments" || mode === "all") && <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Edad mínima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.minimumAgeMonths || ""} onChange={(e) => update("minimumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Edad máxima (meses)"><input className="control w-full" type="number" min="36" max="96" value={form.maximumAgeMonths || ""} onChange={(e) => update("maximumAgeMonths", Number(e.target.value))} /></Field>
+        <Field label="Fecha de referencia de edad"><input className="control w-full" type="date" value={form.ageReferenceDate ?? ""} onChange={(e) => update("ageReferenceDate", e.target.value || null)} /></Field>
+        <Field label="Documentos obligatorios"><input className="control w-full" value={form.requiredDocuments.join(", ")} onChange={(e) => update("requiredDocuments", e.target.value.toUpperCase().split(",").map((value) => value.trim()).filter(Boolean))} placeholder="BIRTH_CERTIFICATE" /></Field>
+        <Field label="Arancel de incorporación (opcional)"><input className="control w-full" type="number" min="0.01" step="0.01" value={form.incorporationFeeAmount ?? ""} onChange={(e) => update("incorporationFeeAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
         <Field label="Moneda incorporación"><select className="control w-full" value={form.incorporationFeeCurrency} onChange={(e) => update("incorporationFeeCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
-        <Field label="Glosa incorporación"><input className="control w-full" maxLength={180} value={form.incorporationFeeGlosa} onChange={(e) => update("incorporationFeeGlosa", e.target.value)} /></Field>
-        <Field label="Documentos obligatorios"><input className="control w-full" value={form.requiredDocuments.join(", ")} onChange={(e) => update("requiredDocuments", e.target.value.toUpperCase().split(",").map((value) => value.trim()).filter(Boolean))} /></Field>
-      </div>
-      <h3 className="mt-7 text-sm font-black uppercase tracking-wide text-slate-500">Cupos y plazos</h3>
-      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <Field label="Cupos totales"><input className="control w-full" type="number" min="1" value={form.totalSeats} onChange={(e) => update("totalSeats", Number(e.target.value))} /></Field>
-        <Field label="Cupos masculinos"><input className="control w-full" type="number" min="0" value={form.maleSeats} onChange={(e) => update("maleSeats", Number(e.target.value))} /></Field>
-        <Field label="Cupos femeninos"><input className="control w-full" type="number" min="0" value={form.femaleSeats} onChange={(e) => update("femaleSeats", Number(e.target.value))} /></Field>
-        <Field label="Umbral orientativo (%)"><input className="control w-full" type="number" min="0" max="100" step="0.1" value={form.advisoryThreshold} onChange={(e) => update("advisoryThreshold", Number(e.target.value))} /></Field>
-        <Field label="Oferta inicial (horas)"><input className="control w-full" type="number" min="1" value={form.initialOfferHours} onChange={(e) => update("initialOfferHours", Number(e.target.value))} /></Field>
-        <Field label="Oferta lista de espera (horas)"><input className="control w-full" type="number" min="1" value={form.waitlistOfferHours} onChange={(e) => update("waitlistOfferHours", Number(e.target.value))} /></Field>
-        <Field label="Canal de resultados"><input className="control w-full" readOnly value="Solo correo" /></Field>
-        <Field label="Fórmula"><input className="control w-full" readOnly value="Académica 34% · Psicología 33% · Psicomotricidad 33%" /></Field>
-      </div>
-      <h3 className="mt-7 text-sm font-black uppercase tracking-wide text-slate-500">Agenda sugerida</h3>
-      <div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Glosa incorporación"><input className="control w-full" maxLength={180} value={form.incorporationFeeGlosa} onChange={(e) => update("incorporationFeeGlosa", e.target.value)} disabled={form.incorporationFeeAmount == null} /></Field>
+      </div>}
+      {(mode === "preparation" || mode === "all") && <><div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <label className="flex min-h-11 items-center gap-3 rounded-lg bg-slate-50 px-4 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.paymentEnabled} onChange={(event) => update("paymentEnabled", event.target.checked)} /> Cobro de postulación habilitado</label>
+        <Field label="Monto postulación"><input className="control w-full" type="number" min="1" disabled={!form.paymentEnabled} value={form.paymentAmount ?? ""} onChange={(e) => update("paymentAmount", e.target.value ? Number(e.target.value) : null)} /></Field>
+        <Field label="Moneda"><select className="control w-full" value={form.paymentCurrency} onChange={(e) => update("paymentCurrency", e.target.value)}><option>CLP</option><option>CLF</option></select></Field>
+        <Field label="Glosa postulación"><input className="control w-full" maxLength={180} value={form.paymentGlosa} onChange={(e) => update("paymentGlosa", e.target.value)} /></Field>
+        <Field label="Vencimiento (días)"><input className="control w-full" type="number" min="1" max="30" value={form.paymentDueDays || ""} onChange={(e) => update("paymentDueDays", Number(e.target.value))} /></Field>
+        <Field label="Oferta inicial (horas)"><input className="control w-full" type="number" min="1" value={form.initialOfferHours || ""} onChange={(e) => update("initialOfferHours", Number(e.target.value))} /></Field>
+        <Field label="Oferta lista de espera (horas)"><input className="control w-full" type="number" min="1" value={form.waitlistOfferHours || ""} onChange={(e) => update("waitlistOfferHours", Number(e.target.value))} /></Field>
+      </div><h3 className="mt-7 text-sm font-black uppercase tracking-wide text-slate-500">Agenda sugerida</h3><div className="mt-3 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Field label="Zona horaria"><input className="control w-full" value={form.scheduleTimezone} onChange={(e) => update("scheduleTimezone", e.target.value)} /></Field>
         <Field label="Inicio jornada"><input className="control w-full" type="time" value={form.scheduleDayStart} onChange={(e) => update("scheduleDayStart", e.target.value)} /></Field>
         <Field label="Fin jornada"><input className="control w-full" type="time" value={form.scheduleDayEnd} onChange={(e) => update("scheduleDayEnd", e.target.value)} /></Field>
@@ -1484,10 +1540,11 @@ function ConfigurationEditor({ configuration, busy, onSave }: {
         <Field label="Tamaño grupo psicomotor"><input className="control w-full" type="number" min="1" value={form.psychomotorGroupSize} onChange={(e) => update("psychomotorGroupSize", Number(e.target.value))} /></Field>
         <Field label="Evaluadores grupo académico"><input className="control w-full" type="number" min="1" max="24" value={form.academicRequiredEvaluators} onChange={(e) => update("academicRequiredEvaluators", Number(e.target.value))} /></Field>
         <Field label="Evaluadores grupo psicomotor"><input className="control w-full" type="number" min="1" max="24" value={form.psychomotorRequiredEvaluators} onChange={(e) => update("psychomotorRequiredEvaluators", Number(e.target.value))} /></Field>
-      </div>
+      </div></>}
+      {validationErrors.length > 0 && <div className="mt-5 rounded-lg bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{validationErrors.map((error) => <p key={error}>{error}</p>)}</div>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
-        <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label>
-        <button className="primary" type="submit" disabled={busy || (form.paymentEnabled && !form.paymentAmount) || !form.incorporationFeeAmount || !form.ageReferenceDate || form.totalSeats !== form.maleSeats + form.femaleSeats}>{busy ? "Guardando…" : "Guardar cambios"}</button>
+        {mode === "preparation" || mode === "all" ? <label className="flex min-h-11 items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" checked={form.inclusionEnabled} onChange={(e) => update("inclusionEnabled", e.target.checked)} /> Ruta de inclusión habilitada</label> : <span className="text-sm text-slate-500">Los campos pendientes se exigirán únicamente antes de abrir.</span>}
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar paso"}</button>
       </div>
     </form>
   );
@@ -1644,11 +1701,13 @@ function Navigation({
   onSelect,
   compact = false,
   disabled = false,
+  draftMode = false,
 }: {
   section: string;
   onSelect: (section: string) => void;
   compact?: boolean;
   disabled?: boolean;
+  draftMode?: boolean;
 }) {
   return (
     <nav
@@ -1659,16 +1718,18 @@ function Navigation({
           : "px-4"
       }
     >
-      {sections.map(([label, Icon]) => (
+      {sections.map(([label, Icon]) => {
+        const itemDisabled = disabled || (draftMode && !canAccessDraftProcessSection(label));
+        return (
         <button
           key={label}
           onClick={() => onSelect(label)}
-          disabled={disabled}
+          disabled={itemDisabled}
           aria-current={section === label ? "page" : undefined}
           className={
             compact
-              ? `flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 min-h-10 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 ${section === label && !disabled ? "border-azul-monte-tabor bg-azul-monte-tabor text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100"}`
-              : `w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors disabled:cursor-not-allowed disabled:text-slate-400 ${section === label && !disabled ? "bg-azul-monte-tabor text-white" : "text-gris-piedra hover:bg-gray-100"}`
+              ? `flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 min-h-10 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 ${section === label && !itemDisabled ? "border-azul-monte-tabor bg-azul-monte-tabor text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100"}`
+              : `w-full flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-left transition-colors disabled:cursor-not-allowed disabled:text-slate-400 ${section === label && !itemDisabled ? "bg-azul-monte-tabor text-white" : "text-gris-piedra hover:bg-gray-100"}`
           }
         >
           <Icon
@@ -1677,7 +1738,8 @@ function Navigation({
           />
           <span className="text-sm">{label}</span>
         </button>
-      ))}
+        );
+      })}
     </nav>
   );
 }
