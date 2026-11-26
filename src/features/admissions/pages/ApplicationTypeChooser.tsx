@@ -7,6 +7,7 @@ import { APPLICATIONS_CLOSED_MESSAGE, NEW_APPLICATIONS_OPEN } from '../../../pac
 import { appUrls } from '../../admin/utils/appUrls';
 import { useProcessActiveGuard } from '../../../packages/shared-utils/src/hooks/useProcessActiveGuard';
 import { useProcessActivePrekinder } from '../../../packages/shared-utils/src/hooks/useProcessActivePrekinder';
+import { pickPrekinderOption, selectAvailablePrekinderOptions } from './prekinderProcessPolicy';
 
 const LOGIN_REDIRECT = `/apoderado/login?redirect=${encodeURIComponent('/postulacion/elegir')}`;
 
@@ -31,7 +32,7 @@ const ApplicationTypeChooser = () => {
         setLoading(true);
         setError('');
         try {
-            setOptions(await prekinderApi.applicationOptions());
+            setOptions(selectAvailablePrekinderOptions(await prekinderApi.applicationOptions()));
         } catch {
             setError('No pudimos confirmar la disponibilidad de Prekínder. Puedes continuar con otro curso o intentarlo nuevamente.');
         } finally {
@@ -73,7 +74,7 @@ const ApplicationTypeChooser = () => {
 
     if (!isAuthenticated) return <Navigate to={LOGIN_REDIRECT} replace />;
 
-    const activePrekinder = prekinderProcessActive ? options[0] : undefined;
+    const activePrekinder = prekinderProcessActive ? pickPrekinderOption(options) ?? undefined : undefined;
     const prekinderAvailabilityLoading =
         prekinderFlagLoading || (prekinderProcessActive && loading);
 

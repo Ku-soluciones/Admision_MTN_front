@@ -32,6 +32,15 @@ import {
     canAccessApplicationForm,
     NEW_APPLICATIONS_OPEN,
 } from '../../../packages/shared-utils/src/admissionAvailability';
+import { validatePrekinderBirthDate } from './prekinderAgeValidation';
+import {
+    formatDateInTimeZone,
+    normalizePrekinderDraftYear,
+    pickPrekinderOption,
+    resolveApplicationYearForFlow,
+    resolvePrekinderAcademicContext,
+    selectAvailablePrekinderOptions,
+} from './prekinderProcessPolicy';
 
 const steps = [
   "Información del Postulante",    // 0 - Nombre, RUT, Fecha de Nacimiento, Email
@@ -145,95 +154,11 @@ function prekinderAgeInConfiguredRange(
     option: PrekinderApplicationOption | null,
 ): boolean {
     if (!birthDate || !option) return false;
-    const referenceDate = getReferenceDateString(option.ageReferenceDate, option.academicYear);
-    if (!referenceDate) return false;
-    const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
-    const [referenceYear, referenceMonth, referenceDay] = referenceDate.split('-').map(Number);
-    if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) return false;
-    let months = (referenceYear - birthYear) * 12 + referenceMonth - birthMonth;
-    if (referenceDay < birthDay) months--;
-    const meetsMinimum = months >= option.minimumAgeMonths;
-    const meetsMaximum = option.maximumAgeMonths == null || months <= option.maximumAgeMonths;
-    return meetsMinimum && meetsMaximum;
-}
-
-/**
- * Construye la fecha de referencia (31 de marzo del año académico) si no está disponible.
- * 
- * @param ageReferenceDate - Fecha de referencia del backend (puede ser null)
- * @param academicYear - Año académico (usado si ageReferenceDate es null)
- * @returns Fecha de referencia en formato YYYY-MM-DD
- */
-function getReferenceDateString(
-    ageReferenceDate: string | null | undefined,
-    academicYear: number | undefined,
-): string | null {
-    if (ageReferenceDate) return ageReferenceDate;
-    if (!academicYear) return null;
-    // Asumimos que la fecha de referencia es el 31 de marzo del año académico
-    return `${academicYear}-03-31`;
-}
-
-/**
- * Determina el año de destino (target year) para una aplicación de Prekínder
- * basado en si el niño cumple la edad mínima en la fecha de referencia.
- * 
- * Ejemplo: 
- * - Nacimiento: 2023-02-02, Referencia: 2027-03-31, Min: 48 meses
- * - Al 31/03/2027 tiene 4 años y 1 mes (49 meses) ✓
- * - Año destino: 2027
- * 
- * - Nacimiento: 2024-06-15, Referencia: 2027-03-31, Min: 48 meses
- * - Al 31/03/2027 tiene 2 años y 9 meses (33 meses) ✗
- * - Año destino: 2028 (próximo año académico)
- * 
- * @param birthDate - Fecha de nacimiento en formato YYYY-MM-DD
- * @param referenceDate - Fecha de referencia en formato YYYY-MM-DD
- * @param minimumAgeMonths - Edad mínima requerida en meses
- * @returns Año de destino o null si no es válido
- */
-function getPrekinderTargetYear(
-    birthDate: string,
-    referenceDate: string | undefined | null,
-    minimumAgeMonths: number | undefined,
-): number | null {
-    if (!birthDate || !referenceDate) return null;
-    
-    try {
-        // Normalizar el formato de referenceDate por si viene como Date object o timestamp
-        let refDateStr = referenceDate;
-        if (typeof referenceDate !== 'string') {
-            const refDate = new Date(referenceDate);
-            if (isNaN(refDate.getTime())) return null;
-            refDateStr = refDate.toISOString().split('T')[0];
-        }
-        
-        const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
-        const [referenceYear, referenceMonth, referenceDay] = refDateStr.split('-').map(Number);
-        
-        if (![birthYear, birthMonth, birthDay, referenceYear, referenceMonth, referenceDay].every(Number.isFinite)) {
-            return null;
-        }
-        
-        // Calcular la edad en meses que tendrá en la fecha de referencia
-        let ageMonthsAtReference = (referenceYear - birthYear) * 12 + (referenceMonth - birthMonth);
-        if (referenceDay < birthDay) {
-            ageMonthsAtReference--;
-        }
-        
-        // Si cumple la edad mínima en la fecha de referencia, el año destino es el año de referencia
-        // Si NO cumple, el año destino es el siguiente año académico
-        if (minimumAgeMonths !== undefined && ageMonthsAtReference < minimumAgeMonths) {
-            // No cumple edad en la referencia, será el próximo año académico
-            return referenceYear + 1;
-        }
-         
-        // Cumple edad o no hay mínimo especificado
-        return referenceYear;
-    } catch (error) {
-        console.error('Error en getPrekinderTargetYear:', error, { birthDate, referenceDate, minimumAgeMonths });
-        return null;
-    }
+    return validatePrekinderBirthDate(
+        birthDate,
+        option,
+        formatDateInTimeZone(),
+    ).valid;
 }
  
 function PrekinderEligibilityFields({
@@ -268,6 +193,11 @@ function PrekinderEligibilityFields({
         <div className="space-y-4">
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
                 <p className="font-semibold">Etapa vigente: {prekinderWaveLabels[option.waveType]}</p>
+                <p className="mt-1">
+                    Año académico {option.academicYear} · Edad requerida: {option.minimumAgeMonths}
+                    {option.maximumAgeMonths == null ? '+' : `–${option.maximumAgeMonths}`} meses al{' '}
+                    {resolvePrekinderAcademicContext(option).ageReferenceDate}.
+                </p>
                 <p className="mt-1">
                     Esta condición es obligatoria y será verificada por el colegio antes de continuar el proceso.
                 </p>
@@ -506,7 +436,7 @@ const ApplicationFormContent: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const serverDraftRestoredRef = useRef(false);
 
-    const activePrekinderOption = prekinderOptions[0] ?? null;
+    const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
     // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
     const scheduleDraftSave = useCallback(() => {
@@ -552,7 +482,7 @@ const ApplicationFormContent: React.FC = () => {
                 ? draft.data.__clientSubmissionId
                 : crypto.randomUUID();
             clientSubmissionIdRef.current = restoredSubmissionId;
-            setData(draft.data);
+            setData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear));
             setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
@@ -582,19 +512,21 @@ const ApplicationFormContent: React.FC = () => {
         setPrekinderOptionsLoading(true);
         setPrekinderOptionsError('');
         prekinderApi.applicationOptions()
-            .then((options) => {
+            .then((receivedOptions) => {
                 if (cancelled) return;
+                const options = selectAvailablePrekinderOptions(receivedOptions);
                 setPrekinderOptions(options);
                 if (!options.length) {
                     setPrekinderOptionsError('En este momento no existe una etapa de postulación Prekínder abierta.');
                     return;
                 }
-                const option = options[0];
+                const option = pickPrekinderOption(options);
+                if (!option) return;
                 setData((current: any) => ({
                     ...current,
                     __clientSubmissionId: current.__clientSubmissionId || clientSubmissionIdRef.current,
                     grade: 'PRE_KINDER',
-                    applicationYear: String(option.academicYear),
+                    applicationYear: resolvePrekinderAcademicContext(option).applicationYear,
                     admissionPreference: option.waveType === 'STAFF_OR_ALUMNI'
                         ? (current.admissionPreference === 'HIJO_FUNCIONARIO' || current.admissionPreference === 'HIJO_EX_ALUMNO'
                             ? current.admissionPreference
@@ -939,18 +871,22 @@ const ApplicationFormContent: React.FC = () => {
         }
     }, [isAuthenticated, user, loadUserProfileAndPopulate]);
     
-    // Inicializar el año de postulación con año actual + 1
+    // K–IV conserva el año general. PK espera el año del proceso activo.
     useEffect(() => {
         const currentYear = new Date().getFullYear();
-        const applicationYear = (currentYear + 1).toString();
-        if (!data.applicationYear) {
+        const applicationYear = resolveApplicationYearForFlow(
+            isPrekinder,
+            activePrekinderOption?.academicYear,
+            (currentYear + 1).toString(),
+        );
+        if (!data.applicationYear && applicationYear) {
             updateField('applicationYear', applicationYear);
         }
         // Default schoolApplied para el backend (no se muestra en UI)
         if (!data.schoolApplied) {
             updateField('schoolApplied', 'MONTE_TABOR');
         }
-    }, []);
+    }, [isPrekinder, activePrekinderOption?.academicYear]);
 
     // Helper function to check if current school is required
     const requiresCurrentSchool = useCallback((grade: string): boolean => {
@@ -994,6 +930,7 @@ const ApplicationFormContent: React.FC = () => {
 
     // Pre-fill form when in edit mode (from dashboard) OR when adding another child (prefill family data)
     useEffect(() => {
+        if (isPrekinder && !activePrekinderOption) return;
         const loadEditModeData = async () => {
 
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
@@ -1027,8 +964,11 @@ const ApplicationFormContent: React.FC = () => {
                 // Y datos de residencia geográfica de la postulación anterior
                 setData({
                     __clientSubmissionId: clientSubmissionIdRef.current,
-                    // Application year (always next year)
-                    applicationYear: nextYear.toString(),
+                    applicationYear: resolveApplicationYearForFlow(
+                        isPrekinder,
+                        activePrekinderOption?.academicYear,
+                        nextYear.toString(),
+                    ),
 
                     // Student address (pre-filled with family address)
                     studentAddress: residence.address || familyAddress,
@@ -1113,7 +1053,11 @@ const ApplicationFormContent: React.FC = () => {
                     inclusionStudent: appData.student?.inclusionStudent === true,
                     hasSiblingsInSchool: appData.student?.hasSiblingsInSchool === true,
                     siblingsInSchoolDetails: appData.student?.siblingsInSchoolDetails || '',
-                    applicationYear: appData.applicationYear || new Date().getFullYear() + 1,
+                    applicationYear: resolveApplicationYearForFlow(
+                        isPrekinder,
+                        activePrekinderOption?.academicYear,
+                        String(appData.applicationYear || new Date().getFullYear() + 1),
+                    ),
                     pais: appData.pais || 'Chile',
                     region: appData.region || '',
                     comuna: appData.comuna || '',
@@ -1165,7 +1109,7 @@ const ApplicationFormContent: React.FC = () => {
         };
 
         loadEditModeData();
-    }, [location.state]);
+    }, [location.state, isPrekinder, activePrekinderOption?.processId]);
 
     // Parse address from backend when studentAddress is loaded
     useEffect(() => {
@@ -1189,6 +1133,18 @@ const ApplicationFormContent: React.FC = () => {
     const validateBirthDateStandalone = useCallback(
         (birthDate: string): { valid: boolean; message?: string } => {
             if (!birthDate) return { valid: true };
+
+            if (isPrekinder) {
+                if (!activePrekinderOption) {
+                    return { valid: false, message: 'No existe un proceso Prekínder disponible.' };
+                }
+                const result = validatePrekinderBirthDate(
+                    birthDate,
+                    activePrekinderOption,
+                    formatDateInTimeZone(),
+                );
+                return { valid: result.valid, message: result.message };
+            }
 
             const birth = new Date(birthDate);
             if (Number.isNaN(birth.getTime())) {
@@ -1227,7 +1183,7 @@ const ApplicationFormContent: React.FC = () => {
             }
             return { valid: true };
         },
-        [],
+        [isPrekinder, activePrekinderOption],
     );
 
     // ── Autoguardado del borrador del formulario ──────────────────────────────
@@ -1338,6 +1294,16 @@ const ApplicationFormContent: React.FC = () => {
     const validateBirthDateForGrade = useCallback((birthDate: string, grade: string): { valid: boolean; message?: string } => {
         if (!birthDate || !grade) return { valid: true };
 
+        if (isPrekinder) {
+            if (!activePrekinderOption) return { valid: false, message: 'No existe un proceso Prekínder disponible.' };
+            const result = validatePrekinderBirthDate(
+                birthDate,
+                activePrekinderOption,
+                formatDateInTimeZone(),
+            );
+            return { valid: result.valid, message: result.message };
+        }
+
         const birth = new Date(birthDate);
         const today = new Date();
         const applicationYear = today.getFullYear() + 1;
@@ -1377,7 +1343,7 @@ const ApplicationFormContent: React.FC = () => {
         }
 
         return { valid: true };
-    }, []);
+    }, [isPrekinder, activePrekinderOption]);
 
     // Helper function to auto-fill data when parent is selected
     const handleParentRelationChange = useCallback((field: string, value: string, type: 'supporter' | 'guardian') => {
@@ -1643,7 +1609,7 @@ const ApplicationFormContent: React.FC = () => {
                                     commune: data.studentAddressCommune,
                                 },
                                 grade: 'PRE_KINDER',
-                                applicationYear: Number(data.applicationYear),
+                                applicationYear: activePrekinderOption.academicYear,
                                 currentSchool: data.currentSchool || undefined,
                                 additionalNotes: data.additionalNotes || undefined,
                                 admissionPreference: data.admissionPreference,
@@ -2495,37 +2461,14 @@ const ApplicationFormContent: React.FC = () => {
                                     type="date"
                                     isRequired
                                     autoComplete="bday"
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={formatDateInTimeZone()}
                                     min="1995-01-01"
                                     value={data.birthDate || ''}
                                     onChange={(e) => {
                                         updateField('birthDate', e.target.value);
-                                        // Si es Prekínder, calcular y guardar el año destino automáticamente
+                                        // En PK el año de destino pertenece al proceso, no se calcula desde la fecha.
                                         if (isPrekinder && e.target.value && activePrekinderOption) {
-                                            try {
-                                                const referenceDate = getReferenceDateString(
-                                                    activePrekinderOption.ageReferenceDate,
-                                                    activePrekinderOption.academicYear
-                                                );
-                                                const targetYear = getPrekinderTargetYear(
-                                                    e.target.value,
-                                                    referenceDate,
-                                                    activePrekinderOption.minimumAgeMonths
-                                                );
-                                                console.log('🎂 Cálculo de año destino:', {
-                                                    birthDate: e.target.value,
-                                                    ageReferenceDate: activePrekinderOption.ageReferenceDate,
-                                                    academicYear: activePrekinderOption.academicYear,
-                                                    calculatedReferenceDate: referenceDate,
-                                                    minimumAgeMonths: activePrekinderOption.minimumAgeMonths,
-                                                    targetYear,
-                                                });
-                                                if (targetYear !== null) {
-                                                    updateField('prekinderTargetYear', targetYear);
-                                                }
-                                            } catch (err) {
-                                                console.error('Error calculando año destino:', err);
-                                            }
+                                            updateField('prekinderTargetYear', activePrekinderOption.academicYear);
                                         }
                                     }}
                                     onBlur={() => touchField('birthDate')}
@@ -2887,10 +2830,15 @@ const ApplicationFormContent: React.FC = () => {
                         <Input
                             id="applicationYear"
                             label="Año al que postula"
-                            placeholder={`${new Date().getFullYear() + 1}`}
+                            placeholder={isPrekinder
+                                ? String(activePrekinderOption?.academicYear || '')
+                                : `${new Date().getFullYear() + 1}`}
                             isRequired
-                            value={data.applicationYear || (new Date().getFullYear() + 1).toString()}
+                            value={data.applicationYear || (isPrekinder
+                                ? String(activePrekinderOption?.academicYear || '')
+                                : (new Date().getFullYear() + 1).toString())}
                             onChange={(e) => {
+                                if (isPrekinder) return;
                                 const year = parseInt(e.target.value);
                                 const currentYear = new Date().getFullYear();
                                 if (year === currentYear + 1) {
