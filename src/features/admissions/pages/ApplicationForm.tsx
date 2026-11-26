@@ -7,7 +7,7 @@ import Button from '../../admin/components/ui/Button';
 import Card from '../../admin/components/ui/Card';
 import EmailVerification from '../components/ui/EmailVerification';
 import ErrorModal from '../components/ui/ErrorModal';
-import { PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
+import { ConfirmDialog, PromptDialog } from '../../../packages/shared-ui/src/components/ui/ConfirmDialog';
 import { CheckCircleIcon, LogoIcon, UploadIcon } from '../../admin/components/icons/Icons';
 import { useApplications, useNotifications } from '../../admin/context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../pack
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
+import { applySupporterSelection } from './supporterSelection';
 import {
     prekinderApi,
     type FlowApplication,
@@ -490,6 +491,7 @@ const ApplicationFormContent: React.FC = () => {
 
     // Estado para el modal de errores
     const [showErrorModal, setShowErrorModal] = useState(false);
+    const [pendingSupporterRelation, setPendingSupporterRelation] = useState<string | null>(null);
     const [errorModalData, setErrorModalData] = useState({
         title: '',
         message: '',
@@ -1405,6 +1407,13 @@ const ApplicationFormContent: React.FC = () => {
             updateField(`${type}Rut`, '');
         }
     }, [data.parent1Name, data.parent1Email, data.parent1Phone, data.parent1Rut, data.parent2Name, data.parent2Email, data.parent2Phone, data.parent2Rut, updateField]);
+
+    const confirmSupporterSelection = useCallback(() => {
+        if (!pendingSupporterRelation) return;
+        const supporterFields = applySupporterSelection(data, pendingSupporterRelation);
+        Object.entries(supporterFields).forEach(([field, value]) => updateField(field, value));
+        setPendingSupporterRelation(null);
+    }, [data, pendingSupporterRelation, updateField]);
 
     const validateCurrentStep = useCallback((): boolean => {
         const isValidEmail = (email: string): boolean => {
@@ -3253,7 +3262,7 @@ const ApplicationFormContent: React.FC = () => {
                             ]}
                             isRequired
                             value={data.supporterRelation || ''}
-                            onChange={(e) => handleParentRelationChange('supporterRelation', e.target.value, 'supporter')}
+                            onChange={(e) => setPendingSupporterRelation(e.target.value || null)}
                             onBlur={() => touchField('supporterRelation')}
                             error={errors.supporterRelation}
                         />
@@ -3902,6 +3911,17 @@ const ApplicationFormContent: React.FC = () => {
                 title={errorModalData.title}
                 message={errorModalData.message}
                 errors={errorModalData.errors}
+            />
+
+            <ConfirmDialog
+                isOpen={pendingSupporterRelation !== null}
+                title="Confirmar sostenedor económico"
+                message="¿Estás seguro de que esta persona será el sostenedor económico? Será responsable del pago de las colegiaturas durante todo el tiempo que el alumno permanezca en el colegio."
+                confirmText="Sí, confirmar"
+                cancelText="Cancelar"
+                variant="warning"
+                onConfirm={confirmSupporterSelection}
+                onClose={() => setPendingSupporterRelation(null)}
             />
 
             <PromptDialog
