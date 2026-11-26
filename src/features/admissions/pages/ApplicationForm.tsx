@@ -23,7 +23,7 @@ import { DocumentType, getDocumentTypeLabel, getTargetYear } from '../../../pack
 import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLevels';
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
-import { applySupporterSelection } from './supporterSelection';
+import { commitSupporterSelection } from './supporterSelection';
 import {
     prekinderApi,
     type FlowApplication,
@@ -513,13 +513,13 @@ const ApplicationFormContent: React.FC = () => {
     const activePrekinderOption = prekinderOptions[0] ?? null;
 
     // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
-    const scheduleDraftSave = useCallback(() => {
-        if (!isPrekinder || !activePrekinderOption || !data || Object.keys(data).length === 0) return;
+    const scheduleDraftSave = useCallback((draftData = data) => {
+        if (!isPrekinder || !activePrekinderOption || !draftData || Object.keys(draftData).length === 0) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
             setHasUnsavedChanges(true);
             setIsSaving(true);
-            prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, data, serverDraftVersion)
+            prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, draftData, serverDraftVersion)
                 .then((draft) => {
                     setServerDraftVersion(draft.version);
                     setHasUnsavedChanges(false);
@@ -1410,10 +1410,12 @@ const ApplicationFormContent: React.FC = () => {
 
     const confirmSupporterSelection = useCallback(() => {
         if (!pendingSupporterRelation) return;
-        const supporterFields = applySupporterSelection(data, pendingSupporterRelation);
-        Object.entries(supporterFields).forEach(([field, value]) => updateField(field, value));
+        commitSupporterSelection(data, pendingSupporterRelation, (snapshot) => {
+            setData(snapshot);
+            scheduleDraftSave(snapshot);
+        });
         setPendingSupporterRelation(null);
-    }, [data, pendingSupporterRelation, updateField]);
+    }, [data, pendingSupporterRelation, scheduleDraftSave]);
 
     const handleSupporterRelationChange = useCallback((value: string) => {
         if (isPrekinder) {

@@ -18,3 +18,13 @@ export function applySupporterSelection(data: FamilyData, relation: string): Sup
     supporterRut: prefix ? String(data[`${prefix}Rut`] || '') : '',
   };
 }
+
+export function commitSupporterSelection<T extends FamilyData>(
+  data: T,
+  relation: string,
+  onCommit: (snapshot: T & SupporterSelection) => void,
+): T & SupporterSelection {
+  const snapshot = { ...data, ...applySupporterSelection(data, relation) };
+  onCommit(snapshot);
+  return snapshot;
+}
