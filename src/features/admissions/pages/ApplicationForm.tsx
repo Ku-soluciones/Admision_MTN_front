@@ -1034,15 +1034,28 @@ const ApplicationFormContent: React.FC = () => {
     // Pre-fill form when in edit mode (from dashboard) OR when adding another child (prefill family data)
     useEffect(() => {
         if (isPrekinder && !activePrekinderOption) return;
+        let cancelled = false;
+        const initialDraftController = new AbortController();
         const loadEditModeData = async () => {
 
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
             if (location.state?.prefillFamilyData && location.state?.familyData) {
                 const familyData = location.state.familyData;
+                const applicationIntentId = typeof location.state.applicationIntentId === 'string'
+                    ? location.state.applicationIntentId
+                    : crypto.randomUUID();
+                if (!location.state.applicationIntentId) {
+                    window.history.replaceState({
+                        ...window.history.state,
+                        usr: { ...location.state, applicationIntentId },
+                    }, '');
+                }
+                clientSubmissionIdRef.current = applicationIntentId;
                 if (isPrekinder) {
                     try {
                         await deleteServerDraftSafely();
                     } catch {
+                        if (cancelled) return;
                         draftDiscardingRef.current = true;
                         addNotification({
                             type: 'error',
@@ -1054,7 +1067,7 @@ const ApplicationFormContent: React.FC = () => {
                 } else {
                     try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
                 }
-                clientSubmissionIdRef.current = crypto.randomUUID();
+                if (cancelled) return;
                 setSubmittedApplicationId(null);
                 setSubmittedPrekinderApplication(null);
                 setUploadedDocuments(new Map());
@@ -1153,12 +1166,15 @@ const ApplicationFormContent: React.FC = () => {
                     setHasUnsavedChanges(true);
                     try {
                         const savedDraft = await prekinderApi.saveApplicationDraft(
-                            activePrekinderOption.processId, 0, nextData, serverDraftVersionRef.current);
+                            activePrekinderOption.processId, 0, nextData, serverDraftVersionRef.current,
+                            initialDraftController.signal);
+                        if (cancelled) return;
                         serverDraftVersionRef.current = savedDraft.version;
                         setServerDraftVersion(savedDraft.version);
                         setHasUnsavedChanges(false);
                         setIsSaving(false);
                     } catch {
+                        if (cancelled) return;
                         setIsSaving(false);
                         setHasUnsavedChanges(true);
                         addNotification({
@@ -1169,6 +1185,7 @@ const ApplicationFormContent: React.FC = () => {
                         return;
                     }
                 }
+                if (cancelled) return;
                 draftDiscardingRef.current = false;
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
 
@@ -1280,6 +1297,10 @@ const ApplicationFormContent: React.FC = () => {
         };
 
         loadEditModeData();
+        return () => {
+            cancelled = true;
+            initialDraftController.abort();
+        };
     }, [location.state, isPrekinder, activePrekinderOption?.processId, deleteServerDraftSafely,
         draftKey, navigate, addNotification]);
 

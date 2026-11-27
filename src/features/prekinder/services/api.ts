@@ -809,8 +809,8 @@ export const prekinderApi = {
       "/v1/prekinder/application-options",
     ),
   applicationDraft: (processId: string) => apiRequest<ApplicationDraft | null>(`/v1/prekinder/processes/${processId}/application-draft`),
-  saveApplicationDraft: (processId: string, currentSection: number, data: Record<string, unknown>, expectedVersion?: number) =>
-    apiRequest<ApplicationDraft>(`/v1/prekinder/processes/${processId}/application-draft`, { method: "PUT", body: JSON.stringify({ currentSection, data, expectedVersion }) }),
+  saveApplicationDraft: (processId: string, currentSection: number, data: Record<string, unknown>, expectedVersion?: number, signal?: AbortSignal) =>
+    apiRequest<ApplicationDraft>(`/v1/prekinder/processes/${processId}/application-draft`, { method: "PUT", body: JSON.stringify({ currentSection, data, expectedVersion }), signal }),
   deleteApplicationDraft: (processId: string) => apiRequest(`/v1/prekinder/processes/${processId}/application-draft`, { method: "DELETE" }),
   createProcess: (academicYear: number, name: string) =>
     apiRequest<AdmissionProcess>("/v1/prekinder/processes", {
