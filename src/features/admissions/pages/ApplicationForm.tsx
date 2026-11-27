@@ -24,6 +24,7 @@ import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLev
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
 import { commitSupporterSelection } from './supporterSelection';
+import { composeParentFullName, normalizeParentFormData, normalizeParentProfile, parentPayload } from './parentProfilePolicy';
 import SupporterRelationSelector from './SupporterRelationSelector';
 import {
     prekinderApi,
@@ -84,6 +85,16 @@ const genderOptions = [
     { value: 'FEMALE', label: 'Femenino' }
 ];
 
+const maritalStatusOptions = [
+    { value: 'SINGLE', label: 'Soltero/a' },
+    { value: 'MARRIED', label: 'Casado/a' },
+    { value: 'CIVIL_UNION', label: 'Acuerdo de unión civil' },
+    { value: 'SEPARATED', label: 'Separado/a' },
+    { value: 'DIVORCED', label: 'Divorciado/a' },
+    { value: 'WIDOWED', label: 'Viudo/a' },
+    { value: 'OTHER', label: 'Otro' },
+];
+
 // Documentos con labels dinámicos basados en el año ACTUAL
 const getDocumentTypesConfig = () => {
     const currentYear = new Date().getFullYear();
@@ -122,13 +133,19 @@ const validationConfig = {
     studentEmail: { email: true },
     studentAddress: { required: true, minLength: 5 },
     currentSchool: { minLength: 2 }, // Será requerido condicionalmente
-    parent1Name: { required: true, minLength: 2 },
+    parent1FirstName: { required: true, minLength: 2 },
+    parent1PaternalLastName: { required: true, minLength: 2 },
+    parent1MaternalLastName: { required: true, minLength: 2 },
+    parent1MaritalStatus: { required: true },
     parent1Email: { required: true, email: true },
     parent1Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent1Rut: { required: true, minLength: 9 },
     parent1Address: { required: true, minLength: 5 },
     parent1BirthDate: { required: true },
-    parent2Name: { required: true, minLength: 2 },
+    parent2FirstName: { required: true, minLength: 2 },
+    parent2PaternalLastName: { required: true, minLength: 2 },
+    parent2MaternalLastName: { required: true, minLength: 2 },
+    parent2MaritalStatus: { required: true },
     parent2Email: { required: true, email: true },
     parent2Phone: { required: true, pattern: /^[+]?[\d\s-]{8,}$/ },
     parent2Rut: { required: true, minLength: 9 },
@@ -486,7 +503,7 @@ const ApplicationFormContent: React.FC = () => {
                 ? draft.data.__clientSubmissionId
                 : crypto.randomUUID();
             clientSubmissionIdRef.current = restoredSubmissionId;
-            setData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear));
+            setData(normalizeParentFormData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear)));
             setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
@@ -610,8 +627,8 @@ const ApplicationFormContent: React.FC = () => {
     // Fields that should be converted to uppercase
     const uppercaseFields = [
         'firstName', 'paternalLastName', 'maternalLastName', 'studentAddress', 'currentSchool', 'additionalNotes',
-        'parent1Name', 'parent1Address',
-        'parent2Name', 'parent2Address',
+        'parent1FirstName', 'parent1PaternalLastName', 'parent1MaternalLastName', 'parent1Address',
+        'parent2FirstName', 'parent2PaternalLastName', 'parent2MaternalLastName', 'parent2Address',
         'supporterName',
         'guardianName'
     ];
@@ -625,6 +642,15 @@ const ApplicationFormContent: React.FC = () => {
 
         setData((prev: any) => {
             const newData = { ...prev, [name]: processedValue };
+            const match = name.match(/^(parent[12])(FirstName|PaternalLastName|MaternalLastName)$/);
+            if (match) {
+                const prefix = match[1];
+                newData[`${prefix}Name`] = composeParentFullName({
+                    firstName: newData[`${prefix}FirstName`] || '',
+                    paternalLastName: newData[`${prefix}PaternalLastName`] || '',
+                    maternalLastName: newData[`${prefix}MaternalLastName`] || '',
+                });
+            }
             return newData;
         });
 
@@ -859,7 +885,12 @@ const ApplicationFormContent: React.FC = () => {
         profession: string;
     }) => {
         updateField('parent1Email', userData.email);
-        updateField('parent1Name', `${userData.firstName} ${userData.lastName}`.toUpperCase());
+        const profile = normalizeParentProfile({
+            firstName: userData.firstName,
+            paternalLastName: userData.lastName,
+        });
+        updateField('parent1FirstName', profile.firstName.toUpperCase());
+        updateField('parent1PaternalLastName', profile.paternalLastName.toUpperCase());
         updateField('parent1Phone', userData.phone);
         updateField('parent1Rut', userData.rut);
         updateField('parent1Address', userData.address.toUpperCase());
@@ -958,6 +989,8 @@ const ApplicationFormContent: React.FC = () => {
 
                 // Extract residence data from previous application
                 const residence = familyData.residence || {};
+                const fatherProfile = normalizeParentProfile(familyData.father);
+                const motherProfile = normalizeParentProfile(familyData.mother);
 
                 // Calculate application year (current year + 1)
                 const currentYear = new Date().getFullYear();
@@ -986,7 +1019,11 @@ const ApplicationFormContent: React.FC = () => {
                     admissionPreference: familyData.admissionPreference || '',
 
                     // Father data (parent1)
-                    parent1Name: familyData.father?.fullName || '',
+                    parent1Name: fatherProfile.fullName,
+                    parent1FirstName: fatherProfile.firstName,
+                    parent1PaternalLastName: fatherProfile.paternalLastName,
+                    parent1MaternalLastName: fatherProfile.maternalLastName,
+                    parent1MaritalStatus: fatherProfile.maritalStatus,
                     parent1Email: familyData.father?.email || '',
                     parent1Phone: familyData.father?.phone || '',
                     parent1Rut: familyData.father?.rut || '',
@@ -994,12 +1031,17 @@ const ApplicationFormContent: React.FC = () => {
                     parent1BirthDate: familyData.father?.birthDate || '',
 
                     // Mother data (parent2)
-                    parent2Name: familyData.mother?.fullName || '',
+                    parent2Name: motherProfile.fullName,
+                    parent2FirstName: motherProfile.firstName,
+                    parent2PaternalLastName: motherProfile.paternalLastName,
+                    parent2MaternalLastName: motherProfile.maternalLastName,
+                    parent2MaritalStatus: motherProfile.maritalStatus,
                     parent2Email: familyData.mother?.email || '',
                     parent2Phone: familyData.mother?.phone || '',
                     parent2Rut: familyData.mother?.rut || '',
                     parent2Address: familyData.mother?.address || '',
                     parent2BirthDate: familyData.mother?.birthDate || '',
+                    parentsSeparated: familyData.parentsSeparated === true,
 
                     // Supporter data
                     supporterName: familyData.supporter?.fullName || '',
@@ -1022,6 +1064,8 @@ const ApplicationFormContent: React.FC = () => {
             // CASO 2: Modo edición - pre-llenar toda la postulación existente
             if (isEditMode && location.state?.applicationData) {
                 const appData = location.state.applicationData;
+                const fatherProfile = normalizeParentProfile(appData.father);
+                const motherProfile = normalizeParentProfile(appData.mother);
 
                 // Hide auth form when in edit mode
                 setShowAuthForm(false);
@@ -1067,7 +1111,11 @@ const ApplicationFormContent: React.FC = () => {
                     comuna: appData.comuna || '',
 
                     // Father data (parent1)
-                    parent1Name: appData.father?.fullName || '',
+                    parent1Name: fatherProfile.fullName,
+                    parent1FirstName: fatherProfile.firstName,
+                    parent1PaternalLastName: fatherProfile.paternalLastName,
+                    parent1MaternalLastName: fatherProfile.maternalLastName,
+                    parent1MaritalStatus: fatherProfile.maritalStatus,
                     parent1Email: appData.father?.email || '',
                     parent1Phone: appData.father?.phone || '',
                     parent1Rut: appData.father?.rut || '',
@@ -1075,12 +1123,17 @@ const ApplicationFormContent: React.FC = () => {
                     parent1BirthDate: appData.father?.birthDate || '',
 
                     // Mother data (parent2)
-                    parent2Name: appData.mother?.fullName || '',
+                    parent2Name: motherProfile.fullName,
+                    parent2FirstName: motherProfile.firstName,
+                    parent2PaternalLastName: motherProfile.paternalLastName,
+                    parent2MaternalLastName: motherProfile.maternalLastName,
+                    parent2MaritalStatus: motherProfile.maritalStatus,
                     parent2Email: appData.mother?.email || '',
                     parent2Phone: appData.mother?.phone || '',
                     parent2Rut: appData.mother?.rut || '',
                     parent2Address: appData.mother?.address || '',
                     parent2BirthDate: appData.mother?.birthDate || '',
+                    parentsSeparated: appData.parentsSeparated === true || appData.applicationDetails?.parentsSeparated === true,
 
                     // Supporter data
                     supporterName: appData.supporter?.fullName || '',
@@ -1238,7 +1291,7 @@ const ApplicationFormContent: React.FC = () => {
             // No pisar datos ya existentes si el efecto del perfil corrió antes
             if (parsed?.data && Object.keys(data || {}).length === 0) {
                 skipNextSaveRef.current = true;
-                setData(parsed.data);
+                setData(normalizeParentFormData(parsed.data));
                 if (typeof parsed.currentStep === 'number') {
                     setCurrentStep(Math.min(parsed.currentStep, steps.length - 1));
                 }
@@ -1467,7 +1520,9 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 3: Datos del Padre
             case 3:
-                if (!data.parent1Name?.trim() || !data.parent1Email?.trim() || !data.parent1Phone?.trim() ||
+                if (!data.parent1FirstName?.trim() || !data.parent1PaternalLastName?.trim() ||
+                    !data.parent1MaternalLastName?.trim() || !data.parent1MaritalStatus ||
+                    !data.parent1Email?.trim() || !data.parent1Phone?.trim() ||
                     !data.parent1Rut?.trim() || !data.parent1Address?.trim() ) {
                     return false;
                 }
@@ -1479,7 +1534,9 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 4: Datos de la Madre
             case 4:
-                if (!data.parent2Name?.trim() || !data.parent2Email?.trim() || !data.parent2Phone?.trim() ||
+                if (!data.parent2FirstName?.trim() || !data.parent2PaternalLastName?.trim() ||
+                    !data.parent2MaternalLastName?.trim() || !data.parent2MaritalStatus ||
+                    !data.parent2Email?.trim() || !data.parent2Phone?.trim() ||
                     !data.parent2Rut?.trim() || !data.parent2Address?.trim()) {
                     return false;
                 }
@@ -1534,7 +1591,7 @@ const ApplicationFormContent: React.FC = () => {
     const getStepFields = useCallback((step: number): string[] => {
         switch (step) {
             case 0: return ['firstName', 'paternalLastName', 'maternalLastName', 'rut', 'birthDate', 'grade', 'studentAddress'];
-            case 1: return ['parent1Name', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent1BirthDate', 'parent2Name', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address', 'parent2BirthDate'];
+            case 1: return ['parent1FirstName', 'parent1PaternalLastName', 'parent1MaternalLastName', 'parent1MaritalStatus', 'parent1Email', 'parent1Phone', 'parent1Rut', 'parent1Address', 'parent1BirthDate', 'parent2FirstName', 'parent2PaternalLastName', 'parent2MaternalLastName', 'parent2MaritalStatus', 'parent2Email', 'parent2Phone', 'parent2Rut', 'parent2Address', 'parent2BirthDate'];
             case 2: return ['supporterName', 'supporterEmail', 'supporterPhone', 'supporterRut', 'supporterRelation'];
             case 3: return ['guardianName', 'guardianEmail', 'guardianPhone', 'guardianRut', 'guardianRelation'];
             case 4: return []; // Document upload step
@@ -1628,11 +1685,17 @@ const ApplicationFormContent: React.FC = () => {
                                 additionalNotes: data.additionalNotes || undefined,
                                 admissionPreference: data.admissionPreference,
                                 hasSiblingsInSchool: data.hasSiblingsInSchool === true,
+                                parentsSeparated: data.parentsSeparated === true,
                                 siblingsInSchoolDetails: data.hasSiblingsInSchool
                                     ? `${data.siblingName}, ${data.siblingCurrentGrade} (${data.siblingRut})`
                                     : undefined,
                                 father: {
-                                    fullName: data.parent1Name,
+                                    ...parentPayload({
+                                        firstName: data.parent1FirstName,
+                                        paternalLastName: data.parent1PaternalLastName,
+                                        maternalLastName: data.parent1MaternalLastName,
+                                        maritalStatus: data.parent1MaritalStatus,
+                                    }),
                                     rut: data.parent1Rut,
                                     email: data.parent1Email,
                                     phone: data.parent1Phone,
@@ -1641,7 +1704,12 @@ const ApplicationFormContent: React.FC = () => {
                                     birthDate: data.parent1BirthDate,
                                 },
                                 mother: {
-                                    fullName: data.parent2Name,
+                                    ...parentPayload({
+                                        firstName: data.parent2FirstName,
+                                        paternalLastName: data.parent2PaternalLastName,
+                                        maternalLastName: data.parent2MaternalLastName,
+                                        maritalStatus: data.parent2MaritalStatus,
+                                    }),
                                     rut: data.parent2Rut,
                                     email: data.parent2Email,
                                     phone: data.parent2Phone,
@@ -1710,7 +1778,7 @@ const ApplicationFormContent: React.FC = () => {
                                 siblingsInSchoolDetails: data.siblingsInSchoolDetails || ''
                             },
                             father: {
-                                fullName: data.parent1Name,
+                                ...parentPayload({ firstName: data.parent1FirstName, paternalLastName: data.parent1PaternalLastName, maternalLastName: data.parent1MaternalLastName, maritalStatus: data.parent1MaritalStatus }),
                                 rut: data.parent1Rut,
                                 email: data.parent1Email,
                                 phone: data.parent1Phone,
@@ -1718,7 +1786,7 @@ const ApplicationFormContent: React.FC = () => {
                                 birthDate: data.parent1BirthDate,
                             },
                             mother: {
-                                fullName: data.parent2Name,
+                                ...parentPayload({ firstName: data.parent2FirstName, paternalLastName: data.parent2PaternalLastName, maternalLastName: data.parent2MaternalLastName, maritalStatus: data.parent2MaritalStatus }),
                                 rut: data.parent2Rut,
                                 email: data.parent2Email,
                                 phone: data.parent2Phone,
@@ -1739,7 +1807,8 @@ const ApplicationFormContent: React.FC = () => {
                                 phone: data.guardianPhone,
                                 relationship: data.guardianRelation
                             },
-                            schoolApplied: data.schoolApplied
+                            schoolApplied: data.schoolApplied,
+                            parentsSeparated: data.parentsSeparated === true,
                         };
 
                         // Actualizar aplicación existente
@@ -1771,6 +1840,10 @@ const ApplicationFormContent: React.FC = () => {
 
                             // Datos del padre
                             parent1Name: data.parent1Name,
+                            parent1FirstName: data.parent1FirstName,
+                            parent1PaternalLastName: data.parent1PaternalLastName,
+                            parent1MaternalLastName: data.parent1MaternalLastName,
+                            parent1MaritalStatus: data.parent1MaritalStatus,
                             parent1Rut: data.parent1Rut,
                             parent1Email: data.parent1Email,
                             parent1Phone: data.parent1Phone,
@@ -1779,11 +1852,16 @@ const ApplicationFormContent: React.FC = () => {
 
                             // Datos de la madre
                             parent2Name: data.parent2Name,
+                            parent2FirstName: data.parent2FirstName,
+                            parent2PaternalLastName: data.parent2PaternalLastName,
+                            parent2MaternalLastName: data.parent2MaternalLastName,
+                            parent2MaritalStatus: data.parent2MaritalStatus,
                             parent2Rut: data.parent2Rut,
                             parent2Email: data.parent2Email,
                             parent2Phone: data.parent2Phone,
                             parent2Address: data.parent2Address,
                             parent2BirthDate: data.parent2BirthDate,
+                            parentsSeparated: data.parentsSeparated === true,
 
                             // Datos del sostenedor
                             supporterName: data.supporterName,
@@ -2079,7 +2157,10 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 3: Datos del Padre
             case 3:
-                if (!data.parent1Name?.trim()) missing.push('Nombre');
+                if (!data.parent1FirstName?.trim()) missing.push('Nombres');
+                if (!data.parent1PaternalLastName?.trim()) missing.push('Apellido paterno');
+                if (!data.parent1MaternalLastName?.trim()) missing.push('Apellido materno');
+                if (!data.parent1MaritalStatus) missing.push('Estado civil');
                 if (!data.parent1Rut?.trim()) missing.push('RUT');
                 if (!data.parent1Email?.trim()) missing.push('Email');
                 if (!data.parent1Phone?.trim()) missing.push('Teléfono');
@@ -2090,7 +2171,10 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 4: Datos de la Madre
             case 4:
-                if (!data.parent2Name?.trim()) missing.push('Nombre');
+                if (!data.parent2FirstName?.trim()) missing.push('Nombres');
+                if (!data.parent2PaternalLastName?.trim()) missing.push('Apellido paterno');
+                if (!data.parent2MaternalLastName?.trim()) missing.push('Apellido materno');
+                if (!data.parent2MaritalStatus) missing.push('Estado civil');
                 if (!data.parent2Rut?.trim()) missing.push('RUT');
                 if (!data.parent2Email?.trim()) missing.push('Email');
                 if (!data.parent2Phone?.trim()) missing.push('Teléfono');
@@ -2460,7 +2544,7 @@ const ApplicationFormContent: React.FC = () => {
                                 name="rut"
                                 label="RUT del Postulante"
                                 placeholder="12.345.678-9"
-                                required
+                                isRequired
                                 helpText="Puedes escribirlo con o sin puntos; se formatea solo."
                                 value={data.rut || ''}
                                 onChange={(value) => updateField('rut', value)}
@@ -3042,14 +3126,42 @@ const ApplicationFormContent: React.FC = () => {
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                id="parent1-name"
-                                label="Nombre Completo"
-                                placeholder="María Elena González"
+                                id="parent1-first-name"
+                                label="Nombres"
+                                placeholder="Juan Carlos"
                                 isRequired
-                                value={data.parent1Name || ''}
-                                onChange={(e) => updateField('parent1Name', e.target.value)}
-                                onBlur={() => touchField('parent1Name')}
-                                error={errors.parent1Name}
+                                value={data.parent1FirstName || ''}
+                                onChange={(e) => updateField('parent1FirstName', e.target.value)}
+                                onBlur={() => touchField('parent1FirstName')}
+                                error={errors.parent1FirstName}
+                            />
+                            <Input
+                                id="parent1-paternal-last-name"
+                                label="Apellido paterno"
+                                isRequired
+                                value={data.parent1PaternalLastName || ''}
+                                onChange={(e) => updateField('parent1PaternalLastName', e.target.value)}
+                                onBlur={() => touchField('parent1PaternalLastName')}
+                                error={errors.parent1PaternalLastName}
+                            />
+                            <Input
+                                id="parent1-maternal-last-name"
+                                label="Apellido materno"
+                                isRequired
+                                value={data.parent1MaternalLastName || ''}
+                                onChange={(e) => updateField('parent1MaternalLastName', e.target.value)}
+                                onBlur={() => touchField('parent1MaternalLastName')}
+                                error={errors.parent1MaternalLastName}
+                            />
+                            <Select
+                                id="parent1-marital-status"
+                                label="Estado civil"
+                                isRequired
+                                options={maritalStatusOptions}
+                                value={data.parent1MaritalStatus || ''}
+                                onChange={(e) => updateField('parent1MaritalStatus', e.target.value)}
+                                onBlur={() => touchField('parent1MaritalStatus')}
+                                error={errors.parent1MaritalStatus}
                             />
                             <RutInput
                                 name="parent1-rut"
@@ -3084,6 +3196,15 @@ const ApplicationFormContent: React.FC = () => {
                                 error={errors.parent1Phone}
                             />
                         </div>
+                        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                            <input
+                                type="checkbox"
+                                checked={data.parentsSeparated === true}
+                                onChange={(e) => updateField('parentsSeparated', e.target.checked)}
+                                className="mt-1"
+                            />
+                            <span className="text-sm text-gray-700">Los padres están separados</span>
+                        </label>
                         <div className="mt-4">
                             <Input
                                 id="parent1-birth-date"
@@ -3121,14 +3242,42 @@ const ApplicationFormContent: React.FC = () => {
                         <h3 className="text-xl font-bold text-azul-monte-tabor mb-4">Datos de la Madre</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                id="parent2-name"
-                                label="Nombre Completo"
-                                placeholder="María Elena González"
+                                id="parent2-first-name"
+                                label="Nombres"
+                                placeholder="María Elena"
                                 isRequired
-                                value={data.parent2Name || ''}
-                                onChange={(e) => updateField('parent2Name', e.target.value)}
-                                onBlur={() => touchField('parent2Name')}
-                                error={errors.parent2Name}
+                                value={data.parent2FirstName || ''}
+                                onChange={(e) => updateField('parent2FirstName', e.target.value)}
+                                onBlur={() => touchField('parent2FirstName')}
+                                error={errors.parent2FirstName}
+                            />
+                            <Input
+                                id="parent2-paternal-last-name"
+                                label="Apellido paterno"
+                                isRequired
+                                value={data.parent2PaternalLastName || ''}
+                                onChange={(e) => updateField('parent2PaternalLastName', e.target.value)}
+                                onBlur={() => touchField('parent2PaternalLastName')}
+                                error={errors.parent2PaternalLastName}
+                            />
+                            <Input
+                                id="parent2-maternal-last-name"
+                                label="Apellido materno"
+                                isRequired
+                                value={data.parent2MaternalLastName || ''}
+                                onChange={(e) => updateField('parent2MaternalLastName', e.target.value)}
+                                onBlur={() => touchField('parent2MaternalLastName')}
+                                error={errors.parent2MaternalLastName}
+                            />
+                            <Select
+                                id="parent2-marital-status"
+                                label="Estado civil"
+                                required
+                                options={maritalStatusOptions}
+                                value={data.parent2MaritalStatus || ''}
+                                onChange={(e) => updateField('parent2MaritalStatus', e.target.value)}
+                                onBlur={() => touchField('parent2MaritalStatus')}
+                                error={errors.parent2MaritalStatus}
                             />
                             <RutInput
                                 name="parent2-rut"

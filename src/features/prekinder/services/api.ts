@@ -219,6 +219,10 @@ export type ApplicantIdentity = {
 
 export type FamilyAdultDetails = {
   fullName: string;
+  firstName?: string;
+  paternalLastName?: string;
+  maternalLastName?: string;
+  maritalStatus?: string;
   rut: string;
   email: string;
   phone: string;
@@ -254,6 +258,7 @@ export type PrekinderApplicationDetails = {
   hasSiblingsInSchool: boolean;
   inclusionStudent?: boolean;
   siblingsInSchoolDetails?: string;
+  parentsSeparated: boolean;
   father: FamilyAdultDetails;
   mother: FamilyAdultDetails;
   supporter: ResponsibleAdultDetails;
