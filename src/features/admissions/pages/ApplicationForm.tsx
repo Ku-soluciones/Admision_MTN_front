@@ -1051,17 +1051,34 @@ const ApplicationFormContent: React.FC = () => {
                     }, '');
                 }
                 clientSubmissionIdRef.current = applicationIntentId;
+                let existingDraft: any = null;
                 if (isPrekinder) {
+                    draftDiscardingRef.current = true;
                     try {
-                        await deleteServerDraftSafely();
+                        existingDraft = await prekinderApi.applicationDraft(activePrekinderOption!.processId);
                     } catch {
                         if (cancelled) return;
-                        draftDiscardingRef.current = true;
                         addNotification({
                             type: 'error',
                             title: 'No pudimos iniciar una nueva postulación',
-                            message: 'No fue posible cerrar el borrador anterior. Intenta nuevamente.',
+                            message: 'No fue posible consultar el borrador anterior. Intenta nuevamente.',
                         });
+                        return;
+                    }
+                    if (cancelled) return;
+                    if (existingDraft?.data?.__clientSubmissionId === applicationIntentId) {
+                        const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(
+                            existingDraft.data, activePrekinderOption!.academicYear));
+                        setData(restoredData);
+                        setCurrentStep(safeParentResumeStep(restoredData,
+                            Math.min(existingDraft.currentSection, steps.length - 1),
+                            (date) => !validateAdultBirthDate(date)));
+                        serverDraftVersionRef.current = existingDraft.version;
+                        setServerDraftVersion(existingDraft.version);
+                        setShowAuthForm(false);
+                        setIsAddingAnotherChild(true);
+                        draftDiscardingRef.current = false;
+                        navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
                         return;
                     }
                 } else {
@@ -1166,7 +1183,7 @@ const ApplicationFormContent: React.FC = () => {
                     setHasUnsavedChanges(true);
                     try {
                         const savedDraft = await prekinderApi.saveApplicationDraft(
-                            activePrekinderOption.processId, 0, nextData, serverDraftVersionRef.current,
+                            activePrekinderOption.processId, 0, nextData, existingDraft?.version,
                             initialDraftController.signal);
                         if (cancelled) return;
                         serverDraftVersionRef.current = savedDraft.version;
@@ -1175,6 +1192,20 @@ const ApplicationFormContent: React.FC = () => {
                         setIsSaving(false);
                     } catch {
                         if (cancelled) return;
+                        const concurrentDraft = await prekinderApi.applicationDraft(activePrekinderOption.processId)
+                            .catch(() => null);
+                        if (concurrentDraft?.data?.__clientSubmissionId === applicationIntentId) {
+                            const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(
+                                concurrentDraft.data, activePrekinderOption.academicYear));
+                            setData(restoredData);
+                            serverDraftVersionRef.current = concurrentDraft.version;
+                            setServerDraftVersion(concurrentDraft.version);
+                            setHasUnsavedChanges(false);
+                            setIsSaving(false);
+                            draftDiscardingRef.current = false;
+                            navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+                            return;
+                        }
                         setIsSaving(false);
                         setHasUnsavedChanges(true);
                         addNotification({
