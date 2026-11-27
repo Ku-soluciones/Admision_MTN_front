@@ -1183,7 +1183,7 @@ const ApplicationFormContent: React.FC = () => {
                     setHasUnsavedChanges(true);
                     try {
                         const savedDraft = await prekinderApi.saveApplicationDraft(
-                            activePrekinderOption.processId, 0, nextData, existingDraft?.version,
+                            activePrekinderOption.processId, 0, nextData, existingDraft?.version ?? 0,
                             initialDraftController.signal);
                         if (cancelled) return;
                         serverDraftVersionRef.current = savedDraft.version;
@@ -1194,10 +1194,14 @@ const ApplicationFormContent: React.FC = () => {
                         if (cancelled) return;
                         const concurrentDraft = await prekinderApi.applicationDraft(activePrekinderOption.processId)
                             .catch(() => null);
+                        if (cancelled) return;
                         if (concurrentDraft?.data?.__clientSubmissionId === applicationIntentId) {
                             const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(
                                 concurrentDraft.data, activePrekinderOption.academicYear));
                             setData(restoredData);
+                            setCurrentStep(safeParentResumeStep(restoredData,
+                                Math.min(concurrentDraft.currentSection, steps.length - 1),
+                                (date) => !validateAdultBirthDate(date)));
                             serverDraftVersionRef.current = concurrentDraft.version;
                             setServerDraftVersion(concurrentDraft.version);
                             setHasUnsavedChanges(false);
