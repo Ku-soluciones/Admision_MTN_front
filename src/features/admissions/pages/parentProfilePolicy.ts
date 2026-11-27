@@ -52,7 +52,13 @@ export function normalizeParentProfile(source?: ParentProfileSource | null): Par
 }
 
 export function normalizeAccountParentProfile(firstName?: string | null, lastName?: string | null): ParentProfile {
-  return normalizeParentProfile({ fullName: [clean(firstName), clean(lastName)].filter(Boolean).join(' ') });
+  const surnames = clean(lastName).split(/\s+/).filter(Boolean);
+  const paternalLastName = surnames.length > 1 ? surnames.slice(0, -1).join(' ') : surnames[0] ?? '';
+  const maternalLastName = surnames.length > 1 ? surnames.at(-1) ?? '' : '';
+  const profile = {
+    firstName: clean(firstName), paternalLastName, maternalLastName, maritalStatus: '',
+  };
+  return { ...profile, fullName: composeParentFullName(profile), legacyOnly: false };
 }
 
 export function parentPayload(profile: Pick<ParentProfile, 'firstName' | 'paternalLastName' | 'maternalLastName' | 'maritalStatus'>) {
@@ -87,7 +93,7 @@ export function normalizeParentFormData(data: Record<string, any>): NormalizedPa
 }
 
 function parentComplete(data: Record<string, any>, prefix: 'parent1' | 'parent2'): boolean {
-  return ['FirstName', 'PaternalLastName', 'MaternalLastName', 'MaritalStatus']
+  return ['FirstName', 'PaternalLastName', 'MaternalLastName', 'MaritalStatus', 'BirthDate']
     .every((suffix) => String(data[`${prefix}${suffix}`] || '').trim());
 }
 

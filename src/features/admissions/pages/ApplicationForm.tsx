@@ -456,6 +456,10 @@ const ApplicationFormContent: React.FC = () => {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const serverDraftRestoredRef = useRef(false);
+    const serverDraftVersionRef = useRef<number | undefined>();
+    const draftSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+    const pendingDraftSavesRef = useRef(0);
+    const draftSaveFailedRef = useRef(false);
 
     const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
@@ -466,18 +470,32 @@ const ApplicationFormContent: React.FC = () => {
         saveTimerRef.current = setTimeout(() => {
             setHasUnsavedChanges(true);
             setIsSaving(true);
-            prekinderApi.saveApplicationDraft(activePrekinderOption.processId, currentStep, draftData, serverDraftVersion)
+            pendingDraftSavesRef.current += 1;
+            const processId = activePrekinderOption.processId;
+            const section = currentStep;
+            const save = draftSaveQueueRef.current.then(() =>
+                prekinderApi.saveApplicationDraft(processId, section, draftData, serverDraftVersionRef.current)
+            );
+            draftSaveQueueRef.current = save.then(() => undefined, () => undefined);
+            save
                 .then((draft) => {
+                    draftSaveFailedRef.current = false;
+                    serverDraftVersionRef.current = draft.version;
                     setServerDraftVersion(draft.version);
-                    setHasUnsavedChanges(false);
-                    setIsSaving(false);
                 })
                 .catch(() => {
-                    setHasUnsavedChanges(false);
-                    setIsSaving(false);
+                    draftSaveFailedRef.current = true;
+                    setHasUnsavedChanges(true);
+                })
+                .finally(() => {
+                    pendingDraftSavesRef.current -= 1;
+                    if (pendingDraftSavesRef.current === 0) {
+                        setIsSaving(false);
+                        setHasUnsavedChanges(draftSaveFailedRef.current);
+                    }
                 });
         }, 650);
-    }, [isPrekinder, activePrekinderOption, data, currentStep, serverDraftVersion]);
+    }, [isPrekinder, activePrekinderOption, data, currentStep]);
     const documentTypesConfig = useMemo(() => {
         if (!isPrekinder) return getDocumentTypesConfig();
         return (activePrekinderOption?.requiredDocuments || []).map((key) => ({
@@ -506,6 +524,7 @@ const ApplicationFormContent: React.FC = () => {
             const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear));
             setData(restoredData);
             setCurrentStep(safeParentResumeStep(restoredData, Math.min(draft.currentSection, steps.length - 1)));
+            serverDraftVersionRef.current = draft.version;
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
             window.setTimeout(() => setDraftRestored(false), 6000);
@@ -1577,6 +1596,7 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 7: Documentación
             case 7:
+                if (safeParentResumeStep(data, 8) !== 8) return false;
                 if (isPrekinder) {
                     return documentTypesConfig.length > 0 && documentTypesConfig
                         .filter((document) => document.required)

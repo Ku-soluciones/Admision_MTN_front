@@ -46,7 +46,11 @@ test('migra un borrador histórico de ambos padres sin perder los demás campos'
 test('separa los dos apellidos entregados juntos por la cuenta', () => {
   assert.deepEqual(normalizeAccountParentProfile('Juan Carlos', 'Pérez González'), {
     firstName: 'Juan Carlos', paternalLastName: 'Pérez', maternalLastName: 'González',
-    maritalStatus: '', fullName: 'Juan Carlos Pérez González', legacyOnly: true,
+    maritalStatus: '', fullName: 'Juan Carlos Pérez González', legacyOnly: false,
+  });
+  assert.deepEqual(normalizeAccountParentProfile('Juan Carlos', 'Pérez'), {
+    firstName: 'Juan Carlos', paternalLastName: 'Pérez', maternalLastName: '',
+    maritalStatus: '', fullName: 'Juan Carlos Pérez', legacyOnly: false,
   });
 });
 
@@ -54,11 +58,20 @@ test('reanuda un borrador avanzado en el primer perfil parental incompleto', () 
   const completeFather = {
     parent1FirstName: 'Juan', parent1PaternalLastName: 'Pérez',
     parent1MaternalLastName: 'Soto', parent1MaritalStatus: 'MARRIED',
+    parent1BirthDate: '1980-01-01',
   };
   assert.equal(safeParentResumeStep({ ...completeFather }, 7), 4);
   assert.equal(safeParentResumeStep({
     ...completeFather,
     parent2FirstName: 'Ana', parent2PaternalLastName: 'Díaz',
     parent2MaternalLastName: 'López', parent2MaritalStatus: 'SINGLE',
+    parent2BirthDate: '1982-01-01',
   }, 7), 7);
+});
+
+test('reanuda en el padre si falta una fecha de nacimiento obligatoria', () => {
+  assert.equal(safeParentResumeStep({
+    parent1FirstName: 'Juan', parent1PaternalLastName: 'Pérez',
+    parent1MaternalLastName: 'Soto', parent1MaritalStatus: 'MARRIED',
+  }, 7), 3);
 });

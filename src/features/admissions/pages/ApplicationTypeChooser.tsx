@@ -111,8 +111,9 @@ const ApplicationTypeChooser = () => {
 
                 <section className="mt-8 grid overflow-hidden rounded-2xl border border-gray-200 bg-blanco-pureza md:grid-cols-2" aria-label="Tipos de postulación">
                     {activePrekinder ? (
-                        <a
-                            href={appUrls.prekinderApplication}
+                        <Link
+                            to={appUrls.prekinderApplication}
+                            state={location.state}
                             className="group flex min-h-72 flex-col p-6 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-azul-monte-tabor sm:p-8"
                         >
                             <School className="text-dorado-nazaret" size={34} aria-hidden="true" />
@@ -124,7 +125,7 @@ const ApplicationTypeChooser = () => {
                                 Comenzar postulación Prekínder
                                 <ArrowRight className="transition-transform group-hover:translate-x-1" size={20} aria-hidden="true" />
                             </span>
-                        </a>
+                        </Link>
                     ) : (
                         <div className="flex min-h-72 flex-col bg-gray-50 p-6 sm:p-8" aria-disabled="true">
                             {prekinderAvailabilityLoading ? (

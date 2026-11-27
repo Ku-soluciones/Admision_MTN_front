@@ -283,7 +283,7 @@ export default function PrekinderApp() {
         )}
         <Route
           path="/prekinder/postular"
-          element={<Navigate to="/postulacion?proceso=prekinder" replace />}
+          element={<Navigate to="/postulacion?proceso=prekinder" state={location.state} replace />}
         />
         <Route
           path="/prekinder/oferta"
