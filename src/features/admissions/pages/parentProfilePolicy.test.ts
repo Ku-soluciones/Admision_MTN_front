@@ -87,10 +87,10 @@ test('reanuda en el perfil parental cuando la fecha no es válida', () => {
 });
 
 test('la precarga de otro hijo conserva los campos obligatorios del proceso PK', () => {
-  assert.deepEqual(prekinderFamilyPrefillProcessFields({}, '', 'SIBLINGS'), {
+  assert.deepEqual(prekinderFamilyPrefillProcessFields('', 'SIBLINGS'), {
     grade: 'PRE_KINDER', admissionPreference: 'NINGUNA', hasSiblingsInSchool: true,
   });
-  assert.deepEqual(prekinderFamilyPrefillProcessFields({}, 'HIJO_EX_ALUMNO', 'STAFF_OR_ALUMNI'), {
+  assert.deepEqual(prekinderFamilyPrefillProcessFields('HIJO_EX_ALUMNO', 'STAFF_OR_ALUMNI'), {
     grade: 'PRE_KINDER', admissionPreference: 'HIJO_EX_ALUMNO', hasSiblingsInSchool: false,
   });
 });

@@ -108,7 +108,6 @@ export function safeParentResumeStep(
 }
 
 export function prekinderFamilyPrefillProcessFields(
-  current: Record<string, any>,
   familyPreference: string | undefined,
   waveType: 'SIBLINGS' | 'STAFF_OR_ALUMNI' | 'NEW_FAMILIES',
 ) {

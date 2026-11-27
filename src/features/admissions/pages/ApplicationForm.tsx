@@ -697,6 +697,7 @@ const ApplicationFormContent: React.FC = () => {
 
     // Helper function to update fields
     const updateField = useCallback((name: string, value: any) => {
+        if (draftDiscardingRef.current) return;
         // Apply uppercase transformation for specific fields
         const processedValue = uppercaseFields.includes(name) && typeof value === 'string'
             ? toUpperCase(value)
@@ -1042,6 +1043,7 @@ const ApplicationFormContent: React.FC = () => {
                     try {
                         await deleteServerDraftSafely();
                     } catch {
+                        draftDiscardingRef.current = true;
                         addNotification({
                             type: 'error',
                             title: 'No pudimos iniciar una nueva postulación',
@@ -1080,14 +1082,12 @@ const ApplicationFormContent: React.FC = () => {
                 // Pre-llenar datos familiares (padres, apoderado, sostenedor)
                 // Y también pre-llenar la dirección del estudiante (típicamente la misma que la familia)
                 // Y datos de residencia geográfica de la postulación anterior
-                draftDiscardingRef.current = false;
-                setData((current: any) => {
-                    const nextData = {
-                    ...current,
+                const nextData = {
+                    ...data,
                     __clientSubmissionId: clientSubmissionIdRef.current,
                     ...(isPrekinder && activePrekinderOption
-                        ? prekinderFamilyPrefillProcessFields(current, familyData.admissionPreference, activePrekinderOption.waveType)
-                        : { grade: current.grade }),
+                        ? prekinderFamilyPrefillProcessFields(familyData.admissionPreference, activePrekinderOption.waveType)
+                        : { grade: data.grade }),
                     applicationYear: resolveApplicationYearForFlow(
                         isPrekinder,
                         activePrekinderOption?.academicYear,
@@ -1105,7 +1105,7 @@ const ApplicationFormContent: React.FC = () => {
                     // Admission preference (pre-filled from previous application, editable)
                     ...(!isPrekinder ? {
                         admissionPreference: familyData.admissionPreference || '',
-                        hasSiblingsInSchool: current.hasSiblingsInSchool,
+                        hasSiblingsInSchool: data.hasSiblingsInSchool,
                     } : {}),
 
                     // Father data (parent1)
@@ -1146,10 +1146,30 @@ const ApplicationFormContent: React.FC = () => {
                     guardianPhone: familyData.guardian?.phone || '',
                     guardianRut: familyData.guardian?.rut || '',
                     guardianRelation: (familyData.guardian?.relationship || '').toLowerCase()
-                    };
-                    if (isPrekinder) scheduleDraftSave(nextData);
-                    return nextData;
-                });
+                };
+                setData(nextData);
+                if (isPrekinder && activePrekinderOption) {
+                    setIsSaving(true);
+                    setHasUnsavedChanges(true);
+                    try {
+                        const savedDraft = await prekinderApi.saveApplicationDraft(
+                            activePrekinderOption.processId, 0, nextData, serverDraftVersionRef.current);
+                        serverDraftVersionRef.current = savedDraft.version;
+                        setServerDraftVersion(savedDraft.version);
+                        setHasUnsavedChanges(false);
+                        setIsSaving(false);
+                    } catch {
+                        setIsSaving(false);
+                        setHasUnsavedChanges(true);
+                        addNotification({
+                            type: 'error',
+                            title: 'No pudimos guardar la nueva postulación',
+                            message: 'Recarga la página para intentarlo nuevamente.',
+                        });
+                        return;
+                    }
+                }
+                draftDiscardingRef.current = false;
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
 
                 return; // Exit early - no need to check edit mode
@@ -3891,6 +3911,7 @@ const ApplicationFormContent: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                     void (async () => {
+                                        if (draftDiscardingRef.current) return;
                                         if (isPrekinder && activePrekinderOption) {
                                             try {
                                                 await deleteServerDraftSafely();
@@ -3908,7 +3929,7 @@ const ApplicationFormContent: React.FC = () => {
                                         setData(isPrekinder && activePrekinderOption ? {
                                             __clientSubmissionId: clientSubmissionIdRef.current,
                                             applicationYear: resolvePrekinderAcademicContext(activePrekinderOption).applicationYear,
-                                            ...prekinderFamilyPrefillProcessFields({}, undefined, activePrekinderOption.waveType),
+                                            ...prekinderFamilyPrefillProcessFields(undefined, activePrekinderOption.waveType),
                                         } : {});
                                         draftDiscardingRef.current = false;
                                         setSubmittedApplicationId(null);
