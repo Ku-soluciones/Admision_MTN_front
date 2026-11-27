@@ -1183,7 +1183,7 @@ const ApplicationFormContent: React.FC = () => {
                     setHasUnsavedChanges(true);
                     try {
                         const savedDraft = await prekinderApi.saveApplicationDraft(
-                            activePrekinderOption.processId, 0, nextData, existingDraft?.version ?? 0,
+                            activePrekinderOption.processId, 0, nextData, existingDraft?.version ?? -1,
                             initialDraftController.signal);
                         if (cancelled) return;
                         serverDraftVersionRef.current = savedDraft.version;
