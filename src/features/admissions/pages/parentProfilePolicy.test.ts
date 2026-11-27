@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { composeParentFullName, normalizeParentFormData, normalizeParentProfile, parentPayload } from './parentProfilePolicy.ts';
+import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, safeParentResumeStep } from './parentProfilePolicy.ts';
 
 test('restaura el perfil separado entregado por el contrato nuevo', () => {
   assert.deepEqual(normalizeParentProfile({
@@ -41,4 +41,24 @@ test('migra un borrador histórico de ambos padres sin perder los demás campos'
   assert.equal(restored.parent1BirthDate, '1980-01-01');
   assert.equal(restored.applicationYear, '2028');
   assert.equal(restored.parentsSeparated, false);
+});
+
+test('separa los dos apellidos entregados juntos por la cuenta', () => {
+  assert.deepEqual(normalizeAccountParentProfile('Juan Carlos', 'Pérez González'), {
+    firstName: 'Juan Carlos', paternalLastName: 'Pérez', maternalLastName: 'González',
+    maritalStatus: '', fullName: 'Juan Carlos Pérez González', legacyOnly: true,
+  });
+});
+
+test('reanuda un borrador avanzado en el primer perfil parental incompleto', () => {
+  const completeFather = {
+    parent1FirstName: 'Juan', parent1PaternalLastName: 'Pérez',
+    parent1MaternalLastName: 'Soto', parent1MaritalStatus: 'MARRIED',
+  };
+  assert.equal(safeParentResumeStep({ ...completeFather }, 7), 4);
+  assert.equal(safeParentResumeStep({
+    ...completeFather,
+    parent2FirstName: 'Ana', parent2PaternalLastName: 'Díaz',
+    parent2MaternalLastName: 'López', parent2MaritalStatus: 'SINGLE',
+  }, 7), 7);
 });

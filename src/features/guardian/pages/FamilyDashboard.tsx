@@ -386,6 +386,7 @@ const FamilyDashboard: React.FC = () => {
         mother: firstApplication.mother,
         guardian: firstApplication.guardian,
         supporter: firstApplication.supporter,
+        parentsSeparated: firstApplication.parentsSeparated === true,
         residence: {
           address: firstApplication.student?.address || '',
           pais: firstApplication.student?.pais || 'Chile',

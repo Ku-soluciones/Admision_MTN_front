@@ -51,12 +51,23 @@ export function normalizeParentProfile(source?: ParentProfileSource | null): Par
   };
 }
 
+export function normalizeAccountParentProfile(firstName?: string | null, lastName?: string | null): ParentProfile {
+  return normalizeParentProfile({ fullName: [clean(firstName), clean(lastName)].filter(Boolean).join(' ') });
+}
+
 export function parentPayload(profile: Pick<ParentProfile, 'firstName' | 'paternalLastName' | 'maternalLastName' | 'maritalStatus'>) {
   return { ...profile, fullName: composeParentFullName(profile) };
 }
 
-export function normalizeParentFormData<T extends Record<string, any>>(data: T): T {
-  const normalized = { ...data };
+export type NormalizedParentFormData = Record<string, unknown> & {
+  parent1FirstName: string; parent1PaternalLastName: string; parent1MaternalLastName: string;
+  parent1MaritalStatus: string; parent1Name: string;
+  parent2FirstName: string; parent2PaternalLastName: string; parent2MaternalLastName: string;
+  parent2MaritalStatus: string; parent2Name: string; parentsSeparated: boolean;
+};
+
+export function normalizeParentFormData(data: Record<string, any>): NormalizedParentFormData {
+  const normalized: Record<string, unknown> = { ...data };
   for (const prefix of ['parent1', 'parent2'] as const) {
     const profile = normalizeParentProfile({
       fullName: data[`${prefix}Name`],
@@ -72,5 +83,16 @@ export function normalizeParentFormData<T extends Record<string, any>>(data: T):
     normalized[`${prefix}Name`] = profile.fullName;
   }
   normalized.parentsSeparated = data.parentsSeparated === true;
-  return normalized;
+  return normalized as NormalizedParentFormData;
+}
+
+function parentComplete(data: Record<string, any>, prefix: 'parent1' | 'parent2'): boolean {
+  return ['FirstName', 'PaternalLastName', 'MaternalLastName', 'MaritalStatus']
+    .every((suffix) => String(data[`${prefix}${suffix}`] || '').trim());
+}
+
+export function safeParentResumeStep(data: Record<string, any>, requestedStep: number): number {
+  if (requestedStep > 3 && !parentComplete(data, 'parent1')) return 3;
+  if (requestedStep > 4 && !parentComplete(data, 'parent2')) return 4;
+  return requestedStep;
 }

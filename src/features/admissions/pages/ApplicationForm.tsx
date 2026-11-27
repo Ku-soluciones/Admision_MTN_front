@@ -24,7 +24,7 @@ import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLev
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
 import { commitSupporterSelection } from './supporterSelection';
-import { composeParentFullName, normalizeParentFormData, normalizeParentProfile, parentPayload } from './parentProfilePolicy';
+import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, safeParentResumeStep } from './parentProfilePolicy';
 import SupporterRelationSelector from './SupporterRelationSelector';
 import {
     prekinderApi,
@@ -503,8 +503,9 @@ const ApplicationFormContent: React.FC = () => {
                 ? draft.data.__clientSubmissionId
                 : crypto.randomUUID();
             clientSubmissionIdRef.current = restoredSubmissionId;
-            setData(normalizeParentFormData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear)));
-            setCurrentStep(Math.min(draft.currentSection, steps.length - 1));
+            const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear));
+            setData(restoredData);
+            setCurrentStep(safeParentResumeStep(restoredData, Math.min(draft.currentSection, steps.length - 1)));
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
             window.setTimeout(() => setDraftRestored(false), 6000);
@@ -651,6 +652,7 @@ const ApplicationFormContent: React.FC = () => {
                     maternalLastName: newData[`${prefix}MaternalLastName`] || '',
                 });
             }
+            if (isPrekinder) scheduleDraftSave(newData);
             return newData;
         });
 
@@ -663,10 +665,6 @@ const ApplicationFormContent: React.FC = () => {
                 }
                 return prev;
             });
-        }
-        // Guardado automático en tiempo real para PK
-        if (isPrekinder) {
-            scheduleDraftSave();
         }
     }, [isPrekinder, scheduleDraftSave]);
 
@@ -884,17 +882,25 @@ const ApplicationFormContent: React.FC = () => {
         address: string;
         profession: string;
     }) => {
-        updateField('parent1Email', userData.email);
-        const profile = normalizeParentProfile({
-            firstName: userData.firstName,
-            paternalLastName: userData.lastName,
+        const profile = normalizeAccountParentProfile(userData.firstName, userData.lastName);
+        setData((current: any) => {
+            // Una postulación restaurada o en edición es la fuente de verdad del padre.
+            if (current.parent1FirstName || current.parent1PaternalLastName || current.parent1MaternalLastName) {
+                return current;
+            }
+            return {
+                ...current,
+                parent1Email: current.parent1Email || userData.email,
+                parent1FirstName: profile.firstName.toUpperCase(),
+                parent1PaternalLastName: profile.paternalLastName.toUpperCase(),
+                parent1MaternalLastName: profile.maternalLastName.toUpperCase(),
+                parent1Name: profile.fullName.toUpperCase(),
+                parent1Phone: current.parent1Phone || userData.phone,
+                parent1Rut: current.parent1Rut || userData.rut,
+                parent1Address: current.parent1Address || userData.address.toUpperCase(),
+            };
         });
-        updateField('parent1FirstName', profile.firstName.toUpperCase());
-        updateField('parent1PaternalLastName', profile.paternalLastName.toUpperCase());
-        updateField('parent1Phone', userData.phone);
-        updateField('parent1Rut', userData.rut);
-        updateField('parent1Address', userData.address.toUpperCase());
-    }, [updateField]);
+    }, []);
 
     // Verificar si el usuario ya está autenticado
     useEffect(() => {
@@ -1291,9 +1297,10 @@ const ApplicationFormContent: React.FC = () => {
             // No pisar datos ya existentes si el efecto del perfil corrió antes
             if (parsed?.data && Object.keys(data || {}).length === 0) {
                 skipNextSaveRef.current = true;
-                setData(normalizeParentFormData(parsed.data));
+                const restoredData = normalizeParentFormData(parsed.data);
+                setData(restoredData);
                 if (typeof parsed.currentStep === 'number') {
-                    setCurrentStep(Math.min(parsed.currentStep, steps.length - 1));
+                    setCurrentStep(safeParentResumeStep(restoredData, Math.min(parsed.currentStep, steps.length - 1)));
                 }
                 setDraftRestored(true);
                 // Ocultar el aviso solo
@@ -1579,7 +1586,7 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 8: Confirmación
             case 8:
-                return true;
+                return safeParentResumeStep(data, 8) === 8;
 
             default:
                 return true;
