@@ -463,6 +463,15 @@ const ApplicationFormContent: React.FC = () => {
     const draftSaveFailedRef = useRef(false);
     const draftSaveScheduledRef = useRef(false);
     const draftDiscardingRef = useRef(false);
+    const didRestoreDraftRef = useRef(false);
+    const skipNextSaveRef = useRef(false);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const draftKey = useMemo(() => {
+        const owner = user?.id ?? user?.email ?? 'guest';
+        const flow = isPrekinder ? 'prekinder' : 'regular';
+        return getStorageKey(`admission-draft:${flow}:${owner}`);
+    }, [isPrekinder, user?.id, user?.email]);
 
     const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
@@ -1329,16 +1338,6 @@ const ApplicationFormContent: React.FC = () => {
     // Persiste `data` + `currentStep` en localStorage por apoderado para que
     // recargar la página, cerrar la pestaña o caer la sesión no destruya el
     // progreso de 9 pasos. Se limpia al enviar con éxito o en modo edición.
-    const draftKey = useMemo(() => {
-        const owner = user?.id ?? user?.email ?? 'guest';
-        const flow = isPrekinder ? 'prekinder' : 'regular';
-        return getStorageKey(`admission-draft:${flow}:${owner}`);
-    }, [isPrekinder, user?.id, user?.email]);
-
-    const didRestoreDraftRef = useRef(false);
-    const skipNextSaveRef = useRef(false);
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     // Limpiar timer pendiente al desmontar el componente
     useEffect(() => {
         return () => {
