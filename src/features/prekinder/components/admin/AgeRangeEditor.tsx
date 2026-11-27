@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, Calendar, Info, Loader2 } from "lucide-react";
 import type { ProcessConfiguration } from "../../services/api";
 
-const MIN_AGE_MONTHS = 42;
+const MIN_AGE_MONTHS = 36;
+const MAX_MINIMUM_AGE_MONTHS = 84;
+const MAX_AGE_MONTHS = 96;
 
 interface AgeRangeEditorProps {
   configuration: ProcessConfiguration;
@@ -65,7 +67,7 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
               className="control w-full pl-9"
               type="number"
               min={MIN_AGE_MONTHS}
-              max={120}
+              max={MAX_MINIMUM_AGE_MONTHS}
               value={form.minimumAgeMonths}
               onChange={(e) => update("minimumAgeMonths", Number(e.target.value))}
               required
@@ -88,20 +90,21 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
               className="control w-full pl-9"
               type="number"
               min={form.minimumAgeMonths}
-              max={120}
+              max={MAX_AGE_MONTHS}
               value={form.maximumAgeMonths}
               onChange={(e) => update("maximumAgeMonths", Number(e.target.value))}
+              required
             />
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Si está vacío, no hay límite máximo de edad.
+            Obligatoria. Debe estar entre la edad mínima y {MAX_AGE_MONTHS} meses.
           </p>
         </div>
 
         {/* Fecha de referencia */}
         <div>
           <label className="field-label" htmlFor="age-ref-date">
-            Fecha de referencia de edad
+            Fecha de referencia de edad <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -111,6 +114,7 @@ export default function AgeRangeEditor({ configuration, busy, onSave }: AgeRange
               type="date"
               value={form.ageReferenceDate ?? ""}
               onChange={(e) => update("ageReferenceDate", e.target.value || null)}
+              required
             />
           </div>
           <p className="mt-1 text-xs text-slate-500">
