@@ -89,7 +89,7 @@ const maritalStatusOptions = [
     { value: 'SINGLE', label: 'Soltero/a' },
     { value: 'MARRIED', label: 'Casado/a' },
     { value: 'CIVIL_UNION', label: 'Acuerdo de unión civil' },
-    { value: 'SEPARATED', label: 'Separado/a' },
+    { value: 'SEPARATED', label: 'Separado/a legalmente' },
     { value: 'DIVORCED', label: 'Divorciado/a' },
     { value: 'WIDOWED', label: 'Viudo/a' },
     { value: 'OTHER', label: 'Otro' },
@@ -3365,15 +3365,6 @@ const ApplicationFormContent: React.FC = () => {
                                 error={errors.parent1Phone}
                             />
                         </div>
-                        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                            <input
-                                type="checkbox"
-                                checked={data.parentsSeparated === true}
-                                onChange={(e) => updateField('parentsSeparated', e.target.checked)}
-                                className="mt-1"
-                            />
-                            <span className="text-sm text-gray-700">Los padres están separados</span>
-                        </label>
                         <div className="mt-4">
                             <Input
                                 id="parent1-birth-date"
