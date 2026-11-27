@@ -1080,7 +1080,9 @@ const ApplicationFormContent: React.FC = () => {
                 // Pre-llenar datos familiares (padres, apoderado, sostenedor)
                 // Y también pre-llenar la dirección del estudiante (típicamente la misma que la familia)
                 // Y datos de residencia geográfica de la postulación anterior
-                setData((current: any) => ({
+                draftDiscardingRef.current = false;
+                setData((current: any) => {
+                    const nextData = {
                     ...current,
                     __clientSubmissionId: clientSubmissionIdRef.current,
                     ...(isPrekinder && activePrekinderOption
@@ -1144,8 +1146,10 @@ const ApplicationFormContent: React.FC = () => {
                     guardianPhone: familyData.guardian?.phone || '',
                     guardianRut: familyData.guardian?.rut || '',
                     guardianRelation: (familyData.guardian?.relationship || '').toLowerCase()
-                }));
-                draftDiscardingRef.current = false;
+                    };
+                    if (isPrekinder) scheduleDraftSave(nextData);
+                    return nextData;
+                });
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
 
                 return; // Exit early - no need to check edit mode
