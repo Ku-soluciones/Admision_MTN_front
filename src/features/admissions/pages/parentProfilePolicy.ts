@@ -97,8 +97,26 @@ function parentComplete(data: Record<string, any>, prefix: 'parent1' | 'parent2'
     .every((suffix) => String(data[`${prefix}${suffix}`] || '').trim());
 }
 
-export function safeParentResumeStep(data: Record<string, any>, requestedStep: number): number {
-  if (requestedStep > 3 && !parentComplete(data, 'parent1')) return 3;
-  if (requestedStep > 4 && !parentComplete(data, 'parent2')) return 4;
+export function safeParentResumeStep(
+  data: Record<string, any>,
+  requestedStep: number,
+  birthDateValid: (value: string) => boolean = (value) => Boolean(value),
+): number {
+  if (requestedStep > 3 && (!parentComplete(data, 'parent1') || !birthDateValid(String(data.parent1BirthDate || '')))) return 3;
+  if (requestedStep > 4 && (!parentComplete(data, 'parent2') || !birthDateValid(String(data.parent2BirthDate || '')))) return 4;
   return requestedStep;
+}
+
+export function prekinderFamilyPrefillProcessFields(
+  current: Record<string, any>,
+  familyPreference: string | undefined,
+  waveType: 'SIBLINGS' | 'STAFF_OR_ALUMNI' | 'NEW_FAMILIES',
+) {
+  return {
+    grade: 'PRE_KINDER',
+    admissionPreference: waveType === 'STAFF_OR_ALUMNI'
+      ? (['HIJO_FUNCIONARIO', 'HIJO_EX_ALUMNO'].includes(familyPreference || '') ? familyPreference : '')
+      : 'NINGUNA',
+    hasSiblingsInSchool: waveType === 'SIBLINGS',
+  };
 }

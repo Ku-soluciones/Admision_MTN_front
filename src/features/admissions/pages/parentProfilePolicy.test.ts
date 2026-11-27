@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, safeParentResumeStep } from './parentProfilePolicy.ts';
+import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, prekinderFamilyPrefillProcessFields, safeParentResumeStep } from './parentProfilePolicy.ts';
 
 test('restaura el perfil separado entregado por el contrato nuevo', () => {
   assert.deepEqual(normalizeParentProfile({
@@ -74,4 +74,23 @@ test('reanuda en el padre si falta una fecha de nacimiento obligatoria', () => {
     parent1FirstName: 'Juan', parent1PaternalLastName: 'Pérez',
     parent1MaternalLastName: 'Soto', parent1MaritalStatus: 'MARRIED',
   }, 7), 3);
+});
+
+test('reanuda en el perfil parental cuando la fecha no es válida', () => {
+  const complete = {
+    parent1FirstName: 'Juan', parent1PaternalLastName: 'Pérez', parent1MaternalLastName: 'Soto',
+    parent1MaritalStatus: 'MARRIED', parent1BirthDate: '2099-01-01',
+    parent2FirstName: 'Ana', parent2PaternalLastName: 'Díaz', parent2MaternalLastName: 'López',
+    parent2MaritalStatus: 'SINGLE', parent2BirthDate: '1982-01-01',
+  };
+  assert.equal(safeParentResumeStep(complete, 7, (date) => date !== '2099-01-01'), 3);
+});
+
+test('la precarga de otro hijo conserva los campos obligatorios del proceso PK', () => {
+  assert.deepEqual(prekinderFamilyPrefillProcessFields({}, '', 'SIBLINGS'), {
+    grade: 'PRE_KINDER', admissionPreference: 'NINGUNA', hasSiblingsInSchool: true,
+  });
+  assert.deepEqual(prekinderFamilyPrefillProcessFields({}, 'HIJO_EX_ALUMNO', 'STAFF_OR_ALUMNI'), {
+    grade: 'PRE_KINDER', admissionPreference: 'HIJO_EX_ALUMNO', hasSiblingsInSchool: false,
+  });
 });

@@ -24,7 +24,7 @@ import { toBackendGradeLevel } from '../../../packages/shared-utils/src/gradeLev
 import { validateAdultBirthDate } from '../../../packages/shared-utils/src/parentBirthDate';
 import { resolveApplicationEditMode } from './applicationFormMode';
 import { commitSupporterSelection } from './supporterSelection';
-import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, safeParentResumeStep } from './parentProfilePolicy';
+import { composeParentFullName, normalizeAccountParentProfile, normalizeParentFormData, normalizeParentProfile, parentPayload, prekinderFamilyPrefillProcessFields, safeParentResumeStep } from './parentProfilePolicy';
 import SupporterRelationSelector from './SupporterRelationSelector';
 import {
     prekinderApi,
@@ -380,7 +380,7 @@ const ApplicationFormContent: React.FC = () => {
     const [uploadedDocumentCount, setUploadedDocumentCount] = useState(0);
     const [successfullyUploadedDocumentTypes, setSuccessfullyUploadedDocumentTypes] = useState<Set<string>>(new Set());
     const [existingDocuments, setExistingDocuments] = useState<any[]>([]);
-    const clientSubmissionIdRef = useRef(crypto.randomUUID());
+    const clientSubmissionIdRef = useRef<string>(crypto.randomUUID());
 
     // Flag to indicate if user is adding another child (skip family data steps)
     const [isAddingAnotherChild, setIsAddingAnotherChild] = useState(false);
@@ -456,18 +456,22 @@ const ApplicationFormContent: React.FC = () => {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const serverDraftRestoredRef = useRef(false);
-    const serverDraftVersionRef = useRef<number | undefined>();
+    const serverDraftVersionRef = useRef<number | undefined>(undefined);
     const draftSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
     const pendingDraftSavesRef = useRef(0);
     const draftSaveFailedRef = useRef(false);
+    const draftSaveScheduledRef = useRef(false);
 
     const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
     // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
     const scheduleDraftSave = useCallback((draftData = data) => {
         if (!isPrekinder || !activePrekinderOption || !draftData || Object.keys(draftData).length === 0) return;
+        setHasUnsavedChanges(true);
+        draftSaveScheduledRef.current = true;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
+            draftSaveScheduledRef.current = false;
             setHasUnsavedChanges(true);
             setIsSaving(true);
             pendingDraftSavesRef.current += 1;
@@ -491,11 +495,26 @@ const ApplicationFormContent: React.FC = () => {
                     pendingDraftSavesRef.current -= 1;
                     if (pendingDraftSavesRef.current === 0) {
                         setIsSaving(false);
-                        setHasUnsavedChanges(draftSaveFailedRef.current);
+                        setHasUnsavedChanges(draftSaveFailedRef.current || draftSaveScheduledRef.current);
                     }
                 });
         }, 650);
     }, [isPrekinder, activePrekinderOption, data, currentStep]);
+
+    const deleteServerDraftSafely = useCallback(async () => {
+        if (!isPrekinder || !activePrekinderOption) return;
+        if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+        draftSaveScheduledRef.current = false;
+        await draftSaveQueueRef.current;
+        await prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+        serverDraftVersionRef.current = undefined;
+        setServerDraftVersion(undefined);
+        setHasUnsavedChanges(false);
+        setIsSaving(false);
+    }, [isPrekinder, activePrekinderOption?.processId]);
     const documentTypesConfig = useMemo(() => {
         if (!isPrekinder) return getDocumentTypesConfig();
         return (activePrekinderOption?.requiredDocuments || []).map((key) => ({
@@ -514,6 +533,10 @@ const ApplicationFormContent: React.FC = () => {
 
     useEffect(() => {
         if (!isPrekinder || !activePrekinderOption || serverDraftRestoredRef.current || isEditMode) return;
+        if (location.state?.prefillFamilyData) {
+            serverDraftRestoredRef.current = true;
+            return;
+        }
         serverDraftRestoredRef.current = true;
         prekinderApi.applicationDraft(activePrekinderOption.processId).then((draft) => {
             if (!draft) return;
@@ -523,7 +546,8 @@ const ApplicationFormContent: React.FC = () => {
             clientSubmissionIdRef.current = restoredSubmissionId;
             const restoredData = normalizeParentFormData(normalizePrekinderDraftYear(draft.data, activePrekinderOption.academicYear));
             setData(restoredData);
-            setCurrentStep(safeParentResumeStep(restoredData, Math.min(draft.currentSection, steps.length - 1)));
+            setCurrentStep(safeParentResumeStep(restoredData, Math.min(draft.currentSection, steps.length - 1),
+                (date) => !validateAdultBirthDate(date)));
             serverDraftVersionRef.current = draft.version;
             setServerDraftVersion(draft.version);
             setDraftRestored(true);
@@ -532,7 +556,7 @@ const ApplicationFormContent: React.FC = () => {
             // El formulario sigue disponible aunque la recuperación temporal falle.
             serverDraftRestoredRef.current = false;
         });
-    }, [isPrekinder, activePrekinderOption?.processId, isEditMode]);
+    }, [isPrekinder, activePrekinderOption?.processId, isEditMode, location.state?.prefillFamilyData]);
 
     // Advertir al cerrar/navegar si hay cambios sin guardar
     useEffect(() => {
@@ -1024,8 +1048,12 @@ const ApplicationFormContent: React.FC = () => {
                 // Pre-llenar datos familiares (padres, apoderado, sostenedor)
                 // Y también pre-llenar la dirección del estudiante (típicamente la misma que la familia)
                 // Y datos de residencia geográfica de la postulación anterior
-                setData({
+                setData((current: any) => ({
+                    ...current,
                     __clientSubmissionId: clientSubmissionIdRef.current,
+                    ...(isPrekinder && activePrekinderOption
+                        ? prekinderFamilyPrefillProcessFields(current, familyData.admissionPreference, activePrekinderOption.waveType)
+                        : { grade: current.grade }),
                     applicationYear: resolveApplicationYearForFlow(
                         isPrekinder,
                         activePrekinderOption?.academicYear,
@@ -1041,7 +1069,10 @@ const ApplicationFormContent: React.FC = () => {
                     comuna: residence.comuna || '',
 
                     // Admission preference (pre-filled from previous application, editable)
-                    admissionPreference: familyData.admissionPreference || '',
+                    ...(!isPrekinder ? {
+                        admissionPreference: familyData.admissionPreference || '',
+                        hasSiblingsInSchool: current.hasSiblingsInSchool,
+                    } : {}),
 
                     // Father data (parent1)
                     parent1Name: fatherProfile.fullName,
@@ -1081,7 +1112,7 @@ const ApplicationFormContent: React.FC = () => {
                     guardianPhone: familyData.guardian?.phone || '',
                     guardianRut: familyData.guardian?.rut || '',
                     guardianRelation: (familyData.guardian?.relationship || '').toLowerCase()
-                });
+                }));
 
                 return; // Exit early - no need to check edit mode
             }
@@ -1319,7 +1350,8 @@ const ApplicationFormContent: React.FC = () => {
                 const restoredData = normalizeParentFormData(parsed.data);
                 setData(restoredData);
                 if (typeof parsed.currentStep === 'number') {
-                    setCurrentStep(safeParentResumeStep(restoredData, Math.min(parsed.currentStep, steps.length - 1)));
+                    setCurrentStep(safeParentResumeStep(restoredData, Math.min(parsed.currentStep, steps.length - 1),
+                        (date) => !validateAdultBirthDate(date)));
                 }
                 setDraftRestored(true);
                 // Ocultar el aviso solo
@@ -1596,7 +1628,7 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 7: Documentación
             case 7:
-                if (safeParentResumeStep(data, 8) !== 8) return false;
+                if (safeParentResumeStep(data, 8, (date) => !validateAdultBirthDate(date)) !== 8) return false;
                 if (isPrekinder) {
                     return documentTypesConfig.length > 0 && documentTypesConfig
                         .filter((document) => document.required)
@@ -1606,7 +1638,7 @@ const ApplicationFormContent: React.FC = () => {
 
             // Step 8: Confirmación
             case 8:
-                return safeParentResumeStep(data, 8) === 8;
+                return safeParentResumeStep(data, 8, (date) => !validateAdultBirthDate(date)) === 8;
 
             default:
                 return true;
@@ -2002,7 +2034,7 @@ const ApplicationFormContent: React.FC = () => {
                     setUploadFailures(new Map());
                     clearDraft();
                     if (isPrekinder && activePrekinderOption) {
-                        await prekinderApi.deleteApplicationDraft(activePrekinderOption.processId).catch(() => {
+                        await deleteServerDraftSafely().catch(() => {
                             // La postulación y sus documentos ya están confirmados; el borrador residual
                             // se puede limpiar en una visita posterior sin convertir el cierre en error.
                         });
@@ -3824,9 +3856,10 @@ const ApplicationFormContent: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    void (async () => {
                                     clearDraft();
                                     if (isPrekinder && activePrekinderOption) {
-                                        void prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+                                        await deleteServerDraftSafely().catch(() => undefined);
                                     }
                                     setData({});
                                     clientSubmissionIdRef.current = crypto.randomUUID();
@@ -3837,6 +3870,7 @@ const ApplicationFormContent: React.FC = () => {
                                     setUploadedDocumentCount(0);
                                     setCurrentStep(0);
                                     setDraftRestored(false);
+                                    })();
                                 }}
                                 className="ml-1 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor rounded"
                             >
