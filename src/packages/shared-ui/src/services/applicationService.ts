@@ -21,6 +21,10 @@ export interface ApplicationRequest {
 
     // Datos del padre
     parent1Name: string;
+    parent1FirstName?: string;
+    parent1PaternalLastName?: string;
+    parent1MaternalLastName?: string;
+    parent1MaritalStatus?: string;
     parent1Rut: string;
     parent1Email: string;
     parent1Phone: string;
@@ -30,12 +34,17 @@ export interface ApplicationRequest {
 
     // Datos de la madre
     parent2Name: string;
+    parent2FirstName?: string;
+    parent2PaternalLastName?: string;
+    parent2MaternalLastName?: string;
+    parent2MaritalStatus?: string;
     parent2Rut: string;
     parent2Email: string;
     parent2Phone: string;
     parent2Address: string;
     parent2Profession: string;
     parent2BirthDate: string;
+    parentsSeparated?: boolean;
 
     // Datos del sostenedor
     supporterName: string;
@@ -97,6 +106,10 @@ export interface Application {
     };
     father: {
         fullName: string;
+        firstName?: string;
+        paternalLastName?: string;
+        maternalLastName?: string;
+        maritalStatus?: string;
         rut: string;
         email: string;
         phone: string;
@@ -106,6 +119,10 @@ export interface Application {
     };
     mother: {
         fullName: string;
+        firstName?: string;
+        paternalLastName?: string;
+        maternalLastName?: string;
+        maritalStatus?: string;
         rut: string;
         email: string;
         phone: string;
@@ -113,6 +130,7 @@ export interface Application {
         profession: string;
         birthDate?: string | null;
     };
+    parentsSeparated?: boolean;
     supporter: {
         fullName: string;
         rut: string;
@@ -513,6 +531,10 @@ class ApplicationService {
 
                 // Father data (parent1)
                 parent1Name: data.parent1Name || '',
+                parent1FirstName: data.parent1FirstName || '',
+                parent1PaternalLastName: data.parent1PaternalLastName || '',
+                parent1MaternalLastName: data.parent1MaternalLastName || '',
+                parent1MaritalStatus: data.parent1MaritalStatus || '',
                 parent1Rut: data.parent1Rut || '',
                 parent1Email: data.parent1Email || '',
                 parent1Phone: data.parent1Phone || '',
@@ -522,12 +544,17 @@ class ApplicationService {
 
                 // Mother data (parent2)
                 parent2Name: data.parent2Name || '',
+                parent2FirstName: data.parent2FirstName || '',
+                parent2PaternalLastName: data.parent2PaternalLastName || '',
+                parent2MaternalLastName: data.parent2MaternalLastName || '',
+                parent2MaritalStatus: data.parent2MaritalStatus || '',
                 parent2Rut: data.parent2Rut || '',
                 parent2Email: data.parent2Email || '',
                 parent2Phone: data.parent2Phone || '',
                 parent2Address: data.parent2Address || '',
                 parent2Profession: data.parent2Profession || '',
                 parent2BirthDate: data.parent2BirthDate || '',
+                parentsSeparated: data.parentsSeparated === true,
 
                 // Guardian data
                 guardianName: data.guardianName || '',

@@ -10,9 +10,13 @@ export type SupporterSelection = {
 
 export function applySupporterSelection(data: FamilyData, relation: string): SupporterSelection {
   const prefix = relation === 'padre' ? 'parent1' : relation === 'madre' ? 'parent2' : null;
+  const separatedName = prefix
+    ? [`${prefix}FirstName`, `${prefix}PaternalLastName`, `${prefix}MaternalLastName`]
+      .map((key) => String(data[key] || '').trim()).filter(Boolean).join(' ')
+    : '';
   return {
     supporterRelation: relation,
-    supporterName: prefix ? String(data[`${prefix}Name`] || '') : '',
+    supporterName: prefix ? String(data[`${prefix}Name`] || separatedName) : '',
     supporterEmail: prefix ? String(data[`${prefix}Email`] || '') : '',
     supporterPhone: prefix ? String(data[`${prefix}Phone`] || '') : '',
     supporterRut: prefix ? String(data[`${prefix}Rut`] || '') : '',

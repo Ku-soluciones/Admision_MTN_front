@@ -202,7 +202,8 @@ const FamilyDashboard: React.FC = () => {
             father: realApplications[0].father,
             mother: realApplications[0].mother,
             guardian: realApplications[0].guardian,
-            supporter: realApplications[0].supporter
+            supporter: realApplications[0].supporter,
+            parentsSeparated: realApplications[0].parentsSeparated === true,
           }
         }
       });

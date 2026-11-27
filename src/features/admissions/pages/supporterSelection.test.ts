@@ -63,3 +63,15 @@ test('otro parentesco limpia sólo los campos del sostenedor sin mutar la famili
   });
   assert.deepEqual(family, original);
 });
+
+test('compone el nombre del sostenedor desde los campos separados', () => {
+  const separated = {
+    parent1FirstName: 'Juan Carlos',
+    parent1PaternalLastName: 'Pérez',
+    parent1MaternalLastName: 'Soto',
+    parent1Email: 'padre@example.com',
+    parent1Phone: '+56911111111',
+    parent1Rut: '11.111.111-1',
+  };
+  assert.equal(applySupporterSelection(separated, 'padre').supporterName, 'Juan Carlos Pérez Soto');
+});
