@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Input from '../components/ui/Input';
 import RutInput from '../../admin/components/ui/RutInput';
 import Select from '../../admin/components/ui/Select';
@@ -343,6 +343,7 @@ function PrekinderEligibilityFields({
 
 const ApplicationFormContent: React.FC = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const isEditMode = resolveApplicationEditMode(location.state);
     const isPrekinder = useMemo(
         () => new URLSearchParams(location.search).get('proceso') === 'prekinder',
@@ -461,12 +462,14 @@ const ApplicationFormContent: React.FC = () => {
     const pendingDraftSavesRef = useRef(0);
     const draftSaveFailedRef = useRef(false);
     const draftSaveScheduledRef = useRef(false);
+    const draftDiscardingRef = useRef(false);
 
     const activePrekinderOption = pickPrekinderOption(prekinderOptions);
 
     // Debounced draft save — se programa en cada cambio de campo y se cancela si hay otro antes de 650ms
     const scheduleDraftSave = useCallback((draftData = data) => {
-        if (!isPrekinder || !activePrekinderOption || !draftData || Object.keys(draftData).length === 0) return;
+        if (!isPrekinder || !activePrekinderOption || draftDiscardingRef.current
+            || !draftData || Object.keys(draftData).length === 0) return;
         setHasUnsavedChanges(true);
         draftSaveScheduledRef.current = true;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -503,17 +506,23 @@ const ApplicationFormContent: React.FC = () => {
 
     const deleteServerDraftSafely = useCallback(async () => {
         if (!isPrekinder || !activePrekinderOption) return;
+        draftDiscardingRef.current = true;
         if (saveTimerRef.current) {
             clearTimeout(saveTimerRef.current);
             saveTimerRef.current = null;
         }
         draftSaveScheduledRef.current = false;
-        await draftSaveQueueRef.current;
-        await prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
-        serverDraftVersionRef.current = undefined;
-        setServerDraftVersion(undefined);
-        setHasUnsavedChanges(false);
-        setIsSaving(false);
+        try {
+            await draftSaveQueueRef.current;
+            await prekinderApi.deleteApplicationDraft(activePrekinderOption.processId);
+            serverDraftVersionRef.current = undefined;
+            setServerDraftVersion(undefined);
+            setHasUnsavedChanges(false);
+            setIsSaving(false);
+        } catch (error) {
+            draftDiscardingRef.current = false;
+            throw error;
+        }
     }, [isPrekinder, activePrekinderOption?.processId]);
     const documentTypesConfig = useMemo(() => {
         if (!isPrekinder) return getDocumentTypesConfig();
@@ -1020,6 +1029,20 @@ const ApplicationFormContent: React.FC = () => {
             // CASO 1: Agregar otro hijo - pre-llenar datos familiares
             if (location.state?.prefillFamilyData && location.state?.familyData) {
                 const familyData = location.state.familyData;
+                if (isPrekinder) {
+                    try {
+                        await deleteServerDraftSafely();
+                    } catch {
+                        addNotification({
+                            type: 'error',
+                            title: 'No pudimos iniciar una nueva postulación',
+                            message: 'No fue posible cerrar el borrador anterior. Intenta nuevamente.',
+                        });
+                        return;
+                    }
+                } else {
+                    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+                }
                 clientSubmissionIdRef.current = crypto.randomUUID();
                 setSubmittedApplicationId(null);
                 setSubmittedPrekinderApplication(null);
@@ -1113,6 +1136,8 @@ const ApplicationFormContent: React.FC = () => {
                     guardianRut: familyData.guardian?.rut || '',
                     guardianRelation: (familyData.guardian?.relationship || '').toLowerCase()
                 }));
+                draftDiscardingRef.current = false;
+                navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
 
                 return; // Exit early - no need to check edit mode
             }
@@ -1222,7 +1247,8 @@ const ApplicationFormContent: React.FC = () => {
         };
 
         loadEditModeData();
-    }, [location.state, isPrekinder, activePrekinderOption?.processId]);
+    }, [location.state, isPrekinder, activePrekinderOption?.processId, deleteServerDraftSafely,
+        draftKey, navigate, addNotification]);
 
     // Parse address from backend when studentAddress is loaded
     useEffect(() => {
@@ -1337,6 +1363,11 @@ const ApplicationFormContent: React.FC = () => {
             didRestoreDraftRef.current = true;
             return;
         }
+        if (location.state?.prefillFamilyData) {
+            try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+            didRestoreDraftRef.current = true;
+            return;
+        }
         try {
             const raw = localStorage.getItem(draftKey);
             if (!raw) {
@@ -1362,7 +1393,7 @@ const ApplicationFormContent: React.FC = () => {
         } finally {
             didRestoreDraftRef.current = true;
         }
-    }, [draftKey, isEditMode, isPrekinder]);
+    }, [draftKey, isEditMode, isPrekinder, location.state?.prefillFamilyData]);
 
     // Guardado debounced (400ms) ante cualquier cambio en data/currentStep.
     useEffect(() => {
@@ -3857,19 +3888,33 @@ const ApplicationFormContent: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                     void (async () => {
-                                    clearDraft();
-                                    if (isPrekinder && activePrekinderOption) {
-                                        await deleteServerDraftSafely().catch(() => undefined);
-                                    }
-                                    setData({});
-                                    clientSubmissionIdRef.current = crypto.randomUUID();
-                                    setSubmittedApplicationId(null);
-                                    setSubmittedPrekinderApplication(null);
-                                    setUploadedDocuments(new Map());
-                                    setUploadFailures(new Map());
-                                    setUploadedDocumentCount(0);
-                                    setCurrentStep(0);
-                                    setDraftRestored(false);
+                                        if (isPrekinder && activePrekinderOption) {
+                                            try {
+                                                await deleteServerDraftSafely();
+                                            } catch {
+                                                addNotification({
+                                                    type: 'error',
+                                                    title: 'No pudimos eliminar el borrador',
+                                                    message: 'Tus datos siguen guardados. Intenta nuevamente.',
+                                                });
+                                                return;
+                                            }
+                                        }
+                                        clearDraft();
+                                        clientSubmissionIdRef.current = crypto.randomUUID();
+                                        setData(isPrekinder && activePrekinderOption ? {
+                                            __clientSubmissionId: clientSubmissionIdRef.current,
+                                            applicationYear: resolvePrekinderAcademicContext(activePrekinderOption).applicationYear,
+                                            ...prekinderFamilyPrefillProcessFields({}, undefined, activePrekinderOption.waveType),
+                                        } : {});
+                                        draftDiscardingRef.current = false;
+                                        setSubmittedApplicationId(null);
+                                        setSubmittedPrekinderApplication(null);
+                                        setUploadedDocuments(new Map());
+                                        setUploadFailures(new Map());
+                                        setUploadedDocumentCount(0);
+                                        setCurrentStep(0);
+                                        setDraftRestored(false);
                                     })();
                                 }}
                                 className="ml-1 underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-azul-monte-tabor rounded"
